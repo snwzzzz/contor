@@ -41,6 +41,21 @@ describe("apiFetch", () => {
     expect(headers.get("X-XSRF-TOKEN")).toBe("abc123");
   });
 
+  it("fetches a CSRF token first when the cookie is missing", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (String(input) === "/api/auth/csrf") {
+        document.cookie = "XSRF-TOKEN=fresh; path=/";
+        return new Response(null, { status: 204 });
+      }
+      return new Response(null, { status: 204 });
+    });
+
+    await apiFetch("/api/things", { method: "POST", body: "{}" });
+
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["/api/auth/csrf", "/api/things"]);
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get("X-XSRF-TOKEN")).toBe("fresh");
+  });
+
   it("does not send the CSRF header on safe requests", async () => {
     document.cookie = "XSRF-TOKEN=abc123; path=/";
     fetchMock.mockResolvedValue(jsonResponse({}));

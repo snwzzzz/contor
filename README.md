@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
 
-> **Status: Phase 1, step 5 (backend API complete).** Backend: fixed schema, security (setup, sessions, CSRF, lockout, audit), the dynamic collection engine, labels, rules, relations, proposals (approve/reject with appliers for record proposals), saved queries and read-only mail. The frontend and TOTP 2FA follow in the next steps.
+> **Status: Phase 1, step 6 (frontend shell).** Backend API complete (security, collection engine, labels, rules, relations, proposals, saved queries, read-only mail). Frontend: first-run setup, login/logout, app shell with sidebar, top bar and command palette, light/dark theme. The collection UI and TOTP 2FA follow in the next steps.
 
 ## Repository layout
 
@@ -67,6 +67,14 @@ cd contor-api && set -a && . ../.env && set +a && ./mvnw spring-boot:test-run
 ```bash
 cd contor-web && npm install && npm run dev
 ```
+
+Production build: `CONTOR_API_URL` is baked into the `/api` rewrite at **build** time (Next.js resolves rewrites when building), so set it for `npm run build` as well as for `npm run start`:
+
+```bash
+cd contor-web && CONTOR_API_URL=http://127.0.0.1:8080 npm run build && CONTOR_API_URL=http://127.0.0.1:8080 npm run start
+```
+
+On first start open http://localhost:3000: without a user you are sent to **/setup** (token from the backend log, see below), afterwards to **/login**.
 
 Swagger UI for the contract (dev profile only, requires login): log in through the web app, then open http://localhost:8080/swagger-ui/index.html. Use the same host name (`localhost`) for both, since the session cookie is bound to the host name.
 
@@ -149,8 +157,15 @@ cd contor-api && ./mvnw test
 # Frontend: unit/component tests, lint, type check
 cd contor-web && npm test && npm run lint && npm run typecheck
 
-# Frontend: end-to-end (starts its own dev server on port 3100)
+# Frontend: end-to-end against the real backend (Docker required). Starts contor-api on port 18080 with a fresh
+# Testcontainers Postgres, runs first-run setup through the UI, then the auth and shell flows on port 3100.
 cd contor-web && npx playwright install chromium && npm run test:e2e
+
+# Same against the production build (strict CSP without dev allowances)
+cd contor-web && npm run test:e2e:prod
+
+# Screenshots of the main screens in light and dark mode -> contor-web/e2e/.tmp/screenshots/ (for design work)
+cd contor-web && npm run screenshots
 ```
 
 ## Environment variables
@@ -175,7 +190,22 @@ All variables are listed in `.env.example`.
 | `AI_MODEL_ROUTING` | backend | `qwen3:4b` | small model that classifies emails (next phase) |
 | `AI_MODEL_EXTRACTION` | backend | `qwen3:14b` | model that drafts proposals (next phase) |
 | `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions (next phase) |
-| `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | target of the `/api/*` rewrite |
+| `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
+| `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |
+
+## Frontend structure and redesigns
+
+The UI is built so a visual redesign does not touch pages or data logic:
+
+| Layer | Where | Change it for… |
+|---|---|---|
+| Design tokens (colors, radius, fonts; light + dark) | `contor-web/src/styles/tokens.css` | palette, typography, roundness |
+| Primitives (shadcn/ui, owned) | `src/components/ui/` | how a button/input/dialog looks in general |
+| App components | `src/components/app/` (`AppButton`, `FormField`, `PageHeader`, `EmptyState`, `ErrorMessage`, `AuthCard`, forms) | app-wide patterns |
+| Layout | `src/components/layout/` (`AppShell`, `AppSidebar`, `TopBar`, `CommandPalette`, `UserMenu`) | shell and navigation |
+| Pages | `src/app/` | composition only: no styling decisions, no `components/ui` imports (ESLint enforces) |
+
+Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and command palette). `npm run screenshots` captures before/after images.
 
 ## Notes
 

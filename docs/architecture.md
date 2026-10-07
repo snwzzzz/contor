@@ -85,6 +85,21 @@ Browser                      Next.js (:3000)                 Spring (127.0.0.1:8
 
 First run: `SetupTokenInitializer` prints a one-time token while `app_user` is empty; `POST /api/setup` (permitted only while setup is pending) consumes it and creates the OWNER.
 
+## Frontend
+
+```
+src/proxy.ts            CSP nonce + optimistic auth redirect (every page request)
+src/app/(auth)/…        /login, /setup  (server components check setup status against the backend, then render forms)
+src/app/(app)/…         AppShell (sidebar, top bar, command palette) + pages; pages only compose components
+src/components/app      owned composites (AppButton, FormField, PageHeader, EmptyState, ErrorMessage, auth forms)
+src/components/layout   shell pieces
+src/components/ui       shadcn primitives (owned)
+src/styles/tokens.css   design tokens (light/dark)
+src/lib/api             generated orval client + fetcher (CSRF, ApiError) + QueryClient (401 → login, mutation errors → toast)
+```
+
+Data is fetched client-side with TanStack Query through the same-origin `/api` rewrite; the session cookie is HttpOnly and never touched by JavaScript.
+
 ## Decisions
 
 See `docs/decisions/`.

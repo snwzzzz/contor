@@ -6,6 +6,7 @@
  */
 
 const CSRF_COOKIE = "XSRF-TOKEN";
+const CSRF_ENDPOINT = "/api/auth/csrf";
 const CSRF_HEADER = "X-XSRF-TOKEN";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 
@@ -51,11 +52,19 @@ async function parseBody(response: Response): Promise<unknown> {
   }
 }
 
+/** The CSRF cookie, fetching it first when missing (first request, or after login/logout rotated it). */
+async function csrfToken(): Promise<string | undefined> {
+  const existing = readCookie(CSRF_COOKIE);
+  if (existing) return existing;
+  await fetch(CSRF_ENDPOINT, { credentials: "same-origin" });
+  return readCookie(CSRF_COOKIE);
+}
+
 export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
   if (!SAFE_METHODS.has(method)) {
-    const token = readCookie(CSRF_COOKIE);
+    const token = await csrfToken();
     if (token) headers.set(CSRF_HEADER, token);
   }
 
@@ -70,3 +79,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
 }
 
 export default apiFetch;
+
+/** Error type of every generated query/mutation (picked up by orval from this mutator file). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type ErrorType<_ErrorBody> = ApiError;

@@ -20,6 +20,8 @@ public class PostgresTestcontainersConfiguration {
     @Bean
     @ServiceConnection
     public PostgreSQLContainer postgresContainer() {
-        return new PostgreSQLContainer(PGVECTOR_IMAGE).withReuse(true);
+        // -Dcontor.testcontainers.reuse=false forces a fresh database (end-to-end tests need a pending first-run setup).
+        return new PostgreSQLContainer(PGVECTOR_IMAGE)
+                .withReuse(Boolean.parseBoolean(System.getProperty("contor.testcontainers.reuse", "true")));
     }
 }

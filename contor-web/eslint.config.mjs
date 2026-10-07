@@ -22,6 +22,17 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // Pages compose app components only; shadcn primitives (components/ui) are wrapped in components/app or
+    // components/layout so look and behavior are controlled in one place (and a redesign does not touch pages).
+    files: ["src/app/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ group: ["@/components/ui", "@/components/ui/*"], message: "Use components from @/components/app or @/components/layout in pages." }] },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

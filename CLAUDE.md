@@ -119,11 +119,17 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - `app_readonly` (NOLOGIN) gets `SELECT` per generated collection table, granted by the collection engine; never on fixed tables.
 
 ## 4. Frontend rules
-- Pages never import from `components/ui/` (shadcn primitives, owned). They use `components/app/` composites (`AppButton`, `DataTable`, `RecordForm`, `PageHeader`, `EmptyState`, …). Layout pieces live in `components/layout/`.
-- Design tokens as CSS variables in one file, light + dark.
-- API access only via the generated orval hooks/functions (`src/lib/api/generated/`, import from the concrete module, no barrels) and the hand-written `src/lib/api/fetcher.ts` mutator (same-origin, CSRF header, `ApiError`).
-- Next.js 16: route-level request interception lives in `src/proxy.ts` (formerly `middleware.ts`). Read `contor-web/node_modules/next/dist/docs/` before using Next APIs; this version differs from older training data.
-- TypeScript strict, no `any` in our code (ESLint enforces), every change checked against the React best-practices skill.
+- **Redesign-ready layering:** tokens in `src/styles/tokens.css` (the only place with colors/radii/fonts) → owned shadcn primitives `components/ui/` → app composites `components/app/` → shell `components/layout/` → pages `src/app/` (composition only). Pages never import `components/ui` (ESLint `no-restricted-imports` on `src/app/**`). No hard-coded colors anywhere; use token classes (`bg-primary`, `text-muted-foreground`).
+- Edits to owned `components/ui` files are marked with a `// contor:` comment (e.g. deterministic sidebar skeleton width, CommandDialog title inside the content, `use-mobile` via `useSyncExternalStore`) so a later `shadcn add --overwrite` does not silently undo them.
+- API access only through the generated orval hooks (`src/lib/api/generated/endpoints/<tag>/<tag>.ts`, import the concrete module, no barrels) and the `src/lib/api/fetcher.ts` mutator (same-origin, CSRF header, fetches the CSRF cookie when missing, throws `ApiError`). Errors are typed `ApiError` (`ErrorType` export in the mutator).
+- `src/lib/api/query-client.ts`: any 401 → login with `next`; failed mutations → toast. Opt out per call with `meta: { skipAuthRedirect: true }` (401 is an expected answer, e.g. login) and `meta: { silent: true }` (the component shows the error).
+- Logout uses a full page load (`hardNavigate("/login")`): clears in-memory data and avoids redirect races.
+- `src/proxy.ts` (Next 16's middleware): per-request CSP nonce + optimistic session-cookie check (redirect to `/login?next=`). The backend stays the authority. Pages are all dynamic because of the nonce: do not enable `cacheComponents`/PPR (ADR 0005).
+- Server-only helpers live in `src/lib/server/` (`import "server-only"`), e.g. the setup-status check the login/setup pages run before rendering.
+- `CONTOR_API_URL` is baked into the `/api` rewrite at build time.
+- Tests: Vitest + Testing Library with `src/test/render.tsx` (`renderWithProviders`), `src/test/api-mock.ts` (`mockApi({"GET /api/...": {...}})`), `vi.mock("next/navigation", () => import("@/test/next-navigation"))`. Playwright runs against the real backend (`e2e/support/start-backend.sh`); the `setup` project does first-run setup and stores the owner session in `e2e/.tmp/owner.json`. Wait for data that proves hydration before keyboard shortcuts. A console-error test guards hydration mismatches; a CSP test guards nonce wiring.
+- Next.js 16: read `contor-web/node_modules/next/dist/docs/` before using Next APIs; this version differs from older training data. Typed route props (`PageProps<"/x">`, `LayoutProps<"/">`) come from `next typegen` (part of `npm run typecheck`).
+- TypeScript strict, no `any` in our code, every change checked against the React best-practices skill.
 
 ## 5. Security rules
 - Session auth (Spring Session JDBC), no JWT, nothing in localStorage. Cookie `HttpOnly`, `SameSite=Strict`, `Secure` on HTTPS, 30 min idle, 12 h absolute, session fixation protection, max 3 sessions/user.
