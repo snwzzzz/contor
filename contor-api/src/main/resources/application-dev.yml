@@ -1,0 +1,5 @@
+# Dev profile: Swagger UI rendering the static contract (api-spec/openapi.yaml, copied to classpath:openapi/openapi.yaml, served by DevApiSpecConfig).
+springdoc:
+  swagger-ui:
+    enabled: true
+    url: /openapi.yaml

@@ -1,0 +1,117 @@
+# CLAUDE.md – contor
+
+contor is a personal, self-hosted management platform: Outlook inbox sync (later), a local Ollama model proposing actions (later), and dynamic user/AI-defined collections with relations between records.
+
+## 0. Working rules (non-negotiable)
+
+1. **Tests first, always.** For every feature, endpoint, service or component: write the tests first, run them and confirm they fail for the right reason, then write the code that makes them pass, then refactor. No production code without a failing test that requires it. Backend: JUnit 5, AssertJ, Mockito, Spring test slices, Testcontainers. Frontend: Vitest + Testing Library; Playwright for the auth and collection flows.
+2. **Java style follows Appendix A** (condensed below). The contor deviations win over the template. Anything not covered: ask. `reference/java-style/` may hold the original project as extra reference; Appendix A and its deviations take precedence.
+3. **API contract first, generated code is untouchable.** `api-spec/openapi.yaml` is the single source of truth. Backend interfaces/models (openapi-generator Maven plugin → `contor-api/target/generated-sources/openapi`) and the frontend client (orval → `contor-web/src/lib/api/generated/`) are generated from it, never edited by hand, never committed. To change the API: change the spec, regenerate. Controllers implement the generated `XApi` interfaces.
+4. **README stays current.** After every major change (new step, env var, command, dependency, changed setup), update `README.md` in the same change. A step is not done until the README reflects it.
+5. **React/Next.js best practices, always.** All frontend code follows the `vercel-react-best-practices` skill (installed in `.claude/skills/`). Install/refresh with:
+   ```
+   npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
+   ```
+   Read it before writing frontend code; apply it to every component, hook, route and data-fetching decision. Where it conflicts with the spec, ask.
+
+## 1. Repository
+
+| Path | What |
+|---|---|
+| `api-spec/openapi.yaml` | API contract (OpenAPI 3.0.3) |
+| `contor-api/` | Spring Boot 4.1 / Java 21 / Maven backend, base package `com.example.contor` |
+| `contor-web/` | Next.js 16 (App Router) / TypeScript strict frontend |
+| `infra/docker-compose.yml` | Postgres 18 + pgvector, bound to 127.0.0.1 |
+| `docs/architecture.md`, `docs/decisions/` | architecture + ADRs |
+
+Commands: see README. Backend tests need Docker (Testcontainers). `./mvnw test` in `contor-api`; `npm test`, `npm run lint`, `npm run typecheck`, `npm run test:e2e` in `contor-web`.
+
+## 2. Java style (condensed Appendix A)
+
+### Deviations for contor (win over everything below)
+1. **API models are generated from OpenAPI.** Schemas are named `NewXCommand`, `UpdateXCommand` (nullable fields, `null` = don't change), `XDto` (plain `Long` IDs). Generated models are mutable classes with getters (`dto.getName()`), not records. Controllers implement the generated `XApi` interface and stay one-line delegations to the service. Mappers map entity → generated `XDto`.
+2. **Tests run against real Postgres via Testcontainers, never H2** (pgvector, JSONB, trigram, transactional DDL). Use `PostgresTestcontainersConfiguration` (reusable container).
+3. **Security is section 6 of the spec** (see §5 below): no `permitAll`, CSRF on, no CORS, Argon2id.
+4. **Timestamps are `timestamptz`** / Java `Instant`. The JVM runs in UTC (`ContorApplication.main`, surefire `-Duser.timezone=UTC`).
+5. **Consistency fixes:** every not-found exception extends `ResourceNotFoundException` (→ 404); imports, never inline FQCNs; lowercase packages (`exception`, `validation`); exactly one web security config, no CORS config at all.
+6. **Converter tests are plain unit tests** (no `@DataJpaTest`).
+
+### Packages (by layer, under `com.example.contor`)
+`domain` (entities, value objects, enums) · `mapper` (static entity → generated DTO) · `persistence` (Spring Data repos) · `persistence/converter` (AttributeConverters, encryption) · `persistence/dynamic` (jOOQ for generated collection tables) · `service` · `controller` (+ `GlobalExceptionHandler`) · `exception` · `validation` · `config` · `security` · `fieldtype` (plug-in engine) · `proposal` (plug-in engine) · `ai` (interfaces only). Generated: `api` (`XApi`), `api.model`.
+
+Flow: `Generated XApi ◀ Controller ─(NewXCommand)▶ Service ▶ Repository ▶ Entity`, back via `XMapper.toDto(entity)`. Entities never leave the service layer.
+
+### Entities
+- `@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @Entity @Table(name = "\"x\"")` (table names quoted), extends `AuditableEntity` (`createdAt`/`lastModified` via `@PrePersist`/`@PreUpdate`).
+- Typed IDs: `@EmbeddedId XId id;` with nested `@Embeddable public record XId(@GeneratedValue Long id) {}`. Repos: `JpaRepository<X, X.XId>`, derived queries through the ID (`findByParent_Id(Parent.ParentId)`). Wrap IDs in the service (`new X.XId(id)`), unwrap in the mapper with null checks.
+- Relations: `LAZY @ManyToOne` + explicit `@JoinColumn`; `@OneToMany(mappedBy, orphanRemoval)` with `@Builder.Default`.
+- Child/detail tables: plain `@Id Long` with `IDENTITY`, no auditing (or composite key where the spec says so).
+- Flexible data: `@JdbcTypeCode(SqlTypes.JSON)`.
+
+### Value objects
+Records validating in the compact constructor (null/empty/regex) and throwing `IllegalArgumentException`; each has an `@Converter(autoApply = true)` `AttributeConverter` in `persistence/converter` storing a plain string.
+
+### Mappers
+Only `public static XDto toDto(X entity)`; `null` in → `null` out; null-safe ID unwrapping. Hand-written, no MapStruct.
+
+### Services
+`@RequiredArgsConstructor @Service`, `private final` repos, every public method `@Transactional` (`jakarta.transaction.Transactional`), reads included. Flow: load related via `findById(new XId(..)).orElseThrow(() -> new XNotFoundException(..))` → business rules (`DuplicateResourceException`) → `X.builder()` → `saveAndFlush` → `XMapper.toDto`. Names: `createX`, `findAll`, `findById`, `findByParentId`, `updateX`, `deleteX`.
+
+### Controllers
+`@RequiredArgsConstructor @RestController implements XApi`; no logic, one line per method; `201` for POST, `204` for DELETE, `ok(...)` otherwise. Paths come from the spec: `/api/<plural>`, children nested (`/api/collections/{id}/fields`).
+
+### Errors
+One `XNotFoundException extends ResourceNotFoundException` per resource. `GlobalExceptionHandler` returns `ErrorResponse(message, status)` (an OpenAPI schema): not found 404, `DuplicateResourceException` 409, `PasswordValidationException`/`IllegalArgumentException` 400, service unavailable 503, anything else 500 with a generic message (logged server-side). Only touch the handler for a new status code.
+
+### Plug-in engines
+Strategy + registry: an interface (Javadoc says "add a bean to extend"), one `@Component` per implementation, a registry building a map from the injected `List<...>` keyed by type. contor: `FieldTypeHandler`/`FieldTypeRegistry`, `ProposalApplier`/`ProposalApplierRegistry`.
+
+### Tests (packages mirror main; one style per layer)
+| Layer | Style |
+|---|---|
+| value objects | plain JUnit 5 + AssertJ (`assertThatThrownBy(..).isInstanceOf(IllegalArgumentException.class)`) |
+| converters | instantiate directly; both directions + null |
+| mappers | plain JUnit; builder + typed IDs; fields, null input, null relations |
+| persistence | `@DataJpaTest` + `@Import(PostgresTestcontainersConfiguration.class)`, `@AutoConfigureTestDatabase(replace = NONE)`; real entity chain, derived queries |
+| services | `@ExtendWith(MockitoExtension.class)`, `@Mock` repos, `@InjectMocks`; `thenAnswer(inv -> inv.getArgument(0))`; `verify(.., never())` on rejected paths |
+| controllers | `@WebMvcTest` + MockMvc + `@MockitoBean` service, with Spring Security test support (authenticated user + `csrf()`); status codes + JSON body incl. errors |
+| plug-ins | one unit test per handler + registry resolution test |
+| integration | `@SpringBootTest` + Testcontainers for end-to-end flows, `contextLoads` |
+
+Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)`. **Exception:** service tests use camelCase with an underscore scenario suffix (`createTag_DuplicateNameRejected`, `findById_NotFound`).
+
+### New-resource checklist
+1. `V1_0_N__add_<things>.sql`: quoted table, `<thing>_seq` (increment by 50), `created_at`/`last_modified` `timestamptz`, named constraints (`fk_<table>_<target>`, `uq_<table>_<cols>`), indexes on FKs and filter columns, enums as `text` + `CHECK`, a comment explaining the table
+2. `domain/` entity with nested `XId` record, extends `AuditableEntity`, plus value objects
+3. `persistence/converter/` converter per value object
+4. `persistence/XRepository extends JpaRepository<X, X.XId>`
+5. `exception/XNotFoundException extends ResourceNotFoundException`
+6. `api-spec/openapi.yaml`: paths, `NewXCommand`, `UpdateXCommand`, `XDto`, `ErrorResponse` for errors → regenerate
+7. `mapper/XMapper.toDto`
+8. `service/XService`
+9. `controller/XController implements XApi`
+10. Tests first, one per layer (above)
+11. Update `README.md`
+
+## 3. Data rules
+- **Migrations only via Flyway** (`contor-api/src/main/resources/db`, `V1_0_N__description.sql`, one concern each). Hibernate `ddl-auto=validate`; never let JPA create schema.
+- **Generated collection tables (`c_<slug>`) are not JPA entities.** Access them only through `persistence/dynamic/` with the jOOQ DSL. Never string-concatenate SQL. Identifiers come only from validated `Slug` value objects.
+- Record IDs are unique per collection table only: any reference from outside is always `(collection_id, record_id)`.
+
+## 4. Frontend rules
+- Pages never import from `components/ui/` (shadcn primitives, owned). They use `components/app/` composites (`AppButton`, `DataTable`, `RecordForm`, `PageHeader`, `EmptyState`, …). Layout pieces live in `components/layout/`.
+- Design tokens as CSS variables in one file, light + dark.
+- API access only via the generated orval hooks/functions (`src/lib/api/generated/`, import from the concrete module, no barrels) and the hand-written `src/lib/api/fetcher.ts` mutator (same-origin, CSRF header, `ApiError`).
+- Next.js 16: route-level request interception lives in `src/proxy.ts` (formerly `middleware.ts`). Read `contor-web/node_modules/next/dist/docs/` before using Next APIs; this version differs from older training data.
+- TypeScript strict, no `any` in our code (ESLint enforces), every change checked against the React best-practices skill.
+
+## 5. Security rules
+- Session auth (Spring Session JDBC), no JWT, nothing in localStorage. Cookie `HttpOnly`, `SameSite=Strict`, `Secure` on HTTPS, 30 min idle, 12 h absolute, session fixation protection, max 3 sessions/user.
+- CSRF on: `CookieCsrfTokenRepository` + SPA handler; frontend sends `X-XSRF-TOKEN`. No CORS anywhere: Next.js rewrites `/api/*` to Spring.
+- Deny by default; permit only `/api/auth/login`, `/api/auth/csrf`, `/api/setup` (while no user exists), `/actuator/health`. `@PreAuthorize` for owner-only operations. Swagger UI only in `dev` and still authenticated.
+- Argon2id passwords; password rules collect all violations; per-username lockout + per-IP rate limit; identical error for unknown user/wrong password/locked.
+- First run: one-time setup token printed to the log; no default credentials anywhere.
+- `*_enc` columns: AES-256-GCM `AttributeConverter`, key from `APP_ENCRYPTION_KEY`, random IV, key-version prefix; app refuses to start without a valid key.
+- Never log passwords, tokens, email bodies or full addresses (use the log-masking helper).
+- Spring and Postgres bind to 127.0.0.1; Ollama must stay on localhost. Actuator exposes only `health` without details.
+- Errors always as `ErrorResponse`, never stack traces. Audit log for auth events, 2FA/password changes, schema changes, proposal decisions.

@@ -1,0 +1,25 @@
+# Local infrastructure for contor. Backend and frontend run natively; Ollama runs natively on the host.
+name: contor
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-contor}
+      POSTGRES_USER: ${DB_USERNAME:-contor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      TZ: UTC
+    ports:
+      # Loopback only: the database must never be reachable from the network.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - contor-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  contor-pgdata:

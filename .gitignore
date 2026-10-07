@@ -1,0 +1,14 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Optional private style reference (not part of the product)
+reference/java-style/*
+!reference/java-style/README.md
