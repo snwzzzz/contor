@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
 
-> **Status: Phase 1, step 1 (foundation skeleton).** Backend and frontend start, test tooling and code generation are wired against a minimal API contract. Database schema, security, collections and the app shell follow in the next steps.
+> **Status: Phase 1, step 2 (core schema).** Backend and frontend start; code generation is wired against a minimal API contract. The fixed database schema (Flyway), JPA entities, repositories and column encryption are in place. Security, collections and the app shell follow in the next steps.
 
 ## Repository layout
 
@@ -34,7 +34,13 @@ echo "testcontainers.reuse.enable=true" >> ~/.testcontainers.properties
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `DB_PASSWORD`. `.env` is gitignored; never commit secrets.
+Edit `.env` and set at least `DB_PASSWORD` and `APP_ENCRYPTION_KEY`:
+
+```bash
+openssl rand -base64 32
+```
+
+`.env` is gitignored; never commit secrets. Keep `APP_ENCRYPTION_KEY` safe: without it, stored OAuth tokens and TOTP secrets cannot be decrypted. The backend refuses to start if the key is missing or not a 256-bit base64 key.
 
 ## Run
 
@@ -50,10 +56,10 @@ docker compose --env-file .env -f infra/docker-compose.yml up -d --wait
 cd contor-api && set -a && . ../.env && set +a && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Alternatively, run without compose against a throwaway Testcontainers Postgres:
+Alternatively, run without compose against a throwaway Testcontainers Postgres (still needs `APP_ENCRYPTION_KEY` exported):
 
 ```bash
-cd contor-api && ./mvnw spring-boot:test-run
+cd contor-api && set -a && . ../.env && set +a && ./mvnw spring-boot:test-run
 ```
 
 **3. Frontend** (http://localhost:3000). `/api/*` is proxied server-side to the backend (`CONTOR_API_URL`), so the browser only ever talks to one origin.
@@ -63,6 +69,19 @@ cd contor-web && npm install && npm run dev
 ```
 
 Swagger UI for the contract (dev profile only): http://127.0.0.1:8080/swagger-ui/index.html
+
+## Database
+
+- All fixed tables are created by Flyway migrations in `contor-api/src/main/resources/db` (`V1_0_N__description.sql`), applied automatically on backend startup. Hibernate only validates (`ddl-auto=validate`).
+- Never change an applied migration; add a new one.
+- Generated collection tables (`c_<slug>`) are not migrations; the collection engine creates them at runtime.
+- `audit_log` and `collection_schema_change` are append-only (a trigger rejects `UPDATE`/`DELETE`).
+- Columns ending in `_enc` are AES-256-GCM encrypted by the backend (`v1:` prefix = key version).
+- Reset the local database (deletes all data):
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml down -v
+```
 
 ## Code generation (contract first)
 
@@ -101,6 +120,8 @@ All variables are listed in `.env.example`.
 | `DB_URL` | backend | `jdbc:postgresql://127.0.0.1:5432/contor` | JDBC URL |
 | `APP_BIND_ADDRESS` | backend | `127.0.0.1` | interface Spring binds to |
 | `APP_PORT` | backend | `8080` | backend port |
+| `APP_ENCRYPTION_KEY` | backend | – (required) | base64 256-bit AES key for `*_enc` columns (`openssl rand -base64 32`) |
+| `APP_ENCRYPTION_KEY_VERSION` | backend | `1` | version prefix of encrypted values; change only when rotating keys |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | target of the `/api/*` rewrite |
 
 ## Notes

@@ -39,4 +39,8 @@ springdoc:
 
 app:
   name: contor
+  encryption:
+    # Base64-encoded 256-bit AES key for *_enc columns. Required: the app refuses to start without a valid key.
+    key: ${APP_ENCRYPTION_KEY:}
+    key-version: ${APP_ENCRYPTION_KEY_VERSION:1}
   version: '@project.version@'

@@ -72,7 +72,7 @@ Strategy + registry: an interface (Javadoc says "add a bean to extend"), one `@C
 | value objects | plain JUnit 5 + AssertJ (`assertThatThrownBy(..).isInstanceOf(IllegalArgumentException.class)`) |
 | converters | instantiate directly; both directions + null |
 | mappers | plain JUnit; builder + typed IDs; fields, null input, null relations |
-| persistence | `@DataJpaTest` + `@Import(PostgresTestcontainersConfiguration.class)`, `@AutoConfigureTestDatabase(replace = NONE)`; real entity chain, derived queries |
+| persistence | `@RepositoryTest` (= `@DataJpaTest` + Testcontainers + `CryptoConfig` + display names); real entity chain, derived queries. Unsaved test entities come from `persistence/Fixtures`. One failing SQL statement aborts the test transaction: one DB-error assertion per test |
 | services | `@ExtendWith(MockitoExtension.class)`, `@Mock` repos, `@InjectMocks`; `thenAnswer(inv -> inv.getArgument(0))`; `verify(.., never())` on rejected paths |
 | controllers | `@WebMvcTest` + MockMvc + `@MockitoBean` service, with Spring Security test support (authenticated user + `csrf()`); status codes + JSON body incl. errors |
 | plug-ins | one unit test per handler + registry resolution test |
@@ -97,6 +97,11 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - **Migrations only via Flyway** (`contor-api/src/main/resources/db`, `V1_0_N__description.sql`, one concern each). Hibernate `ddl-auto=validate`; never let JPA create schema.
 - **Generated collection tables (`c_<slug>`) are not JPA entities.** Access them only through `persistence/dynamic/` with the jOOQ DSL. Never string-concatenate SQL. Identifiers come only from validated `Slug` value objects.
 - Record IDs are unique per collection table only: any reference from outside is always `(collection_id, record_id)`.
+- Enums: `text` + named `CHECK` (`ck_<table>_<column>`), mapped with `@Enumerated(EnumType.STRING)`. JSON: `jsonb` + `@JdbcTypeCode(SqlTypes.JSON)` (prefer records/lists over raw maps where the shape is known).
+- Sequences are `<table>_seq` (increment 50); Hibernate derives the name from the entity name, so entity class names must match table names in CamelCase (`AppUser` → `app_user_seq`).
+- `*_enc` columns: `@Convert(converter = EncryptedStringConverter.class)` on a plain `String` field (never auto-applied).
+- Append-only tables (`audit_log`, `collection_schema_change`) are `@Immutable` entities with a `forbid_update_delete()` trigger.
+- `app_readonly` (NOLOGIN) gets `SELECT` per generated collection table, granted by the collection engine; never on fixed tables.
 
 ## 4. Frontend rules
 - Pages never import from `components/ui/` (shadcn primitives, owned). They use `components/app/` composites (`AppButton`, `DataTable`, `RecordForm`, `PageHeader`, `EmptyState`, …). Layout pieces live in `components/layout/`.
