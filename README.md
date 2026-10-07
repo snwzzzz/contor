@@ -133,7 +133,7 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
 | Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts`, `/api/emails`, `/api/emails/{id}` | read-only; only the current user's mailboxes; `bodyHtml` is untrusted and must be rendered sandboxed |
+| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback, sync, disconnect, status; emails scoped to current user |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -191,6 +191,12 @@ All variables are listed in `.env.example`.
 | `AI_MODEL_ROUTING` | backend | `qwen3:4b` | small model that classifies emails (next phase) |
 | `AI_MODEL_EXTRACTION` | backend | `qwen3:14b` | model that drafts proposals (next phase) |
 | `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions (next phase) |
+| `MSGRAPH_CLIENT_ID` | backend | – | Azure app registration client ID |
+| `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
+| `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
+| `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
+| `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,offline_access` | Microsoft Graph API permissions |
+| `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |
 

@@ -2,12 +2,7 @@ package com.example.contor.controller;
 
 import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
-import com.example.contor.api.model.EmailDto;
-import com.example.contor.api.model.EmailPageDto;
-import com.example.contor.api.model.EmailProcessingState;
-import com.example.contor.api.model.MailAccountDto;
-import com.example.contor.api.model.MailAccountState;
-import com.example.contor.api.model.MailProviderKind;
+import com.example.contor.api.model.*;
 import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.service.MailService;
 import org.junit.jupiter.api.Test;
@@ -17,10 +12,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,6 +39,66 @@ public class MailControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].emailAddress").value("me@example.com"))
                 .andExpect(jsonPath("$[0].accessToken").doesNotExist());
+    }
+
+    @Test
+    void connect_mail_account_owner_returns_200() throws Exception {
+        when(mailService.connectAccount(any())).thenReturn(new MailAuthorizeUrlDto("https://login.microsoft.com/auth"));
+
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authorizeUrl").value("https://login.microsoft.com/auth"));
+    }
+
+    @Test
+    void connect_mail_account_user_forbidden() throws Exception {
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.user()).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mail_account_callback_redirects_302() throws Exception {
+        doNothing().when(mailService).handleCallback("state1", "code1", null, null);
+
+        mockMvc.perform(get("/api/mail/accounts/callback")
+                        .param("state", "state1")
+                        .param("code", "code1"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "/settings/mail?connected=true"));
+    }
+
+    @Test
+    void sync_mail_account_owner_returns_200() throws Exception {
+        when(mailService.syncAccount(2L)).thenReturn(new MailSyncStatusDto(2L, MailAccountState.ACTIVE).messagesSynced(5));
+
+        mockMvc.perform(post("/api/mail/accounts/2/sync").with(TestAuth.owner()).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountId").value(2))
+                .andExpect(jsonPath("$.messagesSynced").value(5));
+    }
+
+    @Test
+    void sync_mail_account_user_forbidden() throws Exception {
+        mockMvc.perform(post("/api/mail/accounts/2/sync").with(TestAuth.user()).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void disconnect_mail_account_returns_204() throws Exception {
+        doNothing().when(mailService).disconnectAccount(2L);
+
+        mockMvc.perform(post("/api/mail/accounts/2/disconnect").with(TestAuth.owner()).with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void get_mail_account_sync_status_returns_200() throws Exception {
+        when(mailService.getSyncStatus(2L)).thenReturn(new MailSyncStatusDto(2L, MailAccountState.ACTIVE));
+
+        mockMvc.perform(get("/api/mail/accounts/2/status").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountId").value(2))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test

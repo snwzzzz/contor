@@ -154,6 +154,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/setup").access(AuthorizationManagers.anyOf(
                                 setupPending, AuthenticatedAuthorizationManager.authenticated()))
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/mail/accounts/callback").permitAll()
                         .anyRequest().authenticated());
         return http.build();
     }

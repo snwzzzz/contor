@@ -18,6 +18,8 @@
 		<openapi-generator.version>7.26.0</openapi-generator.version>
 		<springdoc.version>3.1.1</springdoc.version>
 		<bouncycastle.version>1.86</bouncycastle.version>
+		<msal4j.version>1.17.2</msal4j.version>
+		<microsoft-graph.version>6.23.0</microsoft-graph.version>
 		<argLine></argLine>
 		<api.spec>${project.basedir}/../api-spec/openapi.yaml</api.spec>
 	</properties>
@@ -74,6 +76,16 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.azure</groupId>
+			<artifactId>msal4j</artifactId>
+			<version>${msal4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.graph</groupId>
+			<artifactId>microsoft-graph</artifactId>
+			<version>${microsoft-graph.version}</version>
 		</dependency>
 
 		<dependency>

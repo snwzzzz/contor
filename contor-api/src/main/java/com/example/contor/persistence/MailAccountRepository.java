@@ -11,4 +11,8 @@ import java.util.List;
 public interface MailAccountRepository extends JpaRepository<MailAccount, MailAccount.MailAccountId> {
 
     List<MailAccount> findByOwner_Id(AppUser.AppUserId ownerId);
+
+    List<MailAccount> findByStatus(com.example.contor.domain.MailAccountStatus status);
+
+    java.util.Optional<MailAccount> findByOwner_IdAndEmailAddress(AppUser.AppUserId ownerId, com.example.contor.domain.Email emailAddress);
 }

@@ -1,25 +1,10 @@
 package com.example.contor.service;
 
-import com.example.contor.api.model.EmailDto;
-import com.example.contor.api.model.EmailPageDto;
-import com.example.contor.domain.AppUser;
-import com.example.contor.domain.Email;
-import com.example.contor.domain.EmailLabel;
-import com.example.contor.domain.EmailMessage;
-import com.example.contor.domain.HexColor;
-import com.example.contor.domain.Label;
-import com.example.contor.domain.LabelSource;
-import com.example.contor.domain.MailAccount;
-import com.example.contor.domain.MailAccountStatus;
-import com.example.contor.domain.MailProvider;
-import com.example.contor.domain.ProcessingState;
-import com.example.contor.domain.Slug;
-import com.example.contor.domain.UserRole;
+import com.example.contor.api.model.*;
+import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
-import com.example.contor.persistence.EmailLabelRepository;
-import com.example.contor.persistence.EmailMessageRepository;
-import com.example.contor.persistence.LabelRepository;
-import com.example.contor.persistence.MailAccountRepository;
+import com.example.contor.exception.MailAccountNotFoundException;
+import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +44,18 @@ class MailServiceTest {
     @Mock
     private LabelRepository labelRepository;
 
+    @Mock
+    private AppUserRepository appUserRepository;
+
+    @Mock
+    private MsGraphAuthService msGraphAuthService;
+
+    @Mock
+    private MsGraphMailService msGraphMailService;
+
+    @Mock
+    private MailSyncService mailSyncService;
+
     @InjectMocks
     private MailService mailService;
 
@@ -96,6 +93,83 @@ class MailServiceTest {
         when(mailAccountRepository.findByOwner_Id(new AppUser.AppUserId(1L))).thenReturn(List.of(account(1L)));
 
         assertEquals(1, mailService.listMailAccounts().size());
+    }
+
+    @Test
+    void connectAccount_ReturnsAuthorizeUrl() {
+        when(msGraphAuthService.buildAuthorizeUrl(1L, "test@example.com")).thenReturn("https://login.microsoft.com/auth");
+
+        var cmd = new ConnectMailAccountCommand().emailHint("test@example.com");
+        var result = mailService.connectAccount(cmd);
+
+        assertEquals("https://login.microsoft.com/auth", result.getAuthorizeUrl());
+    }
+
+    @Test
+    void handleCallback_SuccessCreatesAccountAndSyncs() {
+        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
+        when(msGraphAuthService.exchangeCode("code123"))
+                .thenReturn(new MsGraphAuthService.TokenResult("access1", "refresh1", Instant.now().plusSeconds(3600)));
+        when(msGraphMailService.fetchUserProfile("access1"))
+                .thenReturn(new MsGraphMailService.UserProfile("test@outlook.com", "Test User"));
+        var user = AppUser.builder().id(new AppUser.AppUserId(1L)).build();
+        when(appUserRepository.findById(new AppUser.AppUserId(1L))).thenReturn(Optional.of(user));
+        when(mailAccountRepository.findByOwner_IdAndEmailAddress(eq(new AppUser.AppUserId(1L)), any(Email.class)))
+                .thenReturn(Optional.empty());
+
+        mailService.handleCallback("state123", "code123", null, null);
+
+        verify(mailAccountRepository).saveAndFlush(any(MailAccount.class));
+        verify(mailSyncService).syncAccount(any(MailAccount.class));
+    }
+
+    @Test
+    void handleCallback_OAuthErrorThrows() {
+        assertThrows(IllegalArgumentException.class,
+                () -> mailService.handleCallback("state123", null, "access_denied", "User canceled"));
+    }
+
+    @Test
+    void syncAccount_Success() {
+        var acc = account(1L);
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
+        when(mailSyncService.syncAccount(acc)).thenReturn(new MailSyncStatusDto(2L, MailAccountState.ACTIVE));
+
+        var status = mailService.syncAccount(2L);
+        assertEquals(MailAccountState.ACTIVE, status.getStatus());
+    }
+
+    @Test
+    void syncAccount_NotFoundThrows() {
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(99L))).thenReturn(Optional.empty());
+
+        assertThrows(MailAccountNotFoundException.class, () -> mailService.syncAccount(99L));
+    }
+
+    @Test
+    void disconnectAccount_Success() {
+        var acc = account(1L);
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
+
+        mailService.disconnectAccount(2L);
+
+        assertEquals(MailAccountStatus.DISABLED, acc.getStatus());
+        assertNull(acc.getAccessToken());
+        assertNull(acc.getRefreshToken());
+        verify(mailAccountRepository).saveAndFlush(acc);
+    }
+
+    @Test
+    void getSyncStatus_Success() {
+        var acc = account(1L);
+        acc.setLastSyncedAt(Instant.parse("2026-03-01T12:00:00Z"));
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
+
+        var status = mailService.getSyncStatus(2L);
+
+        assertEquals(2L, status.getAccountId());
+        assertEquals(MailAccountState.ACTIVE, status.getStatus());
+        assertNotNull(status.getLastSyncedAt());
     }
 
     @SuppressWarnings("unchecked")

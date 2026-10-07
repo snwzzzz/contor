@@ -1098,6 +1098,114 @@ paths:
                   $ref: '#/components/schemas/MailAccountDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/mail/accounts/connect:
+    post:
+      tags: [Mail]
+      operationId: connectMailAccount
+      summary: Initiate OAuth2 connection for Microsoft Graph. Returns the authorization URL. OWNER only.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectMailAccountCommand'
+      responses:
+        '200':
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailAuthorizeUrlDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/mail/accounts/callback:
+    get:
+      tags: [Mail]
+      operationId: mailAccountCallback
+      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and redirects to settings.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to /settings/mail
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/mail/accounts/{accountId}/sync:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    post:
+      tags: [Mail]
+      operationId: syncMailAccount
+      summary: Trigger incremental email synchronization for a mail account. OWNER only.
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailSyncStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/mail/accounts/{accountId}/disconnect:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    post:
+      tags: [Mail]
+      operationId: disconnectMailAccount
+      summary: Disconnect a mail account (marks DISABLED and clears tokens). OWNER only.
+      responses:
+        '204':
+          description: Account disconnected
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/mail/accounts/{accountId}/status:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    get:
+      tags: [Mail]
+      operationId: getMailAccountSyncStatus
+      summary: Get sync status for a mail account
+      responses:
+        '200':
+          description: Current sync status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailSyncStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/emails:
     get:
       tags: [Mail]
@@ -1230,6 +1338,13 @@ components:
         default: 25
     CollectionId:
       name: collectionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    MailAccountId:
+      name: accountId
       in: path
       required: true
       schema:
@@ -2045,6 +2160,34 @@ components:
         lastSyncedAt:
           type: string
           format: date-time
+    ConnectMailAccountCommand:
+      type: object
+      properties:
+        emailHint:
+          type: string
+    MailAuthorizeUrlDto:
+      type: object
+      required: [authorizeUrl]
+      properties:
+        authorizeUrl:
+          type: string
+    MailSyncStatusDto:
+      type: object
+      required: [accountId, status]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/MailAccountState'
+        lastSyncedAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+        messagesSynced:
+          type: integer
+          format: int32
     RecipientDto:
       type: object
       properties:

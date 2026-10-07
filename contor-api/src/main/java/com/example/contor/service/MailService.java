@@ -1,32 +1,22 @@
 package com.example.contor.service;
 
-import com.example.contor.api.model.EmailDto;
-import com.example.contor.api.model.EmailLabelDto;
-import com.example.contor.api.model.EmailPageDto;
-import com.example.contor.api.model.EmailProcessingState;
-import com.example.contor.api.model.MailAccountDto;
-import com.example.contor.domain.AppUser;
-import com.example.contor.domain.EmailLabel;
-import com.example.contor.domain.EmailMessage;
-import com.example.contor.domain.Label;
-import com.example.contor.domain.MailAccount;
-import com.example.contor.domain.ProcessingState;
+import com.example.contor.api.model.*;
+import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.mapper.MailMapper;
-import com.example.contor.persistence.EmailLabelRepository;
-import com.example.contor.persistence.EmailMessageRepository;
-import com.example.contor.persistence.EmailSpecifications;
-import com.example.contor.persistence.LabelRepository;
-import com.example.contor.persistence.MailAccountRepository;
+import com.example.contor.persistence.*;
 import com.example.contor.security.CurrentActor;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +24,11 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** Read-only access to the current user's mailboxes and emails (sync comes in a later phase). */
+/**
+ * Mail service managing connected mailboxes, OAuth2 flow with Microsoft Graph,
+ * incremental message synchronization, and email queries.
+ */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class MailService {
@@ -45,12 +39,95 @@ public class MailService {
     private final EmailMessageRepository emailMessageRepository;
     private final EmailLabelRepository emailLabelRepository;
     private final LabelRepository labelRepository;
+    private final AppUserRepository appUserRepository;
+    private final MsGraphAuthService msGraphAuthService;
+    private final MsGraphMailService msGraphMailService;
+    private final MailSyncService mailSyncService;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
         return mailAccountRepository.findByOwner_Id(currentUser()).stream()
                 .map(MailMapper::toDto)
                 .toList();
+    }
+
+    @Transactional
+    public MailAuthorizeUrlDto connectAccount(ConnectMailAccountCommand command) {
+        String emailHint = command != null ? command.getEmailHint() : null;
+        String url = msGraphAuthService.buildAuthorizeUrl(currentUser().id(), emailHint);
+        return new MailAuthorizeUrlDto(url);
+    }
+
+    @Transactional
+    public void handleCallback(String state, String code, String error, String errorDescription) {
+        if (error != null && !error.isBlank()) {
+            throw new IllegalArgumentException("OAuth authorization failed: " +
+                    (errorDescription != null ? errorDescription : error));
+        }
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Missing OAuth authorization code");
+        }
+
+        Long userId = msGraphAuthService.validateStateAndExtractUserId(state);
+        MsGraphAuthService.TokenResult tokens = msGraphAuthService.exchangeCode(code);
+        MsGraphMailService.UserProfile profile = msGraphMailService.fetchUserProfile(tokens.accessToken());
+
+        AppUser.AppUserId ownerId = new AppUser.AppUserId(userId);
+        AppUser owner = appUserRepository.findById(ownerId)
+                .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
+
+        Email email = new Email(profile.emailAddress());
+        MailAccount account = mailAccountRepository.findByOwner_IdAndEmailAddress(ownerId, email)
+                .orElseGet(() -> MailAccount.builder()
+                        .owner(owner)
+                        .provider(MailProvider.MICROSOFT_GRAPH)
+                        .emailAddress(email)
+                        .build());
+
+        account.setDisplayName(profile.displayName());
+        account.setAccessToken(tokens.accessToken());
+        if (tokens.refreshToken() != null && !tokens.refreshToken().isBlank()) {
+            account.setRefreshToken(tokens.refreshToken());
+        }
+        account.setTokenExpiresAt(tokens.expiresAt());
+        account.setStatus(MailAccountStatus.ACTIVE);
+        mailAccountRepository.saveAndFlush(account);
+
+        // Run initial synchronization
+        mailSyncService.syncAccount(account);
+    }
+
+    @Transactional
+    public MailSyncStatusDto syncAccount(Long accountId) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+
+        return mailSyncService.syncAccount(account);
+    }
+
+    @Transactional
+    public void disconnectAccount(Long accountId) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+
+        account.setStatus(MailAccountStatus.DISABLED);
+        account.setAccessToken(null);
+        account.setRefreshToken(null);
+        account.setTokenExpiresAt(null);
+        account.setDeltaLink(null);
+        mailAccountRepository.saveAndFlush(account);
+    }
+
+    @Transactional
+    public MailSyncStatusDto getSyncStatus(Long accountId) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+
+        return new MailSyncStatusDto(accountId, MailAccountState.valueOf(account.getStatus().name()))
+                .lastSyncedAt(account.getLastSyncedAt() != null ? account.getLastSyncedAt().atOffset(ZoneOffset.UTC) : null);
     }
 
     @Transactional
