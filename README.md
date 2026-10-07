@@ -161,7 +161,8 @@ cd contor-web && npm test && npm run lint && npm run typecheck
 # Testcontainers Postgres, runs first-run setup through the UI, then the auth and shell flows on port 3100.
 cd contor-web && npx playwright install chromium && npm run test:e2e
 
-# Same against the production build (strict CSP without dev allowances)
+# Same against a production build (strict CSP without dev allowances). Builds into contor-web/.next-e2e,
+# so your own build in .next (and its CONTOR_API_URL) is never replaced.
 cd contor-web && npm run test:e2e:prod
 
 # Screenshots of the main screens in light and dark mode -> contor-web/e2e/.tmp/screenshots/ (for design work)

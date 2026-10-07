@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "pretest": "npm run generate:api",
     "test:e2e": "playwright test",
-    "test:e2e:prod": "CONTOR_API_URL=http://127.0.0.1:18080 npm run build && E2E_PROD=true playwright test",
+    "test:e2e:prod": "NEXT_DIST_DIR=.next-e2e CONTOR_API_URL=http://127.0.0.1:18080 next build && NEXT_DIST_DIR=.next-e2e E2E_PROD=true playwright test",
     "screenshots": "E2E_SCREENSHOTS=true playwright test"
   },
   "dependencies": {

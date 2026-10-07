@@ -16,6 +16,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // E2E production runs build into their own folder (NEXT_DIST_DIR=.next-e2e) so they never replace the app's build.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // No cacheComponents/partial prerendering: every page is rendered per request so the CSP nonce (src/proxy.ts)
   // can be applied, and all content is per-user behind a session anyway.
   poweredByHeader: false,

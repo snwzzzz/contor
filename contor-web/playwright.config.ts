@@ -37,7 +37,7 @@ export default defineConfig({
         ? `npx next start --hostname 127.0.0.1 --port ${webPort}`
         : `npm run dev -- --hostname 127.0.0.1 --port ${webPort}`,
       url: `http://127.0.0.1:${webPort}/login`,
-      env: { CONTOR_API_URL: `http://127.0.0.1:${apiPort}` },
+      env: { ...process.env, CONTOR_API_URL: `http://127.0.0.1:${apiPort}` } as Record<string, string>,
       reuseExistingServer: !process.env.CI && !production,
       timeout: 120_000,
     },
