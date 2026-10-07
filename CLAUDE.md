@@ -36,6 +36,13 @@ Commands: see README. Backend tests need Docker (Testcontainers). `./mvnw test` 
 5. **Consistency fixes:** every not-found exception extends `ResourceNotFoundException` (→ 404); imports, never inline FQCNs; lowercase packages (`exception`, `validation`); exactly one web security config, no CORS config at all.
 6. **Converter tests are plain unit tests** (no `@DataJpaTest`).
 
+### API enum names
+API enum schemas must not share a name with a domain enum, or mappers would need inline FQNs. Existing pairs:
+`UserRole`→`Role`, `CreatedBy`→`Creator`, `FieldType`→`CollectionFieldType`, `ProposalKind`→`ProposalAction`,
+`ProposalStatus`→`ProposalState`, `LabelSource`→`LabelOrigin`, `RelationCreatedBy`→`RelationOrigin`,
+`ProcessingState`→`EmailProcessingState`, `MailAccountStatus`→`MailAccountState`, `MailProvider`→`MailProviderKind`.
+Map with `ApiEnum.valueOf(domain.name())` and back.
+
 ### Packages (by layer, under `com.example.contor`)
 `domain` (entities, value objects, enums) · `mapper` (static entity → generated DTO) · `persistence` (Spring Data repos) · `persistence/converter` (AttributeConverters, encryption) · `persistence/dynamic` (jOOQ for generated collection tables) · `service` · `controller` (+ `GlobalExceptionHandler`) · `exception` · `validation` · `config` · `security` · `fieldtype` (plug-in engine) · `proposal` (plug-in engine) · `ai` (interfaces only). Generated: `api` (`XApi`), `api.model`.
 
@@ -61,7 +68,7 @@ Only `public static XDto toDto(X entity)`; `null` in → `null` out; null-safe I
 `@RequiredArgsConstructor @RestController implements XApi`; no logic, one line per method; `201` for POST, `204` for DELETE, `ok(...)` otherwise. Paths come from the spec: `/api/<plural>`, children nested (`/api/collections/{id}/fields`).
 
 ### Errors
-One `XNotFoundException extends ResourceNotFoundException` per resource. `GlobalExceptionHandler` returns `ErrorResponse(message, status)` (an OpenAPI schema): not found 404, `DuplicateResourceException` 409, `PasswordValidationException`/`IllegalArgumentException` 400, service unavailable 503, anything else 500 with a generic message (logged server-side). Only touch the handler for a new status code.
+One `XNotFoundException extends ResourceNotFoundException` per resource. State conflicts (already decided, still in use) extend `ConflictException` (409), like `DuplicateResourceException`. `GlobalExceptionHandler` returns `ErrorResponse(message, status)` (an OpenAPI schema): not found 404, `DuplicateResourceException` 409, `PasswordValidationException`/`IllegalArgumentException` 400, service unavailable 503, anything else 500 with a generic message (logged server-side). Only touch the handler for a new status code.
 
 ### Plug-in engines
 Strategy + registry: an interface (Javadoc says "add a bean to extend"), one `@Component` per implementation, a registry building a map from the injected `List<...>` keyed by type. contor: `FieldTypeHandler`/`FieldTypeRegistry`, `ProposalApplier`/`ProposalApplierRegistry`.
@@ -102,6 +109,8 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - New field type = enum constant in `domain/FieldType` + one `@Component FieldTypeHandler` (+ its unit test) + the value shape in the spec's `CollectionFieldType` description. Handlers throw `IllegalArgumentException` with a message that does not name the field.
 - Schema changes go through `CollectionSchemaService` only (metadata + DDL + `schema_version` + `collection_schema_change` + audit in one transaction). Record writes go through `RecordService` (validation collects all violations → `RecordValidationException`).
 - Services persist with `saveAndFlush` (also the audit log), so constraint errors surface inside the operation.
+- New proposal kind = one `@Component ProposalApplier` (+ unit test) and its payload format in the spec's `ProposalAction` description. Appliers read `proposal.getFinalPayload()`, throw `IllegalArgumentException` for malformed payloads, run inside the decision transaction, and set `requiresOwner()` for schema/settings changes. Records created by appliers have `created_by = AI` and a `record_source` link to the source email.
+- Mail is scoped to the current user's mailboxes (`EmailSpecifications.Criteria.ownerId` is mandatory); never map tokens to DTOs.
 - Record IDs are unique per collection table only: any reference from outside is always `(collection_id, record_id)`.
 - Enums: `text` + named `CHECK` (`ck_<table>_<column>`), mapped with `@Enumerated(EnumType.STRING)`. JSON: `jsonb` + `@JdbcTypeCode(SqlTypes.JSON)` (prefer records/lists over raw maps where the shape is known).
 - Sequences are `<table>_seq` (increment 50); Hibernate derives the name from the entity name, so entity class names must match table names in CamelCase (`AppUser` → `app_user_seq`).

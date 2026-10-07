@@ -31,4 +31,13 @@ public class RuleRepositoryTest {
         assertThat(rules.get(0).getConditions()).containsEntry("from", "shop@example.com");
         assertThat(rules.get(0).getActions()).hasSize(1);
     }
+
+    @Test
+    void lists_all_rules_by_priority_then_name() {
+        ruleRepository.save(Rule.builder().name("b").priority(10).build());
+        ruleRepository.save(Rule.builder().name("a").priority(10).enabled(false).build());
+        ruleRepository.save(Rule.builder().name("c").priority(1).build());
+
+        assertThat(ruleRepository.findAllByOrderByPriorityAscNameAsc()).extracting(Rule::getName).containsExactly("c", "a", "b");
+    }
 }

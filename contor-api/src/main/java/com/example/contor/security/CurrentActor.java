@@ -1,6 +1,7 @@
 package com.example.contor.security;
 
 import com.example.contor.domain.ActorType;
+import com.example.contor.domain.UserRole;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -21,6 +22,10 @@ public final class CurrentActor {
 
     public static Optional<Long> userId() {
         return user().map(AuthenticatedUser::userId);
+    }
+
+    public static boolean isOwner() {
+        return user().map(user -> user.role() == UserRole.OWNER).orElse(false);
     }
 
     public static ActorType type() {

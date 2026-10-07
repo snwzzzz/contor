@@ -53,4 +53,20 @@ public class RelationRepositoryTest {
         assertThat(relationRepository.findByToCollection_IdAndToRecordId(orgs.getId(), 5L)).hasSize(1);
         assertThat(relationRepository.findByToCollection_IdAndToRecordId(people.getId(), 5L)).isEmpty();
     }
+
+    @Test
+    void counts_and_finds_relations_by_type_and_endpoints() {
+        var people = collectionRepository.save(Fixtures.collection("people"));
+        var knows = relationTypeRepository.save(RelationType.builder().slug(new Slug("knows")).name("knows").directed(false)
+                .createdBy(CreatedBy.USER).build());
+        relationRepository.save(Relation.builder().relationType(knows).fromCollection(people).fromRecordId(1L)
+                .toCollection(people).toRecordId(2L).createdBy(RelationCreatedBy.USER).build());
+
+        assertThat(relationRepository.countByRelationType_Id(knows.getId())).isEqualTo(1);
+        assertThat(relationRepository.existsByRelationType_IdAndFromCollection_IdAndFromRecordIdAndToCollection_IdAndToRecordId(
+                knows.getId(), people.getId(), 1L, people.getId(), 2L)).isTrue();
+        assertThat(relationRepository.existsByRelationType_IdAndFromCollection_IdAndFromRecordIdAndToCollection_IdAndToRecordId(
+                knows.getId(), people.getId(), 2L, people.getId(), 1L)).isFalse();
+        assertThat(relationTypeRepository.findAllByOrderByNameAsc()).extracting(RelationType::getName).containsExactly("knows");
+    }
 }

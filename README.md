@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
 
-> **Status: Phase 1, step 4 (collection engine).** Backend: fixed schema, security (setup, sessions, CSRF, lockout, audit) and the dynamic collection engine (collections with 14 field types, generated tables, record CRUD with filters, seeded People/Organizations). Remaining endpoints, the frontend, and TOTP 2FA follow in the next steps.
+> **Status: Phase 1, step 5 (backend API complete).** Backend: fixed schema, security (setup, sessions, CSRF, lockout, audit), the dynamic collection engine, labels, rules, relations, proposals (approve/reject with appliers for record proposals), saved queries and read-only mail. The frontend and TOTP 2FA follow in the next steps.
 
 ## Repository layout
 
@@ -91,7 +91,7 @@ Use it once to create the owner account (the setup page in the web app follows i
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
-- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes (later: 2FA, proposal decisions).
+- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions (later: 2FA).
 
 ## Database
 
@@ -115,6 +115,19 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`).
 - On first start contor seeds the system collections **People** and **Organizations** and the relation types `works_at` (People → Organizations, inverse `employs`) and `knows` (People ↔ People).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
+
+## Other resources (API overview)
+
+| Area | Endpoints | Notes |
+|---|---|---|
+| Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
+| Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
+| Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
+| Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
+| Mail | `/api/mail/accounts`, `/api/emails`, `/api/emails/{id}` | read-only; only the current user's mailboxes; `bodyHtml` is untrusted and must be rendered sandboxed |
+
+The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
 ## Code generation (contract first)
 
@@ -158,6 +171,10 @@ All variables are listed in `.env.example`.
 | `APP_SECURE_COOKIES` | backend | `false` | add `Secure` to session and CSRF cookies; set `true` when served over HTTPS |
 | `APP_SESSION_IDLE_TIMEOUT` | backend | `30m` | session idle timeout |
 | `APP_SESSION_ABSOLUTE_TIMEOUT` | backend | `12h` | maximum session lifetime regardless of activity |
+| `OLLAMA_BASE_URL` | backend | `http://127.0.0.1:11434` | local Ollama (not called in phase 1; must stay on localhost) |
+| `AI_MODEL_ROUTING` | backend | `qwen3:4b` | small model that classifies emails (next phase) |
+| `AI_MODEL_EXTRACTION` | backend | `qwen3:14b` | model that drafts proposals (next phase) |
+| `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions (next phase) |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | target of the `/api/*` rewrite |
 
 ## Notes

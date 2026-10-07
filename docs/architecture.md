@@ -57,6 +57,19 @@ exist yet), `created_at`, `last_modified`, `created_by`, plus one or more column
 `<f>_currency`; RELATION: `bigint` FK to the target table, `on delete set null`, indexed). Records are referenced from outside
 as (collection_id, record_id).
 
+## Proposals
+
+```
+(next phase) ExtractionService ──▶ proposal (PENDING, payload, source email, confidence, model)
+ProposalController ──▶ ProposalService.decideProposal
+                         ├─ REJECT  → REJECTED
+                         └─ APPROVE → ProposalApplierRegistry → ProposalApplier(kind).apply(finalPayload)
+                                        CreateRecordApplier / UpdateRecordApplier → RecordService (+ record_source)
+                         → decided_at/by, audit PROPOSAL_APPROVED/REJECTED   (one transaction; failure keeps PENDING)
+```
+
+Autonomy settings (`autonomy_setting`, default SUGGEST) are stored but not evaluated until the AI pipeline exists.
+
 ## Authentication flow
 
 ```

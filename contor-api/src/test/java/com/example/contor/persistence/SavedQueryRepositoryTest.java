@@ -26,4 +26,13 @@ public class SavedQueryRepositoryTest {
         assertThat(pinned).extracting(SavedQuery::getName).containsExactly("Open deliveries");
         assertThat(pinned.get(0).getDsl()).containsEntry("from", "deliveries");
     }
+
+    @Test
+    void lists_pinned_queries_first_then_by_name() {
+        savedQueryRepository.save(SavedQuery.builder().name("b").dsl(Map.of()).build());
+        savedQueryRepository.save(SavedQuery.builder().name("z").pinned(true).dsl(Map.of()).build());
+        savedQueryRepository.save(SavedQuery.builder().name("a").dsl(Map.of()).build());
+
+        assertThat(savedQueryRepository.findAllByOrderByPinnedDescNameAsc()).extracting(SavedQuery::getName).containsExactly("z", "a", "b");
+    }
 }

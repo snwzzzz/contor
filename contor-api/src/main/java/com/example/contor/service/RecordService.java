@@ -4,6 +4,7 @@ import com.example.contor.api.model.NewRecordCommand;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.api.model.UpdateRecordCommand;
+import com.example.contor.domain.ActorType;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.FieldType;
@@ -109,6 +110,12 @@ public class RecordService {
 
     @Transactional
     public RecordDto createRecord(Long collectionId, NewRecordCommand command) {
+        return createRecord(collectionId, command, CurrentActor.type());
+    }
+
+    /** {@code createdBy} is stored in the record's {@code created_by} column (e.g. AI for applied proposals). */
+    @Transactional
+    public RecordDto createRecord(Long collectionId, NewRecordCommand command, ActorType createdBy) {
         Schema schema = schema(collectionId);
         Map<String, Object> input = command.getValues() != null ? command.getValues() : Map.of();
         List<String> violations = new ArrayList<>(unknownKeys(schema, input));
@@ -137,7 +144,7 @@ public class RecordService {
         row.put(DynamicRecordRepository.TITLE, command.getTitle());
         row.put(DynamicRecordRepository.STATUS, command.getStatus());
         row.put(DynamicRecordRepository.EXTRA, json(command.getExtra() != null ? command.getExtra() : Map.of()));
-        row.put(DynamicRecordRepository.CREATED_BY, CurrentActor.type().name());
+        row.put(DynamicRecordRepository.CREATED_BY, createdBy.name());
         row.putAll(toColumns(values));
         long id = dynamicRecordRepository.insert(schema.table(), row);
         return toDto(schema, load(schema, id));

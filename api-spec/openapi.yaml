@@ -28,6 +28,18 @@ tags:
     description: User/AI-defined collections and their fields. Schema changes are OWNER-only.
   - name: Records
     description: Records of a collection. Values are keyed by field slug.
+  - name: Labels
+    description: Labels for emails
+  - name: Rules
+    description: Deterministic mail rules (stored only in phase 1)
+  - name: Relations
+    description: Relation types and relations between records (graph)
+  - name: Proposals
+    description: AI proposals and their decisions
+  - name: SavedQueries
+    description: Saved queries (stored only in phase 1)
+  - name: Mail
+    description: Synced mailboxes and emails (read-only in phase 1)
 paths:
   /api/system/version:
     get:
@@ -469,8 +481,753 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/labels:
+    get:
+      tags: [Labels]
+      operationId: listLabels
+      summary: All labels ordered by name
+      responses:
+        '200':
+          description: Labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LabelDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Labels]
+      operationId: createLabel
+      summary: Create a label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLabelCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/labels/{labelId}:
+    parameters:
+      - $ref: '#/components/parameters/LabelId'
+    get:
+      tags: [Labels]
+      operationId: getLabel
+      summary: One label
+      responses:
+        '200':
+          description: The label
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Labels]
+      operationId: updateLabel
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLabelCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Labels]
+      operationId: deleteLabel
+      summary: Delete a label (also removes it from all emails)
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/rules:
+    get:
+      tags: [Rules]
+      operationId: listRules
+      summary: All rules ordered by priority (ascending), then name
+      responses:
+        '200':
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Rules]
+      operationId: createRule
+      summary: Create a rule (stored only; rule execution comes in a later phase)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRuleCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/rules/{ruleId}:
+    parameters:
+      - $ref: '#/components/parameters/RuleId'
+    get:
+      tags: [Rules]
+      operationId: getRule
+      summary: One rule
+      responses:
+        '200':
+          description: The rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Rules]
+      operationId: updateRule
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Rules]
+      operationId: deleteRule
+      summary: Delete a rule
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/relation-types:
+    get:
+      tags: [Relations]
+      operationId: listRelationTypes
+      summary: All relation types ordered by name
+      responses:
+        '200':
+          description: Relation types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Relations]
+      operationId: createRelationType
+      summary: Create a relation type. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRelationTypeCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relation-types/{relationTypeId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationTypeId'
+    get:
+      tags: [Relations]
+      operationId: getRelationType
+      summary: One relation type
+      responses:
+        '200':
+          description: The relation type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Relations]
+      operationId: updateRelationType
+      summary: Partial update of names and attribute schema (null = unchanged). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRelationTypeCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Relations]
+      operationId: deleteRelationType
+      summary: Delete a relation type that is not used by any relation. OWNER only.
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relations:
+    get:
+      tags: [Relations]
+      operationId: listRelations
+      summary: All relations of one record (outgoing and incoming)
+      parameters:
+        - name: collectionId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: recordId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Relations touching the record
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Relations]
+      operationId: createRelation
+      summary: Relate two records. Both must exist and match the relation type's collections.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRelationCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relations/{relationId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationId'
+    get:
+      tags: [Relations]
+      operationId: getRelation
+      summary: One relation
+      responses:
+        '200':
+          description: The relation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Relations]
+      operationId: updateRelation
+      summary: Partial update of attributes and validity (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRelationCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Relations]
+      operationId: deleteRelation
+      summary: Delete a relation
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/proposals:
+    get:
+      tags: [Proposals]
+      operationId: listProposals
+      summary: Proposals, newest first, optionally filtered by state
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalState'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of proposals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/proposals/count:
+    get:
+      tags: [Proposals]
+      operationId: countProposals
+      summary: Number of proposals in a state (default PENDING), e.g. for the sidebar badge
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalState'
+      responses:
+        '200':
+          description: The count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalCountDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/proposals/{proposalId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalId'
+    get:
+      tags: [Proposals]
+      operationId: getProposal
+      summary: One proposal
+      responses:
+        '200':
+          description: The proposal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/proposals/{proposalId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/ProposalId'
+    post:
+      tags: [Proposals]
+      operationId: decideProposal
+      summary: Approve (optionally with an edited payload) or reject a pending proposal
+      description: |
+        APPROVE applies the proposal (status APPROVED, or EDITED_AND_APPROVED when `payload` is given). If applying
+        fails validation the proposal stays PENDING and the error is returned (400), so it can be edited and retried.
+        Proposal kinds without an applier yet return 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecideProposalCommand'
+      responses:
+        '200':
+          description: The decided proposal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/saved-queries:
+    get:
+      tags: [SavedQueries]
+      operationId: listSavedQueries
+      summary: Saved queries, pinned first, then by name
+      responses:
+        '200':
+          description: Saved queries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedQueryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [SavedQueries]
+      operationId: createSavedQuery
+      summary: Save a query (stored only; execution comes in a later phase)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewSavedQueryCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/saved-queries/{savedQueryId}:
+    parameters:
+      - $ref: '#/components/parameters/SavedQueryId'
+    get:
+      tags: [SavedQueries]
+      operationId: getSavedQuery
+      summary: One saved query
+      responses:
+        '200':
+          description: The saved query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [SavedQueries]
+      operationId: updateSavedQuery
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSavedQueryCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [SavedQueries]
+      operationId: deleteSavedQuery
+      summary: Delete a saved query
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/mail/accounts:
+    get:
+      tags: [Mail]
+      operationId: listMailAccounts
+      summary: Connected mailboxes of the current user (never exposes tokens)
+      responses:
+        '200':
+          description: Mail accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MailAccountDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails:
+    get:
+      tags: [Mail]
+      operationId: listEmails
+      summary: Emails of the current user's mailboxes, newest first
+      parameters:
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: labelId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: processingState
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/EmailProcessingState'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive search in subject, sender address and sender name
+          schema:
+            type: string
+            maxLength: 200
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of emails (summaries without bodies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails/{emailId}:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmail
+      summary: One email with bodies
+      responses:
+        '200':
+          description: The email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
+    LabelId:
+      name: labelId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RuleId:
+      name: ruleId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RelationTypeId:
+      name: relationTypeId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RelationId:
+      name: relationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ProposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SavedQueryId:
+      name: savedQueryId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 25
     CollectionId:
       name: collectionId
       in: path
@@ -852,3 +1609,570 @@ components:
           type: object
           description: Replaces extra when given.
           additionalProperties: {}
+    LabelOrigin:
+      type: string
+      description: How a label got onto an email.
+      enum: [MANUAL, RULE, AI]
+    LabelDto:
+      type: object
+      required: [id, slug, name, color, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          description: '#RRGGBB'
+        description:
+          type: string
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+    NewLabelCommand:
+      type: object
+      required: [slug, name, color]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, unique'
+        name:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+          description: '#RRGGBB'
+        description:
+          type: string
+          maxLength: 2000
+    UpdateLabelCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+        description:
+          type: string
+          maxLength: 2000
+    RuleDto:
+      type: object
+      required: [id, name, enabled, priority, conditions, actions]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+          format: int32
+          description: Lower runs first
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        createdFromProposalId:
+          type: integer
+          format: int64
+    NewRuleCommand:
+      type: object
+      required: [name]
+      description: Conditions/actions are stored as given; their format is defined with the rule engine in a later phase.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        enabled:
+          type: boolean
+          default: true
+        priority:
+          type: integer
+          format: int32
+          default: 100
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    UpdateRuleCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+          format: int32
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    RelationOrigin:
+      type: string
+      enum: [USER, AI, RULE]
+    RelationTypeDto:
+      type: object
+      required: [id, slug, name, directed, attributesSchema, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+          description: Label from the source side, e.g. "works at"
+        inverseName:
+          type: string
+          description: Label from the target side, e.g. "employs"
+        fromCollectionId:
+          type: integer
+          format: int64
+          description: Allowed source collection; absent = any
+        toCollectionId:
+          type: integer
+          format: int64
+          description: Allowed target collection; absent = any
+        directed:
+          type: boolean
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+    NewRelationTypeCommand:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+          maxLength: 200
+        inverseName:
+          type: string
+          maxLength: 200
+        fromCollectionId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        directed:
+          type: boolean
+          default: true
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+    UpdateRelationTypeCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        inverseName:
+          type: string
+          maxLength: 200
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+    RelationDto:
+      type: object
+      required: [id, relationTypeId, fromCollectionId, fromRecordId, toCollectionId, toRecordId, attributes, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        relationTypeId:
+          type: integer
+          format: int64
+        fromCollectionId:
+          type: integer
+          format: int64
+        fromRecordId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        toRecordId:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties: {}
+        sourceEmailId:
+          type: integer
+          format: int64
+        confidence:
+          type: number
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/RelationOrigin'
+    NewRelationCommand:
+      type: object
+      required: [relationTypeId, fromCollectionId, fromRecordId, toCollectionId, toRecordId]
+      properties:
+        relationTypeId:
+          type: integer
+          format: int64
+        fromCollectionId:
+          type: integer
+          format: int64
+        fromRecordId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        toRecordId:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties: {}
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+    UpdateRelationCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        attributes:
+          type: object
+          additionalProperties: {}
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+    ProposalAction:
+      type: string
+      description: |
+        What a proposal does when applied. Payloads (phase 1 appliers):
+        CREATE_RECORD `{"collectionId": 1, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
+        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}`.
+        Other kinds are stored but cannot be applied yet.
+      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
+    ProposalState:
+      type: string
+      enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
+    ProposalDecision:
+      type: string
+      enum: [APPROVE, REJECT]
+    ProposalDto:
+      type: object
+      required: [id, kind, status, payload, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        kind:
+          $ref: '#/components/schemas/ProposalAction'
+        status:
+          $ref: '#/components/schemas/ProposalState'
+        payload:
+          type: object
+          description: What was proposed
+          additionalProperties: {}
+        finalPayload:
+          type: object
+          description: What was actually applied
+          additionalProperties: {}
+        sourceEmailId:
+          type: integer
+          format: int64
+        confidence:
+          type: number
+        reasoning:
+          type: string
+        model:
+          type: string
+        promptVersion:
+          type: string
+        schemaVersion:
+          type: integer
+          format: int32
+        decidedAt:
+          type: string
+          format: date-time
+        decidedById:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    ProposalPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    ProposalCountDto:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          format: int64
+    DecideProposalCommand:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: '#/components/schemas/ProposalDecision'
+        payload:
+          type: object
+          description: Edited payload to apply instead of the proposed one (APPROVE only)
+          additionalProperties: {}
+    SavedQueryDto:
+      type: object
+      required: [id, name, dsl, pinned]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+    NewSavedQueryCommand:
+      type: object
+      required: [name, dsl]
+      description: The DSL is stored as given; its format and execution come in a later phase.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+          default: false
+    UpdateSavedQueryCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+    MailProviderKind:
+      type: string
+      enum: [MICROSOFT_GRAPH]
+    MailAccountState:
+      type: string
+      enum: [ACTIVE, NEEDS_REAUTH, DISABLED]
+    EmailProcessingState:
+      type: string
+      enum: [NEW, QUEUED, PROCESSING, DONE, FAILED, SKIPPED]
+    MailAccountDto:
+      type: object
+      required: [id, provider, emailAddress, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        provider:
+          $ref: '#/components/schemas/MailProviderKind'
+        emailAddress:
+          type: string
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/MailAccountState'
+        lastSyncedAt:
+          type: string
+          format: date-time
+    RecipientDto:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+    EmailLabelDto:
+      type: object
+      required: [labelId, slug, name, color, source]
+      properties:
+        labelId:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        source:
+          $ref: '#/components/schemas/LabelOrigin'
+        confidence:
+          type: number
+    EmailSummaryDto:
+      type: object
+      required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels]
+      properties:
+        id:
+          type: integer
+          format: int64
+        accountId:
+          type: integer
+          format: int64
+        conversationId:
+          type: string
+        folder:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+        subject:
+          type: string
+        snippet:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        hasAttachments:
+          type: boolean
+        processingState:
+          $ref: '#/components/schemas/EmailProcessingState'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailLabelDto'
+    EmailDto:
+      type: object
+      required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels, toRecipients, ccRecipients]
+      properties:
+        id:
+          type: integer
+          format: int64
+        accountId:
+          type: integer
+          format: int64
+        internetMessageId:
+          type: string
+        conversationId:
+          type: string
+        folder:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+        toRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        snippet:
+          type: string
+        bodyText:
+          type: string
+        bodyHtml:
+          type: string
+          description: Untrusted HTML from the sender. Clients must render it sanitized in a sandboxed frame, never inline.
+        receivedAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        hasAttachments:
+          type: boolean
+        processingState:
+          $ref: '#/components/schemas/EmailProcessingState'
+        processingError:
+          type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailLabelDto'
+    EmailPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailSummaryDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32

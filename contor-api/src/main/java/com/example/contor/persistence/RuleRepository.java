@@ -10,4 +10,6 @@ import java.util.List;
 public interface RuleRepository extends JpaRepository<Rule, Rule.RuleId> {
 
     List<Rule> findByEnabledTrueOrderByPriorityAsc();
+
+    List<Rule> findAllByOrderByPriorityAscNameAsc();
 }

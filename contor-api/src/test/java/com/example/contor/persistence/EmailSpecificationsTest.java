@@ -1,0 +1,106 @@
+package com.example.contor.persistence;
+
+import com.example.contor.RepositoryTest;
+import com.example.contor.domain.AppUser;
+import com.example.contor.domain.CreatedBy;
+import com.example.contor.domain.EmailLabel;
+import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.HexColor;
+import com.example.contor.domain.Label;
+import com.example.contor.domain.LabelSource;
+import com.example.contor.domain.MailAccount;
+import com.example.contor.domain.ProcessingState;
+import com.example.contor.domain.Slug;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+
+import java.time.Instant;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@RepositoryTest
+public class EmailSpecificationsTest {
+
+    @Autowired
+    private EmailMessageRepository emailMessageRepository;
+
+    @Autowired
+    private MailAccountRepository mailAccountRepository;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
+    @Autowired
+    private LabelRepository labelRepository;
+
+    @Autowired
+    private EmailLabelRepository emailLabelRepository;
+
+    private AppUser owner;
+    private MailAccount work;
+    private MailAccount home;
+    private Label orders;
+
+    @BeforeEach
+    void emails() {
+        owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        work = mailAccountRepository.save(Fixtures.mailAccount(owner, "work@example.com"));
+        home = mailAccountRepository.save(Fixtures.mailAccount(owner, "home@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "other@example.com"));
+        orders = labelRepository.save(Label.builder().slug(new Slug("orders")).name("Orders").color(new HexColor("#00ff00")).createdBy(CreatedBy.USER).build());
+
+        var shipped = save(work, "1", "Your ORDER has shipped", "shop@example.com", "Shop", ProcessingState.DONE, "2026-01-03T00:00:00Z");
+        save(work, "2", "Meeting tomorrow", "boss@example.com", "Boss", ProcessingState.NEW, "2026-01-02T00:00:00Z");
+        save(home, "3", "Invoice", "billing@shop.example", "Shop Billing", ProcessingState.NEW, "2026-01-01T00:00:00Z");
+        save(foreign, "4", "Order for someone else", "shop@example.com", "Shop", ProcessingState.NEW, "2026-01-04T00:00:00Z");
+        emailLabelRepository.save(EmailLabel.builder().id(new EmailLabel.EmailLabelId(shipped.getId().id(), orders.getId().id()))
+                .source(LabelSource.AI).build());
+    }
+
+    private EmailMessage save(MailAccount account, String id, String subject, String from, String fromName, ProcessingState state, String receivedAt) {
+        var email = Fixtures.email(account, id);
+        email.setSubject(subject);
+        email.setFromAddress(from);
+        email.setFromName(fromName);
+        email.setProcessingState(state);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        return emailMessageRepository.save(email);
+    }
+
+    private List<String> subjects(EmailSpecifications.Criteria criteria) {
+        return emailMessageRepository.findAll(EmailSpecifications.matching(criteria), Sort.by(Sort.Direction.DESC, "receivedAt"))
+                .stream().map(EmailMessage::getSubject).toList();
+    }
+
+    @Test
+    void only_returns_emails_of_the_owner() {
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null)))
+                .containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
+    }
+
+    @Test
+    void filters_by_account_label_and_state() {
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), home.getId(), null, null, null))).containsExactly("Invoice");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, orders.getId(), null, null))).containsExactly("Your ORDER has shipped");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, ProcessingState.NEW, null)))
+                .containsExactly("Meeting tomorrow", "Invoice");
+    }
+
+    @Test
+    void searches_subject_and_sender_case_insensitively() {
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "order"))).containsExactly("Your ORDER has shipped");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "SHOP"))).containsExactly("Your ORDER has shipped", "Invoice");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "boss@"))).containsExactly("Meeting tomorrow");
+    }
+
+    @Test
+    void treats_like_wildcards_in_the_search_literally() {
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "%"))).isEmpty();
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "_"))).isEmpty();
+    }
+}

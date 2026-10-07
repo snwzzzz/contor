@@ -1,6 +1,7 @@
 package com.example.contor.controller;
 
 import com.example.contor.api.model.ErrorResponse;
+import com.example.contor.exception.ConflictException;
 import com.example.contor.exception.DuplicateResourceException;
 import com.example.contor.exception.InvalidCredentialsException;
 import com.example.contor.exception.InvalidSetupTokenException;
@@ -20,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -44,8 +46,8 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "Not found");
     }
 
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateResourceException ex) {
+    @ExceptionHandler({DuplicateResourceException.class, ConflictException.class})
+    public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex) {
         return error(HttpStatus.CONFLICT, ex.getMessage());
     }
 
@@ -68,6 +70,11 @@ public class GlobalExceptionHandler {
                 .sorted()
                 .collect(Collectors.joining("; "));
         return error(HttpStatus.BAD_REQUEST, message.isEmpty() ? "Invalid request" : message);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex) {
+        return error(HttpStatus.BAD_REQUEST, "Missing request parameter '" + ex.getParameterName() + "'");
     }
 
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})

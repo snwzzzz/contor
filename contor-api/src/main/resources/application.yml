@@ -66,6 +66,14 @@ app:
     key: ${APP_ENCRYPTION_KEY:}
     key-version: ${APP_ENCRYPTION_KEY_VERSION:1}
   version: '@project.version@'
+  ai:
+    # Ollama runs natively on the host (GPU) and must stay bound to localhost. Not called in phase 1.
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+    models:
+      routing: ${AI_MODEL_ROUTING:qwen3:4b}
+      extraction: ${AI_MODEL_EXTRACTION:qwen3:14b}
+      embedding: ${AI_MODEL_EMBEDDING:nomic-embed-text}
   security:
     secure-cookies: ${APP_SECURE_COOKIES:false}
     session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}

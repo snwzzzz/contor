@@ -4,6 +4,8 @@ import com.example.contor.RepositoryTest;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -41,5 +43,16 @@ public class ProposalRepositoryTest {
         var saved = proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.SET_LABEL).payload(Map.of()).build());
 
         assertThat(saved.getStatus()).isEqualTo(ProposalStatus.PENDING);
+    }
+
+    @Test
+    void pages_proposals_by_status() {
+        for (int i = 0; i < 3; i++) proposalRepository.save(proposal(ProposalStatus.PENDING));
+        proposalRepository.save(proposal(ProposalStatus.APPROVED));
+
+        var page = proposalRepository.findByStatus(ProposalStatus.PENDING, PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "createdAt")));
+
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getTotalElements()).isEqualTo(3);
     }
 }
