@@ -74,9 +74,10 @@ Strategy + registry: an interface (Javadoc says "add a bean to extend"), one `@C
 | mappers | plain JUnit; builder + typed IDs; fields, null input, null relations |
 | persistence | `@RepositoryTest` (= `@DataJpaTest` + Testcontainers + `CryptoConfig` + display names); real entity chain, derived queries. Unsaved test entities come from `persistence/Fixtures`. One failing SQL statement aborts the test transaction: one DB-error assertion per test |
 | services | `@ExtendWith(MockitoExtension.class)`, `@Mock` repos, `@InjectMocks`; `thenAnswer(inv -> inv.getArgument(0))`; `verify(.., never())` on rejected paths |
-| controllers | `@WebMvcTest` + MockMvc + `@MockitoBean` service, with Spring Security test support (authenticated user + `csrf()`); status codes + JSON body incl. errors |
-| plug-ins | one unit test per handler + registry resolution test |
-| integration | `@SpringBootTest` + Testcontainers for end-to-end flows, `contextLoads` |
+| controllers | `@ControllerTest(XController.class)` (= `@WebMvcTest` + real `SecurityConfig`) + MockMvc + `@MockitoBean` service; authenticate with `TestAuth.owner()`/`TestAuth.user()`, add `csrf()` on mutating requests; status codes + JSON body incl. errors and 401/403. Never assert cookies here: `csrf()` swaps the shared CSRF repository for a session-based one (test-order dependent) |
+| plug-ins | one unit test per handler + registry resolution test (`fieldtype/FieldFixtures` builds fields named `f` and jOOQ records; `TestFieldTypes.registry()` gives services all real handlers) |
+| dynamic tables (jOOQ) | `@DynamicTableTest` (= `@JooqTest` + Flyway + Testcontainers, rolled back incl. DDL) with `@Import` of the class under test |
+| integration | `@SpringBootTest` + Testcontainers for end-to-end flows, `contextLoads`. Security/HTTP behaviour (cookies, CSRF, sessions) over real HTTP with `integration/ApiClient` (`RANDOM_PORT`); truncate `app_user`/`spring_session` in `@BeforeEach` (TRUNCATE bypasses the append-only triggers) |
 
 Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)`. **Exception:** service tests use camelCase with an underscore scenario suffix (`createTag_DuplicateNameRejected`, `findById_NotFound`).
 
@@ -95,7 +96,12 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 
 ## 3. Data rules
 - **Migrations only via Flyway** (`contor-api/src/main/resources/db`, `V1_0_N__description.sql`, one concern each). Hibernate `ddl-auto=validate`; never let JPA create schema.
-- **Generated collection tables (`c_<slug>`) are not JPA entities.** Access them only through `persistence/dynamic/` with the jOOQ DSL. Never string-concatenate SQL. Identifiers come only from validated `Slug` value objects.
+- **Generated collection tables (`c_<slug>`) are not JPA entities.** Access them only through `persistence/dynamic/` with the jOOQ DSL. Never string-concatenate SQL. Identifiers come only from validated `Slug` value objects (`DynamicNames` builds table/constraint names, ≤ 63 chars).
+- Always select/bind generated-table columns as **typed** jOOQ fields (`DSL.field(name(col), dataType)` from the field handler's `ColumnSpec`); jOOQ has no metadata for these tables, so untyped reads return JDBC types (`java.sql.Date`).
+- System columns of every generated table: `id, title, status, extra (jsonb), created_at, last_modified, created_by`; field slugs may not use them.
+- New field type = enum constant in `domain/FieldType` + one `@Component FieldTypeHandler` (+ its unit test) + the value shape in the spec's `CollectionFieldType` description. Handlers throw `IllegalArgumentException` with a message that does not name the field.
+- Schema changes go through `CollectionSchemaService` only (metadata + DDL + `schema_version` + `collection_schema_change` + audit in one transaction). Record writes go through `RecordService` (validation collects all violations → `RecordValidationException`).
+- Services persist with `saveAndFlush` (also the audit log), so constraint errors surface inside the operation.
 - Record IDs are unique per collection table only: any reference from outside is always `(collection_id, record_id)`.
 - Enums: `text` + named `CHECK` (`ck_<table>_<column>`), mapped with `@Enumerated(EnumType.STRING)`. JSON: `jsonb` + `@JdbcTypeCode(SqlTypes.JSON)` (prefer records/lists over raw maps where the shape is known).
 - Sequences are `<table>_seq` (increment 50); Hibernate derives the name from the entity name, so entity class names must match table names in CamelCase (`AppUser` → `app_user_seq`).
@@ -120,3 +126,11 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - Never log passwords, tokens, email bodies or full addresses (use the log-masking helper).
 - Spring and Postgres bind to 127.0.0.1; Ollama must stay on localhost. Actuator exposes only `health` without details.
 - Errors always as `ErrorResponse`, never stack traces. Audit log for auth events, 2FA/password changes, schema changes, proposal decisions.
+
+### How it is built (keep it this way)
+- `config/SecurityConfig` is the only web security config: the API chain (`@Order(2)`) and a dev-only Swagger chain (`@Order(1)`). New public endpoints must be added to its `authorizeHttpRequests` explicitly and to the spec with `security: []`.
+- Login is the JSON endpoint in `AuthService`, not `formLogin`: it calls the `AuthenticationManager`, then the `SessionAuthenticationStrategy` bean (session limit, id rotation, registration, CSRF refresh) and saves the context via the `SecurityContextRepository` bean. Reuse these beans for any new login step (TOTP).
+- The session principal is `security/AuthenticatedUser` (serializable, no password). Get the current user from it, never from request input.
+- Audit via `AuditService.record(AuditEvent...)`; it joins the caller's transaction. Add new actions to `domain/AuditAction`.
+- Owner-only operations: `@PreAuthorize("hasRole('OWNER')")` on the **controller** method (services are also called by the seeder and, later, by proposal appliers without a user). Method security uses class proxies (`proxyTargetClass = true`): an interface proxy would hide `@RestController` on controllers implementing generated interfaces.
+- Only loopback is a trusted proxy for `X-Forwarded-For` (`server.tomcat.remoteip.internal-proxies`).

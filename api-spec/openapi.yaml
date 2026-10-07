@@ -8,12 +8,26 @@ info:
 
     Naming conventions: `NewXCommand` (create), `UpdateXCommand` (partial update, `null` = unchanged),
     `XDto` (read model). IDs are plain integers.
+
+    Authentication: session cookie (set by `POST /api/auth/login`). Every mutating request needs the
+    `X-XSRF-TOKEN` header carrying the value of the `XSRF-TOKEN` cookie (see `GET /api/auth/csrf`).
+    Every error response has the `ErrorResponse` body.
   version: 0.1.0
 servers:
   - url: /
+security:
+  - sessionCookie: []
 tags:
   - name: System
     description: Application meta information
+  - name: Auth
+    description: Session login/logout, CSRF bootstrap, current user, password change
+  - name: Setup
+    description: One-time first-run setup (creates the OWNER). Only reachable while no user exists.
+  - name: Collections
+    description: User/AI-defined collections and their fields. Schema changes are OWNER-only.
+  - name: Records
+    description: Records of a collection. Values are keyed by field slug.
 paths:
   /api/system/version:
     get:
@@ -29,10 +43,479 @@ paths:
                 $ref: '#/components/schemas/VersionDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/csrf:
+    get:
+      tags: [Auth]
+      operationId: initCsrf
+      summary: Initialize the CSRF cookie
+      description: |
+        Sets the readable `XSRF-TOKEN` cookie. Every mutating request must echo its value in the
+        `X-XSRF-TOKEN` header. The token rotates after login and logout; always read the current cookie.
+      security: []
+      responses:
+        '204':
+          description: CSRF cookie set
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with username and password (starts a session)
+      description: |
+        Unknown user, wrong password and locked account all return the same 401 message.
+        5 failed attempts lock the account (15 min, doubling on repeated lockouts). Requests are rate limited per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginCommand'
+      responses:
+        '200':
+          description: Logged in; session cookie set, session id rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: End the current session
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: The logged-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/auth/password:
+    put:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change the password of the logged-in user
+      description: All other sessions of the user are ended.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordCommand'
+      responses:
+        '204':
+          description: Password changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/setup:
+    get:
+      tags: [Setup]
+      operationId: getSetupStatus
+      summary: Whether first-run setup is still required
+      description: Anonymous access only while no user exists; afterwards this requires authentication.
+      security: []
+      responses:
+        '200':
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Setup]
+      operationId: completeSetup
+      summary: Create the OWNER account with the one-time setup token from the backend log
+      description: |
+        Anonymous access only while no user exists. Once the owner exists the endpoint is permanently
+        disabled (401 for anonymous, 404 for authenticated callers). Does not log in.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupCommand'
+      responses:
+        '201':
+          description: Owner created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/collections:
+    get:
+      tags: [Collections]
+      operationId: listCollections
+      summary: All active collections with their fields
+      responses:
+        '200':
+          description: Collections ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Collections]
+      operationId: createCollection
+      summary: Create a collection (and its table) with optional initial fields. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCollectionCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      tags: [Collections]
+      operationId: getCollection
+      summary: One collection with its fields (archived fields included, marked by archivedAt)
+      responses:
+        '200':
+          description: The collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Collections]
+      operationId: updateCollection
+      summary: Partial update of collection metadata (null = unchanged). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/collections/{collectionId}/fields:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    post:
+      tags: [Collections]
+      operationId: addField
+      summary: Add a field (adds the column(s) to the collection table). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCollectionFieldCommand'
+      responses:
+        '201':
+          description: The collection including the new field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}/fields/{fieldId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: fieldId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Collections]
+      operationId: archiveField
+      summary: Archive a field (hidden and read-only; the column is kept). OWNER only.
+      responses:
+        '200':
+          description: The collection with the archived field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/collections/{collectionId}/records:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      tags: [Records]
+      operationId: listRecords
+      summary: Records of a collection, filtered, sorted and paginated
+      parameters:
+        - name: filter
+          in: query
+          required: false
+          description: |
+            Repeatable `field:op:value` (AND-combined). `field` is a field slug or a system field
+            (`id`, `title`, `status`, `createdAt`, `lastModified`). Ops: `eq`, `ne`, `lt`, `lte`, `gt`, `gte`,
+            `contains` (text, case-insensitive), `empty`, `notempty` (no value). MONEY filters on the amount.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: sort
+          in: query
+          required: false
+          description: Field slug or system field; prefix with `-` for descending. Default `-id`.
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 200
+            default: 25
+      responses:
+        '200':
+          description: One page of records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Records]
+      operationId: createRecord
+      summary: Create a record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRecordCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}/records/{recordId}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Records]
+      operationId: getRecord
+      summary: One record
+      responses:
+        '200':
+          description: The record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Records]
+      operationId: updateRecord
+      summary: Partial update. Keys absent from `values` are unchanged; a key with `null` clears the field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecordCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Records]
+      operationId: deleteRecord
+      summary: Delete a record
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
+  parameters:
+    CollectionId:
+      name: collectionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: CONTOR_SESSION
   responses:
+    BadRequest:
+      description: Invalid input (all validation failures in one message)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
-      description: Not authenticated
+      description: Not authenticated, or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Missing/invalid CSRF token, invalid setup token, or not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Duplicate (e.g. slug or unique field value already taken)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:
@@ -56,3 +539,316 @@ components:
           type: string
         version:
           type: string
+    Role:
+      type: string
+      enum: [OWNER, USER]
+    CurrentUserDto:
+      type: object
+      required: [id, username, email, role, totpEnabled]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        totpEnabled:
+          type: boolean
+    LoginCommand:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+    ChangePasswordCommand:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          description: 12-128 characters with lowercase, uppercase, digit and special character; not a common password.
+          maxLength: 128
+    SetupStatusDto:
+      type: object
+      required: [setupRequired]
+      properties:
+        setupRequired:
+          type: boolean
+    SetupCommand:
+      type: object
+      required: [token, username, email, password]
+      properties:
+        token:
+          type: string
+          description: One-time setup token printed to the backend log on startup.
+          maxLength: 128
+        username:
+          type: string
+          maxLength: 64
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          description: 12-128 characters with lowercase, uppercase, digit and special character; not a common password.
+          maxLength: 128
+    Creator:
+      type: string
+      description: Who defined a collection, field set or relation type.
+      enum: [USER, AI]
+    CollectionFieldType:
+      type: string
+      description: |
+        Closed set of field types and their JSON value shapes:
+        TEXT, LONG_TEXT, URL, EMAIL, PHONE, FILE: string ·
+        NUMBER: number · MONEY: `{"amount": number, "currency": "EUR"}` ·
+        DATE: `YYYY-MM-DD` · DATETIME: ISO-8601 with offset (returned in UTC) · BOOLEAN: boolean ·
+        ENUM, STATUS: one of the configured values (string) · RELATION: id (integer) of a record in the target collection.
+      enum: [TEXT, LONG_TEXT, NUMBER, MONEY, DATE, DATETIME, BOOLEAN, ENUM, STATUS, URL, EMAIL, PHONE, RELATION, FILE]
+    DisplayConfigDto:
+      type: object
+      description: Default presentation. Field references are field slugs.
+      properties:
+        defaultView:
+          type: string
+          description: e.g. table, kanban, calendar
+        kanbanStatusField:
+          type: string
+        calendarDateField:
+          type: string
+        titleField:
+          type: string
+    CollectionFieldDto:
+      type: object
+      required: [id, slug, name, type, options, required, uniqueValue, position]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/CollectionFieldType'
+        options:
+          type: object
+          additionalProperties: {}
+        required:
+          type: boolean
+        uniqueValue:
+          type: boolean
+        position:
+          type: integer
+          format: int32
+        archivedAt:
+          type: string
+          format: date-time
+    CollectionDto:
+      type: object
+      required: [id, slug, name, system, matchKeys, displayConfig, schemaVersion, createdBy, fields]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        system:
+          type: boolean
+          description: Seeded by contor (People, Organizations)
+        matchKeys:
+          type: array
+          description: Field slugs used to recognise an existing record
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+        schemaVersion:
+          type: integer
+          format: int32
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+        archivedAt:
+          type: string
+          format: date-time
+        fields:
+          type: array
+          description: Ordered by position
+          items:
+            $ref: '#/components/schemas/CollectionFieldDto'
+    NewCollectionFieldCommand:
+      type: object
+      required: [slug, name, type]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, not a reserved word, unique within the collection. Becomes the column name.'
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          description: Also used to explain the field to the AI.
+          maxLength: 2000
+        type:
+          $ref: '#/components/schemas/CollectionFieldType'
+        options:
+          type: object
+          description: |
+            Type-specific: ENUM `{"values": [..]}` · STATUS `{"states": [..], "transitions": {"from": ["to", ..]}}`
+            (ordered states; no transitions = any change allowed; a new record without status gets the first state) ·
+            RELATION `{"targetCollectionId": 1}` · TEXT `{"maxLength": 500}` · NUMBER `{"min": 0, "max": 10}`.
+          additionalProperties: {}
+        required:
+          type: boolean
+          default: false
+        uniqueValue:
+          type: boolean
+          default: false
+    NewCollectionCommand:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, not a reserved word. The table is named `c_<slug>`.'
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        icon:
+          type: string
+          maxLength: 100
+        matchKeys:
+          type: array
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewCollectionFieldCommand'
+    UpdateCollectionCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        icon:
+          type: string
+          maxLength: 100
+        matchKeys:
+          type: array
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+    RecordDto:
+      type: object
+      required: [id, collectionId, values, extra, createdAt, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique only within its collection; reference records as (collectionId, id).
+        collectionId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          description: Values of active fields keyed by field slug (see CollectionFieldType for shapes)
+          additionalProperties: {}
+        extra:
+          type: object
+          description: Values for fields that do not exist (yet)
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          description: USER, AI or SYSTEM
+    RecordPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    NewRecordCommand:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          description: Keyed by field slug. Unknown or archived fields are rejected.
+          additionalProperties: {}
+        extra:
+          type: object
+          additionalProperties: {}
+    UpdateRecordCommand:
+      type: object
+      description: Partial update. null title/status/extra = unchanged; keys absent from values = unchanged, null value = clear.
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          additionalProperties: {}
+        extra:
+          type: object
+          description: Replaces extra when given.
+          additionalProperties: {}

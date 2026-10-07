@@ -40,6 +40,38 @@ Fixed tables: JPA + Flyway. Generated collection tables: jOOQ only (`persistence
 
 ID strategy: aggregates use `bigint` + `<table>_seq` (increment 50) mapped as nested `@EmbeddedId` records; detail tables (`recovery_code`, `collection_schema_change`, `record_source`) use identity columns; `email_label` and `email_embedding` use composite keys. Timestamps are `timestamptz`, the JVM runs in UTC.
 
+## Collection engine
+
+```
+CollectionController (OWNER) ──▶ CollectionSchemaService ──▶ collection / collection_field (JPA)
+                                        │                 ──▶ CollectionTableDdl (jOOQ DDL: create table, add column, FK, unique index, grant)
+                                        │                 ──▶ collection_schema_change (+ schema_version++) and audit_log
+                                        └── FieldTypeRegistry ─▶ FieldTypeHandler per type (columns, validation, conversion)
+RecordController ──▶ RecordService ──▶ DynamicRecordRepository (jOOQ CRUD on c_<slug>, typed fields)
+                           └── FieldTypeRegistry (validate, toDb/fromDb, filter parsing, STATUS transitions)
+```
+
+All of a schema change (metadata, DDL, history, audit) is one PostgreSQL transaction, so it commits or rolls back as a whole.
+Generated tables have the system columns `id` (identity), `title`, `status`, `extra jsonb` (values for fields that do not
+exist yet), `created_at`, `last_modified`, `created_by`, plus one or more columns per field (MONEY: `<f>_amount`,
+`<f>_currency`; RELATION: `bigint` FK to the target table, `on delete set null`, indexed). Records are referenced from outside
+as (collection_id, record_id).
+
+## Authentication flow
+
+```
+Browser                      Next.js (:3000)                 Spring (127.0.0.1:8080)
+  │ GET /api/auth/csrf ───────▶ rewrite ─────────────────────▶ CsrfFilter (SPA mode) sets XSRF-TOKEN cookie
+  │ POST /api/auth/login ─────▶ rewrite (+X-Forwarded-For) ──▶ CsrfFilter checks X-XSRF-TOKEN
+  │   {username,password}                                      AuthService: rate limit (IP) → AuthenticationManager
+  │                                                            (Argon2id, lock check) → LoginAttemptService
+  │                                                            → SessionAuthenticationStrategy (≤3 sessions, new id,
+  │                                                              fresh CSRF token) → context saved in spring_session
+  │ ◀── 200 CurrentUserDto, Set-Cookie CONTOR_SESSION (HttpOnly, SameSite=Strict), XSRF-TOKEN
+```
+
+First run: `SetupTokenInitializer` prints a one-time token while `app_user` is empty; `POST /api/setup` (permitted only while setup is pending) consumes it and creates the OWNER.
+
 ## Decisions
 
 See `docs/decisions/`.

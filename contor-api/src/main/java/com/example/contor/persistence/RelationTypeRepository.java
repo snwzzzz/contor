@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface RelationTypeRepository extends JpaRepository<RelationType, RelationType.RelationTypeId> {
 
     Optional<RelationType> findBySlug(Slug slug);
+
+    boolean existsBySlug(Slug slug);
 }

@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
 
-> **Status: Phase 1, step 2 (core schema).** Backend and frontend start; code generation is wired against a minimal API contract. The fixed database schema (Flyway), JPA entities, repositories and column encryption are in place. Security, collections and the app shell follow in the next steps.
+> **Status: Phase 1, step 4 (collection engine).** Backend: fixed schema, security (setup, sessions, CSRF, lockout, audit) and the dynamic collection engine (collections with 14 field types, generated tables, record CRUD with filters, seeded People/Organizations). Remaining endpoints, the frontend, and TOTP 2FA follow in the next steps.
 
 ## Repository layout
 
@@ -68,7 +68,30 @@ cd contor-api && set -a && . ../.env && set +a && ./mvnw spring-boot:test-run
 cd contor-web && npm install && npm run dev
 ```
 
-Swagger UI for the contract (dev profile only): http://127.0.0.1:8080/swagger-ui/index.html
+Swagger UI for the contract (dev profile only, requires login): log in through the web app, then open http://localhost:8080/swagger-ui/index.html. Use the same host name (`localhost`) for both, since the session cookie is bound to the host name.
+
+## First-run setup
+
+There are no default credentials. On the first start with an empty database the backend prints a one-time **setup token** to its log:
+
+```
+==================================================================
+ contor first-run setup: no user exists yet.
+ ...
+   <43-character token>
+==================================================================
+```
+
+Use it once to create the owner account (the setup page in the web app follows in step 6; until then via `POST /api/setup`, see the API contract). The token lives only in memory: it is gone after use, and a restart issues a new one as long as no user exists. Once the owner exists, `/api/setup` is permanently disabled.
+
+## Security overview
+
+- Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
+- CSRF: the readable `XSRF-TOKEN` cookie must be echoed as `X-XSRF-TOKEN` header on every mutating request (`GET /api/auth/csrf` sets it). No CORS: the browser only talks to the Next.js origin.
+- Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
+- Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
+- Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
+- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes (later: 2FA, proposal decisions).
 
 ## Database
 
@@ -82,6 +105,16 @@ Swagger UI for the contract (dev profile only): http://127.0.0.1:8080/swagger-ui
 ```bash
 docker compose --env-file .env -f infra/docker-compose.yml down -v
 ```
+
+## Collections (dynamic data)
+
+A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` plus a generated table `c_<slug>` that holds its records. Field types: `TEXT`, `LONG_TEXT`, `NUMBER`, `MONEY`, `DATE`, `DATETIME`, `BOOLEAN`, `ENUM`, `STATUS`, `URL`, `EMAIL`, `PHONE`, `RELATION`, `FILE` (value shapes and options are documented in `api-spec/openapi.yaml`, schema `CollectionFieldType`).
+
+- Creating a collection, adding and archiving fields is OWNER-only. Each change runs the generated DDL, bumps the collection's `schema_version`, and writes `collection_schema_change` and the audit log in one transaction.
+- Archived fields are hidden and read-only; their column and data stay.
+- Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`).
+- On first start contor seeds the system collections **People** and **Organizations** and the relation types `works_at` (People → Organizations, inverse `employs`) and `knows` (People ↔ People).
+- The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
 
 ## Code generation (contract first)
 
@@ -122,9 +155,14 @@ All variables are listed in `.env.example`.
 | `APP_PORT` | backend | `8080` | backend port |
 | `APP_ENCRYPTION_KEY` | backend | – (required) | base64 256-bit AES key for `*_enc` columns (`openssl rand -base64 32`) |
 | `APP_ENCRYPTION_KEY_VERSION` | backend | `1` | version prefix of encrypted values; change only when rotating keys |
+| `APP_SECURE_COOKIES` | backend | `false` | add `Secure` to session and CSRF cookies; set `true` when served over HTTPS |
+| `APP_SESSION_IDLE_TIMEOUT` | backend | `30m` | session idle timeout |
+| `APP_SESSION_ABSOLUTE_TIMEOUT` | backend | `12h` | maximum session lifetime regardless of activity |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | target of the `/api/*` rewrite |
 
 ## Notes
+
+- Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.
 - Ollama is not part of compose; it runs natively for GPU access and must stay on localhost.

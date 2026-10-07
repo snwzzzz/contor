@@ -44,11 +44,20 @@ public class AppUser extends AuditableEntity {
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
 
+    /** Consecutive lockouts; each one doubles the lock duration. */
+    @Builder.Default
+    @Column(name = "lockout_count", nullable = false)
+    private int lockoutCount = 0;
+
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    public boolean isLockedAt(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
 
     @Embeddable
     public record AppUserId(@GeneratedValue Long id) {}

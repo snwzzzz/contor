@@ -13,11 +13,29 @@ spring:
     locations: classpath:db
   jackson:
     default-property-inclusion: non_null
+  session:
+    # Idle timeout; the absolute lifetime is app.security.session-absolute-timeout.
+    timeout: ${APP_SESSION_IDLE_TIMEOUT:30m}
+    jdbc:
+      initialize-schema: never
 
 server:
   # Bind to loopback only unless explicitly configured otherwise.
   address: ${APP_BIND_ADDRESS:127.0.0.1}
   port: ${APP_PORT:8080}
+  # The Next.js server proxies /api/* and sends X-Forwarded-For. Only loopback counts as a trusted proxy
+  # (Tomcat's default would also trust private LAN ranges, letting LAN clients spoof their IP for rate limiting).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: 127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1
+  servlet:
+    session:
+      cookie:
+        name: CONTOR_SESSION
+        http-only: true
+        same-site: strict
+        secure: ${APP_SECURE_COOKIES:false}
   error:
     include-stacktrace: never
     include-message: never
@@ -30,6 +48,10 @@ management:
   endpoint:
     health:
       show-details: never
+      show-components: never
+      # No probe group names in the anonymous response.
+      probes:
+        enabled: false
 
 springdoc:
   api-docs:
@@ -44,3 +66,14 @@ app:
     key: ${APP_ENCRYPTION_KEY:}
     key-version: ${APP_ENCRYPTION_KEY_VERSION:1}
   version: '@project.version@'
+  security:
+    secure-cookies: ${APP_SECURE_COOKIES:false}
+    session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}
+    max-sessions-per-user: 3
+    lockout:
+      max-failed-attempts: 5
+      base-duration: 15m
+      max-duration: 24h
+    login-rate-limit:
+      max-attempts: 10
+      window: 1m

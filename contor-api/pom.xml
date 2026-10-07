@@ -17,6 +17,7 @@
 		<java.version>21</java.version>
 		<openapi-generator.version>7.26.0</openapi-generator.version>
 		<springdoc.version>3.1.1</springdoc.version>
+		<bouncycastle.version>1.86</bouncycastle.version>
 		<argLine></argLine>
 		<api.spec>${project.basedir}/../api-spec/openapi.yaml</api.spec>
 	</properties>
@@ -52,6 +53,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<!-- Argon2id implementation used by Spring Security's Argon2PasswordEncoder -->
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>${bouncycastle.version}</version>
 		</dependency>
 		<dependency>
 			<!-- pgvector column mapping (email_embedding.embedding) -->
@@ -209,6 +216,7 @@
 						<configuration>
 							<inputSpec>${api.spec}</inputSpec>
 							<generatorName>spring</generatorName>
+							<cleanupOutput>true</cleanupOutput>
 							<apiPackage>com.example.contor.api</apiPackage>
 							<modelPackage>com.example.contor.api.model</modelPackage>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -221,6 +229,8 @@
 								<skipDefaultInterface>true</skipDefaultInterface>
 								<useTags>true</useTags>
 								<openApiNullable>false</openApiNullable>
+								<!-- null = "unchanged" for partial updates also applies to lists/maps -->
+								<containerDefaultToNull>true</containerDefaultToNull>
 								<useSpringBoot4>true</useSpringBoot4>
 								<useJackson3>true</useJackson3>
 								<useJakartaEe>true</useJakartaEe>
