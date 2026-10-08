@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, ListFilter, Search, Table2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, ListFilter, Search, SearchX, Table2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
@@ -56,7 +56,7 @@ function parseHidden(raw: unknown): readonly string[] | undefined {
 function choiceTint(field: CollectionFieldDto, value: string): string {
   const options = field.options[field.type === "STATUS" ? "states" : "values"];
   const index = Array.isArray(options) ? options.indexOf(value) : -1;
-  return index < 0 ? "bg-muted text-foreground" : tintClass(((index % 6) + 1) as Tint);
+  return index < 0 ? "bg-muted text-foreground" : tintClass(((index % 10) + 1) as Tint);
 }
 
 /** A collection's records as a table: search, column filters and visibility, sorting, numbered paging; double click opens. */
@@ -105,6 +105,14 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
     }, SEARCH_DELAY_MS);
   }
 
+  function clearSearchAndFilters() {
+    clearTimeout(searchTimer.current);
+    setSearch("");
+    setQuery("");
+    setFilters({});
+    setPage(0);
+  }
+
   function setFilter(slug: string, input: ColumnFilter) {
     setFilters((current) => ({ ...current, [slug]: { ...current[slug], ...input } }));
     setPage(0);
@@ -125,20 +133,19 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
 
   return (
     <>
-      <PageHeader icon={Database} tint={collectionTintNumber(collection.id)} title={collection.name} description={collection.description} />
+      <PageHeader icon={Database} tint={collectionTintNumber(collection.id, collection.slug)} title={collection.name} description={collection.description} />
 
       <section className="grid min-h-0 gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Part of the page, not a box: the search only shows a line while focused. */}
-          <div className="relative w-full max-w-xs border-b border-transparent transition-colors focus-within:border-foreground">
-            <Search className="absolute top-1/2 left-0.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
               type="search"
               aria-label={`Search ${collection.name}`}
               placeholder={`Search ${collection.name.toLowerCase()}…`}
               value={search}
               onChange={(event) => onSearch(event.target.value)}
-              className="h-9 rounded-none border-0 bg-transparent pl-7 shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="h-9 pl-8"
             />
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -192,7 +199,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
               onClick={() => setFiltersOpen((open) => !open)}
             >
               <ListFilter aria-hidden="true" />
-              {activeFilters > 0 ? <span className="rounded-full bg-foreground px-1.5 text-xs text-background tabular-nums">{activeFilters}</span> : null}
+              {activeFilters > 0 ? <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground tabular-nums">{activeFilters}</span> : null}
             </AppButton>
           </div>
         </div>
@@ -268,17 +275,29 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
             </tbody>
           </table>
           {!isPending && records?.items.length === 0 ? (
-            <div className="p-6">
+            query || activeFilters > 0 ? (
+              <EmptyState
+                icon={SearchX}
+                title="No matching records"
+                description={query ? `Nothing in ${collection.name} matches “${query}”${activeFilters > 0 ? " with these filters" : ""}.` : "Nothing matches these filters."}
+                action={
+                  <AppButton variant="outline" onClick={clearSearchAndFilters}>
+                    <X aria-hidden="true" data-icon="inline-start" />
+                    Clear search and filters
+                  </AppButton>
+                }
+              />
+            ) : (
               <EmptyState
                 icon={Table2}
                 title="No records"
-                description={query || activeFilters > 0 ? "Nothing matches the search or filters." : "The assistant adds records here as it finds them in your mail."}
+                description={`The assistant adds ${collection.name.toLowerCase()} here as it finds them in your mail.`}
               />
-            </div>
+            )
           ) : null}
         </div>
 
-        <Pager total={total} page={page} totalPages={totalPages} onPage={setPage} />
+        {total > 0 ? <Pager total={total} page={page} totalPages={totalPages} onPage={setPage} /> : null}
       </section>
     </>
   );
@@ -303,7 +322,7 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
                 onClick={() => onPage(item - 1)}
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md border text-xs tabular-nums hover:bg-accent",
-                  item === page + 1 && "border-foreground bg-foreground text-background hover:bg-foreground/90",
+                  item === page + 1 && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
                 )}
               >
                 {item}

@@ -1,8 +1,15 @@
 /**
- * The six tints of tokens.css (`--tint-1..6`): same lightness and chroma, only the hue differs. Class names are
- * spelled out so Tailwind finds them.
+ * The ten tints of tokens.css (`--tint-1..10`): same lightness and chroma, only the hue changes
+ * (red, orange, amber, lime, green, teal, sky, blue, violet, pink). Class names are spelled out so Tailwind finds them.
  */
-export type Tint = 1 | 2 | 3 | 4 | 5 | 6;
+export type Tint = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+const TINT_COUNT = 10;
+
+/** Section colors shared by the navigation and the collections behind those sections. */
+export const CALENDAR_TINT: Tint = 1;
+export const TASKS_TINT: Tint = 5;
+const COLLECTION_SECTION_TINTS: Record<string, Tint> = { events: CALENDAR_TINT, tasks: TASKS_TINT };
 
 const BOX = [
   "bg-tint-1 text-tint-1-foreground",
@@ -11,6 +18,10 @@ const BOX = [
   "bg-tint-4 text-tint-4-foreground",
   "bg-tint-5 text-tint-5-foreground",
   "bg-tint-6 text-tint-6-foreground",
+  "bg-tint-7 text-tint-7-foreground",
+  "bg-tint-8 text-tint-8-foreground",
+  "bg-tint-9 text-tint-9-foreground",
+  "bg-tint-10 text-tint-10-foreground",
 ] as const;
 
 const TEXT = [
@@ -20,6 +31,10 @@ const TEXT = [
   "text-tint-4-foreground",
   "text-tint-5-foreground",
   "text-tint-6-foreground",
+  "text-tint-7-foreground",
+  "text-tint-8-foreground",
+  "text-tint-9-foreground",
+  "text-tint-10-foreground",
 ] as const;
 
 const VIVID = [
@@ -29,9 +44,13 @@ const VIVID = [
   "text-tint-4-vivid",
   "text-tint-5-vivid",
   "text-tint-6-vivid",
+  "text-tint-7-vivid",
+  "text-tint-8-vivid",
+  "text-tint-9-vivid",
+  "text-tint-10-vivid",
 ] as const;
 
-/** Tinted background with matching foreground (icon boxes, chips). */
+/** Tinted background with matching foreground (icon boxes, chips, banners). */
 export function tintClass(tint: Tint): string {
   return BOX[tint - 1];
 }
@@ -46,12 +65,23 @@ export function tintVividClass(tint: Tint): string {
   return VIVID[tint - 1];
 }
 
-/** A stable tint per collection. */
-export function collectionTint(collectionId: number): string {
-  return BOX[Math.abs(collectionId) % BOX.length];
+/** A collection's tint: its section color for the calendar and to-dos, otherwise one of the ten by id. */
+export function collectionTintNumber(collectionId: number, slug?: string): Tint {
+  const section = slug ? COLLECTION_SECTION_TINTS[slug] : undefined;
+  return section ?? (((Math.abs(collectionId) % TINT_COUNT) + 1) as Tint);
 }
 
-/** The tint number of a collection (same as {@link collectionTint}), e.g. for the page title icon. */
-export function collectionTintNumber(collectionId: number): Tint {
-  return ((Math.abs(collectionId) % BOX.length) + 1) as Tint;
+export function collectionTint(collectionId: number, slug?: string): string {
+  return tintClass(collectionTintNumber(collectionId, slug));
+}
+
+/**
+ * A record's own tint (banner, initial): spread over the ten by id and never the collection's tint, so the records of
+ * one collection do not all share its color.
+ */
+export function recordTintNumber(collectionId: number, recordId: number, slug?: string): Tint {
+  const own = collectionTintNumber(collectionId, slug);
+  // Pick from the nine other tints: an offset of 1..9 from the collection's tint.
+  const offset = (Math.imul(Math.abs(recordId) + 1, 2654435761) >>> 0) % (TINT_COUNT - 1) + 1;
+  return ((((own - 1) + offset) % TINT_COUNT) + 1) as Tint;
 }

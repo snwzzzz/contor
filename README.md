@@ -157,8 +157,8 @@ bar (or Settings → AI Models). The wizard walks through:
 - *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
   actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject). *Automatic* applies
   them directly (audited; if applying fails the proposal waits for review instead).
-- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`) and **Tasks**
-  (`/tasks`); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
+- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: click a day for its agenda and to add an event, click an event to open it) and **Tasks**
+  (`/tasks`: a To do / In progress / Done board; cards show the deadline relative to today and expand to notes, details and actions); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
 - Dates: every extraction call gets today's date, weekday and your time zone (`AI_TIMEZONE`); relative dates in a mail
   ("Friday", "by Thursday") are resolved from the date the mail was sent. To-dos whose deadline already passed are
   dropped (old mail in the first analysis), past calendar events are kept as history.
@@ -274,7 +274,7 @@ The UI is built so a visual redesign does not touch pages or data logic:
 
 Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and command palette). `npm run screenshots` captures before/after images.
 
-The sidebar can be resized (drag its right edge, or focus the edge and use the arrow keys; double-click collapses it) and collections can be reordered (drag them, or focus a collection's grip and press Alt+↑/↓). Both are per-browser preferences in `localStorage` (`contor.sidebar.width`, `contor.sidebar.collectionOrder`), never stored on the server. The theme stays black and white; color comes only from `success`/`info`/`warning` and the per-collection tints (`--tint-1..6`: same lightness and chroma, only the hue changes), all in `src/styles/tokens.css`. Scrollbars are thin everywhere (`globals.css`).
+The sidebar can be resized (drag its right edge, or focus the edge and use the arrow keys; double-click collapses it) and collections can be reordered (drag them, or focus a collection's grip and press Alt+↑/↓). Both are per-browser preferences in `localStorage` (`contor.sidebar.width`, `contor.sidebar.collectionOrder`), never stored on the server. The primary color is blue (buttons, tabs, progress, focus rings, current page); otherwise color comes from `success`/`info`/`warning`, ten tints (`--tint-1..10`: same lightness and chroma, only the hue changes; collections by id, Calendar and To-dos in their section colors, records in their own color so a collection's banners differ) and their vivid variants for the sidebar icons, all in `src/styles/tokens.css`. The command palette hint shows ⌘K on macOS/iOS and Ctrl K elsewhere. Scrollbars are thin everywhere (`globals.css`).
 
 ## Notes
 

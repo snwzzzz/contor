@@ -45,6 +45,7 @@ export function RecordConnectionsTab({ collectionId, recordId, relations }: { co
 
   const typeById = new Map((types ?? []).map((type) => [type.id, type]));
   const collectionName = new Map((collections ?? []).map((collection) => [collection.id, collection.name]));
+  const collectionSlug = new Map((collections ?? []).map((collection) => [collection.id, collection.slug]));
 
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -58,7 +59,7 @@ export function RecordConnectionsTab({ collectionId, recordId, relations }: { co
               href={recordHref(connection.collectionId, connection.recordId)}
               className="flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/40"
             >
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", collectionTint(connection.collectionId))} aria-hidden="true">
+              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", collectionTint(connection.collectionId, collectionSlug.get(connection.collectionId)))} aria-hidden="true">
                 <Database className="size-4" />
               </span>
               <span className="grid min-w-0 gap-0.5">

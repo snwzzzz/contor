@@ -46,6 +46,7 @@ export function FindingsList() {
   }
 
   const names = new Map(collections?.map((collection) => [collection.id, collection.name]));
+  const slugs = new Map(collections?.map((collection) => [collection.id, collection.slug]));
   const counts = new Map<number, number>();
   for (const proposal of data.items) counts.set(collectionOf(proposal), (counts.get(collectionOf(proposal)) ?? 0) + 1);
   const visible = filter === null ? data.items : data.items.filter((proposal) => collectionOf(proposal) === filter);
@@ -59,7 +60,7 @@ export function FindingsList() {
             key={collectionId}
             label={names.get(collectionId) ?? "Other"}
             count={count}
-            tint={collectionTint(collectionId)}
+            tint={collectionTint(collectionId, slugs.get(collectionId))}
             active={filter === collectionId}
             onClick={() => setFilter(collectionId)}
           />
@@ -71,6 +72,7 @@ export function FindingsList() {
             key={proposal.id}
             proposal={proposal}
             collectionName={names.get(collectionOf(proposal))}
+            collectionSlug={slugs.get(collectionOf(proposal))}
             busy={decide.isPending && decide.variables?.proposalId === proposal.id}
             onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
           />
@@ -96,7 +98,7 @@ function FilterChip({ label, count, tint, active, onClick }: FilterChipProps) {
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors hover:bg-accent",
-        active && "border-foreground bg-foreground text-background hover:bg-foreground/90",
+        active && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
       )}
     >
       {tint ? <span className={cn("size-2 rounded-full", tint)} aria-hidden="true" /> : null}
@@ -109,11 +111,12 @@ function FilterChip({ label, count, tint, active, onClick }: FilterChipProps) {
 interface FindingCardProps {
   proposal: ProposalDto;
   collectionName: string | undefined;
+  collectionSlug: string | undefined;
   busy: boolean;
   onDecide: (decision: "APPROVE" | "REJECT") => void;
 }
 
-function FindingCard({ proposal, collectionName, busy, onDecide }: FindingCardProps) {
+function FindingCard({ proposal, collectionName, collectionSlug, busy, onDecide }: FindingCardProps) {
   const payload = proposal.payload as ProposalPayload;
   const title = proposalTitle(payload);
   const collectionId = collectionOf(proposal);
@@ -127,7 +130,7 @@ function FindingCard({ proposal, collectionName, busy, onDecide }: FindingCardPr
       data-collection={collectionId}
       className={cn("flex flex-col overflow-hidden rounded-lg border bg-card", busy && "opacity-60")}
     >
-      <div className={cn("flex items-center justify-between gap-2 px-4 py-1.5 text-xs font-medium", collectionTint(collectionId))}>
+      <div className={cn("flex items-center justify-between gap-2 px-4 py-1.5 text-xs font-medium", collectionTint(collectionId, collectionSlug))}>
         <span className="truncate">{collectionName ?? "Collection"}</span>
         <span className="opacity-80">{proposal.kind === "UPDATE_RECORD" ? "Update" : "New"}</span>
       </div>

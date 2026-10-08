@@ -102,7 +102,7 @@ function CollectionsGroup({ pathname }: { pathname: string }) {
               key={collection.id}
               collection={collection}
               pathname={pathname}
-              tint={collectionTint(collection.id)}
+              tint={collectionTint(collection.id, collection.slug)}
               preview={drag !== null && index === drag.to}
               onDragStart={() => setDrag({ from: index, to: index })}
               onDragEnd={() => setDrag(null)}
@@ -173,7 +173,7 @@ function CollectionItem({ collection, pathname, tint, preview, onDragStart, onDr
         preview && "border-dashed border-sidebar-ring bg-sidebar-accent/60 opacity-70",
       )}
     >
-      <SidebarMenuButton asChild isActive={active} tooltip={collection.name}>
+      <SidebarMenuButton asChild isActive={active} tooltip={collection.name} className="pr-8">
         <Link href={href} aria-current={active ? "page" : undefined} draggable={false}>
           <span
             className={cn(

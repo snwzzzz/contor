@@ -14,7 +14,7 @@ import {
   Tags,
   type LucideIcon,
 } from "lucide-react";
-import type { Tint } from "@/lib/collection-tint";
+import { CALENDAR_TINT, TASKS_TINT, type Tint } from "@/lib/collection-tint";
 
 export interface NavItem {
   title: string;
@@ -26,17 +26,17 @@ export interface NavItem {
 
 /** Top-level sections (sidebar + command palette share this list). */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { title: "Inbox", href: "/inbox", icon: Inbox, tint: 5 },
-  { title: "Proposals", href: "/proposals", icon: Sparkles, tint: 6 },
-  { title: "Findings", href: "/findings", icon: ScanSearch, tint: 4 },
-  { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: 1 },
-  { title: "To-dos", href: "/tasks", icon: ListTodo, tint: 3 },
+  { title: "Inbox", href: "/inbox", icon: Inbox, tint: 8 },
+  { title: "Proposals", href: "/proposals", icon: Sparkles, tint: 10 },
+  { title: "Findings", href: "/findings", icon: ScanSearch, tint: 6 },
+  { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: CALENDAR_TINT },
+  { title: "To-dos", href: "/tasks", icon: ListTodo, tint: TASKS_TINT },
 ];
 
 export const DATA_NAV: readonly NavItem[] = [
   { title: "Relations", href: "/relations", icon: Network, tint: 2 },
-  { title: "Queries", href: "/queries", icon: ListFilter, tint: 5 },
-  { title: "Rules & Labels", href: "/rules", icon: Tags, tint: 4 },
+  { title: "Queries", href: "/queries", icon: ListFilter, tint: 9 },
+  { title: "Rules & Labels", href: "/rules", icon: Tags, tint: 3 },
 ];
 
 /** Settings open as a modal over the current page, addressed by `?settings=<section>`. */

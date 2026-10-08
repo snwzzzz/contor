@@ -16,7 +16,7 @@ function stateOf(index: number, current: number): StepState {
 
 /**
  * Horizontal progress through steps: a label above a bar per step. Finished and current bars fill (animated, left to
- * right) in the success color, the current label is highlighted, upcoming steps stay muted.
+ * right) in the primary color, the current label is highlighted, upcoming steps stay muted.
  */
 export function Stepper({ label, steps, current }: StepperProps) {
   return (
@@ -29,7 +29,7 @@ export function Stepper({ label, steps, current }: StepperProps) {
             <span
               className={cn(
                 "truncate text-xs transition-colors duration-300",
-                state === "current" && "font-medium text-success",
+                state === "current" && "font-medium text-primary",
                 state === "complete" && "text-muted-foreground",
                 state === "upcoming" && "text-muted-foreground/60",
               )}
@@ -42,7 +42,7 @@ export function Stepper({ label, steps, current }: StepperProps) {
                 data-testid="step-fill"
                 data-filled={filled}
                 className={cn(
-                  "block h-full origin-left rounded-full bg-success transition-transform duration-500 ease-out motion-reduce:transition-none",
+                  "block h-full origin-left rounded-full bg-primary transition-transform duration-500 ease-out motion-reduce:transition-none",
                   filled ? "scale-x-100" : "scale-x-0",
                 )}
                 style={{ transitionDelay: state === "current" ? "150ms" : "0ms" }}

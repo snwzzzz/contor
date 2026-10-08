@@ -199,6 +199,28 @@ describe("CollectionTable", () => {
     await waitFor(() => expect(urls.at(-1)?.searchParams.get("page")).toBe("4"));
   });
 
+  it("offers to clear the search when nothing matches it", async () => {
+    const urls: URL[] = [];
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": ({ url }) => {
+        urls.push(url);
+        return { body: { items: [], page: 0, size: 25, totalElements: 0, totalPages: 0 } };
+      },
+    });
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search Deliveries" }), "nothing");
+    await userEvent.click(await screen.findByRole("button", { name: "Clear search and filters" }));
+
+    // Back to the unfiltered list (served from the query cache, so no new request is needed).
+    expect(await screen.findByText("No records")).toBeInTheDocument();
+    expect(screen.queryByText("No matching records")).not.toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search Deliveries" })).toHaveValue("");
+    expect(urls.some((url) => url.searchParams.get("q") === "nothing")).toBe(true);
+  });
+
   it("says when nothing matches", async () => {
     mockApi({
       "GET /api/collections/1": { body: deliveries },

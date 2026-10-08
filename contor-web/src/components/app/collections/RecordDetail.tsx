@@ -12,7 +12,7 @@ import { useListRelations } from "@/lib/api/generated/endpoints/relations/relati
 import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
-import { collectionTint } from "@/lib/collection-tint";
+import { collectionTint, recordTintNumber, tintClass } from "@/lib/collection-tint";
 import { bannerGradient, useDominantColor } from "@/lib/dominant-color";
 import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import { formatValue } from "@/lib/proposal-format";
@@ -87,7 +87,9 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
   const src = candidate && candidate !== failedSrc ? candidate : undefined;
   const color = useDominantColor(src);
   const title = record.title ?? `Record #${record.id}`;
-  const tint = collectionTint(collection.id);
+  const collectionColor = collectionTint(collection.id, collection.slug);
+  // The record's own color (never its collection's), so e.g. people are not all banners in the same color.
+  const tint = tintClass(recordTintNumber(collection.id, record.id, collection.slug));
   const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, connections: relations?.length };
 
   return (
@@ -124,7 +126,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
         <header className="grid min-w-0 gap-1.5 pt-4">
           <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <Link href={`/collections/${collection.id}`} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium hover:opacity-80", tint)}>
+            <Link href={`/collections/${collection.id}`} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium hover:opacity-80", collectionColor)}>
               <ArrowLeft className="size-3" aria-hidden="true" />
               <Database className="size-3" aria-hidden="true" />
               {collection.name}
@@ -189,7 +191,7 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
               onClick={() => onChange(tab.id)}
               className={cn(
                 "-mb-px flex items-center gap-2 border-b-2 py-3 text-sm whitespace-nowrap transition-colors",
-                selected ? "border-success font-medium text-success" : "border-transparent text-muted-foreground hover:text-foreground",
+                selected ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               <tab.icon className="size-4" aria-hidden="true" />

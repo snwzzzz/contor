@@ -51,8 +51,8 @@ export function AnalysisProgress() {
         {working ? (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="relative flex size-3 shrink-0 items-center justify-center" aria-hidden="true">
-              <span className="absolute inset-0 animate-pulse rounded-full bg-success/30 motion-reduce:animate-none" />
-              <span className="relative size-1.5 rounded-full bg-success" />
+              <span className="absolute inset-0 animate-pulse rounded-full bg-primary/30 motion-reduce:animate-none" />
+              <span className="relative size-1.5 rounded-full bg-primary" />
             </span>
             Working – the local model is reading your mail. You can close this window.
           </p>
@@ -165,7 +165,7 @@ function ProgressBar({ label, value, max, text, detail }: { label: string; value
         className="h-2 overflow-hidden rounded-full bg-muted"
       >
         <div
-          className="h-full rounded-full bg-success transition-[width] duration-700 ease-out motion-reduce:transition-none"
+          className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out motion-reduce:transition-none"
           style={{ width: `${percent}%` }}
         />
       </div>
