@@ -27,6 +27,18 @@ class MsGraphPropertiesTest {
     }
 
     @Test
+    void scopeParameter_IsSpaceSeparatedAsOAuthRequires() {
+        var props = new MsGraphProperties("id", "sec", "common", "http://localhost:8080/cb", "Mail.Read, User.Read,offline_access");
+        assertThat(props.scopeParameter()).isEqualTo("Mail.Read User.Read offline_access");
+    }
+
+    @Test
+    void scopeParameter_AcceptsSpaceSeparatedInput() {
+        var props = new MsGraphProperties("id", "sec", "common", "http://localhost:8080/cb", "Mail.Read User.Read offline_access");
+        assertThat(props.scopeParameter()).isEqualTo("Mail.Read User.Read offline_access");
+    }
+
+    @Test
     void authority_FormatsMicrosoftEndpoint() {
         var props = new MsGraphProperties("id", "sec", "my-tenant", "http://localhost:8080/cb", "Mail.Read");
         assertThat(props.authority()).isEqualTo("https://login.microsoftonline.com/my-tenant/");

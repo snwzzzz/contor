@@ -50,6 +50,9 @@ public class SetupService {
         }
         Username username = new Username(command.getUsername());
         Email email = new Email(command.getEmail());
+        if (!email.isOutlook()) {
+            throw new IllegalArgumentException("email must be an Outlook address (outlook, hotmail, live or msn)");
+        }
         passwordValidator.validate(command.getPassword());
         if (!setupTokenHolder.consume(command.getToken())) {
             throw new InvalidSetupTokenException();

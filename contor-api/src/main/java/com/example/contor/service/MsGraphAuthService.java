@@ -89,7 +89,7 @@ public class MsGraphAuthService {
                 .append("&response_type=code")
                 .append("&redirect_uri=").append(URLEncoder.encode(properties.redirectUri(), StandardCharsets.UTF_8))
                 .append("&response_mode=query")
-                .append("&scope=").append(URLEncoder.encode(properties.scopes(), StandardCharsets.UTF_8))
+                .append("&scope=").append(URLEncoder.encode(properties.scopeParameter(), StandardCharsets.UTF_8))
                 .append("&state=").append(URLEncoder.encode(state, StandardCharsets.UTF_8));
         if (emailHint != null && !emailHint.isBlank()) {
             sb.append("&login_hint=").append(URLEncoder.encode(emailHint, StandardCharsets.UTF_8));
@@ -107,7 +107,7 @@ public class MsGraphAuthService {
         formData.add("grant_type", "authorization_code");
         formData.add("code", code);
         formData.add("redirect_uri", properties.redirectUri());
-        formData.add("scope", properties.scopes());
+        formData.add("scope", properties.scopeParameter());
 
         return executeTokenRequest(formData);
     }
@@ -121,7 +121,7 @@ public class MsGraphAuthService {
         formData.add("client_secret", properties.clientSecret());
         formData.add("grant_type", "refresh_token");
         formData.add("refresh_token", refreshToken);
-        formData.add("scope", properties.scopes());
+        formData.add("scope", properties.scopeParameter());
 
         return executeTokenRequest(formData);
     }

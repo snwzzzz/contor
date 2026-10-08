@@ -4,11 +4,17 @@ import { PageHeader } from "@/components/app/PageHeader";
 
 export const metadata: Metadata = { title: "Accounts" };
 
-export default function Page() {
+/** `connected` / `mailError` are set by the backend's Microsoft OAuth callback when it forwards back here. */
+export default async function Page({ searchParams }: PageProps<"/settings/accounts">) {
+  const { connected, mailError } = await searchParams;
+
   return (
     <>
       <PageHeader title="Accounts" description="Connected mailboxes." />
-      <AccountsList />
+      <AccountsList
+        connected={connected === "true"}
+        mailError={typeof mailError === "string" ? mailError : undefined}
+      />
     </>
   );
 }

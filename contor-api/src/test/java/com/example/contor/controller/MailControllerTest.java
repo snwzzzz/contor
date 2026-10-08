@@ -4,20 +4,23 @@ import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
 import com.example.contor.api.model.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailCallbackException;
 import com.example.contor.service.MailService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -57,14 +60,28 @@ public class MailControllerTest {
     }
 
     @Test
-    void mail_account_callback_redirects_302() throws Exception {
-        doNothing().when(mailService).handleCallback("state1", "code1", null, null);
+    void mail_account_callback_forwards_the_browser_to_the_web_app() throws Exception {
+        when(mailService.handleCallback("state1", "code1", null, null))
+                .thenReturn("http://localhost:3000/settings/accounts?connected=true");
 
         mockMvc.perform(get("/api/mail/accounts/callback")
                         .param("state", "state1")
                         .param("code", "code1"))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", "/settings/mail?connected=true"));
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(containsString(
+                        "<meta http-equiv=\"refresh\" content=\"0;url=http://localhost:3000/settings/accounts?connected=true\">")));
+    }
+
+    @Test
+    void failed_mail_account_callback_also_forwards_to_the_web_app() throws Exception {
+        when(mailService.handleCallback(null, null, "access_denied", null))
+                .thenThrow(new MailCallbackException("http://localhost:3000/settings/accounts?mailError=x", null));
+
+        mockMvc.perform(get("/api/mail/accounts/callback").param("error", "access_denied"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(containsString("content=\"0;url=http://localhost:3000/settings/accounts?mailError=x\"")));
     }
 
     @Test

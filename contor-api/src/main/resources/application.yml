@@ -1,6 +1,10 @@
 spring:
   application:
     name: contor-api
+  config:
+    # Local dev: read the repo-root .env (KEY=value, no quotes) when started from contor-api (IntelliJ, ./mvnw).
+    # Real environment variables still win.
+    import: optional:file:../.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://127.0.0.1:5432/contor}
     username: ${DB_USERNAME:contor}
@@ -61,6 +65,14 @@ springdoc:
 
 app:
   name: contor
+  dev-account:
+    # Dev profile only: a login kept ready on every start (created as OWNER, or password/lockout reset). Set in .env.
+    username: ${DEV_ACCOUNT_USERNAME:}
+    email: ${DEV_ACCOUNT_EMAIL:dev@outlook.com}
+    password: ${DEV_ACCOUNT_PASSWORD:}
+  web:
+    # Public URL of contor-web; the browser is sent back here after the Microsoft OAuth callback.
+    url: ${APP_WEB_URL:http://localhost:3000}
   encryption:
     # Base64-encoded 256-bit AES key for *_enc columns. Required: the app refuses to start without a valid key.
     key: ${APP_ENCRYPTION_KEY:}

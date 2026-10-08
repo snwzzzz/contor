@@ -1124,7 +1124,12 @@ paths:
     get:
       tags: [Mail]
       operationId: mailAccountCallback
-      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and redirects to settings.
+      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and forwards to the web app.
+      description: |
+        Always answers with a small HTML page that forwards the browser (meta refresh) to `APP_WEB_URL/settings/accounts?connected=true`.
+        Not a 302: the browser arrives from Microsoft, so a redirect chain stays cross-site and the SameSite=Strict
+        session cookie would not be sent; a forward started by this localhost page is same-site.
+        Failures (sign-in cancelled, expired state, token exchange) forward to `/settings/accounts?mailError=<message>`.
       security: []
       parameters:
         - name: code
@@ -1134,7 +1139,7 @@ paths:
             type: string
         - name: state
           in: query
-          required: true
+          required: false
           schema:
             type: string
         - name: error
@@ -1148,10 +1153,12 @@ paths:
           schema:
             type: string
       responses:
-        '302':
-          description: Redirect to /settings/mail
-        '400':
-          $ref: '#/components/responses/BadRequest'
+        '200':
+          description: HTML page forwarding the browser to the web app's account settings
+          content:
+            text/html:
+              schema:
+                type: string
   /api/mail/accounts/{accountId}/sync:
     parameters:
       - $ref: '#/components/parameters/MailAccountId'
@@ -1472,6 +1479,7 @@ components:
           maxLength: 64
         email:
           type: string
+          description: Any Outlook address (outlook.*, hotmail.*, live.* or msn.com); others are rejected with 400.
           maxLength: 254
         password:
           type: string

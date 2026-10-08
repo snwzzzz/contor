@@ -50,7 +50,7 @@ openssl rand -base64 32
 docker compose --env-file .env -f infra/docker-compose.yml up -d --wait
 ```
 
-**2. Backend** (http://127.0.0.1:8080). The backend reads its configuration from environment variables, so export `.env` first:
+**2. Backend** (http://127.0.0.1:8080). The backend reads the repo-root `.env` itself when started from `contor-api` (IntelliJ run button or `./mvnw spring-boot:run`); values must not be quoted, and real environment variables take precedence. Exporting it first also works:
 
 ```bash
 cd contor-api && set -a && . ../.env && set +a && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
@@ -90,8 +90,14 @@ There are no default credentials. On the first start with an empty database the 
 ==================================================================
 ```
 
+The owner must register with an **Outlook address** (any of `outlook.*`, `hotmail.*`, `live.*` or `msn.com`, e.g. `you@outlook.de`); other addresses are rejected with 400.
+
 Use it once to create the owner account (the setup page in the web app follows in step 6; until then via `POST /api/setup`, see the API contract). The token lives only in memory: it is gone after use, and a restart issues a new one as long as no user exists. Once the owner exists, `/api/setup` is permanently disabled.
 
+
+### Dev account
+
+With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD` (same password rules) and optionally `DEV_ACCOUNT_EMAIL` in `.env`. On every start it is created as OWNER if missing, otherwise its password is reset to the configured one and any lockout cleared. First-run setup is then skipped. Never set these outside local development.
 ## Security overview
 
 - Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
@@ -133,7 +139,7 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
 | Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback, sync, disconnect, status; emails scoped to current user |
+| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; emails scoped to current user, inbox filterable per account |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -145,6 +151,8 @@ The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagg
 |---|---|---|---|
 | Backend | openapi-generator-maven-plugin (`spring`, interface only) | `contor-api/target/generated-sources/openapi` (`com.example.contor.api`, `.api.model`) | runs on every Maven build, e.g. `./mvnw compile` |
 | Frontend | orval (TanStack Query hooks + fetch) | `contor-web/src/lib/api/generated/` | `npm run generate:api` (also runs before `dev`, `build`, `test`, `typecheck`) |
+
+IntelliJ: if `com.example.contor.api` shows as unresolved, run *Maven → Generate Sources and Update Folders* (or `./mvnw generate-sources`) and reload the Maven project; `build-helper-maven-plugin` registers `target/generated-sources/openapi/src/main/java` as a source root.
 
 To change the API: edit the spec, regenerate both sides, then implement. See `docs/decisions/0001-frontend-api-client-orval.md` for the generator choice.
 
@@ -194,8 +202,10 @@ All variables are listed in `.env.example`.
 | `MSGRAPH_CLIENT_ID` | backend | – | Azure app registration client ID |
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
+| `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
+| `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the Microsoft OAuth callback (`/settings/accounts?connected=true`) |
 | `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
-| `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,offline_access` | Microsoft Graph API permissions |
+| `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (needed for the refresh token) |
 | `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |

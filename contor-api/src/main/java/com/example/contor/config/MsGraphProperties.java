@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ConfigurationProperties("app.mail.msgraph")
 public record MsGraphProperties(
@@ -20,13 +21,21 @@ public record MsGraphProperties(
     }
 
     public Set<String> scopeSet() {
+        return scopeList().collect(Collectors.toSet());
+    }
+
+    /** OAuth {@code scope} parameter: space-separated (RFC 6749); with commas Entra ID drops offline_access and returns no refresh token. */
+    public String scopeParameter() {
+        return scopeList().distinct().collect(Collectors.joining(" "));
+    }
+
+    /** Configured as a comma- or space-separated list. */
+    private Stream<String> scopeList() {
         if (scopes == null || scopes.isBlank()) {
-            return Set.of("Mail.Read", "User.Read", "offline_access");
+            return Stream.of("Mail.Read", "User.Read", "offline_access");
         }
-        return Arrays.stream(scopes.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
+        return Arrays.stream(scopes.split("[,\\s]+"))
+                .filter(s -> !s.isEmpty());
     }
 
     public String authority() {

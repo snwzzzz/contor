@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 async function fill({ password = "Correct-Horse-7-Battery", confirm = password }: { password?: string; confirm?: string } = {}) {
   await userEvent.type(screen.getByLabelText("Setup token"), "token-from-log");
   await userEvent.type(screen.getByLabelText("Username"), "owner");
-  await userEvent.type(screen.getByLabelText("Email"), "owner@example.com");
+  await userEvent.type(screen.getByLabelText("Email"), "owner@outlook.com");
   await userEvent.type(screen.getByLabelText("Password"), password);
   await userEvent.type(screen.getByLabelText("Confirm password"), confirm);
   await userEvent.click(screen.getByRole("button", { name: "Create owner account" }));
@@ -26,7 +26,7 @@ describe("SetupForm", () => {
 
   it("creates the owner and continues to the login", async () => {
     const calls = mockApi({
-      "POST /api/setup": { status: 201, body: { id: 1, username: "owner", email: "owner@example.com", role: "OWNER", totpEnabled: false } },
+      "POST /api/setup": { status: 201, body: { id: 1, username: "owner", email: "owner@outlook.com", role: "OWNER", totpEnabled: false } },
     });
     renderWithProviders(<SetupForm />);
 
@@ -36,9 +36,17 @@ describe("SetupForm", () => {
     expect(calls[0].body).toEqual({
       token: "token-from-log",
       username: "owner",
-      email: "owner@example.com",
+      email: "owner@outlook.com",
       password: "Correct-Horse-7-Battery",
     });
+  });
+
+  it("asks for an Outlook address", () => {
+    renderWithProviders(<SetupForm />);
+
+    expect(screen.getByLabelText("Email")).toHaveAccessibleDescription(
+      "Any Outlook address (outlook, hotmail, live or msn).",
+    );
   });
 
   it("does not send mismatching passwords", async () => {

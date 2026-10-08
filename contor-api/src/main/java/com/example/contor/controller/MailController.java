@@ -4,12 +4,10 @@ import com.example.contor.api.MailApi;
 import com.example.contor.api.model.*;
 import com.example.contor.service.MailService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -25,11 +23,8 @@ public class MailController implements MailApi {
     }
 
     @Override
-    public ResponseEntity<Void> mailAccountCallback(String state, String code, String error, String errorDescription) {
-        mailService.handleCallback(state, code, error, errorDescription);
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create("/settings/mail?connected=true"))
-                .build();
+    public ResponseEntity<String> mailAccountCallback(String code, String state, String error, String errorDescription) {
+        return BrowserForward.to(mailService.handleCallback(state, code, error, errorDescription));
     }
 
     @PreAuthorize("hasRole('OWNER')")

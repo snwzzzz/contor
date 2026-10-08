@@ -30,4 +30,21 @@ public class EmailTest {
         assertThatThrownBy(() -> new Email("a b@example.com")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Email("a".repeat(250) + "@example.com")).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    public void outlook_hotmail_live_and_msn_addresses_are_outlook() {
+        assertThat(new Email("me@outlook.com").isOutlook()).isTrue();
+        assertThat(new Email("me@Outlook.DE").isOutlook()).isTrue();
+        assertThat(new Email("me@hotmail.co.uk").isOutlook()).isTrue();
+        assertThat(new Email("me@live.com").isOutlook()).isTrue();
+        assertThat(new Email("me@msn.com").isOutlook()).isTrue();
+    }
+
+    @Test
+    public void other_addresses_are_not_outlook() {
+        assertThat(new Email("me@gmail.com").isOutlook()).isFalse();
+        assertThat(new Email("me@example.com").isOutlook()).isFalse();
+        assertThat(new Email("me@outlook.example.com").isOutlook()).isFalse();
+        assertThat(new Email("me@notoutlook.com").isOutlook()).isFalse();
+    }
 }

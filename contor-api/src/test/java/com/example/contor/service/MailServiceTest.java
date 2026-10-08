@@ -1,8 +1,10 @@
 package com.example.contor.service;
 
 import com.example.contor.api.model.*;
+import com.example.contor.config.WebProperties;
 import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -55,6 +58,9 @@ class MailServiceTest {
 
     @Mock
     private MailSyncService mailSyncService;
+
+    @Spy
+    private WebProperties webProperties = new WebProperties("http://localhost:3000");
 
     @InjectMocks
     private MailService mailService;
@@ -117,16 +123,40 @@ class MailServiceTest {
         when(mailAccountRepository.findByOwner_IdAndEmailAddress(eq(new AppUser.AppUserId(1L)), any(Email.class)))
                 .thenReturn(Optional.empty());
 
-        mailService.handleCallback("state123", "code123", null, null);
+        String next = mailService.handleCallback("state123", "code123", null, null);
 
+        assertEquals("http://localhost:3000/settings/accounts?connected=true", next);
         verify(mailAccountRepository).saveAndFlush(any(MailAccount.class));
         verify(mailSyncService).syncAccount(any(MailAccount.class));
     }
 
     @Test
-    void handleCallback_OAuthErrorThrows() {
-        assertThrows(IllegalArgumentException.class,
+    void handleCallback_CancelledSignInForwardsWithError() {
+        var ex = assertThrows(MailCallbackException.class,
                 () -> mailService.handleCallback("state123", null, "access_denied", "User canceled"));
+
+        assertEquals("http://localhost:3000/settings/accounts?mailError=Microsoft+sign-in+was+cancelled.", ex.getForwardUrl());
+        verify(mailAccountRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void handleCallback_MissingStateForwardsWithError() {
+        var ex = assertThrows(MailCallbackException.class, () -> mailService.handleCallback(null, "code123", null, null));
+
+        assertTrue(ex.getForwardUrl().startsWith("http://localhost:3000/settings/accounts?mailError="));
+        verify(msGraphAuthService, never()).exchangeCode(any());
+    }
+
+    @Test
+    void handleCallback_TokenExchangeFailureForwardsWithError() {
+        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
+        when(msGraphAuthService.exchangeCode("code123")).thenThrow(new IllegalStateException("AADSTS70008 internal detail"));
+
+        var ex = assertThrows(MailCallbackException.class, () -> mailService.handleCallback("state123", "code123", null, null));
+
+        assertEquals("http://localhost:3000/settings/accounts?mailError=Connecting+the+mailbox+failed.+Please+try+again.",
+                ex.getForwardUrl());
+        verify(mailAccountRepository, never()).saveAndFlush(any());
     }
 
     @Test

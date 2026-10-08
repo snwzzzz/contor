@@ -5,6 +5,7 @@ import com.example.contor.exception.ConflictException;
 import com.example.contor.exception.DuplicateResourceException;
 import com.example.contor.exception.InvalidCredentialsException;
 import com.example.contor.exception.InvalidSetupTokenException;
+import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.PasswordValidationException;
 import com.example.contor.exception.RecordValidationException;
 import com.example.contor.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
@@ -97,6 +99,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Malformed request body");
     }
 
+    /** Browser-facing OAuth callback: errors also go back to the web app instead of a JSON page on the API host. */
+    @ExceptionHandler(MailCallbackException.class)
+    public ResponseEntity<String> handleMailCallback(MailCallbackException ex) {
+        return BrowserForward.to(ex.getForwardUrl());
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
         return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
@@ -136,8 +144,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
+        if (isClientGone(ex)) {
+            // The browser/proxy closed the connection (navigation, aborted fetch): nothing to answer, nothing to fix.
+            log.debug("Client disconnected before the response was written");
+            return null;
+        }
         log.error("Unexpected error", ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+    }
+
+    private static boolean isClientGone(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof AsyncRequestNotUsableException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String lastNode(Path path) {

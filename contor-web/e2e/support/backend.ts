@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export const OWNER = {
   username: "e2e_owner",
-  email: "owner@example.com",
+  email: "owner@outlook.com",
   password: "Correct-Horse-7-Battery",
 };
 

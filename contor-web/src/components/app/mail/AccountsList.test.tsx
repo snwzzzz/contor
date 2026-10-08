@@ -79,4 +79,56 @@ describe("AccountsList", () => {
       expect(assignMock).toHaveBeenCalledWith("https://login.microsoft.com/authorize");
     });
   });
+
+  it("offers a reconnect for a disconnected account that re-adds it with its address", async () => {
+    const user = userEvent.setup();
+    const assignMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { assign: assignMock, href: "http://localhost:3000" },
+      writable: true,
+    });
+    const calls = mockApi({
+      "GET /api/mail/accounts": {
+        body: [{ id: 1, provider: "MICROSOFT_GRAPH", emailAddress: "me@outlook.com", status: "DISABLED" }],
+      },
+      "POST /api/mail/accounts/connect": { body: { authorizeUrl: "https://login.microsoft.com/authorize" } },
+    });
+
+    renderWithProviders(<AccountsList />);
+
+    await user.click(await screen.findByRole("button", { name: /reconnect/i }));
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalledWith("https://login.microsoft.com/authorize"));
+    expect(calls.find((c) => c.path === "/api/mail/accounts/connect")?.body).toEqual({ emailHint: "me@outlook.com" });
+    expect(screen.queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
+  });
+
+  it("offers a reconnect when the account needs re-authorization", async () => {
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [{ id: 1, provider: "MICROSOFT_GRAPH", emailAddress: "me@outlook.com", status: "NEEDS_REAUTH" }],
+      },
+    });
+
+    renderWithProviders(<AccountsList />);
+
+    expect(await screen.findByRole("button", { name: /reconnect/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+  });
+
+  it("shows the result of the Microsoft sign-in", async () => {
+    mockApi({ "GET /api/mail/accounts": { body: [] } });
+
+    renderWithProviders(<AccountsList mailError="Microsoft sign-in was cancelled." />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Microsoft sign-in was cancelled.");
+  });
+
+  it("confirms a connected mailbox", async () => {
+    mockApi({ "GET /api/mail/accounts": { body: [] } });
+
+    renderWithProviders(<AccountsList connected />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Mailbox connected");
+  });
 });

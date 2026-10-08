@@ -1,9 +1,11 @@
 package com.example.contor.service;
 
+import com.example.contor.config.WebProperties;
 import com.example.contor.api.model.*;
 import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailAccountNotFoundException;
+import com.example.contor.exception.MailCallbackException;
 import com.example.contor.mapper.MailMapper;
 import com.example.contor.persistence.*;
 import com.example.contor.security.CurrentActor;
@@ -16,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +47,7 @@ public class MailService {
     private final MsGraphAuthService msGraphAuthService;
     private final MsGraphMailService msGraphMailService;
     private final MailSyncService mailSyncService;
+    private final WebProperties webProperties;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
@@ -58,43 +63,57 @@ public class MailService {
         return new MailAuthorizeUrlDto(url);
     }
 
+    /**
+     * Completes the OAuth flow and returns the web app URL the browser continues to. Every failure becomes a
+     * {@link MailCallbackException} with a web app URL carrying a user-facing {@code mailError}, so the browser
+     * always ends up in the frontend; internal details only go to the log.
+     */
     @Transactional
-    public void handleCallback(String state, String code, String error, String errorDescription) {
+    public String handleCallback(String state, String code, String error, String errorDescription) {
         if (error != null && !error.isBlank()) {
-            throw new IllegalArgumentException("OAuth authorization failed: " +
-                    (errorDescription != null ? errorDescription : error));
+            throw callbackFailed("access_denied".equals(error) ? "Microsoft sign-in was cancelled." : "Microsoft sign-in failed.", null);
         }
-        if (code == null || code.isBlank()) {
-            throw new IllegalArgumentException("Missing OAuth authorization code");
+        if (state == null || state.isBlank() || code == null || code.isBlank()) {
+            throw callbackFailed("The Microsoft sign-in response was incomplete. Please try again.", null);
         }
+        try {
+            Long userId = msGraphAuthService.validateStateAndExtractUserId(state);
+            MsGraphAuthService.TokenResult tokens = msGraphAuthService.exchangeCode(code);
+            MsGraphMailService.UserProfile profile = msGraphMailService.fetchUserProfile(tokens.accessToken());
 
-        Long userId = msGraphAuthService.validateStateAndExtractUserId(state);
-        MsGraphAuthService.TokenResult tokens = msGraphAuthService.exchangeCode(code);
-        MsGraphMailService.UserProfile profile = msGraphMailService.fetchUserProfile(tokens.accessToken());
+            AppUser.AppUserId ownerId = new AppUser.AppUserId(userId);
+            AppUser owner = appUserRepository.findById(ownerId)
+                    .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
 
-        AppUser.AppUserId ownerId = new AppUser.AppUserId(userId);
-        AppUser owner = appUserRepository.findById(ownerId)
-                .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
+            Email email = new Email(profile.emailAddress());
+            MailAccount account = mailAccountRepository.findByOwner_IdAndEmailAddress(ownerId, email)
+                    .orElseGet(() -> MailAccount.builder()
+                            .owner(owner)
+                            .provider(MailProvider.MICROSOFT_GRAPH)
+                            .emailAddress(email)
+                            .build());
 
-        Email email = new Email(profile.emailAddress());
-        MailAccount account = mailAccountRepository.findByOwner_IdAndEmailAddress(ownerId, email)
-                .orElseGet(() -> MailAccount.builder()
-                        .owner(owner)
-                        .provider(MailProvider.MICROSOFT_GRAPH)
-                        .emailAddress(email)
-                        .build());
+            account.setDisplayName(profile.displayName());
+            account.setAccessToken(tokens.accessToken());
+            if (tokens.refreshToken() != null && !tokens.refreshToken().isBlank()) {
+                account.setRefreshToken(tokens.refreshToken());
+            }
+            account.setTokenExpiresAt(tokens.expiresAt());
+            account.setStatus(MailAccountStatus.ACTIVE);
+            mailAccountRepository.saveAndFlush(account);
 
-        account.setDisplayName(profile.displayName());
-        account.setAccessToken(tokens.accessToken());
-        if (tokens.refreshToken() != null && !tokens.refreshToken().isBlank()) {
-            account.setRefreshToken(tokens.refreshToken());
+            // Run initial synchronization
+            mailSyncService.syncAccount(account);
+        } catch (RuntimeException e) {
+            log.warn("Mail account callback failed: {}", e.getMessage());
+            throw callbackFailed("Connecting the mailbox failed. Please try again.", e);
         }
-        account.setTokenExpiresAt(tokens.expiresAt());
-        account.setStatus(MailAccountStatus.ACTIVE);
-        mailAccountRepository.saveAndFlush(account);
+        return webProperties.url() + "/settings/accounts?connected=true";
+    }
 
-        // Run initial synchronization
-        mailSyncService.syncAccount(account);
+    private MailCallbackException callbackFailed(String message, Throwable cause) {
+        return new MailCallbackException(
+                webProperties.url() + "/settings/accounts?mailError=" + URLEncoder.encode(message, StandardCharsets.UTF_8), cause);
     }
 
     @Transactional

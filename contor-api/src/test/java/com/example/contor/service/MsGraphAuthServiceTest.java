@@ -69,6 +69,12 @@ class MsGraphAuthServiceTest {
     }
 
     @Test
+    void buildAuthorizeUrl_SendsSpaceSeparatedScopesSoOfflineAccessIsGranted() {
+        String url = authService.buildAuthorizeUrl(42L, null);
+        assertThat(url).contains("scope=Mail.Read+User.Read+offline_access");
+    }
+
+    @Test
     void buildAuthorizeUrl_ThrowsWhenNotConfigured() {
         var unconfigured = new MsGraphAuthService(new MsGraphProperties(null, null, "common", "http://localhost:8080/cb", null), fieldEncryptor);
         assertThatThrownBy(() -> unconfigured.buildAuthorizeUrl(1L, null))

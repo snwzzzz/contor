@@ -52,7 +52,7 @@ class SetupServiceTest {
     private SetupService setupService;
 
     private SetupCommand command() {
-        return new SetupCommand("token", "owner", "owner@example.com", "Correct-Horse-7-Battery");
+        return new SetupCommand("token", "owner", "owner@outlook.com", "Correct-Horse-7-Battery");
     }
 
     @Test
@@ -129,5 +129,16 @@ class SetupServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> setupService.completeSetup(new SetupCommand("token", "owner", "nope", "Correct-Horse-7-Battery")));
         verify(setupTokenHolder, never()).consume(any());
+    }
+
+    @Test
+    void completeSetup_NonOutlookEmailRejected() {
+        when(setupState.isPending()).thenReturn(true);
+        when(setupTokenHolder.matches("token")).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> setupService.completeSetup(new SetupCommand("token", "owner", "owner@gmail.com", "Correct-Horse-7-Battery")));
+        verify(setupTokenHolder, never()).consume(any());
+        verify(appUserRepository, never()).saveAndFlush(any());
     }
 }

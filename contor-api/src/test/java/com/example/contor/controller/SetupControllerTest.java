@@ -41,7 +41,7 @@ public class SetupControllerTest {
     private SetupService setupService;
 
     private String body() {
-        return objectMapper.writeValueAsString(new SetupCommand("token", "owner", "owner@example.com", "Correct-Horse-7-Battery"));
+        return objectMapper.writeValueAsString(new SetupCommand("token", "owner", "owner@outlook.com", "Correct-Horse-7-Battery"));
     }
 
     @Test
@@ -57,7 +57,7 @@ public class SetupControllerTest {
     @Test
     void complete_setup_returns_201() throws Exception {
         when(setupState.isPending()).thenReturn(true);
-        when(setupService.completeSetup(any())).thenReturn(new CurrentUserDto(1L, "owner", "owner@example.com", Role.OWNER, false));
+        when(setupService.completeSetup(any())).thenReturn(new CurrentUserDto(1L, "owner", "owner@outlook.com", Role.OWNER, false));
 
         mockMvc.perform(post("/api/setup").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body()))
                 .andExpect(status().isCreated())

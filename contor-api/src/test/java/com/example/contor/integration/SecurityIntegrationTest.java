@@ -53,7 +53,7 @@ class SecurityIntegrationTest {
     private ApiClient.Response setupOwner(ApiClient client) {
         var token = setupTokenHolder.issue();
         return client.post("/api/setup", """
-                {"token":"%s","username":"owner","email":"owner@example.com","password":"%s"}""".formatted(token, PASSWORD));
+                {"token":"%s","username":"owner","email":"owner@outlook.com","password":"%s"}""".formatted(token, PASSWORD));
     }
 
     private ApiClient.Response login(ApiClient client, String password) {
@@ -137,10 +137,10 @@ class SecurityIntegrationTest {
     void setup_rejects_a_wrong_token_and_weak_passwords_with_all_violations() {
         setupTokenHolder.issue();
         var wrongToken = client().post("/api/setup", """
-                {"token":"wrong","username":"owner","email":"owner@example.com","password":"%s"}""".formatted(PASSWORD));
+                {"token":"wrong","username":"owner","email":"owner@outlook.com","password":"%s"}""".formatted(PASSWORD));
         var token = setupTokenHolder.issue();
         var weak = client().post("/api/setup", """
-                {"token":"%s","username":"owner","email":"owner@example.com","password":"short"}""".formatted(token));
+                {"token":"%s","username":"owner","email":"owner@outlook.com","password":"short"}""".formatted(token));
 
         assertThat(wrongToken.status()).isEqualTo(403);
         assertThat(weak.status()).isEqualTo(400);
