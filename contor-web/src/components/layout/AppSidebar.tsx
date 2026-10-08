@@ -2,7 +2,7 @@
 
 import { Database, Plus } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
@@ -28,8 +28,11 @@ import {
   isActive,
   NEW_COLLECTION_HREF,
   PRIMARY_NAV,
+  isSettingsSection,
   SETTINGS_NAV,
+  SETTINGS_PARAM,
   SETTINGS_ROOT,
+  settingsHref,
   type NavItem,
 } from "@/lib/navigation";
 
@@ -97,6 +100,8 @@ function CollectionsGroup({ pathname }: { pathname: string }) {
 /** Collapsible main navigation. Collections and the pending-proposal count come from the API. */
 export function AppSidebar() {
   const pathname = usePathname();
+  const requestedSettings = useSearchParams().get(SETTINGS_PARAM);
+  const openSettings = isSettingsSection(requestedSettings) ? requestedSettings : null;
   const { data: pending } = useCountProposals(undefined, { query: { refetchInterval: PROPOSAL_COUNT_REFRESH_MS } });
 
   return (
@@ -132,19 +137,19 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === SETTINGS_ROOT.href} tooltip={SETTINGS_ROOT.title}>
-                    <Link href={SETTINGS_ROOT.href} aria-current={pathname === SETTINGS_ROOT.href ? "page" : undefined}>
+                  <SidebarMenuButton asChild isActive={openSettings !== null} tooltip={SETTINGS_ROOT.title}>
+                    <Link href={settingsHref(pathname, "accounts")} scroll={false}>
                       <SETTINGS_ROOT.icon aria-hidden="true" />
                       <span>{SETTINGS_ROOT.title}</span>
                     </Link>
                   </SidebarMenuButton>
                   <SidebarMenuSub>
                     {SETTINGS_NAV.map((item) => {
-                      const active = isActive(pathname, item.href);
+                      const active = openSettings === item.section;
                       return (
                         <SidebarMenuSubItem key={item.href}>
                           <SidebarMenuSubButton asChild isActive={active}>
-                            <Link href={item.href} aria-current={active ? "page" : undefined}>
+                            <Link href={settingsHref(pathname, item.section)} scroll={false}>
                               <span>{item.title}</span>
                             </Link>
                           </SidebarMenuSubButton>

@@ -4,8 +4,10 @@ import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
 import com.example.contor.api.model.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.service.MailService;
+import com.example.contor.service.ImageData;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -150,5 +153,31 @@ public class MailControllerTest {
         mockMvc.perform(get("/api/emails/5").with(TestAuth.user()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.subject").value("Shipped"));
+    }
+
+    @Test
+    void get_mail_account_photo_returns_the_image() throws Exception {
+        when(mailService.getPhoto(2L)).thenReturn(new ImageData(new byte[] {1, 2, 3}, "image/png"));
+
+        mockMvc.perform(get("/api/mail/accounts/2/photo").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(content().bytes(new byte[] {1, 2, 3}))
+                .andExpect(header().string("Cache-Control", containsString("private")));
+    }
+
+    @Test
+    void get_mail_account_photo_without_photo_returns_404() throws Exception {
+        when(mailService.getPhoto(2L)).thenThrow(new MailAccountPhotoNotFoundException(2L));
+
+        mockMvc.perform(get("/api/mail/accounts/2/photo").with(TestAuth.user()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void get_mail_account_photo_requires_login() throws Exception {
+        mockMvc.perform(get("/api/mail/accounts/2/photo"))
+                .andExpect(status().isUnauthorized());
     }
 }

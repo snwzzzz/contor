@@ -73,7 +73,17 @@ public class AuthService {
         AppUser user = appUserRepository.findByUsername(new Username(command.getUsername()))
                 .orElseThrow(InvalidCredentialsException::new);
         loginAttemptService.recordSuccess(user);
+        startSession(user, request, response);
 
+        auditService.record(AuditEvent.user(AuditAction.AUTH_LOGIN_SUCCESS, user.getId().id()).entity("app_user", user.getId().id()));
+        return AppUserMapper.toDto(user);
+    }
+
+    /**
+     * Signs {@code user} in: session strategy (limit, id rotation, CSRF refresh) and the context in the session.
+     * Package-private on purpose: only verified logins (here) and the dev-profile {@link DevLoginService} may call it.
+     */
+    void startSession(AppUser user, HttpServletRequest request, HttpServletResponse response) {
         AuthenticatedUser principal = AuthenticatedUser.of(user);
         Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.getAuthorities());
         sessionAuthenticationStrategy.onAuthentication(authentication, request, response);
@@ -81,9 +91,6 @@ public class AuthService {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
-
-        auditService.record(AuditEvent.user(AuditAction.AUTH_LOGIN_SUCCESS, principal.userId()).entity("app_user", principal.userId()));
-        return AppUserMapper.toDto(user);
     }
 
     @Transactional

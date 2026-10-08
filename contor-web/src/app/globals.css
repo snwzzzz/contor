@@ -24,6 +24,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-avatar-1: var(--avatar-1);
+  --color-avatar-1-foreground: var(--avatar-1-foreground);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-2-foreground: var(--avatar-2-foreground);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-3-foreground: var(--avatar-3-foreground);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-4-foreground: var(--avatar-4-foreground);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-5-foreground: var(--avatar-5-foreground);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);

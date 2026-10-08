@@ -6,6 +6,7 @@ import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.MailAccountNotFoundException;
+import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
@@ -239,5 +240,51 @@ class MailServiceTest {
         when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.empty());
 
         assertThrows(EmailNotFoundException.class, () -> mailService.getEmail(5L));
+    }
+
+    @Test
+    void getPhoto_ReturnsStoredPhoto() {
+        var acc = account(1L);
+        acc.setPhoto(new byte[] {1, 2, 3});
+        acc.setPhotoContentType("image/png");
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
+
+        var photo = mailService.getPhoto(2L);
+
+        assertArrayEquals(new byte[] {1, 2, 3}, photo.bytes());
+        assertEquals("image/png", photo.contentType());
+    }
+
+    @Test
+    void getPhoto_NotFoundWithoutPhoto() {
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(account(1L)));
+
+        assertThrows(MailAccountPhotoNotFoundException.class, () -> mailService.getPhoto(2L));
+    }
+
+    @Test
+    void getPhoto_NotFoundForForeignAccount() {
+        var foreign = account(99L);
+        foreign.setPhoto(new byte[] {1});
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(foreign));
+
+        assertThrows(MailAccountNotFoundException.class, () -> mailService.getPhoto(2L));
+    }
+
+    @Test
+    void handleCallback_ReconnectFetchesThePhotoAgain() {
+        var existing = account(1L);
+        existing.setPhotoCheckedAt(Instant.now());
+        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
+        when(msGraphAuthService.exchangeCode("code123"))
+                .thenReturn(new MsGraphAuthService.TokenResult("access1", "refresh1", Instant.now().plusSeconds(3600)));
+        when(msGraphMailService.fetchUserProfile("access1")).thenReturn(new MsGraphMailService.UserProfile("me@example.com", "Me"));
+        when(appUserRepository.findById(new AppUser.AppUserId(1L))).thenReturn(Optional.of(existing.getOwner()));
+        when(mailAccountRepository.findByOwner_IdAndEmailAddress(eq(new AppUser.AppUserId(1L)), any(Email.class)))
+                .thenReturn(Optional.of(existing));
+
+        mailService.handleCallback("state123", "code123", null, null);
+
+        assertNull(existing.getPhotoCheckedAt());
     }
 }

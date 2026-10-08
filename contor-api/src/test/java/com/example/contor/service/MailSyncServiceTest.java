@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.MailAccountState;
 import com.example.contor.domain.*;
+import com.example.contor.persistence.ContactPhotoRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.MailAccountRepository;
 import com.microsoft.graph.models.EmailAddress;
@@ -37,6 +38,9 @@ class MailSyncServiceTest {
 
     @Mock
     private MsGraphMailService msGraphMailService;
+
+    @Mock
+    private ContactPhotoRepository contactPhotoRepository;
 
     @InjectMocks
     private MailSyncService mailSyncService;
@@ -114,5 +118,85 @@ class MailSyncServiceTest {
         assertThat(status.getMessagesSynced()).isEqualTo(1);
         assertThat(account.getDeltaLink()).isEqualTo("delta-link-final");
         verify(emailMessageRepository).saveAndFlush(any(EmailMessage.class));
+    }
+
+    @Test
+    void syncAccount_FetchesProfilePhotoOnce() {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+        when(msGraphMailService.fetchProfilePhoto("valid-token"))
+                .thenReturn(Optional.of(new ImageData(jpeg, "image/jpeg")));
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        mailSyncService.syncAccount(account);
+
+        assertThat(account.getPhoto()).isEqualTo(jpeg);
+        assertThat(account.getPhotoContentType()).isEqualTo("image/jpeg");
+        assertThat(account.getPhotoCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void syncAccount_RemembersAccountsWithoutPhoto() {
+        when(msGraphMailService.fetchProfilePhoto("valid-token")).thenReturn(Optional.empty());
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        mailSyncService.syncAccount(account);
+
+        assertThat(account.getPhoto()).isNull();
+        assertThat(account.getPhotoCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void syncAccount_SkipsPhotoWhenAlreadyChecked() {
+        account.setPhotoCheckedAt(Instant.now());
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(msGraphMailService, never()).fetchProfilePhoto(any());
+    }
+
+    @Test
+    void syncAccount_ReplacesContactPhotosOncePerDay() {
+        when(msGraphMailService.fetchContactPhotos("valid-token")).thenReturn(List.of(
+                new MsGraphMailService.ContactPhotoData("bob@example.com", new ImageData(new byte[] {1}, "image/jpeg"))));
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(contactPhotoRepository).deleteByAccount_Id(account.getId());
+        verify(contactPhotoRepository).saveAllAndFlush(argThat(photos -> {
+            var list = (List<ContactPhoto>) photos;
+            return list.size() == 1 && list.get(0).getEmailAddress().equals("bob@example.com") && list.get(0).getAccount() == account;
+        }));
+        assertThat(account.getContactsCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void syncAccount_SkipsContactPhotosCheckedToday() {
+        account.setContactsCheckedAt(Instant.now().minusSeconds(3600));
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(msGraphMailService, never()).fetchContactPhotos(any());
+        verifyNoInteractions(contactPhotoRepository);
+    }
+
+    @Test
+    void syncAccount_KeepsSyncingWhenContactsAreNotPermitted() {
+        when(msGraphMailService.fetchContactPhotos("valid-token")).thenThrow(new IllegalStateException("403 Forbidden"));
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+
+        var status = mailSyncService.syncAccount(account);
+
+        assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
+        assertThat(account.getContactsCheckedAt()).isNotNull();
+        verify(contactPhotoRepository, never()).deleteByAccount_Id(any());
     }
 }

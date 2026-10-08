@@ -103,7 +103,7 @@ app:
       client-secret: ${MSGRAPH_CLIENT_SECRET:}
       tenant-id: ${MSGRAPH_TENANT_ID:common}
       redirect-uri: ${MSGRAPH_REDIRECT_URI:http://localhost:8080/api/mail/accounts/callback}
-      scopes: ${MSGRAPH_SCOPES:Mail.Read,User.Read,offline_access}
+      scopes: ${MSGRAPH_SCOPES:Mail.Read,User.Read,Contacts.Read,offline_access}
     sync:
       interval: ${MAIL_SYNC_INTERVAL:5m}
       enabled: ${MAIL_SYNC_ENABLED:true}

@@ -3,11 +3,17 @@ package com.example.contor.controller;
 import com.example.contor.api.MailApi;
 import com.example.contor.api.model.*;
 import com.example.contor.service.MailService;
+import com.example.contor.service.ImageData;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -38,6 +44,15 @@ public class MailController implements MailApi {
     public ResponseEntity<Void> disconnectMailAccount(Long accountId) {
         mailService.disconnectAccount(accountId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Resource> getMailAccountPhoto(Long accountId) {
+        ImageData photo = mailService.getPhoto(accountId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(photo.contentType()))
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
+                .body(new ByteArrayResource(photo.bytes()));
     }
 
     @Override

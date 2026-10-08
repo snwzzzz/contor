@@ -50,6 +50,21 @@ public class MailAccount extends AuditableEntity {
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 
+    /** Profile photo from Microsoft Graph (small, a few KB). */
+    @Column(name = "photo")
+    private byte[] photo;
+
+    @Column(name = "photo_content_type")
+    private String photoContentType;
+
+    /** When the photo was last requested; {@code null} = fetch on the next sync. */
+    @Column(name = "photo_checked_at")
+    private Instant photoCheckedAt;
+
+    /** When the Outlook contact photos were last read; refreshed at most daily. */
+    @Column(name = "contacts_checked_at")
+    private Instant contactsCheckedAt;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

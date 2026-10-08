@@ -41,14 +41,6 @@ describe("SetupForm", () => {
     });
   });
 
-  it("asks for an Outlook address", () => {
-    renderWithProviders(<SetupForm />);
-
-    expect(screen.getByLabelText("Email")).toHaveAccessibleDescription(
-      "Any Outlook address (outlook, hotmail, live or msn).",
-    );
-  });
-
   it("does not send mismatching passwords", async () => {
     const calls = mockApi({});
     renderWithProviders(<SetupForm />);

@@ -72,6 +72,16 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void dev_login_does_not_exist_outside_the_dev_profile() {
+        setupOwner(client());
+        var anonymous = client();
+
+        assertThat(anonymous.get("/api/auth/dev-login").status()).isEqualTo(401);
+        assertThat(anonymous.post("/api/auth/dev-login", null).status()).isEqualTo(401);
+        assertThat(loggedInOwner().get("/api/auth/dev-login").status()).isEqualTo(404);
+    }
+
+    @Test
     void unauthenticated_access_to_a_protected_endpoint_returns_401() {
         var response = client().get("/api/auth/me");
 

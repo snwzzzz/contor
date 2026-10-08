@@ -65,6 +65,15 @@ public class MailMapperTest {
         assertEquals(MailAccountState.NEEDS_REAUTH, dto.getStatus());
         assertEquals(Instant.parse("2026-01-01T00:00:00Z").atOffset(ZoneOffset.UTC), dto.getLastSyncedAt());
         assertFalse(dto.toString().contains("secret"));
+        assertFalse(dto.getHasPhoto());
+    }
+
+    @Test
+    void maps_whether_the_account_has_a_profile_photo() {
+        var account = account();
+        account.setPhoto(new byte[] {1, 2, 3});
+
+        assertTrue(MailMapper.toDto(account).getHasPhoto());
     }
 
     @Test

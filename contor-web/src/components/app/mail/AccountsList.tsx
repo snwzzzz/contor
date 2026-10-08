@@ -1,13 +1,26 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Mail, RefreshCw, RotateCcw, Unlink } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Mail,
+  RefreshCw,
+  RotateCcw,
+  Unlink,
+} from "lucide-react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   getListMailAccountsQueryKey,
   useConnectMailAccount,
@@ -15,8 +28,13 @@ import {
   useListMailAccounts,
   useSyncMailAccount,
 } from "@/lib/api/generated/endpoints/mail/mail";
+import { AccountAvatar } from "./AccountAvatar";
 
-const STATUS_LABEL = { ACTIVE: "Active", NEEDS_REAUTH: "Needs sign-in", DISABLED: "Disconnected" } as const;
+const STATUS_LABEL = {
+  ACTIVE: "Active",
+  NEEDS_REAUTH: "Needs sign-in",
+  DISABLED: "Disconnected",
+} as const;
 
 interface AccountsListProps {
   /** The Microsoft sign-in just completed (`?connected=true` from the OAuth callback). */
@@ -25,7 +43,10 @@ interface AccountsListProps {
   mailError?: string;
 }
 
-export function AccountsList({ connected = false, mailError }: AccountsListProps) {
+export function AccountsList({
+  connected = false,
+  mailError,
+}: AccountsListProps) {
   const queryClient = useQueryClient();
   const { data: accounts, isLoading, error } = useListMailAccounts();
 
@@ -42,7 +63,9 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
   const syncMutation = useSyncMailAccount({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListMailAccountsQueryKey() });
+        queryClient.invalidateQueries({
+          queryKey: getListMailAccountsQueryKey(),
+        });
       },
     },
   });
@@ -50,7 +73,9 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
   const disconnectMutation = useDisconnectMailAccount({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListMailAccountsQueryKey() });
+        queryClient.invalidateQueries({
+          queryKey: getListMailAccountsQueryKey(),
+        });
       },
     },
   });
@@ -77,12 +102,18 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
   ) : connected ? (
     <Alert role="status">
       <CheckCircle2 aria-hidden="true" />
-      <AlertDescription>Mailbox connected. The first sync has run.</AlertDescription>
+      <AlertDescription>
+        Mailbox connected. The first sync has run.
+      </AlertDescription>
     </Alert>
   ) : null;
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading connected accounts...</div>;
+    return (
+      <div className="text-sm text-muted-foreground">
+        Loading connected accounts...
+      </div>
+    );
   }
 
   if (error) {
@@ -98,7 +129,10 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
           title="No accounts connected"
           description="Connect your Microsoft 365 or Outlook account to sync emails."
           action={
-            <AppButton onClick={handleConnect} loading={connectMutation.isPending}>
+            <AppButton
+              onClick={handleConnect}
+              loading={connectMutation.isPending}
+            >
               Connect Outlook
             </AppButton>
           }
@@ -114,10 +148,15 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
         <div>
           <h2 className="text-base font-medium">Mailboxes</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your connected Microsoft Graph accounts and email synchronization.
+            Manage your connected Microsoft Graph accounts and email
+            synchronization.
           </p>
         </div>
-        <AppButton onClick={handleConnect} loading={connectMutation.isPending} variant="outline">
+        <AppButton
+          onClick={handleConnect}
+          loading={connectMutation.isPending}
+          variant="outline"
+        >
           Connect Another Account
         </AppButton>
       </div>
@@ -126,22 +165,40 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
         {accounts.map((account) => {
           const isActive = account.status === "ACTIVE";
           const isDisabled = account.status === "DISABLED";
-          const isSyncing = syncMutation.isPending && syncMutation.variables?.accountId === account.id;
+          const isSyncing =
+            syncMutation.isPending &&
+            syncMutation.variables?.accountId === account.id;
           const isDisconnecting =
-            disconnectMutation.isPending && disconnectMutation.variables?.accountId === account.id;
+            disconnectMutation.isPending &&
+            disconnectMutation.variables?.accountId === account.id;
           const isReconnecting =
-            connectMutation.isPending && connectMutation.variables?.data?.emailHint === account.emailAddress;
+            connectMutation.isPending &&
+            connectMutation.variables?.data?.emailHint === account.emailAddress;
 
           return (
             <Card key={account.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">{account.emailAddress}</CardTitle>
-                  {account.displayName ? (
-                    <CardDescription>{account.displayName}</CardDescription>
-                  ) : null}
+                <div className="flex min-w-0 items-center gap-3">
+                  <AccountAvatar account={account} size={36} />
+                  <div className="min-w-0 space-y-1">
+                    <CardTitle className="truncate text-base">
+                      {account.emailAddress}
+                    </CardTitle>
+                    {account.displayName ? (
+                      <CardDescription>{account.displayName}</CardDescription>
+                    ) : null}
+                  </div>
                 </div>
-                <Badge variant={isActive ? "default" : isDisabled ? "secondary" : "destructive"} className="gap-1">
+                <Badge
+                  variant={
+                    isActive
+                      ? "default"
+                      : isDisabled
+                        ? "secondary"
+                        : "destructive"
+                  }
+                  className="gap-1"
+                >
                   {isActive ? (
                     <CheckCircle2 className="size-3" />
                   ) : (
@@ -164,7 +221,7 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
                       onClick={() => handleSync(account.id)}
                       loading={isSyncing}
                     >
-                      <RefreshCw className="mr-1 size-3.5" />
+                      <RefreshCw className="size-3.5" />
                       Sync Now
                     </AppButton>
                   ) : (
@@ -174,18 +231,18 @@ export function AccountsList({ connected = false, mailError }: AccountsListProps
                       onClick={() => handleReconnect(account.emailAddress)}
                       loading={isReconnecting}
                     >
-                      <RotateCcw className="mr-1 size-3.5" />
+                      <RotateCcw className="size-3.5" />
                       Reconnect
                     </AppButton>
                   )}
                   {isDisabled ? null : (
                     <AppButton
                       size="sm"
-                      variant="ghost"
+                      variant="destructive"
                       onClick={() => handleDisconnect(account.id)}
                       loading={isDisconnecting}
                     >
-                      <Unlink className="mr-1 size-3.5 text-destructive" />
+                      <Unlink className="size-3.5 text-destructive" />
                       Disconnect
                     </AppButton>
                   )}

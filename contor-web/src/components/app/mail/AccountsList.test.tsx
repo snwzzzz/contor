@@ -131,4 +131,17 @@ describe("AccountsList", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent("Mailbox connected");
   });
+
+  it("shows the mailbox's profile picture", async () => {
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [{ id: 3, provider: "MICROSOFT_GRAPH", emailAddress: "me@outlook.com", status: "ACTIVE", hasPhoto: true }],
+      },
+    });
+
+    renderWithProviders(<AccountsList />);
+
+    const title = await screen.findByText("me@outlook.com");
+    expect(title.closest("[data-slot=card]")?.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/mail/accounts/3/photo"));
+  });
 });

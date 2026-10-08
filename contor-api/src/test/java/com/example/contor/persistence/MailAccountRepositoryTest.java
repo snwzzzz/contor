@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Instant;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,5 +51,21 @@ public class MailAccountRepositoryTest {
         var reloaded = mailAccountRepository.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getAccessToken()).isEqualTo("access-plain");
         assertThat(reloaded.getRefreshToken()).isEqualTo("refresh-plain");
+    }
+
+    @Test
+    void stores_the_profile_photo() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var account = Fixtures.mailAccount(owner, "me@example.com");
+        account.setPhoto(new byte[] {1, 2, 3});
+        account.setPhotoContentType("image/png");
+        account.setPhotoCheckedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        var saved = mailAccountRepository.saveAndFlush(account);
+
+        var reloaded = mailAccountRepository.findById(saved.getId()).orElseThrow();
+
+        assertThat(reloaded.getPhoto()).containsExactly(1, 2, 3);
+        assertThat(reloaded.getPhotoContentType()).isEqualTo("image/png");
+        assertThat(reloaded.getPhotoCheckedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
     }
 }

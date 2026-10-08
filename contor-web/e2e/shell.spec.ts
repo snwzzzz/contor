@@ -51,10 +51,16 @@ test.describe("app shell", () => {
     });
     page.on("pageerror", (error) => errors.push(error.message));
 
-    for (const path of ["/inbox", "/proposals", "/settings", "/settings/security"]) {
+    for (const path of ["/inbox", "/proposals"]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     }
+    // Settings are a modal over the inbox; the old URLs redirect into it.
+    for (const [path, section] of [["/settings", "Accounts"], ["/settings/security", "Security"]]) {
+      await page.goto(path);
+      await expect(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: section })).toBeVisible();
+    }
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" })).toBeVisible();
     await page.keyboard.press("ControlOrMeta+k");
     await expect(page.getByPlaceholder("Search pages, collections and actions…")).toBeVisible();

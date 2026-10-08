@@ -2,7 +2,7 @@
 
 import { Database, LogOut, Monitor, Moon, Plus, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import {
@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/command";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
-import { ALL_NAV, collectionHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
+import { ALL_NAV, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
 
 /** ⌘K / Ctrl+K: jump to any section or collection, switch theme, log out. One instance lives in the top bar. */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const router = useRouter();
   const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
@@ -62,7 +63,7 @@ export function CommandPalette() {
             <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup heading="Go to">
               {ALL_NAV.map((item) => (
-                <CommandItem key={item.href} value={item.title} onSelect={() => go(item.href)}>
+                <CommandItem key={item.href} value={item.title} onSelect={() => go(inAppHref(item, pathname))}>
                   <item.icon aria-hidden="true" />
                   {item.title}
                 </CommandItem>

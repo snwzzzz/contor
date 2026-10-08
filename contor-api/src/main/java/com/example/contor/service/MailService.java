@@ -5,6 +5,7 @@ import com.example.contor.api.model.*;
 import com.example.contor.domain.*;
 import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailAccountNotFoundException;
+import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.mapper.MailMapper;
 import com.example.contor.persistence.*;
@@ -99,6 +100,7 @@ public class MailService {
                 account.setRefreshToken(tokens.refreshToken());
             }
             account.setTokenExpiresAt(tokens.expiresAt());
+            account.setPhotoCheckedAt(null); // the sync below fetches the (possibly changed) photo again
             account.setStatus(MailAccountStatus.ACTIVE);
             mailAccountRepository.saveAndFlush(account);
 
@@ -137,6 +139,17 @@ public class MailService {
         account.setTokenExpiresAt(null);
         account.setDeltaLink(null);
         mailAccountRepository.saveAndFlush(account);
+    }
+
+    @Transactional
+    public ImageData getPhoto(Long accountId) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+        if (account.getPhoto() == null) {
+            throw new MailAccountPhotoNotFoundException(accountId);
+        }
+        return new ImageData(account.getPhoto(), account.getPhotoContentType());
     }
 
     @Transactional

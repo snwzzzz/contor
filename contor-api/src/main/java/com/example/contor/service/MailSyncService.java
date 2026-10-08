@@ -2,10 +2,12 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.MailAccountState;
 import com.example.contor.api.model.MailSyncStatusDto;
+import com.example.contor.domain.ContactPhoto;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.MailAccountStatus;
 import com.example.contor.domain.ProcessingState;
+import com.example.contor.persistence.ContactPhotoRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.MailAccountRepository;
 import com.microsoft.graph.models.BodyType;
@@ -16,9 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -30,6 +35,9 @@ public class MailSyncService {
     private final EmailMessageRepository emailMessageRepository;
     private final MsGraphAuthService msGraphAuthService;
     private final MsGraphMailService msGraphMailService;
+    private final ContactPhotoRepository contactPhotoRepository;
+
+    private static final Duration CONTACTS_REFRESH = Duration.ofDays(1);
 
     @Transactional
     public MailSyncStatusDto syncAccount(MailAccount account) {
@@ -44,6 +52,14 @@ public class MailSyncService {
                     .lastError("Token refresh failed: " + e.getMessage());
         }
 
+        if (account.getPhotoCheckedAt() == null) {
+            refreshPhoto(account, token);
+        }
+        if (account.getContactsCheckedAt() == null
+                || account.getContactsCheckedAt().isBefore(Instant.now().minus(CONTACTS_REFRESH))) {
+            refreshContactPhotos(account, token);
+        }
+
         try {
             return doDeltaSync(account, token);
         } catch (Exception e) {
@@ -51,6 +67,44 @@ public class MailSyncService {
             return new MailSyncStatusDto(account.getId().id(), MailAccountState.valueOf(account.getStatus().name()))
                     .lastError("Sync failed: " + e.getMessage());
         }
+    }
+
+    /** Once per (re)connect: store the profile photo, or remember that there is none (saved even if the sync fails). */
+    private void refreshPhoto(MailAccount account, String token) {
+        msGraphMailService.fetchProfilePhoto(token).ifPresentOrElse(photo -> {
+            account.setPhoto(photo.bytes());
+            account.setPhotoContentType(photo.contentType());
+        }, () -> {
+            account.setPhoto(null);
+            account.setPhotoContentType(null);
+        });
+        account.setPhotoCheckedAt(Instant.now());
+        mailAccountRepository.saveAndFlush(account);
+    }
+
+    /**
+     * Replaces the account's contact photos. Without the Contacts.Read permission (accounts connected before it was
+     * requested) Graph refuses; that is logged and retried a day later, the mail sync goes on.
+     */
+    private void refreshContactPhotos(MailAccount account, String token) {
+        try {
+            Map<String, MsGraphMailService.ContactPhotoData> byAddress = new LinkedHashMap<>();
+            msGraphMailService.fetchContactPhotos(token).forEach(contact -> byAddress.putIfAbsent(contact.emailAddress(), contact));
+            List<ContactPhoto> photos = byAddress.values().stream()
+                    .map(contact -> ContactPhoto.builder()
+                            .account(account)
+                            .emailAddress(contact.emailAddress())
+                            .image(contact.photo().bytes())
+                            .contentType(contact.photo().contentType())
+                            .build())
+                    .toList();
+            contactPhotoRepository.deleteByAccount_Id(account.getId());
+            contactPhotoRepository.saveAllAndFlush(photos);
+        } catch (RuntimeException e) {
+            log.info("Contact photos unavailable for account {}: {}", account.getId().id(), e.getMessage());
+        }
+        account.setContactsCheckedAt(Instant.now());
+        mailAccountRepository.saveAndFlush(account);
     }
 
     private MailSyncStatusDto doDeltaSync(MailAccount account, String token) {

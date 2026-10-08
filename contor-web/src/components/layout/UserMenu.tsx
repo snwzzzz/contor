@@ -3,6 +3,7 @@
 import { LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,9 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useGetCurrentUser } from "@/lib/api/generated/endpoints/auth/auth";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
+import { settingsHref } from "@/lib/navigation";
 
 /** Current user, theme switch, settings, logout. */
 export function UserMenu() {
+  const pathname = usePathname();
   const { data: user } = useGetCurrentUser();
   const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
@@ -56,7 +59,7 @@ export function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/settings">
+          <Link href={settingsHref(pathname, "accounts")} scroll={false}>
             <Settings aria-hidden="true" />
             Settings
           </Link>

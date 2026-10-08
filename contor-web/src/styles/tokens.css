@@ -31,6 +31,17 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  /* Sender avatars: soft tinted circles (mail list, reading pane). */
+  --avatar-1: oklch(0.93 0.045 295);
+  --avatar-1-foreground: oklch(0.45 0.16 295);
+  --avatar-2: oklch(0.95 0.07 95);
+  --avatar-2-foreground: oklch(0.5 0.11 85);
+  --avatar-3: oklch(0.93 0.05 55);
+  --avatar-3-foreground: oklch(0.52 0.14 45);
+  --avatar-4: oklch(0.94 0.05 155);
+  --avatar-4-foreground: oklch(0.46 0.11 155);
+  --avatar-5: oklch(0.93 0.04 245);
+  --avatar-5-foreground: oklch(0.46 0.13 250);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -66,6 +77,16 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  --avatar-1: oklch(0.33 0.07 295);
+  --avatar-1-foreground: oklch(0.86 0.08 295);
+  --avatar-2: oklch(0.34 0.06 90);
+  --avatar-2-foreground: oklch(0.88 0.1 95);
+  --avatar-3: oklch(0.33 0.06 50);
+  --avatar-3-foreground: oklch(0.86 0.09 55);
+  --avatar-4: oklch(0.32 0.05 155);
+  --avatar-4-foreground: oklch(0.86 0.09 155);
+  --avatar-5: oklch(0.32 0.06 250);
+  --avatar-5-foreground: oklch(0.86 0.08 245);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

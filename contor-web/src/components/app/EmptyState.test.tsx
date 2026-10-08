@@ -4,7 +4,7 @@ import { EmptyState } from "./EmptyState";
 
 describe("EmptyState", () => {
   it("explains what is missing and offers an action", () => {
-    render(<EmptyState title="No mailbox connected" description="Comes in a later phase." action={<a href="/settings">Settings</a>} />);
+    render(<EmptyState title="No mailbox connected" description="Comes in a later phase." action={<a href="/inbox">Settings</a>} />);
 
     expect(screen.getByRole("heading", { name: "No mailbox connected" })).toBeInTheDocument();
     expect(screen.getByText("Comes in a later phase.")).toBeInTheDocument();

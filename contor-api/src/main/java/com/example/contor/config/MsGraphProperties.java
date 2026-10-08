@@ -14,7 +14,7 @@ public record MsGraphProperties(
         String clientSecret,
         @DefaultValue("common") String tenantId,
         @DefaultValue("http://localhost:8080/api/mail/accounts/callback") String redirectUri,
-        @DefaultValue("Mail.Read,User.Read,offline_access") String scopes) {
+        @DefaultValue("Mail.Read,User.Read,Contacts.Read,offline_access") String scopes) {
 
     public boolean isConfigured() {
         return clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank();
@@ -32,7 +32,7 @@ public record MsGraphProperties(
     /** Configured as a comma- or space-separated list. */
     private Stream<String> scopeList() {
         if (scopes == null || scopes.isBlank()) {
-            return Stream.of("Mail.Read", "User.Read", "offline_access");
+            return Stream.of("Mail.Read", "User.Read", "Contacts.Read", "offline_access");
         }
         return Arrays.stream(scopes.split("[,\\s]+"))
                 .filter(s -> !s.isEmpty());

@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
@@ -123,7 +124,12 @@ public class SecurityConfig {
                                                       JsonSecurityErrorHandler errorHandler,
                                                       SetupState setupState,
                                                       SecurityProperties properties,
-                                                      Clock clock) throws Exception {
+                                                      Clock clock,
+                                                      Environment environment) throws Exception {
+        // Passwordless dev sign-in (DevController, loopback only) is public only with the dev profile.
+        AuthorizationManager<RequestAuthorizationContext> devLogin = environment.matchesProfiles("dev")
+                ? (authentication, context) -> new AuthorizationDecision(true)
+                : AuthenticatedAuthorizationManager.authenticated();
         AuthorizationManager<RequestAuthorizationContext> setupPending =
                 (authentication, context) -> new AuthorizationDecision(setupState.isPending());
 
@@ -155,6 +161,7 @@ public class SecurityConfig {
                                 setupPending, AuthenticatedAuthorizationManager.authenticated()))
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/mail/accounts/callback").permitAll()
+                        .requestMatchers("/api/auth/dev-login").access(devLogin)
                         .anyRequest().authenticated());
         return http.build();
     }

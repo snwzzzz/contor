@@ -4,6 +4,8 @@ package com.example.contor.domain;
 public enum AuditAction {
     AUTH_LOGIN_SUCCESS,
     AUTH_LOGIN_FAILURE,
+    /** Passwordless sign-in as the dev account (dev profile only). */
+    AUTH_DEV_LOGIN,
     AUTH_LOCKOUT,
     AUTH_LOGOUT,
     AUTH_PASSWORD_CHANGED,

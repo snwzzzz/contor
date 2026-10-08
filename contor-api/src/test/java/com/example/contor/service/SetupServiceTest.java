@@ -132,13 +132,18 @@ class SetupServiceTest {
     }
 
     @Test
-    void completeSetup_NonOutlookEmailRejected() {
+    void completeSetup_AnyEmailProviderAccepted() {
         when(setupState.isPending()).thenReturn(true);
         when(setupTokenHolder.matches("token")).thenReturn(true);
+        when(setupTokenHolder.consume("token")).thenReturn(true);
+        when(appUserRepository.saveAndFlush(any(AppUser.class))).thenAnswer(invocation -> {
+            AppUser user = invocation.getArgument(0);
+            user.setId(new AppUser.AppUserId(1L));
+            return user;
+        });
 
-        assertThrows(IllegalArgumentException.class,
-                () -> setupService.completeSetup(new SetupCommand("token", "owner", "owner@gmail.com", "Correct-Horse-7-Battery")));
-        verify(setupTokenHolder, never()).consume(any());
-        verify(appUserRepository, never()).saveAndFlush(any());
+        CurrentUserDto result = setupService.completeSetup(new SetupCommand("token", "owner", "owner@gmail.com", "Correct-Horse-7-Battery"));
+
+        assertEquals("owner@gmail.com", result.getEmail());
     }
 }

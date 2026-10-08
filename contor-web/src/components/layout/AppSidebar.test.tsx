@@ -39,10 +39,11 @@ describe("AppSidebar", () => {
       ["Relations", "/relations"],
       ["Queries", "/queries"],
       ["Rules & Labels", "/rules"],
-      ["Accounts", "/settings/accounts"],
-      ["AI Models", "/settings/ai"],
-      ["Autonomy", "/settings/autonomy"],
-      ["Security", "/settings/security"],
+      ["Settings", "/proposals?settings=accounts"],
+      ["Accounts", "/proposals?settings=accounts"],
+      ["AI Models", "/proposals?settings=ai"],
+      ["Autonomy", "/proposals?settings=autonomy"],
+      ["Security", "/proposals?settings=security"],
     ]) {
       expect(screen.getByRole("link", { name: new RegExp(`^${name}`) })).toHaveAttribute("href", href);
     }

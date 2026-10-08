@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.microsoft.graph.models.Contact;
 import com.microsoft.graph.models.EmailAddress;
 import com.microsoft.graph.models.Recipient;
 import com.microsoft.graph.models.User;
@@ -47,5 +48,28 @@ class MsGraphMailServiceTest {
         assertThat(recipients).hasSize(1);
         assertThat(recipients.get(0).name()).isEqualTo("Alice");
         assertThat(recipients.get(0).address()).isEqualTo("alice@example.com");
+    }
+
+    @Test
+    void contentTypeOf_DetectsImageFormatFromBytes() {
+        assertThat(MsGraphMailService.contentTypeOf(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D})).isEqualTo("image/png");
+        assertThat(MsGraphMailService.contentTypeOf(new byte[] {'G', 'I', 'F', '8', '9'})).isEqualTo("image/gif");
+        assertThat(MsGraphMailService.contentTypeOf(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF})).isEqualTo("image/jpeg");
+        assertThat(MsGraphMailService.contentTypeOf(new byte[] {1, 2})).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void contactAddresses_AreLowerCasedDistinctAndValid() {
+        var contact = new Contact();
+        var a = new EmailAddress();
+        a.setAddress("Bob@Example.com");
+        var b = new EmailAddress();
+        b.setAddress("bob@example.com");
+        var c = new EmailAddress();
+        c.setAddress("not an address");
+        contact.setEmailAddresses(List.of(a, b, c, new EmailAddress()));
+
+        assertThat(MsGraphMailService.contactAddresses(contact)).containsExactly("bob@example.com");
+        assertThat(MsGraphMailService.contactAddresses(new Contact())).isEmpty();
     }
 }

@@ -90,14 +90,12 @@ There are no default credentials. On the first start with an empty database the 
 ==================================================================
 ```
 
-The owner must register with an **Outlook address** (any of `outlook.*`, `hotmail.*`, `live.*` or `msn.com`, e.g. `you@outlook.de`); other addresses are rejected with 400.
-
 Use it once to create the owner account (the setup page in the web app follows in step 6; until then via `POST /api/setup`, see the API contract). The token lives only in memory: it is gone after use, and a restart issues a new one as long as no user exists. Once the owner exists, `/api/setup` is permanently disabled.
 
 
 ### Dev account
 
-With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD` (same password rules) and optionally `DEV_ACCOUNT_EMAIL` in `.env`. On every start it is created as OWNER if missing, otherwise its password is reset to the configured one and any lockout cleared. First-run setup is then skipped. Never set these outside local development.
+With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD` (same password rules) and optionally `DEV_ACCOUNT_EMAIL` in `.env`. On every start it is created as OWNER if missing, otherwise its password is reset to the configured one and any lockout cleared. First-run setup is then skipped, and the web app signs in as this account by itself: the login page asks the backend (`GET /api/auth/dev-login`, server-side) and calls `POST /api/auth/dev-login`, which exists only with the `dev` profile and answers loopback requests only. Log out to see the login page again (it signs you straight back in). Never set these outside local development.
 ## Security overview
 
 - Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
@@ -139,7 +137,8 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
 | Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; emails scoped to current user, inbox filterable per account |
+| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account |
+| Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -205,7 +204,7 @@ All variables are listed in `.env.example`.
 | `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
 | `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the Microsoft OAuth callback (`/settings/accounts?connected=true`) |
 | `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
-| `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (needed for the refresh token) |
+| `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,Contacts.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (refresh token); `Contacts.Read` gives sender photos from your Outlook contacts |
 | `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |

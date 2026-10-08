@@ -8,7 +8,6 @@ import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FormField } from "@/components/app/FormField";
 import { useCompleteSetup } from "@/lib/api/generated/endpoints/setup/setup";
 
-const EMAIL_RULE = "Any Outlook address (outlook, hotmail, live or msn).";
 const PASSWORD_RULES = "12–128 characters with lowercase, uppercase, digit and special character.";
 
 /** First-run setup: creates the OWNER with the one-time token from the backend log. */
@@ -52,15 +51,7 @@ export function SetupForm() {
         autoFocus
       />
       <FormField id="username" name="username" label="Username" autoComplete="username" required />
-      <FormField
-        id="email"
-        name="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        description={EMAIL_RULE}
-        required
-      />
+      <FormField id="email" name="email" label="Email" type="email" autoComplete="email" required />
       <FormField
         id="password"
         name="password"

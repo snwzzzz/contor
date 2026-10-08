@@ -34,8 +34,8 @@ for (const theme of themes) {
         await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" })).toBeVisible();
         await capture(page, "inbox", theme);
 
-        await page.goto("/settings");
-        await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+        await page.goto("/inbox?settings=accounts");
+        await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
         await capture(page, "settings", theme);
 
         await page.keyboard.press("ControlOrMeta+k");

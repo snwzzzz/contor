@@ -40,6 +40,10 @@ tags:
     description: Saved queries (stored only in phase 1)
   - name: Mail
     description: Synced mailboxes and emails (read-only in phase 1)
+  - name: Dev
+    description: Local development only (backend `dev` profile); these paths do not exist otherwise
+  - name: Senders
+    description: Pictures of mail senders (sender domain logos, Outlook contact photos)
 paths:
   /api/system/version:
     get:
@@ -98,6 +102,43 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /api/auth/dev-login:
+    get:
+      tags: [Dev]
+      operationId: getDevLogin
+      summary: Whether automatic dev sign-in is available, and as whom
+      description: |
+        Only with the backend `dev` profile and a configured dev account (DEV_ACCOUNT_*), and only for requests from
+        this machine (loopback). 404 otherwise.
+      security: []
+      responses:
+        '200':
+          description: Dev sign-in is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevLoginDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Dev]
+      operationId: devLogin
+      summary: Sign in as the dev account without a password (dev profile, loopback only)
+      description: Starts a session exactly like the normal login (session id rotated, session limit, CSRF refresh, audit).
+      security: []
+      responses:
+        '200':
+          description: Signed in; session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/auth/logout:
     post:
       tags: [Auth]
@@ -1159,6 +1200,123 @@ paths:
             text/html:
               schema:
                 type: string
+  /api/mail/accounts/{accountId}/photo:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    get:
+      tags: [Mail]
+      operationId: getMailAccountPhoto
+      summary: Profile photo of a connected mailbox (from Microsoft Graph, fetched on the first sync after connecting).
+      responses:
+        '200':
+          description: The photo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/senders/logos:
+    get:
+      tags: [Senders]
+      operationId: listSenderLogos
+      summary: Which of the given sender domains have a logo
+      description: |
+        Unknown or stale domains are first fetched by the backend from https://<domain> (apple-touch-icon, favicon;
+        public hosts only, raster images only) and cached: found logos for 30 days, misses for 7 days. Invalid domains
+        are ignored. At most 100 domains per request.
+      parameters:
+        - name: domain
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              maxLength: 253
+      responses:
+        '200':
+          description: The requested domains that have a logo, lower case
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/senders/logos/{domain}:
+    get:
+      tags: [Senders]
+      operationId: getSenderLogo
+      summary: Cached logo of a sender domain (resolve it with listSenderLogos first)
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 253
+      responses:
+        '200':
+          description: The logo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/senders/contact-photos:
+    get:
+      tags: [Senders]
+      operationId: listContactPhotos
+      summary: Contact photos of the current user's mailboxes (Outlook contacts, refreshed by the mail sync daily)
+      responses:
+        '200':
+          description: One entry per contact address with a photo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactPhotoDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/senders/contact-photos/{contactPhotoId}:
+    get:
+      tags: [Senders]
+      operationId: getContactPhoto
+      summary: The photo of one contact
+      parameters:
+        - name: contactPhotoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The photo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/mail/accounts/{accountId}/sync:
     parameters:
       - $ref: '#/components/parameters/MailAccountId'
@@ -1479,7 +1637,6 @@ components:
           maxLength: 64
         email:
           type: string
-          description: Any Outlook address (outlook.*, hotmail.*, live.* or msn.com); others are rejected with 400.
           maxLength: 254
         password:
           type: string
@@ -2168,6 +2325,26 @@ components:
         lastSyncedAt:
           type: string
           format: date-time
+        hasPhoto:
+          type: boolean
+          default: false
+          description: The mailbox has a profile photo, served by GET /api/mail/accounts/{accountId}/photo.
+    DevLoginDto:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+    ContactPhotoDto:
+      type: object
+      required: [id, emailAddress]
+      properties:
+        id:
+          type: integer
+          format: int64
+        emailAddress:
+          type: string
+          description: Contact address, lower case
     ConnectMailAccountCommand:
       type: object
       properties:
