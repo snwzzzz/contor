@@ -280,7 +280,7 @@ class RecordServiceTest {
                 .thenReturn(List.of(row(5L, storedColumns())));
         when(dynamicRecordRepository.count(eq(TABLE), any(Condition.class))).thenReturn(26L);
 
-        RecordPageDto page = service.listRecords(1L, List.of("eta:gte:2026-01-01", "tracking:contains:t-", "price:lt:10", "state:notempty"), "-eta", 1, 25);
+        RecordPageDto page = service.listRecords(1L, List.of("eta:gte:2026-01-01", "tracking:contains:t-", "price:lt:10", "state:notempty"), null, "-eta", 1, 25);
 
         assertEquals(1, page.getItems().size());
         assertEquals(1, page.getPage());
@@ -292,17 +292,17 @@ class RecordServiceTest {
     @Test
     void listRecords_InvalidFiltersRejected() {
         assertEquals("Invalid filter 'nope:eq:1': unknown field 'nope'",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("nope:eq:1"), null, 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("nope:eq:1"), null, null, 0, 25)).getMessage());
         assertEquals("Invalid filter 'eta:eq:soon': must be a date (YYYY-MM-DD)",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:eq:soon"), null, 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:eq:soon"), null, null, 0, 25)).getMessage());
         assertEquals("Invalid filter 'eta:like:x': unknown operator 'like'",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:like:x"), null, 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:like:x"), null, null, 0, 25)).getMessage());
         assertEquals("Invalid filter 'eta:contains:2026': contains only works on text fields",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:contains:2026"), null, 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta:contains:2026"), null, null, 0, 25)).getMessage());
         assertEquals("Invalid filter 'eta': expected field:operator[:value]",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta"), null, 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, List.of("eta"), null, null, 0, 25)).getMessage());
         assertEquals("Invalid sort 'colour': unknown field 'colour'",
-                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, null, "colour", 0, 25)).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, null, null, "colour", 0, 25)).getMessage());
         verify(dynamicRecordRepository, never()).find(any(), any(), any(), any(), anyInt(), anyInt());
     }
 }

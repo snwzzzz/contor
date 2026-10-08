@@ -49,6 +49,9 @@ public class MailService {
     private final MsGraphMailService msGraphMailService;
     private final MailSyncService mailSyncService;
     private final WebProperties webProperties;
+    private final RecordService recordService;
+    private final CollectionSchemaService collectionSchemaService;
+    private final RecordSourceRepository recordSourceRepository;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
@@ -174,6 +177,35 @@ public class MailService {
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(criteria), pageable);
+
+        Map<Long, List<EmailLabelDto>> labels = labelsOf(result.getContent().stream().map(email -> email.getId().id()).toList());
+        return new EmailPageDto(
+                new ArrayList<>(result.getContent().stream()
+                        .map(email -> MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of())))
+                        .toList()),
+                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    /** Emails of the current user's mailboxes in which a record comes up (see {@link EmailSpecifications#involving}). */
+    @Transactional
+    public EmailPageDto listRecordEmails(Long collectionId, Long recordId, Integer page, Integer size) {
+        RecordDto record = recordService.getRecord(collectionId, recordId);
+        RecordContacts contacts = RecordContacts.of(collectionSchemaService.findById(collectionId), record);
+        List<Long> sourceEmailIds = recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(collectionId), recordId)
+                .stream()
+                .map(source -> source.getEmail().getId().id())
+                .distinct()
+                .toList();
+        int pageNumber = page != null ? page : 0;
+        int pageSize = size != null ? size : DEFAULT_PAGE_SIZE;
+        if (contacts.isEmpty() && sourceEmailIds.isEmpty()) {
+            return new EmailPageDto(new ArrayList<>(), pageNumber, pageSize, 0L, 0);
+        }
+
+        var owner = new EmailSpecifications.Criteria(currentUser(), null, null, null, null);
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(owner)
+                .and(EmailSpecifications.involving(sourceEmailIds, contacts.addresses(), contacts.domains())), pageable);
 
         Map<Long, List<EmailLabelDto>> labels = labelsOf(result.getContent().stream().map(email -> email.getId().id()).toList());
         return new EmailPageDto(

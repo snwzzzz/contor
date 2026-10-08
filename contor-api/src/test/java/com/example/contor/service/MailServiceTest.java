@@ -7,6 +7,7 @@ import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
+import com.example.contor.exception.RecordNotFoundException;
 import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
@@ -19,13 +20,18 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +65,15 @@ class MailServiceTest {
 
     @Mock
     private MailSyncService mailSyncService;
+
+    @Mock
+    private RecordService recordService;
+
+    @Mock
+    private CollectionSchemaService collectionSchemaService;
+
+    @Mock
+    private RecordSourceRepository recordSourceRepository;
 
     @Spy
     private WebProperties webProperties = new WebProperties("http://localhost:3000");
@@ -215,6 +230,44 @@ class MailServiceTest {
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
         assertEquals("orders", page.getItems().get(0).getLabels().get(0).getSlug());
+    }
+
+    @Test
+    void listRecordEmails_MatchesSourcesAddressesAndDomains() {
+        when(collectionSchemaService.findById(1L)).thenReturn(new CollectionDto().id(1L).fields(List.of(
+                new CollectionFieldDto(1L, "email", "Email", CollectionFieldType.EMAIL, new LinkedHashMap<>(), false, false, 1))));
+        when(recordService.getRecord(1L, 5L)).thenReturn(new RecordDto(5L, 1L, new HashMap<>(Map.of("email", "anna@acme.com")),
+                new HashMap<>(), OffsetDateTime.parse("2026-10-01T00:00:00Z"), "AI"));
+        when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of(
+                RecordSource.builder().email(EmailMessage.builder().id(new EmailMessage.EmailMessageId(31L)).build()).build()));
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
+        labelled();
+
+        EmailPageDto page = mailService.listRecordEmails(1L, 5L, null, null);
+
+        assertEquals(1L, page.getTotalElements());
+        assertEquals("Shipped", page.getItems().get(0).getSubject());
+    }
+
+    @Test
+    void listRecordEmails_NothingToMatchQueriesNothing() {
+        when(collectionSchemaService.findById(1L)).thenReturn(new CollectionDto().id(1L).fields(List.of()));
+        when(recordService.getRecord(1L, 5L)).thenReturn(new RecordDto(5L, 1L, new HashMap<>(), new HashMap<>(),
+                OffsetDateTime.parse("2026-10-01T00:00:00Z"), "AI"));
+        when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of());
+
+        EmailPageDto page = mailService.listRecordEmails(1L, 5L, 0, 10);
+
+        assertEquals(0L, page.getTotalElements());
+        verify(emailMessageRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void listRecordEmails_UnknownRecord() {
+        when(recordService.getRecord(1L, 5L)).thenThrow(new RecordNotFoundException(1L, 5L));
+
+        assertThrows(RecordNotFoundException.class, () -> mailService.listRecordEmails(1L, 5L, null, null));
     }
 
     @Test

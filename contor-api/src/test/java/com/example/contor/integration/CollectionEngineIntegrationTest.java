@@ -6,6 +6,7 @@ import com.example.contor.api.model.CollectionFieldType;
 import com.example.contor.api.model.NewCollectionCommand;
 import com.example.contor.api.model.NewCollectionFieldCommand;
 import com.example.contor.api.model.NewRecordCommand;
+import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.UpdateRecordCommand;
 import com.example.contor.domain.AppUser;
@@ -257,15 +258,37 @@ class CollectionEngineIntegrationTest {
                     "price", Map.of("amount", day * 10, "currency", "EUR"))));
         }
 
-        var page = recordService.listRecords(deliveries.getId(), List.of("carrier:eq:DHL", "price:gte:20"), "-eta", 0, 1);
-        var text = recordService.listRecords(deliveries.getId(), List.of("tracking:contains:t-4"), null, 0, 10);
-        var empty = recordService.listRecords(deliveries.getId(), List.of("details:empty"), "eta", 1, 2);
+        var page = recordService.listRecords(deliveries.getId(), List.of("carrier:eq:DHL", "price:gte:20"), null, "-eta", 0, 1);
+        var text = recordService.listRecords(deliveries.getId(), List.of("tracking:contains:t-4"), null, null, 0, 10);
+        var empty = recordService.listRecords(deliveries.getId(), List.of("details:empty"), null, "eta", 1, 2);
 
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getTotalPages()).isEqualTo(2);
         assertThat(page.getItems()).extracting(r -> r.getValues().get("eta")).containsExactly("2026-03-05");
         assertThat(text.getItems()).extracting(r -> r.getValues().get("tracking")).containsExactly("T-4");
         assertThat(empty.getItems()).extracting(r -> r.getValues().get("eta")).containsExactly("2026-03-03", "2026-03-04");
+    }
+
+    @Test
+    void searches_the_title_and_text_fields_case_insensitively() {
+        var deliveries = deliveries();
+        Long id = deliveries.getId();
+        recordService.createRecord(id, new NewRecordCommand().title("Shoes from Zalando").values(Map.of("tracking", "T-1", "carrier", "DHL")));
+        recordService.createRecord(id, new NewRecordCommand().title("Books").values(Map.of("tracking", "T-2", "carrier", "UPS",
+                "details", "Left at the ZALANDO depot")));
+        recordService.createRecord(id, new NewRecordCommand().title("Lamp").values(Map.of("tracking", "T-3", "carrier", "DHL",
+                "contact_email", "help@ikea.com")));
+
+        assertThat(titles(recordService.listRecords(id, List.of(), "zalando", "tracking", 0, 10))).containsExactly("Shoes from Zalando", "Books");
+        assertThat(titles(recordService.listRecords(id, List.of(), "IKEA", null, 0, 10))).containsExactly("Lamp");
+        assertThat(titles(recordService.listRecords(id, List.of(), "dhl", "tracking", 0, 10))).containsExactly("Shoes from Zalando", "Lamp");
+        assertThat(titles(recordService.listRecords(id, List.of("tracking:eq:T-3"), "dhl", null, 0, 10))).containsExactly("Lamp");
+        assertThat(recordService.listRecords(id, List.of(), "  ", null, 0, 10).getTotalElements()).isEqualTo(3);
+        assertThat(recordService.listRecords(id, List.of(), "100%", null, 0, 10).getTotalElements()).isZero();
+    }
+
+    private static List<String> titles(RecordPageDto page) {
+        return page.getItems().stream().map(RecordDto::getTitle).toList();
     }
 
     @Test

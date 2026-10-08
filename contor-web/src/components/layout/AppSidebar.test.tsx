@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
@@ -81,6 +81,27 @@ describe("AppSidebar", () => {
     const list = screen.getByRole("list", { name: "Collections" });
     expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["People", "Organizations", "New collection"]);
     expect(JSON.parse(window.localStorage.getItem("contor.sidebar.collectionOrder") ?? "[]")).toEqual([1, 2]);
+  });
+
+  it("previews where a dragged collection will land and saves it on drop", async () => {
+    renderSidebar();
+    const list = await screen.findByRole("list", { name: "Collections" });
+    await within(list).findByRole("link", { name: "People" });
+    const item = (name: string) => within(list).getByRole("link", { name }).closest("li") as HTMLElement;
+    const dataTransfer = { effectAllowed: "", dropEffect: "", setData: () => {} };
+
+    fireEvent.dragStart(item("Organizations"), { dataTransfer });
+    fireEvent.dragOver(item("People"), { dataTransfer });
+
+    expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["People", "Organizations", "New collection"]);
+    expect(item("Organizations")).toHaveAttribute("data-drag-preview", "true");
+    expect(window.localStorage.getItem("contor.sidebar.collectionOrder")).toBeNull();
+
+    fireEvent.drop(item("Organizations"), { dataTransfer });
+    fireEvent.dragEnd(item("Organizations"), { dataTransfer });
+
+    expect(JSON.parse(window.localStorage.getItem("contor.sidebar.collectionOrder") ?? "[]")).toEqual([1, 2]);
+    expect(item("Organizations")).not.toHaveAttribute("data-drag-preview");
   });
 
   it("restores the saved collection order", async () => {

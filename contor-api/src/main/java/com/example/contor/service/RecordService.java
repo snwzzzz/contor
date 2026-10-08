@@ -80,7 +80,8 @@ public class RecordService {
     }
 
     @Transactional
-    public RecordPageDto listRecords(Long collectionId, List<String> filters, String sort, Integer page, Integer size) {
+    /** {@code query}: global search, case-insensitive, in the title and every text-like field; AND-combined with the filters. */
+    public RecordPageDto listRecords(Long collectionId, List<String> filters, String query, String sort, Integer page, Integer size) {
         Schema schema = schema(collectionId);
         int pageNumber = page != null ? page : 0;
         int pageSize = size != null ? size : DEFAULT_PAGE_SIZE;
@@ -90,6 +91,9 @@ public class RecordService {
         Condition condition = DSL.noCondition();
         for (String filter : filters != null ? filters : List.<String>of()) {
             condition = condition.and(parseFilter(schema, filter));
+        }
+        if (query != null && !query.isBlank()) {
+            condition = condition.and(searchCondition(schema, query.strip()));
         }
         SortField<?> sortField = parseSort(schema, sort);
 
@@ -332,6 +336,19 @@ public class RecordService {
             case "gt" -> column.gt(bound);
             default -> column.ge(bound);
         };
+    }
+
+    /** The title or any text column contains {@code query} (jOOQ escapes LIKE wildcards in containsIgnoreCase). */
+    private Condition searchCondition(Schema schema, String query) {
+        Condition any = DynamicRecordRepository.TITLE.containsIgnoreCase(query);
+        for (CollectionField field : schema.fields()) {
+            for (ColumnSpec column : handler(field).columns(field)) {
+                if (column.dataType().getType() == String.class) {
+                    any = any.or(DSL.field(DSL.name(column.name()), String.class).containsIgnoreCase(query));
+                }
+            }
+        }
+        return any;
     }
 
     private SortField<?> parseSort(Schema schema, String sort) {

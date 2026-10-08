@@ -72,7 +72,7 @@ class EmailExtractionServiceTest {
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         service = new EmailExtractionService(llmClient, properties, JsonMapper.builder().build(), TestFieldTypes.registry(),
                 recordService, proposalRepository, Clock.fixed(Instant.parse("2026-10-08T12:00:00Z"), ZoneOffset.UTC));
-        lenient().when(recordService.listRecords(anyLong(), anyList(), isNull(), eq(0), eq(1)))
+        lenient().when(recordService.listRecords(anyLong(), anyList(), isNull(), isNull(), eq(0), eq(1)))
                 .thenReturn(new RecordPageDto(new ArrayList<>(), 0, 1, 0L, 0));
     }
 
@@ -161,7 +161,7 @@ class EmailExtractionServiceTest {
                 """);
         RecordDto existing = new RecordDto(42L, 1L, new LinkedHashMap<>(Map.of("full_name", "Anna Berger", "email", "anna@acme.com")),
                 new LinkedHashMap<>(), OffsetDateTime.parse("2026-01-01T00:00:00Z"), "AI").title("Anna Berger");
-        when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, 0, 1))
+        when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, null, 0, 1))
                 .thenReturn(new RecordPageDto(new ArrayList<>(List.of(existing)), 0, 1, 1L, 1));
 
         List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people()));
@@ -181,7 +181,7 @@ class EmailExtractionServiceTest {
                 """);
         RecordDto existing = new RecordDto(7L, 3L, new LinkedHashMap<>(Map.of("starts_at", "2026-10-09T07:00:00Z")),
                 new LinkedHashMap<>(), OffsetDateTime.parse("2026-01-01T00:00:00Z"), "AI").title("Interview at Acme");
-        when(recordService.listRecords(3L, List.of("title:eq:Interview at Acme"), null, 0, 1))
+        when(recordService.listRecords(3L, List.of("title:eq:Interview at Acme"), null, null, 0, 1))
                 .thenReturn(new RecordPageDto(new ArrayList<>(List.of(existing)), 0, 1, 1L, 1));
 
         assertThat(service.analyze(EMAIL, List.of(events()))).isEmpty();
@@ -227,6 +227,36 @@ class EmailExtractionServiceTest {
     }
 
     @Test
+    void analyze_ToldToResolveRelativeDatesFromTheEmailDate() {
+        answer("{\"items\": []}");
+
+        service.analyze(EMAIL, List.of(events()));
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), user.capture(), any());
+        assertThat(system.getValue()).contains("Today is 2026-10-08 (Thursday)")
+                .contains("relative to the date the email was sent");
+        assertThat(user.getValue()).contains("Date: Tuesday, 2026-10-06T10:00:00+02:00");
+    }
+
+    @Test
+    void analyze_DropsToDosWhoseDeadlinePassedButKeepsPastEvents() {
+        answer("""
+                {"items": [
+                  {"collection": "tasks", "title": "Send CV", "values": {"due_date": "2026-09-01"}, "confidence": 0.9, "reason": "r"},
+                  {"collection": "tasks", "title": "Sign contract", "values": {"due_date": "2026-10-08"}, "confidence": 0.9, "reason": "r"},
+                  {"collection": "tasks", "title": "Call back", "values": {}, "confidence": 0.9, "reason": "r"},
+                  {"collection": "events", "title": "Old interview", "values": {"starts_at": "2026-09-01T09:00:00+02:00"}, "confidence": 0.9, "reason": "r"}
+                ]}
+                """);
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(tasks(), events()));
+
+        assertThat(drafts).extracting(draft -> draft.payload().get("title")).containsExactly("Sign contract", "Call back", "Old interview");
+    }
+
+    @Test
     void analyze_NoTargetsNoCall() {
         assertThat(service.analyze(EMAIL, List.of())).isEmpty();
         verifyNoInteractions(llmClient);
@@ -237,6 +267,6 @@ class EmailExtractionServiceTest {
         answer("{\"items\": \"oops\"}");
 
         assertThat(service.analyze(EMAIL, List.of(people()))).isEmpty();
-        verify(recordService, org.mockito.Mockito.never()).listRecords(anyLong(), anyList(), any(), anyInt(), anyInt());
+        verify(recordService, org.mockito.Mockito.never()).listRecords(anyLong(), anyList(), any(), any(), anyInt(), anyInt());
     }
 }

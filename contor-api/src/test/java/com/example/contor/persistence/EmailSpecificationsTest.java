@@ -103,4 +103,26 @@ public class EmailSpecificationsTest {
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "%"))).isEmpty();
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "_"))).isEmpty();
     }
+
+    private List<String> involving(List<Long> emailIds, List<String> addresses, List<String> domains) {
+        return emailMessageRepository.findAll(
+                        EmailSpecifications.matching(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null))
+                                .and(EmailSpecifications.involving(emailIds, addresses, domains)),
+                        Sort.by(Sort.Direction.DESC, "receivedAt"))
+                .stream().map(EmailMessage::getSubject).toList();
+    }
+
+    @Test
+    void finds_the_emails_a_record_comes_up_in() {
+        Long invoice = emailMessageRepository.findAll().stream()
+                .filter(email -> email.getSubject().equals("Invoice")).findFirst().orElseThrow().getId().id();
+
+        assertThat(involving(List.of(invoice), List.of(), List.of())).containsExactly("Invoice");
+        assertThat(involving(List.of(), List.of("BOSS@example.com"), List.of())).containsExactly("Meeting tomorrow");
+        assertThat(involving(List.of(), List.of(), List.of("Shop.Example"))).containsExactly("Invoice");
+        assertThat(involving(List.of(), List.of(), List.of("example.com"))).containsExactly("Your ORDER has shipped", "Meeting tomorrow");
+        assertThat(involving(List.of(), List.of(), List.of("hop.example"))).isEmpty();
+        assertThat(involving(List.of(invoice), List.of("boss@example.com"), List.of())).containsExactly("Meeting tomorrow", "Invoice");
+        assertThat(involving(List.of(), List.of(), List.of())).isEmpty();
+    }
 }

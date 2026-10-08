@@ -124,7 +124,8 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 
 - Creating a collection, adding and archiving fields is OWNER-only. Each change runs the generated DDL, bumps the collection's `schema_version`, and writes `collection_schema_change` and the audit log in one transaction.
 - Archived fields are hidden and read-only; their column and data stay.
-- Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`).
+- Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`); `?q=` searches the title and every text-like field case-insensitively.
+- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: a full-width banner in the dominant color of its picture, the picture itself (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
 - On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
 
@@ -158,6 +159,9 @@ bar (or Settings → AI Models). The wizard walks through:
   them directly (audited; if applying fails the proposal waits for review instead).
 - The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`) and **Tasks**
   (`/tasks`); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
+- Dates: every extraction call gets today's date, weekday and your time zone (`AI_TIMEZONE`); relative dates in a mail
+  ("Friday", "by Thursday") are resolved from the date the mail was sent. To-dos whose deadline already passed are
+  dropped (old mail in the first analysis), past calendar events are kept as history.
 - Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
   for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
 - Permissions can be changed any time under Settings → Autonomy; *Analyze inbox again* lives under Settings → AI Models.

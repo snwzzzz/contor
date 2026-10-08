@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import { moveItem, orderByIds } from "@/lib/collection-order";
-import { collectionTint, tintTextClass } from "@/lib/collection-tint";
+import { collectionTint, tintVividClass } from "@/lib/collection-tint";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
@@ -61,7 +61,7 @@ function NavLink({ item, pathname, badge, badgeLabel }: { item: NavItem; pathnam
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
         <Link href={item.href} aria-current={active ? "page" : undefined}>
-          <item.icon aria-hidden="true" className={item.tint ? tintTextClass(item.tint) : undefined} />
+          <item.icon aria-hidden="true" className={item.tint ? tintVividClass(item.tint) : undefined} />
           <span>{item.title}</span>
           {badge ? (
             <Badge variant="secondary" className="ml-auto" aria-label={`${badge} ${badgeLabel ?? "pending"}`}>
@@ -77,17 +77,14 @@ function NavLink({ item, pathname, badge, badgeLabel }: { item: NavItem; pathnam
 function CollectionsGroup({ pathname }: { pathname: string }) {
   const { data, isPending } = useListCollections();
   const savedOrder = useStoredValue(COLLECTION_ORDER_KEY, NO_ORDER, parseOrder);
-  const [dragging, setDragging] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<number | null>(null);
+  /** While dragging: where the item came from and where it would land (indexes in the saved order). */
+  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
   const collections = orderByIds(data ?? [], savedOrder);
+  // Live preview: the list is shown as if the dragged item were already at the hovered position.
+  const shown = drag ? moveItem(collections, drag.from, drag.to) : collections;
 
   function move(from: number, to: number) {
     saveOrder(moveItem(collections, from, to));
-  }
-
-  function endDrag() {
-    setDragging(null);
-    setDropTarget(null);
   }
 
   return (
@@ -100,24 +97,23 @@ function CollectionsGroup({ pathname }: { pathname: string }) {
               <SidebarMenuSkeleton showIcon />
             </SidebarMenuItem>
           ) : null}
-          {collections.map((collection, index) => (
+          {shown.map((collection, index) => (
             <CollectionItem
               key={collection.id}
               collection={collection}
               pathname={pathname}
               tint={collectionTint(collection.id)}
-              dragging={dragging === index}
-              dropIndicator={dropTarget === index && dragging !== null && dragging !== index ? (dragging < index ? "below" : "above") : null}
-              onDragStart={() => setDragging(index)}
-              onDragEnd={endDrag}
+              preview={drag !== null && index === drag.to}
+              onDragStart={() => setDrag({ from: index, to: index })}
+              onDragEnd={() => setDrag(null)}
               onDragOver={(event) => {
                 event.preventDefault();
-                setDropTarget(index);
+                setDrag((current) => (current && current.to !== index ? { ...current, to: index } : current));
               }}
               onDrop={(event) => {
                 event.preventDefault();
-                if (dragging !== null) move(dragging, index);
-                endDrag();
+                if (drag) move(drag.from, drag.to);
+                setDrag(null);
               }}
               onMove={(offset) => move(index, index + offset)}
             />
@@ -140,8 +136,8 @@ interface CollectionItemProps {
   collection: CollectionDto;
   pathname: string;
   tint: string;
-  dragging: boolean;
-  dropIndicator: "above" | "below" | null;
+  /** This is the dragged item, shown at the position it would be dropped at. */
+  preview: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (event: DragEvent<HTMLLIElement>) => void;
@@ -151,7 +147,7 @@ interface CollectionItemProps {
 }
 
 /** A collection link that can be dragged to a new position, or moved with Alt+Up/Down on its grip. */
-function CollectionItem({ collection, pathname, tint, dragging, dropIndicator, onDragStart, onDragEnd, onDragOver, onDrop, onMove }: CollectionItemProps) {
+function CollectionItem({ collection, pathname, tint, preview, onDragStart, onDragEnd, onDragOver, onDrop, onMove }: CollectionItemProps) {
   const href = collectionHref(collection.id);
   const active = isActive(pathname, href);
 
@@ -171,11 +167,10 @@ function CollectionItem({ collection, pathname, tint, dragging, dropIndicator, o
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      data-drag-preview={preview || undefined}
       className={cn(
-        "group/collection transition-opacity",
-        dragging && "opacity-40",
-        dropIndicator === "above" && "before:absolute before:inset-x-2 before:-top-px before:h-0.5 before:rounded-full before:bg-primary",
-        dropIndicator === "below" && "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+        "group/collection rounded-md border border-transparent transition-[background-color,border-color,opacity] duration-150",
+        preview && "border-dashed border-sidebar-ring bg-sidebar-accent/60 opacity-70",
       )}
     >
       <SidebarMenuButton asChild isActive={active} tooltip={collection.name}>

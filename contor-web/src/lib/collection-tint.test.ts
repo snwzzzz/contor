@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { collectionTint, tintClass, tintTextClass } from "./collection-tint";
+import { collectionTint, tintClass, tintTextClass, tintVividClass } from "./collection-tint";
 
 describe("tints", () => {
   it("maps a tint number to its background and text classes", () => {
     expect(tintClass(3)).toBe("bg-tint-3 text-tint-3-foreground");
     expect(tintTextClass(3)).toBe("text-tint-3-foreground");
+    expect(tintVividClass(3)).toBe("text-tint-3-vivid");
   });
 
   it("gives every collection a stable tint from the six", () => {

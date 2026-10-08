@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useGetEmail, useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
-import { useListContactPhotos, useListSenderLogos } from "@/lib/api/generated/endpoints/senders/senders";
+import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import type { EmailLabelDto } from "@/lib/api/generated/model/emailLabelDto";
 import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto";
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
@@ -50,21 +50,11 @@ export function InboxView() {
   });
 
   const emails = page?.items ?? [];
-  const senderDomains = [...new Set(emails.map((email) => domainOf(email.fromAddress)).filter((domain) => domain !== undefined))];
-  const { data: logoDomains } = useListSenderLogos(
-    { domain: senderDomains },
-    { query: { enabled: senderDomains.length > 0, staleTime: Infinity } },
-  );
-  const { data: contactPhotos } = useListContactPhotos({ query: { staleTime: 5 * 60_000 } });
-  const contactPhotoByAddress = new Map((contactPhotos ?? []).map((photo) => [photo.emailAddress, photo.id]));
-  const domainsWithLogo = new Set(logoDomains ?? []);
+  const pictures = useSenderPictures(emails.map((email) => domainOf(email.fromAddress)).filter((domain) => domain !== undefined));
 
   /** Contact photo first, then the sender domain's logo. */
   function senderPicture(address: string | undefined): string | undefined {
-    const contactPhotoId = address ? contactPhotoByAddress.get(address.toLowerCase()) : undefined;
-    if (contactPhotoId !== undefined) return `/api/senders/contact-photos/${contactPhotoId}`;
-    const domain = domainOf(address);
-    return domain && domainsWithLogo.has(domain) ? `/api/senders/logos/${domain}` : undefined;
+    return pictures.contactPhoto(address) ?? pictures.logo(domainOf(address));
   }
   const totalPages = page?.totalPages ?? 0;
   const accountById = new Map((accounts ?? []).map((account) => [account.id, account]));

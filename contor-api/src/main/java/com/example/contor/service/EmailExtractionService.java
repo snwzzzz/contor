@@ -28,6 +28,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -53,6 +54,7 @@ public class EmailExtractionService implements ExtractionService {
     public static final String PROMPT_VERSION = "extract-v1";
 
     static final int MAX_BODY_CHARS = 8000;
+    private static final String TASKS = "tasks";
 
     /** The AI never sets references or files. */
     private static final Set<CollectionFieldType> SKIPPED_TYPES = Set.of(CollectionFieldType.RELATION, CollectionFieldType.FILE);
@@ -70,6 +72,8 @@ public class EmailExtractionService implements ExtractionService {
             - tasks: concrete things the user has to do (reply, pay, sign, upload, send, prepare), with due_date if stated.
             - any other collection: only when the email is clearly about such a thing.
             - title: short and specific, e.g. a person's full name, "Interview at Acme", "Pay invoice 2024-118".
+            - Resolve relative dates ("Friday", "tomorrow", "next week", "by Thursday") relative to the date the email \
+            was sent (its Date line, with weekday), never relative to today.
             - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
             another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
             - confidence between 0 and 1; reason: one short sentence quoting the evidence.
@@ -117,7 +121,7 @@ public class EmailExtractionService implements ExtractionService {
                 continue;
             }
             Map<String, Object> values = values(collection, item.path("values"));
-            if (values == null) {
+            if (values == null || isOutdatedToDo(collection, values, today)) {
                 continue;
             }
             BigDecimal confidence = BigDecimal.valueOf(Math.clamp(item.path("confidence").asDouble(0.5), 0.0, 1.0))
@@ -126,6 +130,21 @@ public class EmailExtractionService implements ExtractionService {
                     .ifPresent(drafts::add);
         }
         return drafts;
+    }
+
+    /**
+     * A to-do whose deadline lies before today is history (typically from older mail in the first analysis), not
+     * something to do: it is dropped. Past calendar events are kept as history.
+     */
+    private static boolean isOutdatedToDo(CollectionDto collection, Map<String, Object> values, LocalDate today) {
+        if (!TASKS.equals(collection.getSlug()) || !(values.get("due_date") instanceof String due)) {
+            return false;
+        }
+        try {
+            return LocalDate.parse(due).isBefore(today);
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 
     private String userPrompt(EmailContent email, List<CollectionDto> targets) {
@@ -150,7 +169,8 @@ public class EmailExtractionService implements ExtractionService {
             }
         }
         String received = email.receivedAt() != null
-                ? email.receivedAt().atZone(properties.timezone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                ? email.receivedAt().atZone(properties.timezone()).getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+                + ", " + email.receivedAt().atZone(properties.timezone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
                 : "unknown";
         String body = Optional.ofNullable(email.body()).orElse("").strip();
         if (body.length() > MAX_BODY_CHARS) {
@@ -247,7 +267,7 @@ public class EmailExtractionService implements ExtractionService {
                 ? List.of("title:eq:" + title)
                 : keys.entrySet().stream().map(entry -> entry.getKey() + ":eq:" + entry.getValue()).toList();
         try {
-            return recordService.listRecords(collection.getId(), filters, null, 0, 1).getItems().stream().findFirst();
+            return recordService.listRecords(collection.getId(), filters, null, null, 0, 1).getItems().stream().findFirst();
         } catch (IllegalArgumentException e) {
             log.debug("Cannot look up existing records of collection {}: {}", collection.getId(), e.getMessage());
             return Optional.empty();

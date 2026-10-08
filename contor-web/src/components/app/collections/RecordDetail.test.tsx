@@ -1,0 +1,155 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { mockApi } from "@/test/api-mock";
+import { renderWithProviders } from "@/test/render";
+import { RecordDetail } from "./RecordDetail";
+
+function field(id: number, slug: string, name: string, type: string) {
+  return { id, slug, name, type, options: {}, required: false, uniqueValue: false, position: id };
+}
+
+const people = {
+  id: 1,
+  slug: "people",
+  name: "People",
+  system: true,
+  matchKeys: ["email"],
+  displayConfig: {},
+  schemaVersion: 1,
+  createdBy: "USER",
+  fields: [field(1, "full_name", "Full name", "TEXT"), field(2, "email", "Email", "EMAIL"), field(3, "phone", "Phone", "PHONE"),
+    field(4, "website", "Website", "URL"), field(5, "notes", "Notes", "LONG_TEXT")],
+};
+
+const anna = {
+  id: 5,
+  collectionId: 1,
+  title: "Anna Berger",
+  values: { full_name: "Anna Berger", email: "Anna.Berger@acme.com", phone: "+49 89 1234567", website: "https://acme.com", notes: null },
+  extra: {},
+  createdAt: "2026-10-01T00:00:00Z",
+  createdBy: "AI",
+};
+
+function api(contactPhotos: unknown[], logos: string[]) {
+  return mockApi({
+    "GET /api/collections/1": { body: people },
+    "GET /api/collections/1/records/5": { body: anna },
+    "GET /api/senders/contact-photos": { body: contactPhotos },
+    "GET /api/senders/logos": { body: logos },
+  });
+}
+
+describe("RecordDetail", () => {
+  it("shows the record with a banner, its picture and every field", async () => {
+    api([{ id: 9, emailAddress: "anna.berger@acme.com" }], ["acme.com"]);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Anna Berger" })).toBeInTheDocument();
+    expect(screen.getByTestId("record-banner")).toBeInTheDocument();
+    const picture = await screen.findByRole("img", { name: "Anna Berger" });
+    expect(picture.getAttribute("src")).toContain("/api/senders/contact-photos/9");
+    expect(screen.getByRole("link", { name: /People/ })).toHaveAttribute("href", "/collections/1");
+
+    const details = screen.getByRole("list", { name: "Fields" });
+    expect(within(details).getByText("Phone")).toBeInTheDocument();
+    expect(within(details).getByRole("link", { name: "Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
+    expect(within(details).getByRole("link", { name: "+49 89 1234567" })).toHaveAttribute("href", "tel:+49891234567");
+    expect(within(details).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
+    expect(within(details).getByText("Notes").nextElementSibling).toHaveTextContent("–");
+  });
+
+  it("falls back to the logo of the email domain", async () => {
+    api([], ["acme.com"]);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const picture = await screen.findByRole("img", { name: "Anna Berger" });
+    expect(picture.getAttribute("src")).toContain("/api/senders/logos/acme.com");
+  });
+
+  it("never uses a free-mail provider's logo for a person", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: { ...anna, values: { ...anna.values, email: "anna@gmail.com", website: null } } },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: ["gmail.com"] },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    await screen.findByRole("heading", { level: 1, name: "Anna Berger" });
+    expect(screen.queryByRole("img", { name: "Anna Berger" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("record-initial")).toHaveTextContent("A");
+  });
+
+  it("opens on the details tab and switches to the emails the record comes up in", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/collections/1/records/5/emails": {
+        body: {
+          items: [{ id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger", subject: "Interview invitation",
+            snippet: "We would like to invite you", receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false,
+            processingState: "DONE", labels: [] }],
+          page: 0, size: 25, totalElements: 1, totalPages: 1,
+        },
+      },
+      "GET /api/emails/31": {
+        body: { id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger", subject: "Interview invitation",
+          receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false, processingState: "DONE", labels: [],
+          toRecipients: [], ccRecipients: [], bodyText: "We would like to invite you to an interview." },
+      },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const tabs = await screen.findByRole("tablist", { name: "Record sections" });
+    expect(within(tabs).getByRole("tab", { name: /Details/ })).toHaveAttribute("aria-selected", "true");
+    const emailsTab = within(tabs).getByRole("tab", { name: /Emails/ });
+    await waitFor(() => expect(emailsTab).toHaveTextContent("1"));
+
+    await userEvent.click(emailsTab);
+    const panel = screen.getByRole("tabpanel", { name: /Emails/ });
+    await userEvent.click(await within(panel).findByRole("button", { name: /Interview invitation/ }));
+    expect(await within(panel).findByText("We would like to invite you to an interview.")).toBeInTheDocument();
+  });
+
+  it("lists the connected records", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/relations": {
+        body: [{ id: 3, relationTypeId: 1, fromCollectionId: 1, fromRecordId: 5, toCollectionId: 2, toRecordId: 8, attributes: {}, createdBy: "AI" }],
+      },
+      "GET /api/relation-types": {
+        body: [{ id: 1, slug: "works_at", name: "works at", inverseName: "employs", fromCollectionId: 1, toCollectionId: 2, directed: true,
+          createdBy: "USER" }],
+      },
+      "GET /api/collections": { body: [people, { ...people, id: 2, slug: "organizations", name: "Organizations", fields: [] }] },
+      "GET /api/collections/2/records/8": { body: { ...anna, id: 8, collectionId: 2, title: "Acme GmbH", values: {} } },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    await userEvent.click(await screen.findByRole("tab", { name: /Connections/ }));
+    const panel = screen.getByRole("tabpanel", { name: /Connections/ });
+    expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute("href", "/collections/2/records/8");
+    expect(within(panel).getByText("works at")).toBeInTheDocument();
+    expect(within(panel).getByText("Organizations")).toBeInTheDocument();
+  });
+
+  it("shows a not-found message", async () => {
+    mockApi({ "GET /api/collections/1": { body: people } });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+});

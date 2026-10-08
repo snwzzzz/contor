@@ -13,6 +13,7 @@ import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,6 +57,28 @@ public final class EmailSpecifications {
                         cb.like(cb.lower(root.get("fromName")), pattern, ESCAPE)));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    /**
+     * Emails a record comes up in: one of {@code emailIds} (record sources), sent from one of {@code addresses}, or
+     * sent from an address at one of {@code domains} (whole domains: {@code shop.example} does not match
+     * {@code myshop.example}). Matches nothing when all are empty. Combine with {@link #matching} for the owner scope.
+     */
+    public static Specification<EmailMessage> involving(Collection<Long> emailIds, Collection<String> addresses,
+                                                        Collection<String> domains) {
+        return (root, query, cb) -> {
+            List<Predicate> any = new ArrayList<>();
+            if (!emailIds.isEmpty()) {
+                any.add(root.get("id").get("id").in(emailIds));
+            }
+            if (!addresses.isEmpty()) {
+                any.add(cb.lower(root.get("fromAddress")).in(addresses.stream().map(address -> address.toLowerCase(Locale.ROOT)).toList()));
+            }
+            for (String domain : domains) {
+                any.add(cb.like(cb.lower(root.get("fromAddress")), "%@" + escapeLike(domain.toLowerCase(Locale.ROOT)), ESCAPE));
+            }
+            return any.isEmpty() ? cb.disjunction() : cb.or(any.toArray(Predicate[]::new));
         };
     }
 

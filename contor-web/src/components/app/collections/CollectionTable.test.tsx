@@ -1,0 +1,212 @@
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mockApi, type RecordedCall } from "@/test/api-mock";
+import { resetNavigation, router } from "@/test/next-navigation";
+import { renderWithProviders } from "@/test/render";
+import { CollectionTable } from "./CollectionTable";
+
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
+
+function field(id: number, slug: string, name: string, type: string, options: Record<string, unknown> = {}) {
+  return { id, slug, name, type, options, required: false, uniqueValue: false, position: id };
+}
+
+const deliveries = {
+  id: 1,
+  slug: "deliveries",
+  name: "Deliveries",
+  description: "Parcels on their way",
+  system: false,
+  matchKeys: [],
+  displayConfig: {},
+  schemaVersion: 1,
+  createdBy: "AI",
+  fields: [
+    field(1, "carrier", "Carrier", "ENUM", { values: ["DHL", "UPS"] }),
+    field(2, "eta", "ETA", "DATE"),
+    field(3, "price", "Price", "MONEY"),
+    field(4, "insured", "Insured", "BOOLEAN"),
+  ],
+};
+
+function record(id: number, title: string, values: Record<string, unknown>) {
+  return { id, collectionId: 1, title, values, extra: {}, createdAt: "2026-10-01T00:00:00Z", createdBy: "AI" };
+}
+
+const records = [
+  record(5, "Shoes", { carrier: "DHL", eta: "2026-10-09", price: { amount: 59.9, currency: "EUR" }, insured: true }),
+  record(6, "Books", { carrier: "UPS", eta: null, price: null, insured: false }),
+];
+
+function setup(): RecordedCall[] {
+  return mockApi({
+    "GET /api/collections/1": { body: deliveries },
+    "GET /api/collections/1/records": { body: { items: records, page: 0, size: 50, totalElements: 2, totalPages: 1 } },
+  });
+}
+
+function lastListUrl(calls: RecordedCall[], urls: URL[]): URL | undefined {
+  return calls.length > 0 ? urls.at(-1) : undefined;
+}
+
+describe("CollectionTable", () => {
+  beforeEach(() => resetNavigation("/collections/1"));
+  afterEach(() => window.localStorage.clear());
+
+  it("shows the records as a table with formatted values", async () => {
+    setup();
+
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    const table = await screen.findByRole("table", { name: "Deliveries" });
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Title", "Carrier", "ETA", "Price", "Insured", ""]);
+    const shoes = await within(table).findByRole("row", { name: /Shoes/ });
+    expect(within(shoes).getByText("DHL")).toBeInTheDocument();
+    expect(within(shoes).getByText("€59.90")).toBeInTheDocument();
+    expect(within(shoes).getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByText("2 records")).toBeInTheDocument();
+  });
+
+  it("searches across the collection", async () => {
+    const urls: URL[] = [];
+    const calls = mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": ({ url }) => {
+        urls.push(url);
+        return { body: { items: records, page: 0, size: 50, totalElements: 2, totalPages: 1 } };
+      },
+    });
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search Deliveries" }), "zalando");
+
+    await waitFor(() => expect(lastListUrl(calls, urls)?.searchParams.get("q")).toBe("zalando"));
+  });
+
+  it("filters by column", async () => {
+    const urls: URL[] = [];
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": ({ url }) => {
+        urls.push(url);
+        return { body: { items: records, page: 0, size: 50, totalElements: 2, totalPages: 1 } };
+      },
+    });
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: /Filters/ }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Filter Carrier" }), "DHL");
+    await userEvent.type(screen.getByLabelText("Price from"), "20");
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.getAll("filter")).toEqual(["carrier:eq:DHL", "price:gte:20"]));
+    expect(screen.getByRole("button", { name: /Filters/ })).toHaveTextContent("2");
+  });
+
+  it("sorts by a column", async () => {
+    const urls: URL[] = [];
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": ({ url }) => {
+        urls.push(url);
+        return { body: { items: records, page: 0, size: 50, totalElements: 2, totalPages: 1 } };
+      },
+    });
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Sort by ETA" }));
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("sort")).toBe("eta"));
+    await userEvent.click(screen.getByRole("button", { name: "Sort by ETA" }));
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("sort")).toBe("-eta"));
+    expect(screen.getByRole("columnheader", { name: /ETA/ })).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("opens a record on double click or Enter", async () => {
+    setup();
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    fireEvent.doubleClick(await screen.findByRole("row", { name: /Shoes/ }));
+    expect(router.push).toHaveBeenCalledWith("/collections/1/records/5");
+
+    screen.getByRole("row", { name: /Books/ }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(router.push).toHaveBeenCalledWith("/collections/1/records/6");
+  });
+
+  function recording(totalPages = 1) {
+    const urls: URL[] = [];
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": ({ url }) => {
+        urls.push(url);
+        return { body: { items: records, page: Number(url.searchParams.get("page") ?? 0), size: 25, totalElements: totalPages * 25, totalPages } };
+      },
+    });
+    return urls;
+  }
+
+  it("shows choice values as colored pills and opens a record from its row action", async () => {
+    setup();
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    const shoes = await screen.findByRole("row", { name: /Shoes/ });
+    expect(within(shoes).getByText("DHL")).toHaveClass("bg-tint-1");
+    expect(within(screen.getByRole("row", { name: /Books/ })).getByText("UPS")).toHaveClass("bg-tint-2");
+
+    await userEvent.click(within(shoes).getByRole("button", { name: "Open Shoes" }));
+    expect(router.push).toHaveBeenCalledWith("/collections/1/records/5");
+  });
+
+  it("changes the number of rows per page", async () => {
+    const urls = recording();
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Rows per page" }), "100");
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("size")).toBe("100"));
+  });
+
+  it("hides columns and remembers it per collection", async () => {
+    recording();
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    await userEvent.click(screen.getByRole("button", { name: "Columns" }));
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "ETA" }));
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Title", "Carrier", "Price", "Insured", ""]),
+    );
+    expect(JSON.parse(window.localStorage.getItem("contor.table.1.hiddenColumns") ?? "[]")).toEqual(["eta"]);
+  });
+
+  it("pages with numbers and jumps to a page", async () => {
+    const urls = recording(12);
+    renderWithProviders(<CollectionTable collectionId={1} />);
+    await screen.findByRole("table");
+
+    const pages = await screen.findByRole("navigation", { name: "Pages" });
+    expect(within(pages).getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(within(pages).getByRole("button", { name: "Page 12" }));
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("page")).toBe("11"));
+
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Go to page" }), "5{Enter}");
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("page")).toBe("4"));
+  });
+
+  it("says when nothing matches", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": { body: { items: [], page: 0, size: 50, totalElements: 0, totalPages: 0 } },
+    });
+
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    expect(await screen.findByText("No records")).toBeInTheDocument();
+  });
+});

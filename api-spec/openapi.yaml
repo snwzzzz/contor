@@ -396,6 +396,13 @@ paths:
               type: string
           style: form
           explode: true
+        - name: q
+          in: query
+          required: false
+          description: Global search, case-insensitive, in the title and every text-like field (text, long text, email, URL, phone, enum, status); AND-combined with `filter`.
+          schema:
+            type: string
+            maxLength: 200
         - name: sort
           in: query
           required: false
@@ -524,6 +531,37 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/collections/{collectionId}/records/{recordId}/emails:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Records]
+      operationId: listRecordEmails
+      summary: Emails of the current user's mailboxes in which the record comes up, newest first
+      description: |
+        An email belongs to a record when the record was created or updated from it (record source), when it was sent
+        from one of the record's EMAIL field addresses, or when its sender address is at the record's domain (a field
+        named `domain`, or the host of a URL field).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of emails (summaries without bodies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailPageDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/labels:
     get:
       tags: [Labels]
