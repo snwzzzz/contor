@@ -82,7 +82,7 @@ export function AiModelStatus() {
 
 function ModelState({ model }: { model: AiModelDto }) {
   if (model.installed) {
-    return <Badge variant="secondary">Installed</Badge>;
+    return <Badge className="bg-success/15 text-success">Installed</Badge>;
   }
   if (model.pullState === "PULLING") {
     return (

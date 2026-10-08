@@ -8,6 +8,7 @@ import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
+import { tintClass } from "@/lib/collection-tint";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -157,8 +158,8 @@ function EventChip({ event }: { event: RecordDto }) {
   const start = startsAt(event);
   const allDay = event.values.all_day === true;
   return (
-    <span className="truncate rounded bg-primary/10 px-1.5 py-0.5 text-xs" title={event.title}>
-      {start && !allDay ? <span className="mr-1 tabular-nums text-muted-foreground">{TIME_FORMAT.format(start)}</span> : null}
+    <span className={cn("truncate rounded px-1.5 py-0.5 text-xs", tintClass(1))} title={event.title}>
+      {start && !allDay ? <span className="mr-1 tabular-nums opacity-75">{TIME_FORMAT.format(start)}</span> : null}
       {event.title}
     </span>
   );

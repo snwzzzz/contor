@@ -5,6 +5,7 @@ import com.example.contor.api.model.DecideProposalCommand;
 import com.example.contor.api.model.ProposalCountDto;
 import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.domain.AiPermissionLevel;
@@ -13,11 +14,13 @@ import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalStatus;
+import com.example.contor.domain.Slug;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
 import com.example.contor.exception.ProposalNotApplicableException;
 import com.example.contor.exception.ProposalNotFoundException;
 import com.example.contor.mapper.ProposalMapper;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.proposal.ProposalApplier;
@@ -35,7 +38,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Lists proposals and decides them. Approving runs the kind's {@link ProposalApplier} in the same transaction, so a
@@ -46,6 +51,7 @@ import java.util.Map;
 public class ProposalService {
 
     private static final int DEFAULT_PAGE_SIZE = 25;
+    private static final List<String> ACTION_COLLECTIONS = List.of("events", "tasks");
 
     /** What happened to a submitted draft. */
     public enum Outcome { SUGGESTED, AUTO_APPLIED }
@@ -53,24 +59,51 @@ public class ProposalService {
     private final ProposalRepository proposalRepository;
     private final AppUserRepository appUserRepository;
     private final EmailMessageRepository emailMessageRepository;
+    private final CollectionRepository collectionRepository;
     private final AuditService auditService;
     private final ProposalApplierRegistry proposalApplierRegistry;
 
     @Transactional
-    public ProposalPageDto listProposals(ProposalState status, Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Proposal> result = status == null
-                ? proposalRepository.findAll(pageable)
-                : proposalRepository.findByStatus(ProposalStatus.valueOf(status.name()), pageable);
+    public ProposalPageDto listProposals(ProposalState status, ProposalGroup group, Integer page, Integer size) {
+        int pageNumber = page != null ? page : 0;
+        int pageSize = size != null ? size : DEFAULT_PAGE_SIZE;
+        Page<Proposal> result;
+        if (group != null) {
+            // Grouped queries are native SQL ordered by created_at themselves, so the page carries no sort.
+            String state = status != null ? status.name() : ProposalStatus.PENDING.name();
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+            result = group == ProposalGroup.FINDINGS
+                    ? proposalRepository.findFindings(state, actionCollectionIds(), pageable)
+                    : proposalRepository.findActions(state, actionCollectionIds(), pageable);
+        } else {
+            Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+            result = status == null
+                    ? proposalRepository.findAll(pageable)
+                    : proposalRepository.findByStatus(ProposalStatus.valueOf(status.name()), pageable);
+        }
         return new ProposalPageDto(new ArrayList<>(result.getContent().stream().map(ProposalMapper::toDto).toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
     @Transactional
-    public ProposalCountDto countProposals(ProposalState status) {
+    public ProposalCountDto countProposals(ProposalState status, ProposalGroup group) {
         ProposalStatus counted = status != null ? ProposalStatus.valueOf(status.name()) : ProposalStatus.PENDING;
-        return new ProposalCountDto(proposalRepository.countByStatus(counted));
+        if (group == null) {
+            return new ProposalCountDto(proposalRepository.countByStatus(counted));
+        }
+        return new ProposalCountDto(group == ProposalGroup.FINDINGS
+                ? proposalRepository.countFindings(counted.name(), actionCollectionIds())
+                : proposalRepository.countActions(counted.name(), actionCollectionIds()));
+    }
+
+    /** The assistant's calendar and to-do collections: records there are actions, not findings. Never empty. */
+    private List<Long> actionCollectionIds() {
+        List<Long> ids = ACTION_COLLECTIONS.stream()
+                .map(slug -> collectionRepository.findBySlug(new Slug(slug)))
+                .flatMap(Optional::stream)
+                .map(collection -> collection.getId().id())
+                .toList();
+        return ids.isEmpty() ? List.of(-1L) : ids;
     }
 
     @Transactional

@@ -36,6 +36,15 @@ public class AiAnalysisRun extends AuditableEntity {
     /** Oldest email included; {@code null} = everything. */
     private Instant since;
 
+    /** Model calls of the category discovery (batches + merge); 0 until it starts. */
+    @Builder.Default
+    @Column(name = "discovery_steps", nullable = false)
+    private int discoverySteps = 0;
+
+    @Builder.Default
+    @Column(name = "discovery_steps_done", nullable = false)
+    private int discoveryStepsDone = 0;
+
     @Builder.Default
     @Column(name = "total_emails", nullable = false)
     private int totalEmails = 0;
@@ -59,6 +68,11 @@ public class AiAnalysisRun extends AuditableEntity {
     @Builder.Default
     @Column(name = "categories_discovered", nullable = false)
     private int categoriesDiscovered = 0;
+
+    /** The email being analyzed right now; {@code null} outside extraction. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_email_id")
+    private EmailMessage currentEmail;
 
     private String error;
 

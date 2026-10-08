@@ -114,6 +114,7 @@ public class AiAnalysisWorker {
             log.warn("Analysis run {} failed: {}", runId, e.getMessage());
             update(runId, failed -> {
                 failed.setStatus(AnalysisRunStatus.FAILED);
+                failed.setCurrentEmail(null);
                 failed.setError(truncate(e.getMessage()));
                 failed.setFinishedAt(clock.instant());
             });
@@ -132,7 +133,11 @@ public class AiAnalysisWorker {
 
         List<DiscoveryEmail> emails = transactionTemplate.execute(status -> emailMessageRepository.findDiscoveryEmails(
                 userId, since != null ? since : Instant.EPOCH, PageRequest.of(0, DISCOVERY_EMAILS)));
-        List<InboxDiscoveryService.Suggestion> suggestions = inboxDiscoveryService.discover(emails, collectionSchemaService.findAll());
+        List<InboxDiscoveryService.Suggestion> suggestions = inboxDiscoveryService.discover(emails, collectionSchemaService.findAll(),
+                (done, total) -> update(runId, run -> {
+                    run.setDiscoverySteps(total);
+                    run.setDiscoveryStepsDone(done);
+                }));
 
         int created = 0;
         int suggested = 0;
@@ -187,8 +192,10 @@ public class AiAnalysisWorker {
             if (current == null || current.getStatus() != AnalysisRunStatus.EXTRACTING) {
                 return;
             }
+            update(runId, run -> run.setCurrentEmail(emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(emailId))));
             EmailResult result = processEmail(emailId, settings, targets);
             update(runId, run -> {
+                run.setCurrentEmail(null);
                 run.setProcessedEmails(run.getProcessedEmails() + 1);
                 run.setProposalsCreated(run.getProposalsCreated() + result.suggested());
                 run.setAutoApplied(run.getAutoApplied() + result.autoApplied());

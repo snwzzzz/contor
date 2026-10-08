@@ -7,6 +7,7 @@ import com.example.contor.api.model.ProposalAction;
 import com.example.contor.api.model.ProposalCountDto;
 import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
@@ -51,7 +52,7 @@ public class ProposalControllerTest {
 
     @Test
     void list_proposals_by_status() throws Exception {
-        when(proposalService.listProposals(ProposalState.PENDING, 0, 25)).thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
+        when(proposalService.listProposals(ProposalState.PENDING, null, 0, 25)).thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
 
         mockMvc.perform(get("/api/proposals").param("status", "PENDING").with(TestAuth.user()))
                 .andExpect(status().isOk())
@@ -60,11 +61,27 @@ public class ProposalControllerTest {
 
     @Test
     void count_pending_proposals() throws Exception {
-        when(proposalService.countProposals(null)).thenReturn(new ProposalCountDto(3L));
+        when(proposalService.countProposals(null, null)).thenReturn(new ProposalCountDto(3L));
 
         mockMvc.perform(get("/api/proposals/count").with(TestAuth.user()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(3));
+    }
+
+    @Test
+    void list_and_count_proposals_by_group() throws Exception {
+        when(proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, 0, 25))
+                .thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
+        when(proposalService.countProposals(null, ProposalGroup.ACTIONS)).thenReturn(new ProposalCountDto(4L));
+
+        mockMvc.perform(get("/api/proposals").param("status", "PENDING").param("group", "FINDINGS").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mockMvc.perform(get("/api/proposals/count").param("group", "ACTIONS").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(4));
+        mockMvc.perform(get("/api/proposals").param("group", "LATER").with(TestAuth.user()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

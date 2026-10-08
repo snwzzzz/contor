@@ -5,6 +5,7 @@ import { Lock } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
+import { Stepper } from "@/components/app/Stepper";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   getGetAiSettingsQueryKey,
@@ -43,7 +44,7 @@ export function AiSetupWizard() {
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : close())}>
-      <DialogContent className="grid max-h-[min(90svh,48rem)] w-[min(44rem,calc(100%-2rem))] max-w-none grid-rows-[auto_auto_1fr_auto] gap-5 sm:max-w-none">
+      <DialogContent className="flex max-h-[min(90svh,48rem)] w-[min(44rem,calc(100%-2rem))] max-w-none flex-col gap-5 overflow-hidden sm:max-w-none">
         <div className="grid gap-1 pr-8">
           <DialogTitle>Set up your AI assistant</DialogTitle>
           <DialogDescription>A local model reads your mail and keeps your contacts, calendar and to-dos.</DialogDescription>
@@ -58,6 +59,7 @@ export function AiSetupWizard() {
 function WizardSteps({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [draft, setDraft] = useState<AiPermissions | null>(null);
   const { data: settings } = useGetAiSettings();
   const { data: status } = useGetAiStatus();
@@ -68,6 +70,11 @@ function WizardSteps({ onDone }: { onDone: () => void }) {
   const permissions = draft ?? (settings ? permissionsOf(settings) : null);
   const starting = updateSettings.isPending || startAnalysis.isPending;
 
+  function goTo(next: number) {
+    setDirection(next < step ? "back" : "forward");
+    setStep(next);
+  }
+
   async function start() {
     if (!permissions) return;
     try {
@@ -75,7 +82,7 @@ function WizardSteps({ onDone }: { onDone: () => void }) {
       queryClient.setQueryData(getGetAiSettingsQueryKey(), saved);
       await startAnalysis.mutateAsync();
       await queryClient.invalidateQueries({ queryKey: getGetLatestAnalysisQueryKey() });
-      setStep(ANALYSIS_STEP);
+      goTo(ANALYSIS_STEP);
     } catch {
       // The mutation error is shown as a toast by the query client; stay on this step.
     }
@@ -85,24 +92,16 @@ function WizardSteps({ onDone }: { onDone: () => void }) {
 
   return (
     <>
-      <ol aria-label="Setup steps" className="flex flex-wrap gap-2 text-xs">
-        {STEPS.map((name, index) => (
-          <li
-            key={name}
-            aria-current={index === step ? "step" : undefined}
-            className={cn(
-              "rounded-full border px-3 py-1 text-muted-foreground",
-              index === step && "border-primary bg-primary text-primary-foreground",
-              index < step && "text-foreground",
-            )}
-          >
-            {index + 1}. {name}
-          </li>
-        ))}
-      </ol>
+      <Stepper label="Setup steps" steps={STEPS} current={step} />
 
-      <div className="min-h-0 overflow-y-auto">
-        {step === 0 ? <WelcomeStep running={isActiveRun(run)} onShowProgress={() => setStep(ANALYSIS_STEP)} /> : null}
+      <div
+        key={step}
+        className={cn(
+          "-mx-1 min-h-0 flex-1 overflow-y-auto px-1 animate-in fade-in duration-300 ease-out motion-reduce:animate-none",
+          direction === "forward" ? "slide-in-from-right-6" : "slide-in-from-left-6",
+        )}
+      >
+        {step === 0 ? <WelcomeStep running={isActiveRun(run)} onShowProgress={() => goTo(ANALYSIS_STEP)} /> : null}
         {step === 1 ? <AiModelStatus /> : null}
         {step === 2 ? (
           permissions ? <AiPermissionsForm value={permissions} onChange={setDraft} /> : <p className="text-sm text-muted-foreground">Loading…</p>
@@ -113,15 +112,15 @@ function WizardSteps({ onDone }: { onDone: () => void }) {
 
       <div className="flex justify-between gap-2">
         {step > 0 && step < ANALYSIS_STEP ? (
-          <AppButton variant="ghost" onClick={() => setStep(step - 1)}>
+          <AppButton variant="ghost" onClick={() => goTo(step - 1)}>
             Back
           </AppButton>
         ) : (
           <span />
         )}
-        {step === 0 ? <AppButton onClick={() => setStep(1)}>Get started</AppButton> : null}
+        {step === 0 ? <AppButton onClick={() => goTo(1)}>Get started</AppButton> : null}
         {step === 1 || step === 2 ? (
-          <AppButton disabled={!canContinue} onClick={() => setStep(step + 1)}>
+          <AppButton disabled={!canContinue} onClick={() => goTo(step + 1)}>
             Next
           </AppButton>
         ) : null}

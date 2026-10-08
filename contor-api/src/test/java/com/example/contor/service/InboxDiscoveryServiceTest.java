@@ -90,7 +90,7 @@ class InboxDiscoveryServiceTest {
         when(llmClient.completeJson(eq("router"), anyString(), anyString(), any()))
                 .thenReturn(MAP_ANSWER, MAP_ANSWER, REDUCE_ANSWER);
 
-        service.discover(emails(45), existing());
+        service.discover(emails(45), existing(), (done, total) -> { });
 
         ArgumentCaptor<String> prompts = ArgumentCaptor.forClass(String.class);
         verify(llmClient, times(3)).completeJson(eq("router"), anyString(), prompts.capture(), any());
@@ -103,7 +103,7 @@ class InboxDiscoveryServiceTest {
     void discover_SanitizesSuggestions() {
         when(llmClient.completeJson(anyString(), anyString(), anyString(), any())).thenReturn(MAP_ANSWER, REDUCE_ANSWER);
 
-        List<InboxDiscoveryService.Suggestion> suggestions = service.discover(emails(3), existing());
+        List<InboxDiscoveryService.Suggestion> suggestions = service.discover(emails(3), existing(), (done, total) -> { });
 
         assertThat(suggestions).hasSize(1);
         InboxDiscoveryService.Suggestion jobs = suggestions.getFirst();
@@ -122,8 +122,18 @@ class InboxDiscoveryServiceTest {
     }
 
     @Test
+    void discover_ReportsProgressPerModelCall() {
+        when(llmClient.completeJson(anyString(), anyString(), anyString(), any())).thenReturn(MAP_ANSWER, MAP_ANSWER, REDUCE_ANSWER);
+        List<String> progress = new ArrayList<>();
+
+        service.discover(emails(45), existing(), (done, total) -> progress.add(done + "/" + total));
+
+        assertThat(progress).containsExactly("0/3", "1/3", "2/3", "3/3");
+    }
+
+    @Test
     void discover_NoEmailsNoCall() {
-        assertThat(service.discover(List.of(), existing())).isEmpty();
+        assertThat(service.discover(List.of(), existing(), (done, total) -> { })).isEmpty();
         verifyNoInteractions(llmClient);
     }
 
@@ -131,7 +141,7 @@ class InboxDiscoveryServiceTest {
     void discover_MalformedAnswersIgnored() {
         when(llmClient.completeJson(anyString(), anyString(), anyString(), any())).thenReturn("not json");
 
-        assertThat(service.discover(emails(3), existing())).isEmpty();
+        assertThat(service.discover(emails(3), existing(), (done, total) -> { })).isEmpty();
         verify(llmClient, times(1)).completeJson(anyString(), anyString(), anyString(), any());
     }
 
@@ -147,7 +157,7 @@ class InboxDiscoveryServiceTest {
         when(llmClient.completeJson(anyString(), anyString(), anyString(), any()))
                 .thenReturn(MAP_ANSWER, "{\"collections\": [" + String.join(",", collections) + "]}");
 
-        List<InboxDiscoveryService.Suggestion> suggestions = service.discover(emails(3), existing());
+        List<InboxDiscoveryService.Suggestion> suggestions = service.discover(emails(3), existing(), (done, total) -> { });
 
         assertThat(suggestions).hasSize(8);
         assertThat(suggestions.getFirst().command().getSlug()).isEqualTo("type_0");

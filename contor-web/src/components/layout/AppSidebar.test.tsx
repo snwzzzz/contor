@@ -1,10 +1,11 @@
 import { screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
 import { navigationState, resetNavigation } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { AppSidebar } from "./AppSidebar";
+import { ResizableSidebarProvider } from "./ResizableSidebarProvider";
 
 vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
@@ -15,9 +16,9 @@ const collections = [
 
 function renderSidebar() {
   return renderWithProviders(
-    <SidebarProvider>
+    <ResizableSidebarProvider>
       <AppSidebar />
-    </SidebarProvider>,
+    </ResizableSidebarProvider>,
   );
 }
 
@@ -36,6 +37,7 @@ describe("AppSidebar", () => {
     for (const [name, href] of [
       ["Inbox", "/inbox"],
       ["Proposals", "/proposals"],
+      ["Findings", "/findings"],
       ["Calendar", "/calendar"],
       ["To-dos", "/tasks"],
       ["Relations", "/relations"],
@@ -57,6 +59,37 @@ describe("AppSidebar", () => {
     expect(await screen.findByRole("link", { name: "People" })).toHaveAttribute("href", "/collections/1");
     expect(screen.getByRole("link", { name: "Organizations" })).toHaveAttribute("href", "/collections/2");
     expect(screen.getByRole("link", { name: /New collection/ })).toHaveAttribute("href", "/collections/new");
+  });
+
+  afterEach(() => window.localStorage.clear());
+
+  it("shows the logo as a home link that survives the collapsed sidebar", () => {
+    renderSidebar();
+
+    const home = screen.getByRole("link", { name: "contor home" });
+    expect(home).toHaveAttribute("href", "/inbox");
+    expect(within(home).getByText("contor")).toBeInTheDocument();
+  });
+
+  it("moves a collection with the keyboard and remembers the order", async () => {
+    renderSidebar();
+    await screen.findByRole("link", { name: "People" });
+
+    screen.getByRole("button", { name: "Move Organizations" }).focus();
+    await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    const list = screen.getByRole("list", { name: "Collections" });
+    expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["People", "Organizations", "New collection"]);
+    expect(JSON.parse(window.localStorage.getItem("contor.sidebar.collectionOrder") ?? "[]")).toEqual([1, 2]);
+  });
+
+  it("restores the saved collection order", async () => {
+    window.localStorage.setItem("contor.sidebar.collectionOrder", "[1, 2]");
+    renderSidebar();
+
+    const list = await screen.findByRole("list", { name: "Collections" });
+    await within(list).findByRole("link", { name: "People" });
+    expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["People", "Organizations", "New collection"]);
   });
 
   it("shows the number of pending proposals", async () => {

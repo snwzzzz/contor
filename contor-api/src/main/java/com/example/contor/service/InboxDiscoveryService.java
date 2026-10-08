@@ -77,6 +77,12 @@ public class InboxDiscoveryService {
             its allowed values, STATUS its ordered workflow states (e.g. applied, interview, offer, rejected); other \
             types have empty values.""";
 
+    /** Called before the first and after every model call: {@code done} of {@code total} calls finished. */
+    @FunctionalInterface
+    public interface ProgressListener {
+        void progress(int done, int total);
+    }
+
     /** A creatable collection with the evidence behind it. */
     public record Suggestion(NewCollectionCommand command, int emailCount, String reason) {
     }
@@ -88,19 +94,27 @@ public class InboxDiscoveryService {
     private final AiProperties properties;
     private final ObjectMapper objectMapper;
 
-    public List<Suggestion> discover(List<DiscoveryEmail> emails, List<CollectionDto> existing) {
+    public List<Suggestion> discover(List<DiscoveryEmail> emails, List<CollectionDto> existing, ProgressListener listener) {
         List<DiscoveryEmail> sample = sample(emails);
         if (sample.isEmpty()) {
             return List.of();
         }
+        int batches = (sample.size() + BATCH_SIZE - 1) / BATCH_SIZE;
+        int total = batches + 1;
+        listener.progress(0, total);
         List<Candidate> candidates = new ArrayList<>();
-        for (int start = 0; start < sample.size(); start += BATCH_SIZE) {
+        for (int batch = 0; batch < batches; batch++) {
+            int start = batch * BATCH_SIZE;
             candidates.addAll(summarize(sample.subList(start, Math.min(sample.size(), start + BATCH_SIZE))));
+            listener.progress(batch + 1, total);
         }
         if (candidates.isEmpty()) {
+            listener.progress(total, total);
             return List.of();
         }
-        return merge(candidates, existing);
+        List<Suggestion> suggestions = merge(candidates, existing);
+        listener.progress(total, total);
+        return suggestions;
     }
 
     /** One email per sender and subject (numbers ignored), newest first, at most {@link #MAX_SAMPLE}. */

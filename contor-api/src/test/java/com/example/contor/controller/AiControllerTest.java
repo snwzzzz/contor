@@ -57,7 +57,7 @@ class AiControllerTest {
     }
 
     private static AnalysisRunDto run(AnalysisState state) {
-        return new AnalysisRunDto(10L, state, 100, 25, 1, 7, 3, 2, OffsetDateTime.parse("2026-10-08T12:00:00Z"));
+        return new AnalysisRunDto(10L, state, 3, 3, 100, 25, 1, 7, 3, 2, OffsetDateTime.parse("2026-10-08T12:00:00Z"));
     }
 
     private static AiSettingsDto settings() {

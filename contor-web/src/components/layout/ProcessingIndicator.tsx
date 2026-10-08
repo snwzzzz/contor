@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatedDots } from "@/components/app/AnimatedDots";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import type { AnalysisRunDto } from "@/lib/api/generated/model/analysisRunDto";
@@ -37,7 +38,10 @@ export function ProcessingIndicator() {
     return (
       <Link href={aiSetupHref(pathname)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
         {dot(true)}
-        {activeText(run)}
+        <span>
+          {activeText(run)}
+          <AnimatedDots />
+        </span>
       </Link>
     );
   }

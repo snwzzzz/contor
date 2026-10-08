@@ -3,12 +3,15 @@ package com.example.contor.service;
 import com.example.contor.api.model.DecideProposalCommand;
 import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.domain.ActorType;
 import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AppUser;
+import com.example.contor.domain.Collection;
+import com.example.contor.domain.Slug;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Proposal;
@@ -20,6 +23,7 @@ import com.example.contor.exception.ProposalNotApplicableException;
 import com.example.contor.exception.ProposalNotFoundException;
 import com.example.contor.exception.RecordValidationException;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.proposal.ProposalApplier;
@@ -65,6 +69,9 @@ class ProposalServiceTest {
     private EmailMessageRepository emailMessageRepository;
 
     @Mock
+    private CollectionRepository collectionRepository;
+
+    @Mock
     private ProposalApplier createRecordApplier;
 
     private ProposalService proposalService;
@@ -72,7 +79,7 @@ class ProposalServiceTest {
     @BeforeEach
     void setup() {
         lenient().when(createRecordApplier.kind()).thenReturn(ProposalKind.CREATE_RECORD);
-        proposalService = new ProposalService(proposalRepository, appUserRepository, emailMessageRepository, auditService,
+        proposalService = new ProposalService(proposalRepository, appUserRepository, emailMessageRepository, collectionRepository, auditService,
                 new ProposalApplierRegistry(List.of(createRecordApplier)));
         lenient().when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(invocation -> invocation.getArgument(0));
         loggedInAs(UserRole.OWNER);
@@ -192,7 +199,7 @@ class ProposalServiceTest {
         when(proposalRepository.findByStatus(ProposalStatus.PENDING, expected))
                 .thenReturn(new PageImpl<>(List.of(Proposal.builder().kind(ProposalKind.SET_LABEL).payload(Map.of()).build()), expected, 11));
 
-        ProposalPageDto page = proposalService.listProposals(ProposalState.PENDING, 1, 10);
+        ProposalPageDto page = proposalService.listProposals(ProposalState.PENDING, null, 1, 10);
 
         assertEquals(1, page.getItems().size());
         assertEquals(11L, page.getTotalElements());
@@ -204,14 +211,61 @@ class ProposalServiceTest {
         Pageable expected = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "createdAt"));
         when(proposalRepository.findAll(expected)).thenReturn(new PageImpl<>(List.of(), expected, 0));
 
-        assertEquals(0, proposalService.listProposals(null, null, null).getTotalElements());
+        assertEquals(0, proposalService.listProposals(null, null, null, null).getTotalElements());
+    }
+
+    private void actionCollections() {
+        when(collectionRepository.findBySlug(new Slug("events")))
+                .thenReturn(Optional.of(Collection.builder().id(new Collection.CollectionId(3L)).build()));
+        when(collectionRepository.findBySlug(new Slug("tasks")))
+                .thenReturn(Optional.of(Collection.builder().id(new Collection.CollectionId(4L)).build()));
+    }
+
+    @Test
+    void listProposals_FindingsExcludeTheCalendarAndToDos() {
+        actionCollections();
+        Pageable expected = PageRequest.of(0, 25);
+        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L), expected))
+                .thenReturn(new PageImpl<>(List.of(Proposal.builder().kind(ProposalKind.CREATE_RECORD).payload(Map.of()).build()), expected, 1));
+
+        assertEquals(1, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, null, null).getItems().size());
+    }
+
+    @Test
+    void listProposals_Actions() {
+        actionCollections();
+        Pageable expected = PageRequest.of(2, 10);
+        when(proposalRepository.findActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), expected))
+                .thenReturn(new PageImpl<>(List.of(), expected, 20));
+
+        assertEquals(20L, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.ACTIONS, 2, 10).getTotalElements());
+    }
+
+    @Test
+    void countProposals_ByGroupDefaultsToPending() {
+        actionCollections();
+        when(proposalRepository.countActions(ProposalStatus.PENDING.name(), List.of(3L, 4L))).thenReturn(5L);
+        when(proposalRepository.countFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L))).thenReturn(7L);
+
+        assertEquals(5L, proposalService.countProposals(null, ProposalGroup.ACTIONS).getCount());
+        assertEquals(7L, proposalService.countProposals(null, ProposalGroup.FINDINGS).getCount());
+    }
+
+    @Test
+    void listProposals_GroupWithoutActionCollectionsStillWorks() {
+        when(collectionRepository.findBySlug(any())).thenReturn(Optional.empty());
+        Pageable expected = PageRequest.of(0, 25);
+        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(-1L), expected))
+                .thenReturn(new PageImpl<>(List.of(), expected, 0));
+
+        assertEquals(0L, proposalService.listProposals(null, ProposalGroup.FINDINGS, null, null).getTotalElements());
     }
 
     @Test
     void countProposals_DefaultsToPending() {
         when(proposalRepository.countByStatus(ProposalStatus.PENDING)).thenReturn(3L);
 
-        assertEquals(3L, proposalService.countProposals(null).getCount());
+        assertEquals(3L, proposalService.countProposals(null, null).getCount());
     }
 
     @Test

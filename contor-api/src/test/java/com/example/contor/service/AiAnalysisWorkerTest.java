@@ -36,6 +36,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -137,7 +138,7 @@ class AiAnalysisWorkerTest {
     @Test
     void run_AutoCategoriesAreCreatedThenEmailsExtracted() {
         settings(AiPermissionLevel.AUTO, AiPermissionLevel.AUTO, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF);
-        when(inboxDiscoveryService.discover(any(), anyList())).thenReturn(List.of(suggestion()));
+        when(inboxDiscoveryService.discover(any(), anyList(), any())).thenReturn(List.of(suggestion()));
         EmailMessage email = email(100L);
         emailsToProcess(100L);
         when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
@@ -172,9 +173,47 @@ class AiAnalysisWorkerTest {
     }
 
     @Test
+    void run_DiscoveryProgressIsStoredOnTheRun() {
+        settings(AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        List<String> seen = new ArrayList<>();
+        when(inboxDiscoveryService.discover(any(), anyList(), any())).thenAnswer(inv -> {
+            InboxDiscoveryService.ProgressListener listener = inv.getArgument(2);
+            listener.progress(0, 11);
+            seen.add(run.getDiscoveryStepsDone() + "/" + run.getDiscoverySteps());
+            listener.progress(4, 11);
+            seen.add(run.getDiscoveryStepsDone() + "/" + run.getDiscoverySteps());
+            return List.of();
+        });
+        emailsToProcess();
+
+        worker.run(10L);
+
+        assertThat(seen).containsExactly("0/11", "4/11");
+    }
+
+    @Test
+    void run_ShowsTheEmailBeingReadAndClearsItAtTheEnd() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        EmailMessage email = email(100L);
+        when(emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(100L))).thenReturn(email);
+        emailsToProcess(100L);
+        List<String> seen = new ArrayList<>();
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenAnswer(inv -> {
+            seen.add(run.getCurrentEmail() != null ? run.getCurrentEmail().getSubject() : "none");
+            return List.of();
+        });
+
+        worker.run(10L);
+
+        assertThat(seen).containsExactly("Subject 100");
+        assertThat(run.getCurrentEmail()).isNull();
+        assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.COMPLETED);
+    }
+
+    @Test
     void run_SuggestedCategoriesWaitForReview() {
         settings(AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
-        when(inboxDiscoveryService.discover(any(), anyList())).thenReturn(List.of(suggestion()));
+        when(inboxDiscoveryService.discover(any(), anyList(), any())).thenReturn(List.of(suggestion()));
         when(proposalService.submitDraft(any(), isNull(), eq(AiPermissionLevel.SUGGEST), eq("router"), eq(InboxDiscoveryService.PROMPT_VERSION)))
                 .thenReturn(ProposalService.Outcome.SUGGESTED);
 
@@ -197,7 +236,7 @@ class AiAnalysisWorkerTest {
 
         worker.run(10L);
 
-        verify(inboxDiscoveryService, never()).discover(any(), anyList());
+        verify(inboxDiscoveryService, never()).discover(any(), anyList(), any());
         assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.COMPLETED);
     }
 
@@ -209,7 +248,7 @@ class AiAnalysisWorkerTest {
 
         worker.run(10L);
 
-        verify(inboxDiscoveryService, never()).discover(any(), anyList());
+        verify(inboxDiscoveryService, never()).discover(any(), anyList(), any());
         assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.COMPLETED);
     }
 
@@ -271,7 +310,7 @@ class AiAnalysisWorkerTest {
     @Test
     void run_DiscoveryFailureFailsTheRun() {
         settings(AiPermissionLevel.AUTO, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
-        when(inboxDiscoveryService.discover(any(), anyList())).thenThrow(new OllamaException("Ollama is not reachable"));
+        when(inboxDiscoveryService.discover(any(), anyList(), any())).thenThrow(new OllamaException("Ollama is not reachable"));
 
         worker.run(10L);
 

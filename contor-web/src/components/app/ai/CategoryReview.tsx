@@ -5,7 +5,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { getListProposalsQueryKey, useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 
-const PENDING = { status: "PENDING", size: 200 } as const;
+const PENDING_ACTIONS = { status: "PENDING", group: "ACTIONS", size: 200 } as const;
 
 interface CategoryPayload {
   name?: string;
@@ -16,7 +16,7 @@ interface CategoryPayload {
 /** Pending CREATE_COLLECTION proposals from the discovery: create or skip each one. */
 export function CategoryReview() {
   const queryClient = useQueryClient();
-  const { data } = useListProposals(PENDING);
+  const { data } = useListProposals(PENDING_ACTIONS);
   const decide = useDecideProposal({
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListProposalsQueryKey() }) },
   });

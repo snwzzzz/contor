@@ -22,5 +22,11 @@ export function useLatestAnalysis() {
       refetchInterval: (current) => (isActiveRun(current.state.data) ? POLL_MS : false),
     },
   });
-  return { run: query.error ? undefined : query.data, isLoading: query.isLoading, queryKey: query.queryKey };
+  return {
+    run: query.error ? undefined : query.data,
+    isLoading: query.isLoading,
+    queryKey: query.queryKey,
+    /** When the run was last fetched (ms); used to measure the pace without reading the clock during render. */
+    updatedAt: query.dataUpdatedAt,
+  };
 }

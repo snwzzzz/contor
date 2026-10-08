@@ -9,6 +9,8 @@ function run(status: string, extra: Record<string, unknown> = {}) {
   return {
     id: 10,
     status,
+    discoverySteps: 11,
+    discoveryStepsDone: 11,
     totalEmails: 100,
     processedEmails: 25,
     failedEmails: 1,
@@ -42,20 +44,42 @@ const recordProposal = { ...jobProposal, id: 6, kind: "CREATE_RECORD", payload: 
 describe("AnalysisProgress", () => {
   it("shows progress and counters while extracting, and cancels", async () => {
     const calls = mockApi({
-      "GET /api/ai/analysis/latest": { body: run("EXTRACTING") },
+      "GET /api/ai/analysis/latest": {
+        body: run("EXTRACTING", { currentEmailSubject: "Interview invitation", currentEmailFrom: "Anna Berger" }),
+      },
       "POST /api/ai/analysis/10/cancel": { body: run("CANCELLED") },
     });
 
     renderWithProviders(<AnalysisProgress />);
 
     expect(await screen.findByRole("progressbar", { name: "Emails analyzed" })).toHaveAttribute("aria-valuenow", "25");
-    expect(screen.getByText("25 of 100 emails")).toBeInTheDocument();
+    expect(screen.getByText("Email 26 of 100")).toBeInTheDocument();
+    expect(screen.getByText("25%")).toBeInTheDocument();
+    expect(screen.getByText("Interview invitation")).toBeInTheDocument();
+    expect(screen.getByText("from Anna Berger")).toBeInTheDocument();
+    expect(screen.getByText(/estimating time left/i)).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Stop analysis" }));
 
     await waitFor(() => expect(calls.some((call) => call.method === "POST" && call.path === "/api/ai/analysis/10/cancel")).toBe(true));
+  });
+
+  it("shows the discovery progress while looking for categories", async () => {
+    mockApi({
+      "GET /api/ai/analysis/latest": {
+        body: run("DISCOVERING", { discoverySteps: 11, discoveryStepsDone: 4, totalEmails: 0, processedEmails: 0 }),
+      },
+    });
+
+    renderWithProviders(<AnalysisProgress />);
+
+    const bar = await screen.findByRole("progressbar", { name: "Categories" });
+    expect(bar).toHaveAttribute("aria-valuenow", "4");
+    expect(bar).toHaveAttribute("aria-valuemax", "11");
+    expect(screen.getByText("Step 4 of 11")).toBeInTheDocument();
+    expect(screen.getByText(/working/i)).toBeInTheDocument();
   });
 
   it("lets the user review discovered categories and continue", async () => {
@@ -89,7 +113,9 @@ describe("AnalysisProgress", () => {
     renderWithProviders(<AnalysisProgress />);
 
     expect(await screen.findByText(/analysis finished/i)).toBeInTheDocument();
+    expect(screen.getByText("100 of 100 emails")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /review proposals/i })).toHaveAttribute("href", "/proposals");
+    expect(screen.getByRole("link", { name: /review findings/i })).toHaveAttribute("href", "/findings");
     expect(screen.getByRole("link", { name: /calendar/i })).toHaveAttribute("href", "/calendar");
     expect(screen.getByRole("link", { name: /to-dos/i })).toHaveAttribute("href", "/tasks");
   });

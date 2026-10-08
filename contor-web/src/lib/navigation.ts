@@ -6,6 +6,7 @@ import {
   KeyRound,
   ListFilter,
   ListTodo,
+  ScanSearch,
   Network,
   Settings,
   ShieldCheck,
@@ -13,25 +14,29 @@ import {
   Tags,
   type LucideIcon,
 } from "lucide-react";
+import type { Tint } from "@/lib/collection-tint";
 
 export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** Section color (sidebar icon, page title icon). */
+  tint?: Tint;
 }
 
 /** Top-level sections (sidebar + command palette share this list). */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { title: "Inbox", href: "/inbox", icon: Inbox },
-  { title: "Proposals", href: "/proposals", icon: Sparkles },
-  { title: "Calendar", href: "/calendar", icon: CalendarDays },
-  { title: "To-dos", href: "/tasks", icon: ListTodo },
+  { title: "Inbox", href: "/inbox", icon: Inbox, tint: 5 },
+  { title: "Proposals", href: "/proposals", icon: Sparkles, tint: 6 },
+  { title: "Findings", href: "/findings", icon: ScanSearch, tint: 4 },
+  { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: 1 },
+  { title: "To-dos", href: "/tasks", icon: ListTodo, tint: 3 },
 ];
 
 export const DATA_NAV: readonly NavItem[] = [
-  { title: "Relations", href: "/relations", icon: Network },
-  { title: "Queries", href: "/queries", icon: ListFilter },
-  { title: "Rules & Labels", href: "/rules", icon: Tags },
+  { title: "Relations", href: "/relations", icon: Network, tint: 2 },
+  { title: "Queries", href: "/queries", icon: ListFilter, tint: 5 },
+  { title: "Rules & Labels", href: "/rules", icon: Tags, tint: 4 },
 ];
 
 /** Settings open as a modal over the current page, addressed by `?settings=<section>`. */
@@ -70,6 +75,13 @@ export function isSettingsSection(value: string | null | undefined): value is Se
 /** The current page with the settings modal opened at `section`. */
 export function settingsHref(pathname: string, section: SettingsSection): string {
   return `${pathname}?${SETTINGS_PARAM}=${section}`;
+}
+
+/** The navigation entry of a top-level page (its icon and tint for the page title). */
+export function navItem(href: string): NavItem {
+  const item = [...PRIMARY_NAV, ...DATA_NAV].find((entry) => entry.href === href);
+  if (!item) throw new Error(`No navigation entry for ${href}`);
+  return item;
 }
 
 export const ALL_NAV: readonly NavItem[] = [...PRIMARY_NAV, ...DATA_NAV, SETTINGS_ROOT, ...SETTINGS_NAV];

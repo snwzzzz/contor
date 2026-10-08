@@ -943,6 +943,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -967,6 +972,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
       responses:
         '200':
           description: The count
@@ -2327,6 +2337,13 @@ components:
     ProposalState:
       type: string
       enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
+    ProposalGroup:
+      type: string
+      description: |
+        FINDINGS: data the AI extracted (CREATE_RECORD / UPDATE_RECORD in any collection except the assistant's
+        calendar `events` and to-dos `tasks`). ACTIONS: everything else – things the AI proposes to do (calendar
+        entries, to-dos, new categories, later replies and labels).
+      enum: [ACTIONS, FINDINGS]
     ProposalDecision:
       type: string
       enum: [APPROVE, REJECT]
@@ -2764,7 +2781,7 @@ components:
       enum: [QUEUED, DISCOVERING, AWAITING_REVIEW, EXTRACTING, COMPLETED, FAILED, CANCELLED]
     AnalysisRunDto:
       type: object
-      required: [id, status, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
+      required: [id, status, discoverySteps, discoveryStepsDone, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
       properties:
         id:
           type: integer
@@ -2775,6 +2792,19 @@ components:
           type: string
           format: date-time
           description: Oldest email included; absent = everything
+        discoverySteps:
+          type: integer
+          format: int32
+          description: Model calls the category discovery needs (one per batch of emails plus one merge); 0 before it starts
+        discoveryStepsDone:
+          type: integer
+          format: int32
+        currentEmailSubject:
+          type: string
+          description: Subject of the email the model is reading right now (EXTRACTING only)
+        currentEmailFrom:
+          type: string
+          description: Sender name (or address) of that email
         totalEmails:
           type: integer
           format: int32

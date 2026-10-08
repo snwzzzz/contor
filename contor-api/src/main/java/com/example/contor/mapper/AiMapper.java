@@ -7,6 +7,7 @@ import com.example.contor.api.model.AnalysisState;
 import com.example.contor.domain.AiAnalysisRun;
 import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AiSettings;
+import com.example.contor.domain.EmailMessage;
 
 public class AiMapper {
 
@@ -30,6 +31,8 @@ public class AiMapper {
                 .id(run.getId() != null ? run.getId().id() : null)
                 .status(run.getStatus() != null ? AnalysisState.valueOf(run.getStatus().name()) : null)
                 .since(MapperSupport.toOffset(run.getSince()))
+                .discoverySteps(run.getDiscoverySteps())
+                .discoveryStepsDone(run.getDiscoveryStepsDone())
                 .totalEmails(run.getTotalEmails())
                 .processedEmails(run.getProcessedEmails())
                 .failedEmails(run.getFailedEmails())
@@ -37,9 +40,15 @@ public class AiMapper {
                 .autoApplied(run.getAutoApplied())
                 .categoriesDiscovered(run.getCategoriesDiscovered())
                 .error(run.getError())
+                .currentEmailSubject(run.getCurrentEmail() != null ? run.getCurrentEmail().getSubject() : null)
+                .currentEmailFrom(run.getCurrentEmail() != null ? sender(run.getCurrentEmail()) : null)
                 .startedAt(MapperSupport.toOffset(run.getStartedAt()))
                 .finishedAt(MapperSupport.toOffset(run.getFinishedAt()))
                 .createdAt(MapperSupport.toOffset(run.getCreatedAt()));
+    }
+
+    private static String sender(EmailMessage email) {
+        return email.getFromName() != null && !email.getFromName().isBlank() ? email.getFromName() : email.getFromAddress();
     }
 
     public static AiPermissionLevel toLevel(AiAccess access) {

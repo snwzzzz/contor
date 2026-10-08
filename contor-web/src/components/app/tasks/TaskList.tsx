@@ -5,7 +5,6 @@ import { ListTodo } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
@@ -121,7 +120,16 @@ function TaskItem({ task, today, onToggle }: TaskItemProps) {
         onChange={(event) => onToggle(task, event.target.checked)}
       />
       <span className={cn("flex-1 text-sm", done && "text-muted-foreground line-through")}>{task.title}</span>
-      {priority ? <Badge variant={priority === "High" ? "destructive" : "outline"}>{priority}</Badge> : null}
+      {priority ? (
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-medium",
+            priority === "High" ? "bg-destructive/15 text-destructive" : "bg-info/15 text-info",
+          )}
+        >
+          {priority}
+        </span>
+      ) : null}
       {due ? (
         <span className={cn("text-xs tabular-nums", overdue ? "text-destructive" : "text-muted-foreground")}>
           Due {DUE_FORMAT.format(new Date(`${due}T00:00:00`))}

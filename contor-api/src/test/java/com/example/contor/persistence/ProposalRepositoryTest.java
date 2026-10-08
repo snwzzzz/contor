@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,6 +55,33 @@ public class ProposalRepositoryTest {
 
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getTotalElements()).isEqualTo(3);
+    }
+
+    private static Proposal of(ProposalKind kind, ProposalStatus status, Map<String, Object> payload) {
+        return Proposal.builder().kind(kind).status(status).payload(payload).build();
+    }
+
+    @Test
+    void splits_proposals_into_findings_and_actions() {
+        // Collections 3 (calendar) and 4 (to-dos) hold actions; every other collection holds findings.
+        proposalRepository.save(of(ProposalKind.CREATE_RECORD, ProposalStatus.PENDING, Map.of("collectionId", 1, "title", "Anna")));
+        proposalRepository.save(of(ProposalKind.UPDATE_RECORD, ProposalStatus.PENDING, Map.of("collectionId", 7, "recordId", 2)));
+        proposalRepository.save(of(ProposalKind.CREATE_RECORD, ProposalStatus.PENDING, Map.of("collectionId", 3, "title", "Interview")));
+        proposalRepository.save(of(ProposalKind.CREATE_RECORD, ProposalStatus.PENDING, Map.of("collectionId", 4, "title", "Send CV")));
+        proposalRepository.save(of(ProposalKind.CREATE_COLLECTION, ProposalStatus.PENDING, Map.of("slug", "jobs", "name", "Jobs")));
+        proposalRepository.saveAndFlush(of(ProposalKind.CREATE_RECORD, ProposalStatus.REJECTED, Map.of("collectionId", 1, "title", "Old")));
+        List<Long> actionCollections = List.of(3L, 4L);
+
+        var findings = proposalRepository.findFindings("PENDING", actionCollections, PageRequest.of(0, 10));
+        var actions = proposalRepository.findActions("PENDING", actionCollections, PageRequest.of(0, 10));
+
+        assertThat(findings.getContent()).extracting(p -> p.getPayload().get("collectionId")).containsExactlyInAnyOrder(1, 7);
+        assertThat(findings.getTotalElements()).isEqualTo(2);
+        assertThat(actions.getContent()).extracting(Proposal::getKind)
+                .containsExactlyInAnyOrder(ProposalKind.CREATE_RECORD, ProposalKind.CREATE_RECORD, ProposalKind.CREATE_COLLECTION);
+        assertThat(proposalRepository.countFindings("PENDING", actionCollections)).isEqualTo(2);
+        assertThat(proposalRepository.countActions("PENDING", actionCollections)).isEqualTo(3);
+        assertThat(proposalRepository.countFindings("REJECTED", actionCollections)).isEqualTo(1);
     }
 
     @Test

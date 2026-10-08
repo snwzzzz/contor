@@ -153,8 +153,9 @@ bar (or Settings → AI Models). The wizard walks through:
 5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
    each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
 
-- *Ask me* stores proposals for `/proposals` (approve/reject); *Automatic* applies them directly (audited; if applying
-  fails the proposal waits for review instead).
+- *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
+  actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject). *Automatic* applies
+  them directly (audited; if applying fails the proposal waits for review instead).
 - The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`) and **Tasks**
   (`/tasks`); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
 - Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
@@ -174,7 +175,7 @@ bar (or Settings → AI Models). The wizard walks through:
 | Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
 | Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
-| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD, UPDATE_RECORD and CREATE_COLLECTION (OWNER) can be applied |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD, UPDATE_RECORD and CREATE_COLLECTION (OWNER) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`) |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
@@ -268,6 +269,8 @@ The UI is built so a visual redesign does not touch pages or data logic:
 | Pages | `src/app/` | composition only: no styling decisions, no `components/ui` imports (ESLint enforces) |
 
 Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and command palette). `npm run screenshots` captures before/after images.
+
+The sidebar can be resized (drag its right edge, or focus the edge and use the arrow keys; double-click collapses it) and collections can be reordered (drag them, or focus a collection's grip and press Alt+↑/↓). Both are per-browser preferences in `localStorage` (`contor.sidebar.width`, `contor.sidebar.collectionOrder`), never stored on the server. The theme stays black and white; color comes only from `success`/`info`/`warning` and the per-collection tints (`--tint-1..6`: same lightness and chroma, only the hue changes), all in `src/styles/tokens.css`. Scrollbars are thin everywhere (`globals.css`).
 
 ## Notes
 
