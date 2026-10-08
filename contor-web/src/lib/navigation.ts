@@ -1,9 +1,11 @@
 import {
   Bot,
   Brain,
+  CalendarDays,
   Inbox,
   KeyRound,
   ListFilter,
+  ListTodo,
   Network,
   Settings,
   ShieldCheck,
@@ -22,6 +24,8 @@ export interface NavItem {
 export const PRIMARY_NAV: readonly NavItem[] = [
   { title: "Inbox", href: "/inbox", icon: Inbox },
   { title: "Proposals", href: "/proposals", icon: Sparkles },
+  { title: "Calendar", href: "/calendar", icon: CalendarDays },
+  { title: "To-dos", href: "/tasks", icon: ListTodo },
 ];
 
 export const DATA_NAV: readonly NavItem[] = [
@@ -44,10 +48,18 @@ export interface SettingsNavItem extends NavItem {
 /** `href` (/settings/<section>) redirects into the modal; in-app links use {@link settingsHref}. */
 export const SETTINGS_NAV: readonly SettingsNavItem[] = [
   { title: "Accounts", href: "/settings/accounts", section: "accounts", icon: KeyRound, description: "Connected mailboxes." },
-  { title: "AI Models", href: "/settings/ai", section: "ai", icon: Brain, description: "Local Ollama models used for routing, extraction and embeddings." },
-  { title: "Autonomy", href: "/settings/autonomy", section: "autonomy", icon: Bot, description: "How much the AI may do without asking." },
+  { title: "AI Models", href: "/settings/ai", section: "ai", icon: Brain, description: "The local Ollama model and the inbox analysis." },
+  { title: "Autonomy", href: "/settings/autonomy", section: "autonomy", icon: Bot, description: "What the AI may read and how much it may do without asking." },
   { title: "Security", href: "/settings/security", section: "security", icon: ShieldCheck, description: "Password and two-factor authentication." },
 ];
+
+/** The AI setup wizard opens as a modal over the current page, addressed by `?ai-setup=1`. */
+export const AI_SETUP_PARAM = "ai-setup";
+
+/** The current page with the AI setup wizard opened. */
+export function aiSetupHref(pathname: string): string {
+  return `${pathname}?${AI_SETUP_PARAM}=1`;
+}
 
 export const SETTINGS_ROOT: NavItem = { title: "Settings", href: "/settings", icon: Settings };
 

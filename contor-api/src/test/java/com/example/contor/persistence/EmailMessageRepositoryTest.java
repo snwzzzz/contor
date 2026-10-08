@@ -1,13 +1,18 @@
 package com.example.contor.persistence;
 
 import com.example.contor.RepositoryTest;
+import com.example.contor.ai.DiscoveryEmail;
+import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.EmailHeader;
 import com.example.contor.domain.EmailRecipient;
 import com.example.contor.domain.ProcessingState;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,4 +71,86 @@ public class EmailMessageRepositoryTest {
                 .extracting(e -> e.getProviderMessageId())
                 .containsExactly("AAMk-1");
     }
+
+    private EmailMessage email(MailAccount account, String id, String receivedAt, ProcessingState state) {
+        EmailMessage email = Fixtures.email(account, id);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        email.setProcessingState(state);
+        email.setSubject("Subject " + id);
+        email.setSnippet("Snippet " + id);
+        return emailMessageRepository.save(email);
+    }
+
+    @Test
+    void finds_ids_to_process_of_one_owner_oldest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var newer = email(mine, "A", "2026-03-01T00:00:00Z", ProcessingState.NEW);
+        var older = email(mine, "B", "2026-02-01T00:00:00Z", ProcessingState.NEW);
+        email(mine, "C", "2025-01-01T00:00:00Z", ProcessingState.NEW);
+        email(mine, "D", "2026-02-15T00:00:00Z", ProcessingState.DONE);
+        email(theirs, "E", "2026-02-15T00:00:00Z", ProcessingState.NEW);
+        emailMessageRepository.flush();
+
+        List<Long> ids = emailMessageRepository.findIdsForProcessing(owner.getId(), ProcessingState.NEW,
+                Instant.parse("2026-01-01T00:00:00Z"), PageRequest.of(0, 10));
+
+        assertThat(ids).containsExactly(older.getId().id(), newer.getId().id());
+        assertThat(emailMessageRepository.findIdsForProcessing(owner.getId(), ProcessingState.NEW,
+                Instant.parse("2026-01-01T00:00:00Z"), PageRequest.of(0, 1))).hasSize(1);
+    }
+
+    @Test
+    void lists_discovery_samples_of_one_owner_newest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        email(mine, "A", "2026-02-01T00:00:00Z", ProcessingState.NEW);
+        email(mine, "B", "2026-03-01T00:00:00Z", ProcessingState.DONE);
+        email(mine, "C", "2025-01-01T00:00:00Z", ProcessingState.NEW);
+        email(theirs, "D", "2026-02-15T00:00:00Z", ProcessingState.NEW);
+        emailMessageRepository.flush();
+
+        List<DiscoveryEmail> samples = emailMessageRepository.findDiscoveryEmails(owner.getId(),
+                Instant.parse("2026-01-01T00:00:00Z"), PageRequest.of(0, 10));
+
+        assertThat(samples).extracting(DiscoveryEmail::subject).containsExactly("Subject B", "Subject A");
+        assertThat(samples.getFirst().fromAddress()).isEqualTo("shop@example.com");
+        assertThat(samples.getFirst().snippet()).isEqualTo("Snippet B");
+    }
+
+    @Test
+    void marks_old_unprocessed_emails_of_one_owner() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var old = email(mine, "A", "2025-01-01T00:00:00Z", ProcessingState.NEW);
+        var recent = email(mine, "B", "2026-03-01T00:00:00Z", ProcessingState.NEW);
+        var foreign = email(theirs, "C", "2025-01-01T00:00:00Z", ProcessingState.NEW);
+        emailMessageRepository.flush();
+
+        int updated = emailMessageRepository.updateProcessingStateBefore(owner.getId(), ProcessingState.NEW, ProcessingState.SKIPPED,
+                Instant.parse("2026-01-01T00:00:00Z"));
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(emailMessageRepository.findById(old.getId()).orElseThrow().getProcessingState()).isEqualTo(ProcessingState.SKIPPED);
+        assertThat(emailMessageRepository.findById(recent.getId()).orElseThrow().getProcessingState()).isEqualTo(ProcessingState.NEW);
+        assertThat(emailMessageRepository.findById(foreign.getId()).orElseThrow().getProcessingState()).isEqualTo(ProcessingState.NEW);
+    }
+
+    @Test
+    void resets_interrupted_emails() {
+        var account = mailAccountRepository.save(Fixtures.mailAccount(appUserRepository.save(Fixtures.user("owner")), "me@example.com"));
+        var interrupted = email(account, "A", "2026-01-01T00:00:00Z", ProcessingState.PROCESSING);
+        email(account, "B", "2026-01-01T00:00:00Z", ProcessingState.DONE);
+        emailMessageRepository.flush();
+
+        assertThat(emailMessageRepository.updateProcessingState(ProcessingState.PROCESSING, ProcessingState.NEW)).isEqualTo(1);
+        assertThat(emailMessageRepository.findById(interrupted.getId()).orElseThrow().getProcessingState()).isEqualTo(ProcessingState.NEW);
+    }
 }
+

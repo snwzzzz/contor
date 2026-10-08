@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import { AiSetupWizard } from "@/components/app/ai/AiSetupWizard";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { SettingsDialog } from "./SettingsDialog";
 import { TopBar } from "./TopBar";
 
-/** Sidebar + top bar + main content of every signed-in page, plus the settings modal. */
+/** Sidebar + top bar + main content of every signed-in page, plus the settings modal and the AI setup wizard. */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">{children}</main>
       </SidebarInset>
       <SettingsDialog />
+      <AiSetupWizard />
     </SidebarProvider>
   );
 }

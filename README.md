@@ -1,8 +1,8 @@
 # contor
 
-Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
+Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
 
-> **Status: Phase 1, step 6 (frontend shell).** Backend API complete (security, collection engine, labels, rules, relations, proposals, saved queries, read-only mail). Frontend: first-run setup, login/logout, app shell with sidebar, top bar and command palette, light/dark theme. The collection UI and TOTP 2FA follow in the next steps.
+> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs). Frontend: setup/login, app shell, inbox, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plan: `docs/ai-plan.md`.
 
 ## Repository layout
 
@@ -20,7 +20,7 @@ Personal, self-hosted management platform: dynamic collections (Deliveries, Orde
 - Java 21 (no Maven install needed, use `./mvnw`)
 - Node.js 24+ and npm 11+
 - Docker (Docker Desktop or compatible): Postgres for dev, Testcontainers for backend tests
-- Later phases: Ollama running natively on the host (it must stay bound to localhost)
+- [Ollama](https://ollama.com) running natively on the host (bound to localhost, the default) for the AI assistant; see *Local AI*
 
 Optional, faster backend tests: let Testcontainers reuse the Postgres container between runs:
 
@@ -103,7 +103,7 @@ With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAM
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
-- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions (later: 2FA).
+- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
 
@@ -125,8 +125,47 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - Creating a collection, adding and archiving fields is OWNER-only. Each change runs the generated DDL, bumps the collection's `schema_version`, and writes `collection_schema_change` and the audit log in one transaction.
 - Archived fields are hidden and read-only; their column and data stay.
 - Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`).
-- On first start contor seeds the system collections **People** and **Organizations** and the relation types `works_at` (People → Organizations, inverse `employs`) and `knows` (People ↔ People).
+- On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
+
+## Local AI (Ollama)
+
+The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and
+extraction (one resident model, reliable JSON, German and English) plus `nomic-embed-text`; details and alternatives in
+`docs/decisions/0007-local-ai-with-ollama.md`.
+
+```bash
+ollama pull qwen3.5:9b
+```
+
+```bash
+ollama pull nomic-embed-text
+```
+
+(Or use the *Download missing models* button in the setup wizard.) Then open the app and click **Set up AI** in the top
+bar (or Settings → AI Models). The wizard walks through:
+
+1. **Welcome** – what the assistant does; nothing leaves the machine.
+2. **Model** – checks that Ollama runs and the models are installed, downloads missing ones.
+3. **Permissions** – read the mailboxes (off until you allow it), how far back (30/90/365 days or everything), and
+   *Off / Ask me / Automatic* for new categories, contacts & records, calendar and to-dos.
+4. **Start** – saves the permissions and starts the analysis.
+5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
+   each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
+
+- *Ask me* stores proposals for `/proposals` (approve/reject); *Automatic* applies them directly (audited; if applying
+  fails the proposal waits for review instead).
+- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`) and **Tasks**
+  (`/tasks`); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
+- Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
+  for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
+- Permissions can be changed any time under Settings → Autonomy; *Analyze inbox again* lives under Settings → AI Models.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/ai/status`, `POST /api/ai/models/pull` | Ollama reachable? models installed? download missing (OWNER) |
+| `GET/PUT /api/ai/settings` | the current user's permissions (PUT OWNER; `completeOnboarding` ends the wizard) |
+| `POST /api/ai/analysis`, `GET /api/ai/analysis/latest`, `POST /api/ai/analysis/{id}/continue\|cancel` | inbox analysis runs (mutations OWNER) |
 
 ## Other resources (API overview)
 
@@ -135,7 +174,7 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 | Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
 | Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
-| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD, UPDATE_RECORD and CREATE_COLLECTION (OWNER) can be applied |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
@@ -194,10 +233,17 @@ All variables are listed in `.env.example`.
 | `APP_SECURE_COOKIES` | backend | `false` | add `Secure` to session and CSRF cookies; set `true` when served over HTTPS |
 | `APP_SESSION_IDLE_TIMEOUT` | backend | `30m` | session idle timeout |
 | `APP_SESSION_ABSOLUTE_TIMEOUT` | backend | `12h` | maximum session lifetime regardless of activity |
-| `OLLAMA_BASE_URL` | backend | `http://127.0.0.1:11434` | local Ollama (not called in phase 1; must stay on localhost) |
-| `AI_MODEL_ROUTING` | backend | `qwen3:4b` | small model that classifies emails (next phase) |
-| `AI_MODEL_EXTRACTION` | backend | `qwen3:14b` | model that drafts proposals (next phase) |
-| `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions (next phase) |
+| `OLLAMA_BASE_URL` | backend | `http://127.0.0.1:11434` | local Ollama; must be localhost/127.0.0.1/::1 (the backend refuses to start otherwise) |
+| `OLLAMA_TIMEOUT` | backend | `5m` | read timeout of one model call |
+| `OLLAMA_NUM_CTX` | backend | `16384` | context window in tokens (more needs more VRAM; changing it reloads the model) |
+| `OLLAMA_KEEP_ALIVE` | backend | `30m` | how long Ollama keeps the model loaded after a call |
+| `AI_MODEL_ROUTING` | backend | `qwen3.5:9b` | model for category discovery |
+| `AI_MODEL_EXTRACTION` | backend | `qwen3.5:9b` | model that reads each email and drafts records (same model = no swapping on 12 GB) |
+| `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions |
+| `AI_TIMEZONE` | backend | `Europe/Berlin` | time zone local times in emails are read in ("Friday 9:00") |
+| `AI_PROCESSING_ENABLED` | backend | `true` | analyze new mail in the background after the AI setup |
+| `AI_PROCESSING_INTERVAL` | backend | `2m` | pause between background passes |
+| `AI_PROCESSING_BATCH_SIZE` | backend | `20` | emails per user and pass |
 | `MSGRAPH_CLIENT_ID` | backend | – | Azure app registration client ID |
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
@@ -228,4 +274,4 @@ Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and comman
 - Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.
-- Ollama is not part of compose; it runs natively for GPU access and must stay on localhost.
+- Ollama is not part of compose; it runs natively for GPU access and must stay on localhost (enforced by the backend).

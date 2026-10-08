@@ -44,6 +44,8 @@ tags:
     description: Local development only (backend `dev` profile); these paths do not exist otherwise
   - name: Senders
     description: Pictures of mail senders (sender domain logos, Outlook contact photos)
+  - name: AI
+    description: Local Ollama assistant - model status, permissions (setup wizard) and inbox analysis runs
 paths:
   /api/system/version:
     get:
@@ -1438,8 +1440,163 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/ai/status:
+    get:
+      tags: [AI]
+      operationId: getAiStatus
+      summary: Whether the local Ollama is reachable and the configured models are installed
+      responses:
+        '200':
+          description: Current status (never fails when Ollama is down; `reachable` is false then)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/ai/models/pull:
+    post:
+      tags: [AI]
+      operationId: pullAiModels
+      summary: Start downloading every configured model that is not installed yet (background). OWNER only.
+      responses:
+        '202':
+          description: Downloads started; poll GET /api/ai/status for progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/settings:
+    get:
+      tags: [AI]
+      operationId: getAiSettings
+      summary: The current user's AI permissions (defaults until the setup wizard saved them)
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [AI]
+      operationId: updateAiSettings
+      summary: Change AI permissions (partial update). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAiSettingsCommand'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/ai/analysis:
+    post:
+      tags: [AI]
+      operationId: startAnalysis
+      summary: Start the inbox analysis (discovery, then extraction) in the background. OWNER only.
+      description: |
+        409 when a run is already active, mail access is not granted, or the models are not ready.
+      responses:
+        '201':
+          description: The queued run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/analysis/latest:
+    get:
+      tags: [AI]
+      operationId: getLatestAnalysis
+      summary: The current user's most recent analysis run
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/ai/analysis/{runId}/continue:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: continueAnalysis
+      summary: Continue a run waiting for the review of discovered categories (starts extraction). OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/analysis/{runId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: cancelAnalysis
+      summary: Stop an active run after the email currently being analyzed. OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
+    AnalysisRunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     LabelId:
       name: labelId
       in: path
@@ -1713,7 +1870,7 @@ components:
           type: string
         system:
           type: boolean
-          description: Seeded by contor (People, Organizations)
+          description: Seeded by contor (People, Organizations, Events, Tasks)
         matchKeys:
           type: array
           description: Field slugs used to recognise an existing record
@@ -2162,7 +2319,9 @@ components:
       description: |
         What a proposal does when applied. Payloads (phase 1 appliers):
         CREATE_RECORD `{"collectionId": 1, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
-        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}`.
+        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
+        CREATE_COLLECTION: a NewCollectionCommand (`{"slug", "name", "description", "icon", "matchKeys", "displayConfig",
+        "fields": [..]}`), created with createdBy AI; OWNER only.
         Other kinds are stored but cannot be applied yet.
       enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
     ProposalState:
@@ -2504,3 +2663,146 @@ components:
         totalPages:
           type: integer
           format: int32
+    AiModelRole:
+      type: string
+      description: What a configured model is used for.
+      enum: [EXTRACTION, ROUTING, EMBEDDING]
+    AiPullState:
+      type: string
+      enum: [IDLE, PULLING, FAILED]
+    AiModelDto:
+      type: object
+      required: [name, roles, installed, pullState]
+      properties:
+        name:
+          type: string
+          description: Ollama model tag, e.g. qwen3.5:9b
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelRole'
+        installed:
+          type: boolean
+        pullState:
+          $ref: '#/components/schemas/AiPullState'
+        pullPercent:
+          type: integer
+          format: int32
+          description: Download progress 0-100 while PULLING
+        pullError:
+          type: string
+    AiStatusDto:
+      type: object
+      required: [reachable, ready, models]
+      properties:
+        reachable:
+          type: boolean
+          description: Ollama answered on its (loopback) base URL
+        version:
+          type: string
+        ready:
+          type: boolean
+          description: Reachable and every configured model installed
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelDto'
+    AiAccess:
+      type: string
+      description: OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.
+      enum: ['OFF', SUGGEST, AUTO]
+    AiSettingsDto:
+      type: object
+      required: [mailAccess, historyDays, categories, records, calendar, tasks]
+      properties:
+        mailAccess:
+          type: boolean
+          description: The AI may read and analyze the user's mailboxes (master switch)
+        historyDays:
+          type: integer
+          format: int32
+          description: How many days back the inbox analysis reads; 0 = everything
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        onboardedAt:
+          type: string
+          format: date-time
+          description: When the setup wizard was completed; new mail is only processed afterwards
+    UpdateAiSettingsCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        mailAccess:
+          type: boolean
+        historyDays:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 3650
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        completeOnboarding:
+          type: boolean
+          description: true marks the setup wizard as completed (sets onboardedAt once)
+    AnalysisState:
+      type: string
+      description: |
+        QUEUED → DISCOVERING → (AWAITING_REVIEW when discovered categories need approval) → EXTRACTING → COMPLETED;
+        FAILED or CANCELLED end a run early.
+      enum: [QUEUED, DISCOVERING, AWAITING_REVIEW, EXTRACTING, COMPLETED, FAILED, CANCELLED]
+    AnalysisRunDto:
+      type: object
+      required: [id, status, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/AnalysisState'
+        since:
+          type: string
+          format: date-time
+          description: Oldest email included; absent = everything
+        totalEmails:
+          type: integer
+          format: int32
+        processedEmails:
+          type: integer
+          format: int32
+        failedEmails:
+          type: integer
+          format: int32
+        proposalsCreated:
+          type: integer
+          format: int32
+          description: Proposals waiting for review
+        autoApplied:
+          type: integer
+          format: int32
+          description: Changes applied directly (AUTO permissions)
+        categoriesDiscovered:
+          type: integer
+          format: int32
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time

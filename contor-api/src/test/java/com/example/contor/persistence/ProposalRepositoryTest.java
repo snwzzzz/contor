@@ -55,4 +55,22 @@ public class ProposalRepositoryTest {
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getTotalElements()).isEqualTo(3);
     }
+
+    @Test
+    void finds_pending_record_proposals_by_title_or_value() {
+        proposalRepository.save(Proposal.builder().kind(ProposalKind.CREATE_RECORD)
+                .payload(Map.of("collectionId", 4, "title", "Send CV", "values", Map.of("email", "Anna@Acme.com"))).build());
+        proposalRepository.save(Proposal.builder().kind(ProposalKind.CREATE_RECORD).status(ProposalStatus.REJECTED)
+                .payload(Map.of("collectionId", 5, "title", "Rejected", "values", Map.of())).build());
+        proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.UPDATE_RECORD)
+                .payload(Map.of("collectionId", 6, "recordId", 1, "title", "Update")).build());
+
+        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(4L, "send cv")).isTrue();
+        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(3L, "Send CV")).isFalse();
+        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(5L, "Rejected")).isFalse();
+        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(6L, "Update")).isFalse();
+        assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "anna@acme.com")).isTrue();
+        assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "bob@acme.com")).isFalse();
+    }
 }
+

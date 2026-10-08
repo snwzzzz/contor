@@ -5,7 +5,11 @@ import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
+import com.example.contor.ai.ProposalDraft;
+import com.example.contor.domain.ActorType;
+import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AppUser;
+import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
@@ -16,6 +20,7 @@ import com.example.contor.exception.ProposalNotApplicableException;
 import com.example.contor.exception.ProposalNotFoundException;
 import com.example.contor.exception.RecordValidationException;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.proposal.ProposalApplier;
 import com.example.contor.proposal.ProposalApplierRegistry;
@@ -34,6 +39,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,6 +62,9 @@ class ProposalServiceTest {
     private AuditService auditService;
 
     @Mock
+    private EmailMessageRepository emailMessageRepository;
+
+    @Mock
     private ProposalApplier createRecordApplier;
 
     private ProposalService proposalService;
@@ -63,7 +72,7 @@ class ProposalServiceTest {
     @BeforeEach
     void setup() {
         lenient().when(createRecordApplier.kind()).thenReturn(ProposalKind.CREATE_RECORD);
-        proposalService = new ProposalService(proposalRepository, appUserRepository, auditService,
+        proposalService = new ProposalService(proposalRepository, appUserRepository, emailMessageRepository, auditService,
                 new ProposalApplierRegistry(List.of(createRecordApplier)));
         lenient().when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(invocation -> invocation.getArgument(0));
         loggedInAs(UserRole.OWNER);
@@ -210,5 +219,53 @@ class ProposalServiceTest {
         when(proposalRepository.findById(new Proposal.ProposalId(9L))).thenReturn(Optional.empty());
 
         assertThrows(ProposalNotFoundException.class, () -> proposalService.getProposal(9L));
+    }
+
+    private static ProposalDraft draft() {
+        return new ProposalDraft(ProposalKind.CREATE_RECORD, Map.of("collectionId", 3, "title", "Dentist"),
+                new BigDecimal("0.9"), "Appointment confirmation");
+    }
+
+    @Test
+    void submitDraft_SuggestStoresPendingProposal() {
+        when(emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(8L)))
+                .thenReturn(EmailMessage.builder().id(new EmailMessage.EmailMessageId(8L)).build());
+
+        ProposalService.Outcome outcome = proposalService.submitDraft(draft(), 8L, AiPermissionLevel.SUGGEST, "qwen3.5:9b", "extract-v1");
+
+        assertEquals(ProposalService.Outcome.SUGGESTED, outcome);
+        verify(proposalRepository).saveAndFlush(argThat(p -> p.getStatus() == ProposalStatus.PENDING
+                && p.getSourceEmail().getId().id() == 8L && p.getModel().equals("qwen3.5:9b")
+                && p.getPromptVersion().equals("extract-v1") && p.getReasoning().equals("Appointment confirmation")
+                && p.getFinalPayload() == null));
+        verify(createRecordApplier, never()).apply(any());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void submitDraft_AutoAppliesAndAudits() {
+        ProposalService.Outcome outcome = proposalService.submitDraft(draft(), null, AiPermissionLevel.AUTO, "m", "v");
+
+        assertEquals(ProposalService.Outcome.AUTO_APPLIED, outcome);
+        verify(createRecordApplier).apply(argThat(p -> p.getFinalPayload().equals(p.getPayload())));
+        verify(proposalRepository).saveAndFlush(argThat(p -> p.getStatus() == ProposalStatus.AUTO_APPLIED && p.getDecidedAt() != null));
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.PROPOSAL_AUTO_APPLIED
+                && event.actorType() == ActorType.AI));
+    }
+
+    @Test
+    void submitDraft_AutoWithoutApplierRejected() {
+        ProposalDraft draft = new ProposalDraft(ProposalKind.SET_LABEL, Map.of(), null, null);
+
+        assertThrows(ProposalNotApplicableException.class,
+                () -> proposalService.submitDraft(draft, null, AiPermissionLevel.AUTO, "m", "v"));
+        verify(proposalRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void submitDraft_OffRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> proposalService.submitDraft(draft(), null, AiPermissionLevel.OFF, "m", "v"));
+        verify(proposalRepository, never()).saveAndFlush(any());
     }
 }

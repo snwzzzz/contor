@@ -36,6 +36,8 @@ describe("AppSidebar", () => {
     for (const [name, href] of [
       ["Inbox", "/inbox"],
       ["Proposals", "/proposals"],
+      ["Calendar", "/calendar"],
+      ["To-dos", "/tasks"],
       ["Relations", "/relations"],
       ["Queries", "/queries"],
       ["Rules & Labels", "/rules"],

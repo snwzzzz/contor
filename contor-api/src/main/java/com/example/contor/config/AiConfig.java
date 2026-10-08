@@ -1,10 +1,17 @@
 package com.example.contor.config;
 
+import com.example.contor.ai.AiExecutors;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** AI wiring. Phase 1 only binds the properties; Ollama-backed clients follow in the next phase. */
+/** AI wiring: properties (Ollama must be on localhost) and the background executors. */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AiProperties.class)
 public class AiConfig {
+
+    @Bean(destroyMethod = "close")
+    public AiExecutors aiExecutors() {
+        return AiExecutors.create();
+    }
 }

@@ -1,13 +1,16 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.DecideProposalCommand;
 import com.example.contor.api.model.ProposalCountDto;
 import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
+import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
+import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalStatus;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
@@ -15,6 +18,7 @@ import com.example.contor.exception.ProposalNotApplicableException;
 import com.example.contor.exception.ProposalNotFoundException;
 import com.example.contor.mapper.ProposalMapper;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.proposal.ProposalApplier;
 import com.example.contor.proposal.ProposalApplierRegistry;
@@ -43,8 +47,12 @@ public class ProposalService {
 
     private static final int DEFAULT_PAGE_SIZE = 25;
 
+    /** What happened to a submitted draft. */
+    public enum Outcome { SUGGESTED, AUTO_APPLIED }
+
     private final ProposalRepository proposalRepository;
     private final AppUserRepository appUserRepository;
+    private final EmailMessageRepository emailMessageRepository;
     private final AuditService auditService;
     private final ProposalApplierRegistry proposalApplierRegistry;
 
@@ -113,6 +121,44 @@ public class ProposalService {
                 .before(Map.of("status", ProposalStatus.PENDING.name()))
                 .after(after));
         return ProposalMapper.toDto(saved);
+    }
+
+    /**
+     * Stores an AI draft: SUGGEST keeps it PENDING for review, AUTO applies it right away (AUTO_APPLIED, audited as
+     * the AI). A failing application throws and rolls back, so the caller can resubmit it as a suggestion.
+     */
+    @Transactional
+    public Outcome submitDraft(ProposalDraft draft, Long sourceEmailId, AiPermissionLevel level, String model, String promptVersion) {
+        if (!level.allowed()) {
+            throw new IllegalArgumentException("The AI may not create " + draft.kind() + " proposals here");
+        }
+        Proposal proposal = Proposal.builder()
+                .kind(draft.kind())
+                .payload(new LinkedHashMap<>(draft.payload()))
+                .confidence(draft.confidence())
+                .reasoning(draft.reasoning())
+                .model(model)
+                .promptVersion(promptVersion)
+                .sourceEmail(sourceEmailId != null
+                        ? emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(sourceEmailId))
+                        : null)
+                .build();
+        if (level != AiPermissionLevel.AUTO) {
+            proposalRepository.saveAndFlush(proposal);
+            return Outcome.SUGGESTED;
+        }
+
+        ProposalApplier applier = proposalApplierRegistry.applier(proposal.getKind())
+                .orElseThrow(() -> new ProposalNotApplicableException(proposal.getKind()));
+        proposal.setFinalPayload(new LinkedHashMap<>(proposal.getPayload()));
+        applier.apply(proposal);
+        proposal.setStatus(ProposalStatus.AUTO_APPLIED);
+        proposal.setDecidedAt(Instant.now());
+        Proposal saved = proposalRepository.saveAndFlush(proposal);
+        auditService.record(AuditEvent.ai(AuditAction.PROPOSAL_AUTO_APPLIED)
+                .entity("proposal", saved.getId() != null ? saved.getId().id() : null)
+                .after(Map.of("kind", saved.getKind().name(), "finalPayload", saved.getFinalPayload())));
+        return Outcome.AUTO_APPLIED;
     }
 
     private Proposal load(Long id) {
