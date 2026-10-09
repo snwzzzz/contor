@@ -30,7 +30,13 @@
         }
       ]
     },
-    "relations": []
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Priya Nair",
+        "to": "events:Project kickoff"
+      }
+    ]
   },
   "mustNotProduce": []
 }

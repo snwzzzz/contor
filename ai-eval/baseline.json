@@ -13,9 +13,9 @@
     },
     "events" : {
       "expected" : 12,
-      "produced" : 16,
+      "produced" : 15,
       "truePositives" : 6,
-      "precision" : 0.375,
+      "precision" : 0.4,
       "recall" : 0.5
     },
     "invoices" : {
@@ -55,10 +55,10 @@
     },
     "tasks" : {
       "expected" : 13,
-      "produced" : 6,
-      "truePositives" : 4,
-      "precision" : 0.6666666666666666,
-      "recall" : 0.3076923076923077
+      "produced" : 7,
+      "truePositives" : 5,
+      "precision" : 0.7142857142857143,
+      "recall" : 0.38461538461538464
     }
   },
   "fields" : {
@@ -118,9 +118,9 @@
       "accuracy" : 1.0
     },
     "orders.expected_delivery" : {
-      "correct" : 4,
+      "correct" : 3,
       "total" : 4,
-      "accuracy" : 1.0
+      "accuracy" : 0.75
     },
     "orders.order_number" : {
       "correct" : 8,
@@ -184,14 +184,14 @@
     },
     "tasks.due_date" : {
       "correct" : 3,
-      "total" : 4,
-      "accuracy" : 0.75
+      "total" : 5,
+      "accuracy" : 0.6
     }
   },
   "fieldsOverall" : {
-    "correct" : 104,
-    "total" : 108,
-    "accuracy" : 0.9629629629629629
+    "correct" : 103,
+    "total" : 109,
+    "accuracy" : 0.944954128440367
   },
   "dates" : {
     "correct" : 9,
@@ -205,14 +205,14 @@
   },
   "forbiddenHits" : 0,
   "latency" : {
-    "p50Millis" : 5314,
-    "p95Millis" : 21313
+    "p50Millis" : 5236,
+    "p95Millis" : 21838
   },
   "relations" : {
-    "expected" : 4,
-    "produced" : 17,
-    "truePositives" : 4,
-    "precision" : 0.23529411764705882,
-    "recall" : 1.0
+    "expected" : 8,
+    "produced" : 16,
+    "truePositives" : 6,
+    "precision" : 0.375,
+    "recall" : 0.75
   }
 }

@@ -36,7 +36,13 @@
         }
       ]
     },
-    "relations": []
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Sabine Roth",
+        "to": "events:Termin mit Sabine Roth"
+      }
+    ]
   },
   "mustNotProduce": []
 }

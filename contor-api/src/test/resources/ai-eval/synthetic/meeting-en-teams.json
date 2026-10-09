@@ -31,7 +31,13 @@
         }
       ]
     },
-    "relations": []
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Ravi Patel",
+        "to": "events:Weekly planning"
+      }
+    ]
   },
   "mustNotProduce": []
 }

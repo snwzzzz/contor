@@ -39,7 +39,13 @@
         }
       ]
     },
-    "relations": []
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Daniel Wright",
+        "to": "events:Meeting with Daniel Wright about the contract"
+      }
+    ]
   },
   "mustNotProduce": []
 }
