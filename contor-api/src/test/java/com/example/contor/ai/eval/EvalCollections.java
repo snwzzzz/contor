@@ -3,8 +3,10 @@ package com.example.contor.ai.eval;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.CollectionFieldDto;
 import com.example.contor.api.model.CollectionFieldType;
+import com.example.contor.api.model.Creator;
 import com.example.contor.api.model.NewCollectionCommand;
 import com.example.contor.api.model.NewCollectionFieldCommand;
+import com.example.contor.api.model.RelationTypeDto;
 import com.example.contor.service.SystemDataSeeder;
 
 import java.util.ArrayList;
@@ -32,6 +34,19 @@ final class EvalCollections {
             collections.add(toDto(commands.get(i), i + 1L));
         }
         return collections;
+    }
+
+    /** The seeded relation types (works_at, knows, attends) between the system collections of {@link #all()}. */
+    static List<RelationTypeDto> relationTypes() {
+        Map<String, Long> ids = new LinkedHashMap<>();
+        all().forEach(collection -> ids.put(collection.getSlug(), collection.getId()));
+        return List.of(
+                new RelationTypeDto(1L, "works_at", "works at", true, new LinkedHashMap<>(), Creator.USER).inverseName("employs")
+                        .fromCollectionId(ids.get("people")).toCollectionId(ids.get("organizations")),
+                new RelationTypeDto(2L, "knows", "knows", false, new LinkedHashMap<>(), Creator.USER).inverseName("knows")
+                        .fromCollectionId(ids.get("people")).toCollectionId(ids.get("people")),
+                new RelationTypeDto(3L, "attends", "attends", true, new LinkedHashMap<>(), Creator.USER).inverseName("attended by")
+                        .fromCollectionId(ids.get("people")).toCollectionId(ids.get("events")));
     }
 
     private static CollectionDto toDto(NewCollectionCommand command, long id) {

@@ -9,6 +9,8 @@ import com.example.contor.fieldtype.TestFieldTypes;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.service.EmailExtractionService;
 import com.example.contor.service.RecordService;
+import com.example.contor.service.RelationService;
+import com.example.contor.service.RelationTypeService;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Tag;
@@ -78,11 +80,14 @@ class AiExtractionEvalTest {
         when(recordService.listRecords(anyLong(), anyList(), isNull(), isNull(), eq(0), eq(1)))
                 .thenAnswer(invocation -> new RecordPageDto(new ArrayList<>(), 0, 1, 0L, 0));
         ProposalRepository proposalRepository = mock(ProposalRepository.class);
+        RelationTypeService relationTypeService = mock(RelationTypeService.class);
+        when(relationTypeService.findAll()).thenReturn(EvalCollections.relationTypes());
+        RelationService relationService = mock(RelationService.class);
 
         List<CaseResult> results = new ArrayList<>();
         for (EvalCase evalCase : cases) {
             EmailExtractionService service = new EmailExtractionService(client, properties, mapper, TestFieldTypes.registry(),
-                    recordService, proposalRepository, Clock.fixed(evalCase.email().receivedAt(), ZONE));
+                    recordService, proposalRepository, relationTypeService, relationService, Clock.fixed(evalCase.email().receivedAt(), ZONE));
             long start = System.nanoTime();
             try {
                 List<ProposalDraft> drafts = service.analyze(evalCase.email(), collections);

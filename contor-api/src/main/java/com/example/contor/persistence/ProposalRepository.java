@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProposalRepository extends JpaRepository<Proposal, Proposal.ProposalId> {
@@ -25,11 +26,12 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
     Page<Proposal> findByStatus(ProposalStatus status, Pageable pageable);
 
     /**
-     * Findings = data the AI extracted: record proposals outside the action collections (calendar, to-dos).
+     * Findings = data the AI extracted: record proposals outside the action collections (calendar, to-dos), and the
+     * relations between them.
      * Actions = everything else. {@code actionCollectionIds} must not be empty (pass -1 when none exist).
      */
-    String FINDING = "kind in ('CREATE_RECORD', 'UPDATE_RECORD') "
-            + "and coalesce((payload ->> 'collectionId')::bigint, -1) not in (:actionCollectionIds)";
+    String FINDING = "(kind = 'CREATE_RELATION' or (kind in ('CREATE_RECORD', 'UPDATE_RECORD') "
+            + "and coalesce((payload ->> 'collectionId')::bigint, -1) not in (:actionCollectionIds)))";
 
     @Query(value = "select * from proposal where status = :status and " + FINDING + " order by created_at desc",
             countQuery = "select count(*) from proposal where status = :status and " + FINDING,
@@ -47,15 +49,17 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
     @Query(value = "select count(*) from proposal where status = :status and not (" + FINDING + ")", nativeQuery = true)
     long countActions(String status, Collection<Long> actionCollectionIds);
 
-    /** A pending CREATE_RECORD proposal for the collection with this title (case-insensitive) exists. */
-    @Query(value = "select exists (select 1 from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "
-            + "and (payload ->> 'collectionId')::bigint = :collectionId and lower(payload ->> 'title') = lower(:title))",
+    /** Id of a pending CREATE_RECORD proposal for the collection with this title (case-insensitive), if there is one. */
+    @Query(value = "select id from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "
+            + "and (payload ->> 'collectionId')::bigint = :collectionId and lower(payload ->> 'title') = lower(:title) "
+            + "order by id limit 1",
             nativeQuery = true)
-    boolean existsPendingCreateRecordWithTitle(Long collectionId, String title);
+    Optional<Long> findPendingCreateRecordIdWithTitle(Long collectionId, String title);
 
-    /** A pending CREATE_RECORD proposal for the collection with this field value (case-insensitive) exists. */
-    @Query(value = "select exists (select 1 from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "
-            + "and (payload ->> 'collectionId')::bigint = :collectionId and lower(payload -> 'values' ->> :key) = lower(:value))",
+    /** Id of a pending CREATE_RECORD proposal for the collection with this field value (case-insensitive), if there is one. */
+    @Query(value = "select id from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "
+            + "and (payload ->> 'collectionId')::bigint = :collectionId and lower(payload -> 'values' ->> :key) = lower(:value) "
+            + "order by id limit 1",
             nativeQuery = true)
-    boolean existsPendingCreateRecordWithValue(Long collectionId, String key, String value);
+    Optional<Long> findPendingCreateRecordIdWithValue(Long collectionId, String key, String value);
 }

@@ -39,4 +39,14 @@ class EvalCollectionsTest {
         assertThat(EvalCollections.all().stream().filter(c -> c.getSlug().equals("orders")).findFirst().orElseThrow().getMatchKeys())
                 .containsExactly("order_number");
     }
+
+    @Test
+    void relation_types_connect_the_seeded_collections() {
+        var collections = EvalCollections.all().stream().collect(java.util.stream.Collectors.toMap(c -> c.getSlug(), c -> c.getId()));
+
+        assertThat(EvalCollections.relationTypes()).extracting(type -> type.getSlug()).containsExactly("works_at", "knows", "attends");
+        assertThat(EvalCollections.relationTypes().getFirst().getFromCollectionId()).isEqualTo(collections.get("people"));
+        assertThat(EvalCollections.relationTypes().getFirst().getToCollectionId()).isEqualTo(collections.get("organizations"));
+        assertThat(EvalCollections.relationTypes().get(1).getDirected()).isFalse();
+    }
 }

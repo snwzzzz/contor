@@ -43,6 +43,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -142,10 +143,10 @@ class AiAnalysisWorkerTest {
         EmailMessage email = email(100L);
         emailsToProcess(100L);
         when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
-        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), eq("extractor"), any()))
-                .thenReturn(ProposalService.Outcome.AUTO_APPLIED);
-        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), eq("extractor"), any()))
-                .thenReturn(ProposalService.Outcome.SUGGESTED);
+        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), eq("extractor"), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(1L, ProposalService.Outcome.AUTO_APPLIED));
+        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), eq("extractor"), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(2L, ProposalService.Outcome.SUGGESTED));
 
         worker.run(10L);
 
@@ -156,8 +157,8 @@ class AiAnalysisWorkerTest {
         assertThat(targets.getValue()).extracting(CollectionDto::getSlug).containsExactly("people", "events", "job_applications");
         assertThat(content.getValue().mailbox()).isEqualTo("me@example.com");
         assertThat(content.getValue().body()).isEqualTo("Body 100");
-        verify(proposalService).submitDraft(argThat(d -> d.payload().get("collectionId").equals(1L)), eq(100L), eq(AiPermissionLevel.AUTO), any(), any());
-        verify(proposalService).submitDraft(argThat(d -> d.payload().get("collectionId").equals(3L)), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any());
+        verify(proposalService).submitDraft(argThat(d -> d.payload().get("collectionId").equals(1L)), eq(100L), eq(AiPermissionLevel.AUTO), any(), any(), anyCollection());
+        verify(proposalService).submitDraft(argThat(d -> d.payload().get("collectionId").equals(3L)), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), anyCollection());
 
         assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.COMPLETED);
         assertThat(run.getCategoriesDiscovered()).isEqualTo(1);
@@ -258,10 +259,10 @@ class AiAnalysisWorkerTest {
         email(100L);
         emailsToProcess(100L);
         when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L)));
-        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), any(), any()))
+        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), any(), any(), anyCollection()))
                 .thenThrow(new RecordValidationException(List.of("full_name: is required")));
-        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any()))
-                .thenReturn(ProposalService.Outcome.SUGGESTED);
+        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(2L, ProposalService.Outcome.SUGGESTED));
 
         worker.run(10L);
 
@@ -350,5 +351,98 @@ class AiAnalysisWorkerTest {
         worker.processNewMail();
 
         verify(emailMessageRepository, never()).findIdsForProcessing(any(), any(), any(), any());
+    }
+
+    // ---- relations -------------------------------------------------------------------------------------------
+
+    private static ProposalDraft recordDraft(long collectionId, String ref) {
+        return new ProposalDraft(ProposalKind.CREATE_RECORD, Map.of("collectionId", collectionId, "title", "T" + ref), BigDecimal.ONE, "r",
+                ref, List.of(), List.of());
+    }
+
+    private static ProposalDraft relationDraft(String fromRef, String toRef) {
+        return new ProposalDraft(ProposalKind.CREATE_RELATION,
+                Map.of("relationTypeId", 10L, "from", Map.of("ref", fromRef), "to", Map.of("ref", toRef)), BigDecimal.ONE, "r",
+                null, List.of(fromRef, toRef), List.of(77L));
+    }
+
+    private void submitting(AiPermissionLevel level, ProposalService.Outcome outcome, long idOfPeople, long idOfApplications) {
+        when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RECORD && d.payload().get("collectionId").equals(1L)),
+                eq(100L), eq(level), any(), any(), anyCollection())).thenReturn(new ProposalService.Submission(idOfPeople, outcome));
+        when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RECORD && d.payload().get("collectionId").equals(5L)),
+                eq(100L), eq(level), any(), any(), anyCollection())).thenReturn(new ProposalService.Submission(idOfApplications, outcome));
+    }
+
+    @Test
+    void run_RelationsDependOnTheProposalsOfTheirRecordsAndFollowTheRecordsPermission() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList()))
+                .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(5L, "a1"), relationDraft("p1", "a1")));
+        submitting(AiPermissionLevel.SUGGEST, ProposalService.Outcome.SUGGESTED, 201L, 202L);
+        when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RELATION), eq(100L), eq(AiPermissionLevel.SUGGEST),
+                any(), any(), anyCollection())).thenReturn(new ProposalService.Submission(203L, ProposalService.Outcome.SUGGESTED));
+
+        worker.run(10L);
+
+        ArgumentCaptor<ProposalDraft> relation = ArgumentCaptor.forClass(ProposalDraft.class);
+        ArgumentCaptor<java.util.Collection<Long>> dependsOn = ArgumentCaptor.captor();
+        verify(proposalService, org.mockito.Mockito.times(3)).submitDraft(relation.capture(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), dependsOn.capture());
+        // the last call is the relation: its refs became proposal ids, the extraction's own proposal id came along
+        ProposalDraft submitted = relation.getAllValues().get(2);
+        assertThat(submitted.kind()).isEqualTo(ProposalKind.CREATE_RELATION);
+        assertThat(submitted.payload()).containsEntry("from", Map.of("proposalId", 201L)).containsEntry("to", Map.of("proposalId", 202L));
+        assertThat(dependsOn.getAllValues().get(2)).containsExactlyInAnyOrder(201L, 202L, 77L);
+        assertThat(run.getProposalsCreated()).isEqualTo(3);
+    }
+
+    @Test
+    void run_AutoRelationsAreSubmittedAsAuto() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.AUTO, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList()))
+                .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(5L, "a1"), relationDraft("p1", "a1")));
+        submitting(AiPermissionLevel.AUTO, ProposalService.Outcome.AUTO_APPLIED, 201L, 202L);
+        when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RELATION), eq(100L), eq(AiPermissionLevel.AUTO),
+                any(), any(), anyCollection())).thenReturn(new ProposalService.Submission(203L, ProposalService.Outcome.AUTO_APPLIED));
+
+        worker.run(10L);
+
+        assertThat(run.getAutoApplied()).isEqualTo(3);
+        assertThat(run.getProposalsCreated()).isZero();
+    }
+
+    @Test
+    void run_RelationsWhoseRecordWasNotSubmittedAreDropped() {
+        // calendar is OFF: the event draft is skipped, so the relation to it cannot be submitted either
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList()))
+                .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(3L, "e1"), relationDraft("p1", "e1")));
+        when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(201L, ProposalService.Outcome.SUGGESTED));
+
+        worker.run(10L);
+
+        verify(proposalService, org.mockito.Mockito.times(1)).submitDraft(any(), eq(100L), any(), any(), any(), anyCollection());
+        assertThat(run.getProposalsCreated()).isEqualTo(1);
+    }
+
+    @Test
+    void run_RelationsAreSkippedWhenRecordsAreOff() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList()))
+                .thenReturn(List.of(recordDraft(3L, "e1"), relationDraft("e1", "e1")));
+        when(proposalService.submitDraft(any(), eq(100L), any(), any(), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(201L, ProposalService.Outcome.SUGGESTED));
+
+        worker.run(10L);
+
+        verify(proposalService, org.mockito.Mockito.times(1)).submitDraft(any(), eq(100L), any(), any(), any(), anyCollection());
     }
 }

@@ -33,9 +33,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -233,12 +236,24 @@ public class AiAnalysisWorker {
             int autoApplied = 0;
             Map<Long, String> slugs = new HashMap<>();
             targets.forEach(target -> slugs.put(target.getId(), target.getSlug()));
+            Map<String, Long> proposalIds = new HashMap<>();
             for (ProposalDraft draft : extractionService.analyze(content, targets)) {
-                AiPermissionLevel level = levelFor(settings, slugs.get(collectionId(draft)));
+                // relations follow the records permission; a draft pointing at something that was not stored is dropped
+                AiPermissionLevel level = draft.kind() == ProposalKind.CREATE_RELATION
+                        ? settings.getRecords()
+                        : levelFor(settings, slugs.get(collectionId(draft)));
                 if (!level.allowed()) {
                     continue;
                 }
-                if (submitDraft(draft, emailId, level) == ProposalService.Outcome.AUTO_APPLIED) autoApplied++;
+                Optional<ResolvedDraft> resolved = resolve(draft, proposalIds);
+                if (resolved.isEmpty()) {
+                    continue;
+                }
+                ProposalService.Submission submission = submitDraft(resolved.get().draft(), emailId, level, resolved.get().dependsOn());
+                if (draft.ref() != null && submission.proposalId() != null) {
+                    proposalIds.put(draft.ref(), submission.proposalId());
+                }
+                if (submission.outcome() == ProposalService.Outcome.AUTO_APPLIED) autoApplied++;
                 else suggested++;
             }
             markEmail(emailId, ProcessingState.DONE, null);
@@ -250,17 +265,52 @@ public class AiAnalysisWorker {
         }
     }
 
+    /** A draft whose local refs became proposal ids, with the proposals it has to wait for. */
+    private record ResolvedDraft(ProposalDraft draft, List<Long> dependsOn) {
+    }
+
+    /** Replaces {@code {"ref": x}} by {@code {"proposalId": id}}; empty when a ref has no stored proposal. */
+    private static Optional<ResolvedDraft> resolve(ProposalDraft draft, Map<String, Long> proposalIds) {
+        if (draft.dependsOnRefs().isEmpty() && draft.dependsOnProposalIds().isEmpty()) {
+            return Optional.of(new ResolvedDraft(draft, List.of()));
+        }
+        Set<Long> dependsOn = new LinkedHashSet<>(draft.dependsOnProposalIds());
+        for (String ref : draft.dependsOnRefs()) {
+            Long id = proposalIds.get(ref);
+            if (id == null) {
+                return Optional.empty();
+            }
+            dependsOn.add(id);
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) replaceRefs(draft.payload(), proposalIds);
+        return Optional.of(new ResolvedDraft(new ProposalDraft(draft.kind(), payload, draft.confidence(), draft.reasoning(),
+                draft.ref(), List.of(), List.of()), List.copyOf(dependsOn)));
+    }
+
+    private static Object replaceRefs(Object value, Map<String, Long> proposalIds) {
+        if (value instanceof Map<?, ?> map) {
+            if (map.size() == 1 && map.get("ref") instanceof String ref && proposalIds.containsKey(ref)) {
+                return Map.of("proposalId", proposalIds.get(ref));
+            }
+            Map<String, Object> copy = new LinkedHashMap<>();
+            map.forEach((key, nested) -> copy.put(String.valueOf(key), replaceRefs(nested, proposalIds)));
+            return copy;
+        }
+        return value;
+    }
+
     /** AUTO falls back to a suggestion when applying fails (e.g. a value the collection rejects), so nothing is lost. */
-    private ProposalService.Outcome submitDraft(ProposalDraft draft, Long emailId, AiPermissionLevel level) {
+    private ProposalService.Submission submitDraft(ProposalDraft draft, Long emailId, AiPermissionLevel level, List<Long> dependsOn) {
         String model = properties.models().extraction();
         if (level == AiPermissionLevel.AUTO) {
             try {
-                return proposalService.submitDraft(draft, emailId, AiPermissionLevel.AUTO, model, EmailExtractionService.PROMPT_VERSION);
+                return proposalService.submitDraft(draft, emailId, AiPermissionLevel.AUTO, model, EmailExtractionService.PROMPT_VERSION, dependsOn);
             } catch (RuntimeException e) {
                 log.info("Auto-applying a {} from email {} failed, keeping it as a suggestion: {}", draft.kind(), emailId, e.getMessage());
             }
         }
-        return proposalService.submitDraft(draft, emailId, AiPermissionLevel.SUGGEST, model, EmailExtractionService.PROMPT_VERSION);
+        return proposalService.submitDraft(draft, emailId, AiPermissionLevel.SUGGEST, model, EmailExtractionService.PROMPT_VERSION, dependsOn);
     }
 
     /** Processes new mail of users who completed the AI setup (one batch per user and pass, never during a run). */

@@ -6,7 +6,10 @@ import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.CollectionFieldDto;
 import com.example.contor.api.model.CollectionFieldType;
+import com.example.contor.api.model.Creator;
 import com.example.contor.api.model.RecordDto;
+import com.example.contor.api.model.RelationDto;
+import com.example.contor.api.model.RelationTypeDto;
 import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.domain.ProposalKind;
@@ -32,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -62,6 +66,12 @@ class EmailExtractionServiceTest {
     @Mock
     private ProposalRepository proposalRepository;
 
+    @Mock
+    private RelationTypeService relationTypeService;
+
+    @Mock
+    private RelationService relationService;
+
     private EmailExtractionService service;
 
     @BeforeEach
@@ -71,7 +81,7 @@ class EmailExtractionServiceTest {
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         service = new EmailExtractionService(llmClient, properties, JsonMapper.builder().build(), TestFieldTypes.registry(),
-                recordService, proposalRepository, Clock.fixed(Instant.parse("2026-10-08T12:00:00Z"), ZoneOffset.UTC));
+                recordService, proposalRepository, relationTypeService, relationService, Clock.fixed(Instant.parse("2026-10-08T12:00:00Z"), ZoneOffset.UTC));
         lenient().when(recordService.listRecords(anyLong(), anyList(), isNull(), isNull(), eq(0), eq(1)))
                 .thenReturn(new RecordPageDto(new ArrayList<>(), 0, 1, 0L, 0));
     }
@@ -196,8 +206,8 @@ class EmailExtractionServiceTest {
                   {"collection": "tasks", "title": "Send CV to Acme", "values": {}, "confidence": 0.9, "reason": "r"}
                 ]}
                 """);
-        when(proposalRepository.existsPendingCreateRecordWithValue(1L, "email", "anna@acme.com")).thenReturn(true);
-        when(proposalRepository.existsPendingCreateRecordWithTitle(4L, "Send CV to Acme")).thenReturn(true);
+        when(proposalRepository.findPendingCreateRecordIdWithValue(1L, "email", "anna@acme.com")).thenReturn(Optional.of(11L));
+        when(proposalRepository.findPendingCreateRecordIdWithTitle(4L, "Send CV to Acme")).thenReturn(Optional.of(12L));
 
         assertThat(service.analyze(EMAIL, List.of(people(), tasks()))).isEmpty();
     }
@@ -268,5 +278,190 @@ class EmailExtractionServiceTest {
 
         assertThat(service.analyze(EMAIL, List.of(people()))).isEmpty();
         verify(recordService, org.mockito.Mockito.never()).listRecords(anyLong(), anyList(), any(), any(), anyInt(), anyInt());
+    }
+
+    // ---- relations -------------------------------------------------------------------------------------------
+
+    private static CollectionDto organizations() {
+        return new CollectionDto().id(2L).slug("organizations").name("Organizations").description("Companies").matchKeys(List.of("domain"))
+                .fields(List.of(field("name", CollectionFieldType.TEXT, true, Map.of()),
+                        field("domain", CollectionFieldType.TEXT, false, Map.of())));
+    }
+
+    private static RelationTypeDto worksAt() {
+        return new RelationTypeDto(10L, "works_at", "works at", true, new LinkedHashMap<>(), Creator.USER)
+                .inverseName("employs").fromCollectionId(1L).toCollectionId(2L);
+    }
+
+    private static final String PERSON = """
+            {"ref": "p1", "collection": "people", "title": "Anna Berger",
+             "values": {"full_name": "Anna Berger", "email": "anna@acme.com"}, "confidence": 0.95, "reason": "r"}""";
+    private static final String ORGANIZATION = """
+            {"ref": "o1", "collection": "organizations", "title": "Acme", "values": {"name": "Acme", "domain": "acme.com"},
+             "confidence": 0.9, "reason": "r"}""";
+    private static final String WORKS_AT = """
+            {"type": "works_at", "from": "p1", "to": "o1", "confidence": 0.8, "reason": "Signature"}""";
+
+    private void answerWith(String items, String relations) {
+        answer("{\"items\": [" + items + "], \"relations\": [" + relations + "]}");
+    }
+
+    private static RecordPageDto page(RecordDto... records) {
+        return new RecordPageDto(new ArrayList<>(List.of(records)), 0, 1, (long) records.length, 1);
+    }
+
+    private static RecordDto record(long id, long collectionId, Map<String, Object> values) {
+        return new RecordDto(id, collectionId, new LinkedHashMap<>(values), new LinkedHashMap<>(), OffsetDateTime.parse("2026-01-01T00:00:00Z"), "AI");
+    }
+
+    private static List<ProposalDraft> relations(List<ProposalDraft> drafts) {
+        return drafts.stream().filter(draft -> draft.kind() == ProposalKind.CREATE_RELATION).toList();
+    }
+
+    @Test
+    void analyze_RelationBetweenNewRecordsDependsOnTheirDrafts() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
+
+        assertThat(drafts).hasSize(3);
+        assertThat(drafts.get(0).ref()).isEqualTo("p1");
+        assertThat(drafts.get(1).ref()).isEqualTo("o1");
+        ProposalDraft relation = drafts.get(2);
+        assertThat(relation.kind()).isEqualTo(ProposalKind.CREATE_RELATION);
+        assertThat(relation.payload()).containsEntry("relationTypeId", 10L)
+                .containsEntry("from", Map.of("ref", "p1")).containsEntry("to", Map.of("ref", "o1"));
+        assertThat(relation.dependsOnRefs()).containsExactly("p1", "o1");
+        assertThat(relation.dependsOnProposalIds()).isEmpty();
+        assertThat(relation.confidence()).isEqualByComparingTo(new BigDecimal("0.8"));
+        assertThat(relation.reasoning()).isEqualTo("Signature");
+    }
+
+    @Test
+    void analyze_RelationToAnExistingRecordUsesItsIdWithoutADependency() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, null, 0, 1))
+                .thenReturn(page(record(77L, 1L, Map.of("full_name", "Anna Berger", "email", "anna@acme.com"))));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
+
+        assertThat(drafts).hasSize(2);
+        ProposalDraft relation = relations(drafts).getFirst();
+        assertThat(relation.payload()).containsEntry("from", Map.of("collectionId", 1L, "recordId", 77L))
+                .containsEntry("to", Map.of("ref", "o1"));
+        assertThat(relation.dependsOnRefs()).containsExactly("o1");
+    }
+
+    @Test
+    void analyze_RelationToARecordWithAPendingProposalDependsOnThatProposal() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        lenient().when(proposalRepository.findPendingCreateRecordIdWithValue(2L, "domain", "acme.com")).thenReturn(Optional.of(55L));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
+
+        assertThat(drafts).hasSize(2);
+        ProposalDraft relation = relations(drafts).getFirst();
+        assertThat(relation.payload()).containsEntry("to", Map.of("proposalId", 55L));
+        assertThat(relation.dependsOnProposalIds()).containsExactly(55L);
+        assertThat(relation.dependsOnRefs()).containsExactly("p1");
+    }
+
+    @Test
+    void analyze_RelationThatAlreadyExistsIsDropped() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, null, 0, 1))
+                .thenReturn(page(record(77L, 1L, Map.of("full_name", "Anna Berger", "email", "anna@acme.com"))));
+        when(recordService.listRecords(2L, List.of("domain:eq:acme.com"), null, null, 0, 1))
+                .thenReturn(page(record(88L, 2L, Map.of("name", "Acme", "domain", "acme.com"))));
+        when(relationService.listRelations(1L, 77L)).thenReturn(List.of(new RelationDto().relationTypeId(10L)
+                .fromCollectionId(1L).fromRecordId(77L).toCollectionId(2L).toRecordId(88L)));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+
+        assertThat(service.analyze(EMAIL, List.of(people(), organizations()))).isEmpty();
+    }
+
+    @Test
+    void analyze_SelfRelationsAreDropped() {
+        when(relationTypeService.findAll()).thenReturn(List.of(
+                new RelationTypeDto(11L, "knows", "knows", false, new LinkedHashMap<>(), Creator.USER).fromCollectionId(1L).toCollectionId(1L)));
+        when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, null, 0, 1))
+                .thenReturn(page(record(77L, 1L, Map.of("full_name", "Anna Berger", "email", "anna@acme.com"))));
+        String second = PERSON.replace("\"p1\"", "\"p2\"").replace("Anna Berger", "A. Berger");
+        answerWith(PERSON + "," + second,
+                "{\"type\": \"knows\", \"from\": \"p1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"knows\", \"from\": \"p1\", \"to\": \"p2\", \"confidence\": 0.9, \"reason\": \"r\"}");
+
+        assertThat(relations(service.analyze(EMAIL, List.of(people())))).isEmpty();
+    }
+
+    @Test
+    void analyze_InvalidRelationsAreDropped() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        String dropped = "{\"ref\": \"o2\", \"collection\": \"organizations\", \"title\": \"No name\", \"values\": {}, \"confidence\": 0.9, \"reason\": \"r\"}";
+        answerWith(PERSON + "," + ORGANIZATION + "," + dropped,
+                // wrong direction for a directed type
+                "{\"type\": \"works_at\", \"from\": \"o1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        // unknown type, unknown ref, a ref whose item was dropped
+                        + "{\"type\": \"friends\", \"from\": \"p1\", \"to\": \"o1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"works_at\", \"from\": \"p9\", \"to\": \"o1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"works_at\", \"from\": \"p1\", \"to\": \"o2\", \"confidence\": 0.9, \"reason\": \"r\"}");
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
+
+        assertThat(relations(drafts)).isEmpty();
+        assertThat(drafts).hasSize(2);
+    }
+
+    @Test
+    void analyze_UndirectedRelationsMayBeStatedInEitherDirection() {
+        when(relationTypeService.findAll()).thenReturn(List.of(
+                new RelationTypeDto(11L, "knows", "knows", false, new LinkedHashMap<>(), Creator.USER).fromCollectionId(1L).toCollectionId(2L)));
+        answerWith(PERSON + "," + ORGANIZATION,
+                "{\"type\": \"knows\", \"from\": \"o1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"}");
+
+        ProposalDraft relation = relations(service.analyze(EMAIL, List.of(people(), organizations()))).getFirst();
+
+        assertThat(relation.payload()).containsEntry("from", Map.of("ref", "p1")).containsEntry("to", Map.of("ref", "o1"));
+    }
+
+    @Test
+    void analyze_RepeatedRelationsAreEmittedOnce() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT + "," + WORKS_AT);
+
+        assertThat(relations(service.analyze(EMAIL, List.of(people(), organizations())))).hasSize(1);
+    }
+
+    @Test
+    void analyze_PromptAndSchemaListTheRelationTypes() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith("", "");
+
+        service.analyze(EMAIL, List.of(people(), organizations()));
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<tools.jackson.databind.JsonNode> schema = ArgumentCaptor.forClass(tools.jackson.databind.JsonNode.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), user.capture(), schema.capture());
+        assertThat(system.getValue()).contains("ref").contains("relations");
+        assertThat(user.getValue()).contains("Relation types").contains("works_at").contains("people").contains("organizations")
+                .contains("works at");
+        assertThat(schema.getValue().toString()).contains("relations").contains("works_at");
+    }
+
+    @Test
+    void analyze_WithoutRelationTypesTheModelIsNotAskedForRelations() {
+        answer("{\"items\": []}");
+
+        service.analyze(EMAIL, List.of(people()));
+
+        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<tools.jackson.databind.JsonNode> schema = ArgumentCaptor.forClass(tools.jackson.databind.JsonNode.class);
+        verify(llmClient).completeJson(eq("extractor"), anyString(), user.capture(), schema.capture());
+        assertThat(user.getValue()).doesNotContain("Relation types");
+        assertThat(schema.getValue().toString()).doesNotContain("relations");
     }
 }

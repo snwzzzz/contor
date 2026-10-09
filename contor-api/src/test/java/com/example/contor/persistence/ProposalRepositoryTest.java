@@ -102,12 +102,12 @@ public class ProposalRepositoryTest {
         proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.UPDATE_RECORD)
                 .payload(Map.of("collectionId", 6, "recordId", 1, "title", "Update")).build());
 
-        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(4L, "send cv")).isTrue();
-        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(3L, "Send CV")).isFalse();
-        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(5L, "Rejected")).isFalse();
-        assertThat(proposalRepository.existsPendingCreateRecordWithTitle(6L, "Update")).isFalse();
-        assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "anna@acme.com")).isTrue();
-        assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "bob@acme.com")).isFalse();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithTitle(4L, "send cv")).isPresent();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithTitle(3L, "Send CV")).isEmpty();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithTitle(5L, "Rejected")).isEmpty();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithTitle(6L, "Update")).isEmpty();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithValue(4L, "email", "anna@acme.com")).isPresent();
+        assertThat(proposalRepository.findPendingCreateRecordIdWithValue(4L, "email", "bob@acme.com")).isEmpty();
     }
 
     @Test
@@ -127,6 +127,28 @@ public class ProposalRepositoryTest {
         var found = proposalRepository.findBySourceEmail_IdIn(List.of(first.getId(), second.getId()));
 
         assertThat(found).extracting(Proposal::getStatus).containsExactlyInAnyOrder(ProposalStatus.APPROVED, ProposalStatus.REJECTED);
+    }
+
+    @Test
+    void returns_the_id_of_the_pending_record_proposal() {
+        var pending = proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.CREATE_RECORD)
+                .payload(Map.of("collectionId", 2, "title", "Acme", "values", Map.of("domain", "acme.com"))).build());
+
+        assertThat(proposalRepository.findPendingCreateRecordIdWithValue(2L, "domain", "ACME.com")).contains(pending.getId().id());
+        assertThat(proposalRepository.findPendingCreateRecordIdWithTitle(2L, "acme")).contains(pending.getId().id());
+    }
+
+    @Test
+    void relation_proposals_are_findings() {
+        proposalRepository.save(of(ProposalKind.CREATE_RELATION, ProposalStatus.PENDING,
+                Map.of("relationTypeId", 10, "from", Map.of("proposalId", 1), "to", Map.of("proposalId", 2))));
+        proposalRepository.saveAndFlush(of(ProposalKind.SET_LABEL, ProposalStatus.PENDING, Map.of("labelId", 3)));
+        var actionCollections = List.of(3L, 4L);
+
+        assertThat(proposalRepository.countFindings("PENDING", actionCollections)).isEqualTo(1);
+        assertThat(proposalRepository.countActions("PENDING", actionCollections)).isEqualTo(1);
+        assertThat(proposalRepository.findFindings("PENDING", actionCollections, PageRequest.of(0, 10)).getContent())
+                .extracting(Proposal::getKind).containsExactly(ProposalKind.CREATE_RELATION);
     }
 }
 

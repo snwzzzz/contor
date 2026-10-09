@@ -9,6 +9,8 @@ import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.CollectionFieldDto;
 import com.example.contor.api.model.CollectionFieldType;
 import com.example.contor.api.model.RecordDto;
+import com.example.contor.api.model.RelationDto;
+import com.example.contor.api.model.RelationTypeDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.FieldType;
@@ -31,6 +33,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -51,7 +55,7 @@ import java.util.stream.Collectors;
 @Service
 public class EmailExtractionService implements ExtractionService {
 
-    public static final String PROMPT_VERSION = "extract-v1";
+    public static final String PROMPT_VERSION = "extract-v2";
 
     static final int MAX_BODY_CHARS = 8000;
     private static final String TASKS = "tasks";
@@ -76,6 +80,9 @@ public class EmailExtractionService implements ExtractionService {
             was sent (its Date line, with weekday), never relative to today.
             - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
             another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
+            - ref: a short unique name for every item (p1, o1, e1, …). relations: link items of this answer by their ref, \
+            only with the listed relation types and only when the email states the relationship. To relate an \
+            entity that already exists, list it as an item too.
             - confidence between 0 and 1; reason: one short sentence quoting the evidence.
             - Advertising, newsletters and notifications without anything to record: return no items.""";
 
@@ -85,6 +92,8 @@ public class EmailExtractionService implements ExtractionService {
     private final FieldTypeRegistry fieldTypeRegistry;
     private final RecordService recordService;
     private final ProposalRepository proposalRepository;
+    private final RelationTypeService relationTypeService;
+    private final RelationService relationService;
     private final Clock clock;
 
     @Override
@@ -98,22 +107,35 @@ public class EmailExtractionService implements ExtractionService {
         LocalDate today = LocalDate.now(clock.withZone(properties.timezone()));
         String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH),
                 properties.timezone(), email.mailbox());
-        Map<String, Object> schema = JsonSchemas.object(Map.of("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
+        Map<String, RelationTypeDto> relationTypes = usableRelationTypes(bySlug);
+        Map<String, Object> schemaProperties = new LinkedHashMap<>();
+        schemaProperties.put("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
+                "ref", JsonSchemas.string(),
                 "collection", JsonSchemas.oneOf(List.copyOf(bySlug.keySet())),
                 "title", JsonSchemas.string(),
                 "values", JsonSchemas.freeObject(),
                 "confidence", JsonSchemas.number(),
-                "reason", JsonSchemas.string())))));
+                "reason", JsonSchemas.string()))));
+        if (!relationTypes.isEmpty()) {
+            schemaProperties.put("relations", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
+                    "type", JsonSchemas.oneOf(List.copyOf(relationTypes.keySet())),
+                    "from", JsonSchemas.string(),
+                    "to", JsonSchemas.string(),
+                    "confidence", JsonSchemas.number(),
+                    "reason", JsonSchemas.string()))));
+        }
 
-        String answer = llmClient.completeJson(properties.models().extraction(), system, userPrompt(email, targets),
-                objectMapper.valueToTree(schema));
-        JsonNode items = parse(answer).map(json -> json.path("items")).orElse(null);
+        String answer = llmClient.completeJson(properties.models().extraction(), system, userPrompt(email, targets, relationTypes),
+                objectMapper.valueToTree(JsonSchemas.object(schemaProperties)));
+        JsonNode json = parse(answer).orElse(null);
+        JsonNode items = json != null ? json.path("items") : null;
         if (items == null || !items.isArray()) {
             log.warn("Email {}: the model answered without an item list", email.id());
             return List.of();
         }
 
         List<ProposalDraft> drafts = new ArrayList<>();
+        Map<String, Entity> entities = new HashMap<>();
         for (JsonNode item : items) {
             CollectionDto collection = bySlug.get(item.path("collection").asString(""));
             String title = item.path("title").asString("").trim();
@@ -124,12 +146,137 @@ public class EmailExtractionService implements ExtractionService {
             if (values == null || isOutdatedToDo(collection, values, today)) {
                 continue;
             }
-            BigDecimal confidence = BigDecimal.valueOf(Math.clamp(item.path("confidence").asDouble(0.5), 0.0, 1.0))
-                    .setScale(4, RoundingMode.HALF_UP);
-            draft(collection, truncate(title, 300), values, confidence, truncate(item.path("reason").asString(""), 1000))
-                    .ifPresent(drafts::add);
+            BigDecimal confidence = confidence(item);
+            String ref = item.path("ref").asString("").trim();
+            Drafted drafted = draft(collection, truncate(title, 300), values, confidence, truncate(item.path("reason").asString(""), 1000),
+                    ref.isEmpty() ? null : ref);
+            drafted.draft().ifPresent(drafts::add);
+            if (!ref.isEmpty() && drafted.endpoint() != null) {
+                entities.putIfAbsent(ref, new Entity(collection.getId(), drafted.endpoint()));
+            }
+        }
+        drafts.addAll(relationDrafts(json.path("relations"), relationTypes, entities));
+        return drafts;
+    }
+
+    private static BigDecimal confidence(JsonNode node) {
+        return BigDecimal.valueOf(Math.clamp(node.path("confidence").asDouble(0.5), 0.0, 1.0)).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    /** Where a ref points: a record that exists, a record the answer creates (draft), or one a pending proposal creates. */
+    private sealed interface Endpoint permits Existing, FromDraft, FromProposal {
+    }
+
+    private record Existing(Long collectionId, Long recordId) implements Endpoint {
+    }
+
+    private record FromDraft(String ref) implements Endpoint {
+    }
+
+    private record FromProposal(Long proposalId) implements Endpoint {
+    }
+
+    private record Entity(Long collectionId, Endpoint endpoint) {
+    }
+
+    private record Drafted(Optional<ProposalDraft> draft, Endpoint endpoint) {
+    }
+
+    /** Relation types the model may use: both restricting collections (if any) are among the targets. */
+    private Map<String, RelationTypeDto> usableRelationTypes(Map<String, CollectionDto> targets) {
+        Set<Long> ids = targets.values().stream().map(CollectionDto::getId).collect(Collectors.toSet());
+        Map<String, RelationTypeDto> usable = new LinkedHashMap<>();
+        for (RelationTypeDto type : relationTypeService.findAll()) {
+            if ((type.getFromCollectionId() == null || ids.contains(type.getFromCollectionId()))
+                    && (type.getToCollectionId() == null || ids.contains(type.getToCollectionId()))) {
+                usable.put(type.getSlug(), type);
+            }
+        }
+        return usable;
+    }
+
+    private List<ProposalDraft> relationDrafts(JsonNode relations, Map<String, RelationTypeDto> types, Map<String, Entity> entities) {
+        List<ProposalDraft> drafts = new ArrayList<>();
+        if (!relations.isArray()) {
+            return drafts;
+        }
+        Set<List<Object>> seen = new HashSet<>();
+        for (JsonNode relation : relations) {
+            RelationTypeDto type = types.get(relation.path("type").asString(""));
+            Entity from = entities.get(relation.path("from").asString(""));
+            Entity to = entities.get(relation.path("to").asString(""));
+            if (type == null || from == null || to == null || from.endpoint().equals(to.endpoint())) {
+                continue;
+            }
+            if (!fits(type, from.collectionId(), to.collectionId())) {
+                if (Boolean.TRUE.equals(type.getDirected()) || !fits(type, to.collectionId(), from.collectionId())) {
+                    continue;
+                }
+                Entity swapped = from;
+                from = to;
+                to = swapped;
+            }
+            if (!seen.add(List.of(type.getId(), from.endpoint(), to.endpoint()))
+                    || (!Boolean.TRUE.equals(type.getDirected()) && !seen.add(List.of(type.getId(), to.endpoint(), from.endpoint())))
+                    || alreadyRelated(type, from, to)) {
+                continue;
+            }
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("relationTypeId", type.getId());
+            payload.put("from", payload(from.endpoint()));
+            payload.put("to", payload(to.endpoint()));
+            List<String> dependsOnRefs = new ArrayList<>();
+            List<Long> dependsOnProposalIds = new ArrayList<>();
+            for (Endpoint endpoint : List.of(from.endpoint(), to.endpoint())) {
+                if (endpoint instanceof FromDraft draft) {
+                    dependsOnRefs.add(draft.ref());
+                } else if (endpoint instanceof FromProposal proposal) {
+                    dependsOnProposalIds.add(proposal.proposalId());
+                }
+            }
+            drafts.add(new ProposalDraft(ProposalKind.CREATE_RELATION, payload, confidence(relation),
+                    truncate(relation.path("reason").asString(""), 1000), null, dependsOnRefs, dependsOnProposalIds));
         }
         return drafts;
+    }
+
+    private static boolean fits(RelationTypeDto type, Long fromCollectionId, Long toCollectionId) {
+        return (type.getFromCollectionId() == null || type.getFromCollectionId().equals(fromCollectionId))
+                && (type.getToCollectionId() == null || type.getToCollectionId().equals(toCollectionId));
+    }
+
+    private static Map<String, Object> payload(Endpoint endpoint) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        switch (endpoint) {
+            case Existing existing -> {
+                payload.put("collectionId", existing.collectionId());
+                payload.put("recordId", existing.recordId());
+            }
+            case FromDraft draft -> payload.put("ref", draft.ref());
+            case FromProposal proposal -> payload.put("proposalId", proposal.proposalId());
+        }
+        return payload;
+    }
+
+    /** Only two existing records can already be related. */
+    private boolean alreadyRelated(RelationTypeDto type, Entity from, Entity to) {
+        if (!(from.endpoint() instanceof Existing a) || !(to.endpoint() instanceof Existing b)) {
+            return false;
+        }
+        boolean directed = Boolean.TRUE.equals(type.getDirected());
+        for (RelationDto relation : relationService.listRelations(a.collectionId(), a.recordId())) {
+            if (!type.getId().equals(relation.getRelationTypeId())) {
+                continue;
+            }
+            boolean forward = a.collectionId().equals(relation.getFromCollectionId()) && a.recordId().equals(relation.getFromRecordId())
+                    && b.collectionId().equals(relation.getToCollectionId()) && b.recordId().equals(relation.getToRecordId());
+            boolean backward = !directed && b.collectionId().equals(relation.getFromCollectionId()) && b.recordId().equals(relation.getFromRecordId())
+                    && a.collectionId().equals(relation.getToCollectionId()) && a.recordId().equals(relation.getToRecordId());
+            if (forward || backward) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -147,7 +294,7 @@ public class EmailExtractionService implements ExtractionService {
         }
     }
 
-    private String userPrompt(EmailContent email, List<CollectionDto> targets) {
+    private String userPrompt(EmailContent email, List<CollectionDto> targets, Map<String, RelationTypeDto> relationTypes) {
         StringBuilder prompt = new StringBuilder("Collections:\n");
         for (CollectionDto collection : targets) {
             prompt.append("- ").append(collection.getSlug()).append(": ").append(collection.getName());
@@ -167,6 +314,16 @@ public class EmailExtractionService implements ExtractionService {
                 }
                 prompt.append('\n');
             }
+        }
+        if (!relationTypes.isEmpty()) {
+            Map<Long, String> slugs = new HashMap<>();
+            targets.forEach(collection -> slugs.put(collection.getId(), collection.getSlug()));
+            prompt.append("\nRelation types:\n");
+            relationTypes.values().forEach(type -> prompt.append("- ").append(type.getSlug()).append(": ")
+                    .append(slugs.getOrDefault(type.getFromCollectionId(), "any")).append(" → ")
+                    .append(slugs.getOrDefault(type.getToCollectionId(), "any")).append(" (")
+                    .append(type.getName()).append(type.getInverseName() != null ? " / " + type.getInverseName() : "")
+                    .append(Boolean.TRUE.equals(type.getDirected()) ? ", directed" : ", either direction").append(")\n"));
         }
         String received = email.receivedAt() != null
                 ? email.receivedAt().atZone(properties.timezone()).getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
@@ -213,14 +370,15 @@ public class EmailExtractionService implements ExtractionService {
         return values;
     }
 
-    private Optional<ProposalDraft> draft(CollectionDto collection, String title, Map<String, Object> values,
-                                          BigDecimal confidence, String reason) {
+    private Drafted draft(CollectionDto collection, String title, Map<String, Object> values, BigDecimal confidence, String reason,
+                          String ref) {
         Map<String, Object> keys = matchKeyValues(collection, values);
         Optional<RecordDto> existing = findExisting(collection, title, keys);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("collectionId", collection.getId());
         if (existing.isPresent()) {
             RecordDto record = existing.get();
+            Endpoint endpoint = new Existing(collection.getId(), record.getId());
             Map<String, Object> missing = new LinkedHashMap<>();
             values.forEach((slug, value) -> {
                 Object current = record.getValues() != null ? record.getValues().get(slug) : null;
@@ -229,23 +387,25 @@ public class EmailExtractionService implements ExtractionService {
                 }
             });
             if (missing.isEmpty()) {
-                return Optional.empty();
+                return new Drafted(Optional.empty(), endpoint);
             }
             payload.put("recordId", record.getId());
             payload.put("values", missing);
-            return Optional.of(new ProposalDraft(ProposalKind.UPDATE_RECORD, payload, confidence, reason));
+            return new Drafted(Optional.of(new ProposalDraft(ProposalKind.UPDATE_RECORD, payload, confidence, reason)), endpoint);
         }
 
-        boolean pending = keys.isEmpty()
-                ? proposalRepository.existsPendingCreateRecordWithTitle(collection.getId(), title)
-                : keys.entrySet().stream().anyMatch(entry ->
-                        proposalRepository.existsPendingCreateRecordWithValue(collection.getId(), entry.getKey(), String.valueOf(entry.getValue())));
-        if (pending) {
-            return Optional.empty();
+        Optional<Long> pending = keys.isEmpty()
+                ? proposalRepository.findPendingCreateRecordIdWithTitle(collection.getId(), title)
+                : keys.entrySet().stream()
+                        .map(entry -> proposalRepository.findPendingCreateRecordIdWithValue(collection.getId(), entry.getKey(), String.valueOf(entry.getValue())))
+                        .flatMap(Optional::stream).findFirst();
+        if (pending.isPresent()) {
+            return new Drafted(Optional.empty(), new FromProposal(pending.get()));
         }
         payload.put("title", title);
         payload.put("values", values);
-        return Optional.of(new ProposalDraft(ProposalKind.CREATE_RECORD, payload, confidence, reason));
+        return new Drafted(Optional.of(new ProposalDraft(ProposalKind.CREATE_RECORD, payload, confidence, reason, ref, List.of(), List.of())),
+                ref != null ? new FromDraft(ref) : null);
     }
 
     /** Match-key values present in the item (all keys of the collection, or none). */
