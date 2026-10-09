@@ -108,40 +108,13 @@ public class MailSyncService {
     }
 
     private MailSyncStatusDto doDeltaSync(MailAccount account, String token) {
-        String currentLink = account.getDeltaLink();
-        int totalSynced = 0;
-        String nextDeltaLink = null;
-
-        while (true) {
-            MsGraphMailService.DeltaResult result;
-            try {
-                result = msGraphMailService.fetchMessagesDelta(token, currentLink);
-            } catch (Exception e) {
-                if (currentLink != null && e.getMessage() != null && e.getMessage().contains("410")) {
-                    log.warn("Delta token expired for account {}, resetting sync link", account.getId().id());
-                    account.setDeltaLink(null);
-                    currentLink = null;
-                    result = msGraphMailService.fetchMessagesDelta(token, null);
-                } else {
-                    throw e;
-                }
-            }
-
-            for (Message message : result.messages()) {
-                upsertMessage(account, message);
-                totalSynced++;
-            }
-
-            if (result.nextLink() != null && !result.nextLink().isBlank()) {
-                currentLink = result.nextLink();
-            } else {
-                nextDeltaLink = result.newDeltaLink();
-                break;
-            }
-        }
-
-        if (nextDeltaLink != null) {
-            account.setDeltaLink(nextDeltaLink);
+        FolderSync inbox = syncFolder(account, token, EmailMessage.FOLDER_INBOX);
+        account.setDeltaLink(inbox.deltaLink());
+        try {
+            account.setSentDeltaLink(syncFolder(account, token, EmailMessage.FOLDER_SENT).deltaLink());
+        } catch (RuntimeException e) {
+            // Sent mail is only context: a failure here must not fail the inbox sync, it is retried next time.
+            log.warn("Sent items sync failed for account {}: {}", account.getId().id(), e.getMessage());
         }
         Instant now = Instant.now();
         account.setLastSyncedAt(now);
@@ -150,13 +123,56 @@ public class MailSyncService {
 
         return new MailSyncStatusDto(account.getId().id(), MailAccountState.ACTIVE)
                 .lastSyncedAt(now.atOffset(ZoneOffset.UTC))
-                .messagesSynced(totalSynced);
+                .messagesSynced(inbox.messages());
     }
 
-    private void upsertMessage(MailAccount account, Message message) {
+    private record FolderSync(int messages, String deltaLink) {
+    }
+
+    /** Pages through one folder's delta; an expired delta link (410) restarts that folder from scratch. */
+    private FolderSync syncFolder(MailAccount account, String token, String folder) {
+        boolean sent = EmailMessage.FOLDER_SENT.equals(folder);
+        String storedLink = sent ? account.getSentDeltaLink() : account.getDeltaLink();
+        String currentLink = storedLink;
+        int total = 0;
+
+        while (true) {
+            MsGraphMailService.DeltaResult result;
+            try {
+                result = fetch(token, sent, currentLink);
+            } catch (Exception e) {
+                if (currentLink != null && e.getMessage() != null && e.getMessage().contains("410")) {
+                    log.warn("Delta token of {} expired for account {}, resetting sync link", folder, account.getId().id());
+                    storedLink = null;
+                    currentLink = null;
+                    result = fetch(token, sent, null);
+                } else {
+                    throw e;
+                }
+            }
+
+            for (Message message : result.messages()) {
+                upsertMessage(account, message, folder);
+                total++;
+            }
+
+            if (result.nextLink() != null && !result.nextLink().isBlank()) {
+                currentLink = result.nextLink();
+            } else {
+                return new FolderSync(total, result.newDeltaLink() != null ? result.newDeltaLink() : storedLink);
+            }
+        }
+    }
+
+    private MsGraphMailService.DeltaResult fetch(String token, boolean sent, String link) {
+        return sent ? msGraphMailService.fetchSentMessagesDelta(token, link) : msGraphMailService.fetchMessagesDelta(token, link);
+    }
+
+    private void upsertMessage(MailAccount account, Message message, String folder) {
         if (message.getId() == null) {
             return;
         }
+        boolean sent = EmailMessage.FOLDER_SENT.equals(folder);
         Optional<EmailMessage> existing = emailMessageRepository.findByAccount_IdAndProviderMessageId(
                 account.getId(), message.getId());
 
@@ -164,7 +180,7 @@ public class MailSyncService {
                 .account(account)
                 .providerMessageId(message.getId())
                 .receivedAt(Instant.now())
-                .processingState(ProcessingState.NEW)
+                .processingState(sent ? ProcessingState.SKIPPED : ProcessingState.NEW)
                 .build());
 
         if (message.getInternetMessageId() != null) {
@@ -173,7 +189,7 @@ public class MailSyncService {
         if (message.getConversationId() != null) {
             email.setConversationId(message.getConversationId());
         }
-        email.setFolder("inbox");
+        email.setFolder(folder);
         if (message.getFrom() != null && message.getFrom().getEmailAddress() != null) {
             email.setFromAddress(message.getFrom().getEmailAddress().getAddress());
             email.setFromName(message.getFrom().getEmailAddress().getName());
@@ -193,10 +209,14 @@ public class MailSyncService {
                 email.setBodyText(message.getBody().getContent());
             }
         }
-        if (message.getReceivedDateTime() != null) {
+        if (sent && message.getSentDateTime() != null) {
+            email.setReceivedAt(message.getSentDateTime().toInstant());
+        } else if (message.getReceivedDateTime() != null) {
             email.setReceivedAt(message.getReceivedDateTime().toInstant());
         }
-        if (message.getIsRead() != null) {
+        if (sent) {
+            email.setRead(true);
+        } else if (message.getIsRead() != null) {
             email.setRead(message.getIsRead());
         }
         if (message.getHasAttachments() != null) {

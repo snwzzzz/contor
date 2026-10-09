@@ -195,9 +195,14 @@ class MailServiceTest {
     @Test
     void disconnectAccount_Success() {
         var acc = account(1L);
+        acc.setDeltaLink("inbox-delta");
+        acc.setSentDeltaLink("sent-delta");
         when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
 
         mailService.disconnectAccount(2L);
+
+        assertNull(acc.getDeltaLink());
+        assertNull(acc.getSentDeltaLink());
 
         assertEquals(MailAccountStatus.DISABLED, acc.getStatus());
         assertNull(acc.getAccessToken());

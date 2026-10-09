@@ -31,7 +31,8 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
 
     /** Sender/subject/snippet of an owner's emails received at/after {@code since}, newest first (category discovery). */
     @Query("select new com.example.contor.ai.DiscoveryEmail(e.fromName, e.fromAddress, e.subject, e.snippet, e.receivedAt) "
-            + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since order by e.receivedAt desc")
+            + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since "
+            + "and (e.folder is null or e.folder <> 'sent') order by e.receivedAt desc")
     List<DiscoveryEmail> findDiscoveryEmails(AppUser.AppUserId ownerId, Instant since, Pageable pageable);
 
     /** Moves an owner's emails received before {@code before} from one processing state to another. */

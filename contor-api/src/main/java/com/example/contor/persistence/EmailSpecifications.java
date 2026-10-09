@@ -35,6 +35,7 @@ public final class EmailSpecifications {
             List<Predicate> predicates = new ArrayList<>();
             Join<EmailMessage, MailAccount> account = root.join("account");
             predicates.add(cb.equal(account.get("owner").get("id").get("id"), criteria.ownerId().id()));
+            predicates.add(cb.or(cb.isNull(root.get("folder")), cb.notEqual(root.get("folder"), EmailMessage.FOLDER_SENT)));
             if (criteria.accountId() != null) {
                 predicates.add(cb.equal(account.get("id").get("id"), criteria.accountId().id()));
             }

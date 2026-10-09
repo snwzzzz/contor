@@ -141,6 +141,7 @@ public class MailService {
         account.setRefreshToken(null);
         account.setTokenExpiresAt(null);
         account.setDeltaLink(null);
+        account.setSentDeltaLink(null);
         mailAccountRepository.saveAndFlush(account);
     }
 

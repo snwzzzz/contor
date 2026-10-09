@@ -125,4 +125,16 @@ public class EmailSpecificationsTest {
         assertThat(involving(List.of(invoice), List.of("boss@example.com"), List.of())).containsExactly("Meeting tomorrow", "Invoice");
         assertThat(involving(List.of(), List.of(), List.of())).isEmpty();
     }
+
+    @Test
+    void sent_mail_never_shows_up_in_searches() {
+        var reply = save(work, "5", "Re: Meeting tomorrow", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-05T00:00:00Z");
+        reply.setFolder("sent");
+        emailMessageRepository.save(reply);
+
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null)))
+                .doesNotContain("Re: Meeting tomorrow").hasSize(3);
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "meeting")))
+                .containsExactly("Meeting tomorrow");
+    }
 }

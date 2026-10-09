@@ -103,6 +103,19 @@ public class EmailMessageRepositoryTest {
     }
 
     @Test
+    void discovery_samples_skip_sent_mail() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        email(mine, "A", "2026-02-01T00:00:00Z", ProcessingState.NEW);
+        var sent = email(mine, "B", "2026-03-01T00:00:00Z", ProcessingState.SKIPPED);
+        sent.setFolder("sent");
+        emailMessageRepository.flush();
+
+        assertThat(emailMessageRepository.findDiscoveryEmails(owner.getId(), Instant.parse("2026-01-01T00:00:00Z"), PageRequest.of(0, 10)))
+                .extracting(DiscoveryEmail::subject).containsExactly("Subject A");
+    }
+
+    @Test
     void lists_discovery_samples_of_one_owner_newest_first() {
         var owner = appUserRepository.save(Fixtures.user("owner"));
         var other = appUserRepository.save(Fixtures.user("other"));

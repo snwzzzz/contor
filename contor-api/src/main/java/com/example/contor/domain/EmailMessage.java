@@ -19,6 +19,10 @@ import java.util.List;
 @Table(name = "\"email_message\"")
 public class EmailMessage extends AuditableEntity {
 
+    /** Values of {@code folder}: the synced Graph folders. Sent mail is context only (never AI-processed, never listed). */
+    public static final String FOLDER_INBOX = "inbox";
+    public static final String FOLDER_SENT = "sent";
+
     @EmbeddedId
     private EmailMessageId id;
 
