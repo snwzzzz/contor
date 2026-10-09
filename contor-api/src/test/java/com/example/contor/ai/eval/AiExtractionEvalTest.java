@@ -5,6 +5,7 @@ import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.config.AiProperties;
+import com.example.contor.domain.ProposalKind;
 import com.example.contor.fieldtype.TestFieldTypes;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.service.EmailExtractionService;
@@ -30,6 +31,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -73,6 +76,10 @@ class AiExtractionEvalTest {
         List<EvalCase> cases = new ArrayList<>(EvalCaseLoader.loadClasspath("ai-eval/synthetic"));
         cases.addAll(EvalCaseLoader.load(privateDir));
         List<CollectionDto> collections = EvalCollections.all();
+        Set<String> undirected = EvalCollections.relationTypes().stream().filter(type -> !type.getDirected()).map(type -> type.getSlug())
+                .collect(Collectors.toSet());
+        Map<Long, String> relationTypeById = new HashMap<>();
+        EvalCollections.relationTypes().forEach(type -> relationTypeById.put(type.getId(), type.getSlug()));
         Map<Long, String> slugById = new HashMap<>();
         collections.forEach(collection -> slugById.put(collection.getId(), collection.getSlug()));
 
@@ -92,13 +99,15 @@ class AiExtractionEvalTest {
             try {
                 List<ProposalDraft> drafts = service.analyze(evalCase.email(), collections);
                 long millis = Duration.ofNanos(System.nanoTime() - start).toMillis();
-                results.add(new CaseResult(evalCase.id(), drafts.stream().map(draft -> produced(draft, slugById)).toList(), millis, null));
+                results.add(new CaseResult(evalCase.id(),
+                        drafts.stream().filter(draft -> draft.kind() != ProposalKind.CREATE_RELATION).map(draft -> produced(draft, slugById)).toList(),
+                        millis, null, relations(drafts, slugById, relationTypeById)));
             } catch (RuntimeException e) {
                 results.add(new CaseResult(evalCase.id(), List.of(), 0, e.getClass().getSimpleName() + ": " + e.getMessage()));
             }
         }
 
-        EvalReport report = new EvalScorer(collections).score(model, EmailExtractionService.PROMPT_VERSION, cases, results);
+        EvalReport report = new EvalScorer(collections, undirected).score(model, EmailExtractionService.PROMPT_VERSION, cases, results);
         writeReports(report);
         results.stream().filter(result -> result.error() != null).limit(3)
                 .forEach(result -> System.out.println("[ai-eval] " + result.caseId() + " failed: " + result.error()));
@@ -115,6 +124,26 @@ class AiExtractionEvalTest {
         } else {
             System.out.println("[ai-eval] No baseline at " + baselineFile + "; run with -Dai.eval.updateBaseline=true to create it.");
         }
+    }
+
+    /** The relation drafts, with their {@code {"ref": x}} ends named by the collection and title of the draft with that ref. */
+    private static List<ProducedRelation> relations(List<ProposalDraft> drafts, Map<Long, String> slugById, Map<Long, String> typeById) {
+        Map<String, ProducedRecord> byRef = new HashMap<>();
+        drafts.stream().filter(draft -> draft.kind() != ProposalKind.CREATE_RELATION && draft.ref() != null)
+                .forEach(draft -> byRef.put(draft.ref(), produced(draft, slugById)));
+        List<ProducedRelation> relations = new ArrayList<>();
+        for (ProposalDraft draft : drafts) {
+            if (draft.kind() != ProposalKind.CREATE_RELATION) {
+                continue;
+            }
+            ProducedRecord from = draft.payload().get("from") instanceof Map<?, ?> end ? byRef.get(String.valueOf(end.get("ref"))) : null;
+            ProducedRecord to = draft.payload().get("to") instanceof Map<?, ?> end ? byRef.get(String.valueOf(end.get("ref"))) : null;
+            String type = draft.payload().get("relationTypeId") instanceof Number id ? typeById.get(id.longValue()) : null;
+            if (from != null && to != null && type != null) {
+                relations.add(new ProducedRelation(type, from.collection(), from.title(), to.collection(), to.title()));
+            }
+        }
+        return relations;
     }
 
     private static ProducedRecord produced(ProposalDraft draft, Map<Long, String> slugById) {

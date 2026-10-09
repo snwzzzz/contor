@@ -157,6 +157,7 @@ bar (or Settings → AI Models). The wizard walks through:
 - *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
   actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject). *Automatic* applies
   them directly (audited; if applying fails the proposal waits for review instead).
+- **Relations**: besides records, the assistant proposes relations between them ("Anna works at Acme", using the existing relation types such as *works at*). They appear as findings nested under the record they start from (a relation between records that already exist is listed on its own) and can only be kept once the records they connect are decided; dismissing a record dismisses its pending relations. With *Automatic* for records they are created as soon as their records exist. AI-created relations carry a small bot badge on the record's Connections tab. Relations follow the *contacts & records* permission.
 - The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: click a day for its agenda and to add an event, click an event to open it) and **Tasks**
   (`/tasks`: a To do / In progress / Done board; cards show the deadline relative to today and expand to notes, details and actions); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
 - Dates: every extraction call gets today's date, weekday and your time zone (`AI_TIMEZONE`); relative dates in a mail
@@ -180,7 +181,7 @@ Every change to the prompts, the model or the extraction is judged with a repeat
 Ollama over a labelled corpus with a fixed schema (the seeded system collections plus *orders*, *invoices*, *subscriptions*,
 *applications*) and scores:
 
-- record **precision and recall** per collection (match by match key, else similar title),
+- record **precision and recall** per collection (match by match key, else similar title) and for **relations** (found when both records were extracted and the same relation type connects them),
 - **field accuracy** per field (normalized: dates and time zones, money, phone numbers, case/accents),
 - **date correctness** of events and to-dos (the dates of missed records count as wrong),
 - the **false-positive rate** on mails that should produce nothing, records that must never be produced, and **latency** p50/p95.
@@ -189,7 +190,7 @@ Ollama over a labelled corpus with a fixed schema (the seeded system collections
 cd contor-api && ./mvnw verify -Pai-eval
 ```
 
-Needs Ollama with the extraction model running; about 5 minutes for 49 mails on an RTX 3060. Each case is analyzed as if
+Needs Ollama with the extraction model running; about 6 minutes for 49 mails on an RTX 3060. Relations are extracted in a second, short call (only for mails with two or more extracted records): listing relation types in the extraction prompt itself made the model invent organizations and events just to relate them (measured with this eval: 31 instead of 12 organizations). Each case is analyzed as if
 processed when it was received, so "Friday" resolves from the mail date. The report goes to
 `contor-api/target/ai-eval/report-<model>-<promptVersion>.json` and `.md`. The run is compared with the committed
 `ai-eval/baseline.json` and **fails when a quality metric drops by more than the threshold** (default 0.05, absolute;
@@ -221,7 +222,7 @@ become `expected`, rejected ones `mustNotProduce`. The private cases are scored 
 | Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
 | Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
-| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD and CREATE_COLLECTION (OWNER) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`) |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION and CREATE_COLLECTION (OWNER) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`) |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, never listed in the inbox/searches and never analyzed by the AI. Accounts connected before this sync their sent mail on the next sync |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |

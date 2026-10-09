@@ -36,6 +36,20 @@ const findings = [
   },
 ];
 
+const worksAt = { id: 3, slug: "works_at", name: "works at", inverseName: "employs", directed: true, attributesSchema: {}, createdBy: "USER" };
+
+const acme = {
+  id: 24,
+  kind: "CREATE_RECORD",
+  status: "PENDING",
+  payload: { collectionId: 2, title: "Acme", values: { name: "Acme" } },
+  createdAt: "2026-10-08T12:00:00Z",
+};
+
+function relation(id: number, from: unknown, to: unknown) {
+  return { id, kind: "CREATE_RELATION", status: "PENDING", payload: { relationTypeId: 3, from, to }, createdAt: "2026-10-08T12:00:00Z" };
+}
+
 function findingsPage(items: unknown[]): (request: { url: URL }) => MockResponse {
   return ({ url }) => {
     expect(url.searchParams.get("group")).toBe("FINDINGS");
@@ -96,5 +110,61 @@ describe("FindingsList", () => {
     renderWithProviders(<FindingsList />);
 
     expect(await screen.findByText("No new findings")).toBeInTheDocument();
+  });
+
+  it("nests a relation under the record it starts from and keeps it disabled until both records are decided", async () => {
+    mockApi({
+      "GET /api/proposals": findingsPage([findings[0], acme, relation(25, { proposalId: 21 }, { proposalId: 24 })]),
+      "GET /api/collections": { body: collections },
+      "GET /api/relation-types": { body: [worksAt] },
+    });
+
+    renderWithProviders(<FindingsList />);
+
+    const anna = await screen.findByRole("article", { name: "Anna Berger" });
+    expect(await within(anna).findByText("works at Acme")).toBeInTheDocument();
+    expect(within(anna).getByRole("button", { name: "Keep works at Acme" })).toBeDisabled();
+    expect(within(screen.getByRole("article", { name: "Acme" })).queryByText("works at Acme")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "All 2" })).toBeInTheDocument();
+  });
+
+  it("names the other end by the title of an existing record and lets you keep the relation", async () => {
+    const calls = mockApi({
+      "GET /api/proposals": findingsPage([findings[0], relation(26, { proposalId: 21 }, { collectionId: 2, recordId: 9 })]),
+      "GET /api/collections": { body: collections },
+      "GET /api/relation-types": { body: [worksAt] },
+      "GET /api/collections/2/records/9": { body: { id: 9, collectionId: 2, title: "Globex", values: {}, extra: {}, createdAt: "2026-01-01T00:00:00Z", createdBy: "AI" } },
+      "POST /api/proposals/26/decision": { body: relation(26, {}, {}) },
+    });
+
+    renderWithProviders(<FindingsList />);
+
+    const anna = await screen.findByRole("article", { name: "Anna Berger" });
+    expect(await within(anna).findByText("works at Globex")).toBeInTheDocument();
+    // the person is still pending, so the relation cannot be kept yet
+    expect(within(anna).getByRole("button", { name: "Keep works at Globex" })).toBeDisabled();
+    await userEvent.click(within(anna).getByRole("button", { name: "Dismiss works at Globex" }));
+
+    await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/26/decision")?.body).toEqual({ decision: "REJECT" }));
+  });
+
+  it("lets you keep a relation between two records that already exist", async () => {
+    const calls = mockApi({
+      "GET /api/proposals": findingsPage([relation(27, { collectionId: 1, recordId: 4 }, { collectionId: 2, recordId: 9 })]),
+      "GET /api/collections": { body: collections },
+      "GET /api/relation-types": { body: [worksAt] },
+      "GET /api/collections/1/records/4": { body: { id: 4, collectionId: 1, title: "Bob Stone", values: {}, extra: {}, createdAt: "2026-01-01T00:00:00Z", createdBy: "USER" } },
+      "GET /api/collections/2/records/9": { body: { id: 9, collectionId: 2, title: "Globex", values: {}, extra: {}, createdAt: "2026-01-01T00:00:00Z", createdBy: "AI" } },
+      "POST /api/proposals/27/decision": { body: relation(27, {}, {}) },
+    });
+
+    renderWithProviders(<FindingsList />);
+
+    const connections = await screen.findByRole("list", { name: "New connections" });
+    expect(await within(connections).findByText("Bob Stone works at Globex")).toBeInTheDocument();
+    await userEvent.click(within(connections).getByRole("button", { name: "Keep Bob Stone works at Globex" }));
+
+    await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/27/decision")?.body).toEqual({ decision: "APPROVE" }));
   });
 });

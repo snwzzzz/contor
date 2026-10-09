@@ -22,6 +22,10 @@ final class BaselineComparison {
                 lowerIsWorse(found, slug + ".recall", before.recall(), score.recall(), threshold);
             }
         });
+        if (current.relations() != null && baseline.relations() != null) {
+            lowerIsWorse(found, "relations.precision", baseline.relations().precision(), current.relations().precision(), threshold);
+            lowerIsWorse(found, "relations.recall", baseline.relations().recall(), current.relations().recall(), threshold);
+        }
         lowerIsWorse(found, "fields.accuracy", baseline.fieldsOverall().accuracy(), current.fieldsOverall().accuracy(), threshold);
         lowerIsWorse(found, "dates.accuracy", baseline.dates().accuracy(), current.dates().accuracy(), threshold);
         Double before = baseline.falsePositives().rate();

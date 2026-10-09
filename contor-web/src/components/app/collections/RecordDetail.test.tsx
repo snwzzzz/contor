@@ -143,6 +143,37 @@ describe("RecordDetail", () => {
     expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute("href", "/collections/2/records/8");
     expect(within(panel).getByText("works at")).toBeInTheDocument();
     expect(within(panel).getByText("Organizations")).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Added by the assistant")).toBeInTheDocument();
+  });
+
+  it("marks only the connections the assistant created", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/relations": {
+        body: [
+          { id: 3, relationTypeId: 1, fromCollectionId: 1, fromRecordId: 5, toCollectionId: 2, toRecordId: 8, attributes: {}, createdBy: "AI" },
+          { id: 4, relationTypeId: 1, fromCollectionId: 1, fromRecordId: 5, toCollectionId: 2, toRecordId: 9, attributes: {}, createdBy: "USER" },
+        ],
+      },
+      "GET /api/relation-types": {
+        body: [{ id: 1, slug: "works_at", name: "works at", inverseName: "employs", directed: true, attributesSchema: {}, createdBy: "USER" }],
+      },
+      "GET /api/collections": { body: [people, { ...people, id: 2, slug: "organizations", name: "Organizations", fields: [] }] },
+      "GET /api/collections/2/records/8": { body: { ...anna, id: 8, collectionId: 2, title: "Acme GmbH", values: {} } },
+      "GET /api/collections/2/records/9": { body: { ...anna, id: 9, collectionId: 2, title: "Globex", values: {} } },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    await userEvent.click(await screen.findByRole("tab", { name: /Connections/ }));
+    const panel = screen.getByRole("tabpanel", { name: /Connections/ });
+    const acme = await within(panel).findByRole("link", { name: /Acme GmbH/ });
+    const globex = await within(panel).findByRole("link", { name: /Globex/ });
+    expect(within(acme).getByLabelText("Added by the assistant")).toBeInTheDocument();
+    expect(within(globex).queryByLabelText("Added by the assistant")).not.toBeInTheDocument();
   });
 
   it("shows a not-found message", async () => {

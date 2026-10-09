@@ -32,9 +32,16 @@ final class EvalScorer {
     private static final Set<CollectionFieldType> DATE_TYPES = Set.of(CollectionFieldType.DATE, CollectionFieldType.DATETIME);
 
     private final Map<String, CollectionDto> collections = new HashMap<>();
+    private final Set<String> undirectedRelationTypes;
 
     EvalScorer(List<CollectionDto> collections) {
+        this(collections, Set.of());
+    }
+
+    /** @param undirectedRelationTypes slugs of relation types that hold in both directions (e.g. {@code knows}) */
+    EvalScorer(List<CollectionDto> collections, Set<String> undirectedRelationTypes) {
         collections.forEach(collection -> this.collections.put(collection.getSlug(), collection));
+        this.undirectedRelationTypes = undirectedRelationTypes;
     }
 
     EvalReport score(String model, String promptVersion, List<EvalCase> cases, List<CaseResult> results) {
@@ -44,6 +51,7 @@ final class EvalScorer {
         Map<String, int[]> perCollection = new TreeMap<>(); // expected, produced, true positives
         Map<String, int[]> perField = new TreeMap<>();      // correct, total
         int[] dates = new int[2];
+        int[] relations = new int[3]; // expected, produced, true positives
         int nothingCases = 0;
         int nothingWithOutput = 0;
         int forbiddenHits = 0;
@@ -65,12 +73,16 @@ final class EvalScorer {
             }
             forbiddenHits += forbiddenHits(evalCase, result);
 
+            Map<String, Map<Integer, Integer>> pairsBySlug = new HashMap<>();
+            Map<String, List<ProducedRecord>> producedBySlug = new HashMap<>();
             Set<String> slugs = new TreeSet<>(evalCase.expected().records().keySet());
             result.produced().forEach(record -> slugs.add(record.collection()));
             for (String slug : slugs) {
                 List<EvalCase.ExpectedRecord> expected = evalCase.expected().records().getOrDefault(slug, List.of());
                 List<ProducedRecord> produced = result.produced().stream().filter(record -> slug.equals(record.collection())).toList();
                 Map<Integer, Integer> pairs = match(collections.get(slug), expected, produced);
+                pairsBySlug.put(slug, pairs);
+                producedBySlug.put(slug, produced);
 
                 int[] counts = perCollection.computeIfAbsent(slug, key -> new int[3]);
                 counts[0] += expected.size();
@@ -82,6 +94,7 @@ final class EvalScorer {
                     scoreFields(slug, expected.get(i), match, perField, dates);
                 }
             }
+            scoreRelations(evalCase, result, pairsBySlug, producedBySlug, relations);
         }
 
         Map<String, EvalReport.CollectionScore> collectionScores = new LinkedHashMap<>();
@@ -96,7 +109,59 @@ final class EvalScorer {
         });
         return new EvalReport(model, promptVersion, cases.size(), failed, collectionScores, fieldScores, fieldScore(overall),
                 fieldScore(dates), new EvalReport.FalsePositives(nothingCases, nothingWithOutput, ratio(nothingWithOutput, nothingCases)),
-                forbiddenHits, latency(latencies));
+                forbiddenHits, latency(latencies),
+                new EvalReport.CollectionScore(relations[0], relations[1], relations[2], ratio(relations[2], relations[1]), ratio(relations[2], relations[0])));
+    }
+
+    /**
+     * An expected relation is found when both of its records were matched with a produced record and a produced
+     * relation of the same type connects exactly those produced records (either way round for undirected types).
+     */
+    private void scoreRelations(EvalCase evalCase, CaseResult result, Map<String, Map<Integer, Integer>> pairsBySlug,
+                                Map<String, List<ProducedRecord>> producedBySlug, int[] counts) {
+        List<ProducedRelation> unclaimed = new ArrayList<>(result.producedRelations());
+        counts[0] += evalCase.expected().relations().size();
+        counts[1] += result.producedRelations().size();
+        for (EvalCase.ExpectedRelation expected : evalCase.expected().relations()) {
+            ProducedRecord from = producedFor(evalCase, expected.from(), pairsBySlug, producedBySlug);
+            ProducedRecord to = producedFor(evalCase, expected.to(), pairsBySlug, producedBySlug);
+            if (from == null || to == null) {
+                continue;
+            }
+            boolean undirected = undirectedRelationTypes.contains(expected.type());
+            ProducedRelation found = unclaimed.stream()
+                    .filter(relation -> relation.type().equals(expected.type()))
+                    .filter(relation -> connects(relation, from, to) || (undirected && connects(relation, to, from)))
+                    .findFirst().orElse(null);
+            if (found != null) {
+                unclaimed.remove(found);
+                counts[2]++;
+            }
+        }
+    }
+
+    private static boolean connects(ProducedRelation relation, ProducedRecord from, ProducedRecord to) {
+        return relation.fromCollection().equals(from.collection()) && Normalizers.text(relation.fromTitle()).equals(Normalizers.text(from.title()))
+                && relation.toCollection().equals(to.collection()) && Normalizers.text(relation.toTitle()).equals(Normalizers.text(to.title()));
+    }
+
+    /** The produced record matched with the expected record named {@code "<slug>:<title>"}, or {@code null}. */
+    private static ProducedRecord producedFor(EvalCase evalCase, String endpoint, Map<String, Map<Integer, Integer>> pairsBySlug,
+                                              Map<String, List<ProducedRecord>> producedBySlug) {
+        int colon = endpoint.indexOf(':');
+        if (colon < 0) {
+            return null;
+        }
+        String slug = endpoint.substring(0, colon);
+        String title = Normalizers.text(endpoint.substring(colon + 1));
+        List<EvalCase.ExpectedRecord> expected = evalCase.expected().records().getOrDefault(slug, List.of());
+        for (int i = 0; i < expected.size(); i++) {
+            if (Normalizers.text(expected.get(i).title()).equals(title)) {
+                Integer produced = pairsBySlug.getOrDefault(slug, Map.of()).get(i);
+                return produced != null ? producedBySlug.get(slug).get(produced) : null;
+            }
+        }
+        return null;
     }
 
     /** Indexes of the expected records mapped to the index of their produced record. */

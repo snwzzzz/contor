@@ -32,7 +32,11 @@ class EvalScorerTest {
             .matchKeys(List.of())
             .fields(List.of(field("due_date", CollectionFieldType.DATE)));
 
-    private final EvalScorer scorer = new EvalScorer(List.of(PEOPLE, EVENTS, TASKS));
+    private static final CollectionDto ORGANIZATIONS = new CollectionDto().id(4L).slug("organizations").name("Organizations")
+            .matchKeys(List.of("domain"))
+            .fields(List.of(field("name", CollectionFieldType.TEXT), field("domain", CollectionFieldType.TEXT)));
+
+    private final EvalScorer scorer = new EvalScorer(List.of(PEOPLE, EVENTS, TASKS, ORGANIZATIONS), java.util.Set.of("knows"));
 
     private static EvalCase expecting(String id, Map<String, List<EvalCase.ExpectedRecord>> records, EvalCase.Forbidden... forbidden) {
         return new EvalCase(id, null, new EvalCase.Expected(records, List.of()), List.of(forbidden));
@@ -250,5 +254,88 @@ class EvalScorerTest {
                 List.of(result("a", 100, produced("tasks", "Pay", Map.of()))));
 
         assertThat(report.toMarkdown()).contains("qwen:9b", "tasks").doesNotContain("null");
+    }
+
+    // ---- relations ---------------------------------------------------------------------------------------------
+
+    private static EvalCase withRelations(String id, Map<String, List<EvalCase.ExpectedRecord>> records, EvalCase.ExpectedRelation... relations) {
+        return new EvalCase(id, null, new EvalCase.Expected(records, List.of(relations)), List.of());
+    }
+
+    private static final Map<String, List<EvalCase.ExpectedRecord>> ANNA_AT_ACME = Map.of(
+            "people", List.of(expected("Anna Berger", Map.of("email", "anna@acme.com"))),
+            "organizations", List.of(expected("Acme", Map.of("domain", "acme.com"))));
+
+    private static CaseResult withRelations(String id, List<ProducedRecord> records, ProducedRelation... relations) {
+        return new CaseResult(id, records, 100, null, List.of(relations));
+    }
+
+    private static final List<ProducedRecord> ANNA_AT_ACME_PRODUCED = List.of(
+            produced("people", "A. Berger", Map.of("email", "anna@acme.com")),
+            produced("organizations", "Acme Corp", Map.of("domain", "acme.com")));
+
+    @Test
+    void a_relation_between_matched_records_counts_even_when_the_titles_differ() {
+        EvalReport report = score(
+                List.of(withRelations("a", ANNA_AT_ACME, new EvalCase.ExpectedRelation("works_at", "people:Anna Berger", "organizations:Acme"))),
+                List.of(withRelations("a", ANNA_AT_ACME_PRODUCED, new ProducedRelation("works_at", "people", "A. Berger", "organizations", "Acme Corp"))));
+
+        assertThat(report.relations().truePositives()).isEqualTo(1);
+        assertThat(report.relations().precision()).isEqualTo(1.0);
+        assertThat(report.relations().recall()).isEqualTo(1.0);
+    }
+
+    @Test
+    void a_wrong_type_or_wrong_direction_is_a_miss_and_a_false_positive() {
+        EvalReport report = score(
+                List.of(withRelations("a", ANNA_AT_ACME, new EvalCase.ExpectedRelation("works_at", "people:Anna Berger", "organizations:Acme"))),
+                List.of(withRelations("a", ANNA_AT_ACME_PRODUCED,
+                        new ProducedRelation("attends", "people", "A. Berger", "organizations", "Acme Corp"),
+                        new ProducedRelation("works_at", "organizations", "Acme Corp", "people", "A. Berger"))));
+
+        assertThat(report.relations().truePositives()).isZero();
+        assertThat(report.relations().precision()).isZero();
+        assertThat(report.relations().recall()).isZero();
+    }
+
+    @Test
+    void undirected_relations_match_in_either_direction() {
+        Map<String, List<EvalCase.ExpectedRecord>> records = Map.of("people", List.of(
+                expected("Anna Berger", Map.of("email", "anna@acme.com")), expected("Bob Stone", Map.of("email", "bob@acme.com"))));
+        EvalReport report = score(
+                List.of(withRelations("a", records, new EvalCase.ExpectedRelation("knows", "people:Anna Berger", "people:Bob Stone"))),
+                List.of(withRelations("a", List.of(produced("people", "Anna Berger", Map.of("email", "anna@acme.com")),
+                        produced("people", "Bob Stone", Map.of("email", "bob@acme.com"))),
+                        new ProducedRelation("knows", "people", "Bob Stone", "people", "Anna Berger"))));
+
+        assertThat(report.relations().truePositives()).isEqualTo(1);
+    }
+
+    @Test
+    void a_relation_whose_records_were_not_extracted_is_missed() {
+        EvalReport report = score(
+                List.of(withRelations("a", ANNA_AT_ACME, new EvalCase.ExpectedRelation("works_at", "people:Anna Berger", "organizations:Acme"))),
+                List.of(result("a", 100)));
+
+        assertThat(report.relations().expected()).isEqualTo(1);
+        assertThat(report.relations().recall()).isZero();
+        assertThat(report.relations().precision()).isNull();
+    }
+
+    @Test
+    void relations_are_undefined_when_nothing_was_expected_or_produced() {
+        EvalReport report = score(List.of(nothing("a")), List.of(result("a", 100)));
+
+        assertThat(report.relations().precision()).isNull();
+        assertThat(report.relations().recall()).isNull();
+    }
+
+    @Test
+    void produced_relations_without_expected_ones_lower_precision() {
+        EvalReport report = score(List.of(expecting("a", ANNA_AT_ACME)),
+                List.of(withRelations("a", ANNA_AT_ACME_PRODUCED, new ProducedRelation("works_at", "people", "A. Berger", "organizations", "Acme Corp"))));
+
+        assertThat(report.relations().precision()).isZero();
+        assertThat(report.relations().recall()).isNull();
     }
 }

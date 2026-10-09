@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueries } from "@tanstack/react-query";
-import { Database, Network } from "lucide-react";
+import { Bot, Database, Network } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/EmptyState";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
@@ -66,7 +66,14 @@ export function RecordConnectionsTab({ collectionId, recordId, relations }: { co
                 <span className="truncate font-medium">{title}</span>
                 <span className="truncate text-xs text-muted-foreground">{collectionName.get(connection.collectionId) ?? "Collection"}</span>
               </span>
-              {label ? <span className="ml-auto shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs">{label}</span> : null}
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                {connection.relation.createdBy === "AI" ? (
+                  <span role="img" aria-label="Added by the assistant" title="Added by the assistant" className="text-muted-foreground">
+                    <Bot className="size-3.5" aria-hidden="true" />
+                  </span>
+                ) : null}
+                {label ? <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{label}</span> : null}
+              </span>
             </Link>
           </li>
         );

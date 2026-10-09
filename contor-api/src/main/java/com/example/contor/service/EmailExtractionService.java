@@ -55,13 +55,21 @@ import java.util.stream.Collectors;
 @Service
 public class EmailExtractionService implements ExtractionService {
 
-    public static final String PROMPT_VERSION = "extract-v2";
+    public static final String PROMPT_VERSION = "extract-v5";
 
     static final int MAX_BODY_CHARS = 8000;
     private static final String TASKS = "tasks";
 
     /** The AI never sets references or files. */
     private static final Set<CollectionFieldType> SKIPPED_TYPES = Set.of(CollectionFieldType.RELATION, CollectionFieldType.FILE);
+
+    /** Second, short call: which of the extracted items the email says are related. Kept apart from the extraction because
+     *  listing relation types there makes the model invent records (organizations, events) just to relate them. */
+    private static final String RELATIONS_SYSTEM = """
+            You find the relations between records extracted from one email of the user. Answer with JSON only.
+            Return a relation only when the email clearly states how two of the listed items are related (for example a \
+            person's employer in the signature, or who attends a meeting). Use the refs of the items and one of the \
+            listed relation types, from the item that the type's first collection describes. When unsure, return an empty list.""";
 
     private static final String SYSTEM = """
             You are the assistant inside contor, a personal management app. You read one email of the user and \
@@ -80,9 +88,6 @@ public class EmailExtractionService implements ExtractionService {
             was sent (its Date line, with weekday), never relative to today.
             - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
             another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
-            - ref: a short unique name for every item (p1, o1, e1, …). relations: link items of this answer by their ref, \
-            only with the listed relation types and only when the email states the relationship. To relate an \
-            entity that already exists, list it as an item too.
             - confidence between 0 and 1; reason: one short sentence quoting the evidence.
             - Advertising, newsletters and notifications without anything to record: return no items.""";
 
@@ -107,26 +112,15 @@ public class EmailExtractionService implements ExtractionService {
         LocalDate today = LocalDate.now(clock.withZone(properties.timezone()));
         String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH),
                 properties.timezone(), email.mailbox());
-        Map<String, RelationTypeDto> relationTypes = usableRelationTypes(bySlug);
-        Map<String, Object> schemaProperties = new LinkedHashMap<>();
-        schemaProperties.put("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
-                "ref", JsonSchemas.string(),
+        Map<String, Object> schema = JsonSchemas.object(Map.of("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
                 "collection", JsonSchemas.oneOf(List.copyOf(bySlug.keySet())),
                 "title", JsonSchemas.string(),
                 "values", JsonSchemas.freeObject(),
                 "confidence", JsonSchemas.number(),
-                "reason", JsonSchemas.string()))));
-        if (!relationTypes.isEmpty()) {
-            schemaProperties.put("relations", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
-                    "type", JsonSchemas.oneOf(List.copyOf(relationTypes.keySet())),
-                    "from", JsonSchemas.string(),
-                    "to", JsonSchemas.string(),
-                    "confidence", JsonSchemas.number(),
-                    "reason", JsonSchemas.string()))));
-        }
+                "reason", JsonSchemas.string())))));
 
-        String answer = llmClient.completeJson(properties.models().extraction(), system, userPrompt(email, targets, relationTypes),
-                objectMapper.valueToTree(JsonSchemas.object(schemaProperties)));
+        String answer = llmClient.completeJson(properties.models().extraction(), system, userPrompt(email, targets),
+                objectMapper.valueToTree(schema));
         JsonNode json = parse(answer).orElse(null);
         JsonNode items = json != null ? json.path("items") : null;
         if (items == null || !items.isArray()) {
@@ -135,7 +129,7 @@ public class EmailExtractionService implements ExtractionService {
         }
 
         List<ProposalDraft> drafts = new ArrayList<>();
-        Map<String, Entity> entities = new HashMap<>();
+        Map<String, Entity> entities = new LinkedHashMap<>();
         for (JsonNode item : items) {
             CollectionDto collection = bySlug.get(item.path("collection").asString(""));
             String title = item.path("title").asString("").trim();
@@ -147,15 +141,15 @@ public class EmailExtractionService implements ExtractionService {
                 continue;
             }
             BigDecimal confidence = confidence(item);
-            String ref = item.path("ref").asString("").trim();
-            Drafted drafted = draft(collection, truncate(title, 300), values, confidence, truncate(item.path("reason").asString(""), 1000),
-                    ref.isEmpty() ? null : ref);
+            // Refs are ours (r1, r2, …), not the model's: asking for them in the extraction call changes what it extracts.
+            String ref = "r" + (entities.size() + 1);
+            Drafted drafted = draft(collection, truncate(title, 300), values, confidence, truncate(item.path("reason").asString(""), 1000), ref);
             drafted.draft().ifPresent(drafts::add);
-            if (!ref.isEmpty() && drafted.endpoint() != null) {
-                entities.putIfAbsent(ref, new Entity(collection.getId(), drafted.endpoint()));
+            if (drafted.endpoint() != null) {
+                entities.put(ref, new Entity(collection.getId(), collection.getSlug(), truncate(title, 300), drafted.endpoint()));
             }
         }
-        drafts.addAll(relationDrafts(json.path("relations"), relationTypes, entities));
+        drafts.addAll(relationDrafts(email, bySlug, entities));
         return drafts;
     }
 
@@ -176,7 +170,7 @@ public class EmailExtractionService implements ExtractionService {
     private record FromProposal(Long proposalId) implements Endpoint {
     }
 
-    private record Entity(Long collectionId, Endpoint endpoint) {
+    private record Entity(Long collectionId, String collectionSlug, String title, Endpoint endpoint) {
     }
 
     private record Drafted(Optional<ProposalDraft> draft, Endpoint endpoint) {
@@ -195,9 +189,35 @@ public class EmailExtractionService implements ExtractionService {
         return usable;
     }
 
-    private List<ProposalDraft> relationDrafts(JsonNode relations, Map<String, RelationTypeDto> types, Map<String, Entity> entities) {
+    /** Asks which of the items are related (only with 2+ items and usable relation types) and turns the answer into drafts. */
+    private List<ProposalDraft> relationDrafts(EmailContent email, Map<String, CollectionDto> targets, Map<String, Entity> entities) {
         List<ProposalDraft> drafts = new ArrayList<>();
-        if (!relations.isArray()) {
+        Map<String, RelationTypeDto> types = usableRelationTypes(targets);
+        if (types.isEmpty() || entities.size() < 2) {
+            return drafts;
+        }
+        Map<Long, String> slugs = new HashMap<>();
+        targets.values().forEach(collection -> slugs.put(collection.getId(), collection.getSlug()));
+        StringBuilder prompt = new StringBuilder("Relation types:\n");
+        types.values().forEach(type -> prompt.append("- ").append(type.getSlug()).append(": ")
+                .append(slugs.getOrDefault(type.getFromCollectionId(), "any")).append(" → ")
+                .append(slugs.getOrDefault(type.getToCollectionId(), "any")).append(" (")
+                .append(type.getName()).append(type.getInverseName() != null ? " / " + type.getInverseName() : "")
+                .append(Boolean.TRUE.equals(type.getDirected()) ? ", directed" : ", either direction").append(")\n"));
+        prompt.append("\nItems:\n");
+        entities.forEach((ref, entity) -> prompt.append("- ").append(ref).append(": ").append(entity.collectionSlug())
+                .append(" – ").append(entity.title()).append('\n'));
+        prompt.append('\n').append(emailText(email));
+        Map<String, Object> schema = JsonSchemas.object(Map.of("relations", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
+                "type", JsonSchemas.oneOf(List.copyOf(types.keySet())),
+                "from", JsonSchemas.string(),
+                "to", JsonSchemas.string(),
+                "confidence", JsonSchemas.number(),
+                "reason", JsonSchemas.string())))));
+
+        JsonNode relations = parse(llmClient.completeJson(properties.models().extraction(), RELATIONS_SYSTEM, prompt.toString(),
+                objectMapper.valueToTree(schema))).map(json -> json.path("relations")).orElse(null);
+        if (relations == null || !relations.isArray()) {
             return drafts;
         }
         Set<List<Object>> seen = new HashSet<>();
@@ -294,7 +314,7 @@ public class EmailExtractionService implements ExtractionService {
         }
     }
 
-    private String userPrompt(EmailContent email, List<CollectionDto> targets, Map<String, RelationTypeDto> relationTypes) {
+    private String userPrompt(EmailContent email, List<CollectionDto> targets) {
         StringBuilder prompt = new StringBuilder("Collections:\n");
         for (CollectionDto collection : targets) {
             prompt.append("- ").append(collection.getSlug()).append(": ").append(collection.getName());
@@ -315,16 +335,11 @@ public class EmailExtractionService implements ExtractionService {
                 prompt.append('\n');
             }
         }
-        if (!relationTypes.isEmpty()) {
-            Map<Long, String> slugs = new HashMap<>();
-            targets.forEach(collection -> slugs.put(collection.getId(), collection.getSlug()));
-            prompt.append("\nRelation types:\n");
-            relationTypes.values().forEach(type -> prompt.append("- ").append(type.getSlug()).append(": ")
-                    .append(slugs.getOrDefault(type.getFromCollectionId(), "any")).append(" → ")
-                    .append(slugs.getOrDefault(type.getToCollectionId(), "any")).append(" (")
-                    .append(type.getName()).append(type.getInverseName() != null ? " / " + type.getInverseName() : "")
-                    .append(Boolean.TRUE.equals(type.getDirected()) ? ", directed" : ", either direction").append(")\n"));
-        }
+        return prompt.append('\n').append(emailText(email)).toString();
+    }
+
+    /** The email as the model reads it: sender, recipients, date with weekday, subject, body (truncated). */
+    private String emailText(EmailContent email) {
         String received = email.receivedAt() != null
                 ? email.receivedAt().atZone(properties.timezone()).getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
                 + ", " + email.receivedAt().atZone(properties.timezone()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
@@ -333,14 +348,14 @@ public class EmailExtractionService implements ExtractionService {
         if (body.length() > MAX_BODY_CHARS) {
             body = body.substring(0, MAX_BODY_CHARS) + "\n[…truncated]";
         }
-        prompt.append("\nEmail:\n")
+        return new StringBuilder("Email:\n")
                 .append("From: ").append(Optional.ofNullable(email.fromName()).orElse("")).append(" <")
                 .append(Optional.ofNullable(email.fromAddress()).orElse("")).append(">\n")
                 .append("To: ").append(String.join(", ", Optional.ofNullable(email.to()).orElse(List.of()))).append('\n')
                 .append("Date: ").append(received).append('\n')
                 .append("Subject: ").append(Optional.ofNullable(email.subject()).orElse("")).append("\n\n")
-                .append(body).append('\n');
-        return prompt.toString();
+                .append(body).append('\n')
+                .toString();
     }
 
     /** Valid values of the item keyed by field slug, or {@code null} when a required value is missing or invalid. */

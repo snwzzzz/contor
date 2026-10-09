@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -294,16 +295,18 @@ class EmailExtractionServiceTest {
     }
 
     private static final String PERSON = """
-            {"ref": "p1", "collection": "people", "title": "Anna Berger",
+            {"collection": "people", "title": "Anna Berger",
              "values": {"full_name": "Anna Berger", "email": "anna@acme.com"}, "confidence": 0.95, "reason": "r"}""";
     private static final String ORGANIZATION = """
-            {"ref": "o1", "collection": "organizations", "title": "Acme", "values": {"name": "Acme", "domain": "acme.com"},
+            {"collection": "organizations", "title": "Acme", "values": {"name": "Acme", "domain": "acme.com"},
              "confidence": 0.9, "reason": "r"}""";
     private static final String WORKS_AT = """
-            {"type": "works_at", "from": "p1", "to": "o1", "confidence": 0.8, "reason": "Signature"}""";
+            {"type": "works_at", "from": "r1", "to": "r2", "confidence": 0.8, "reason": "Signature"}""";
 
+    /** The extraction call answers with the items, a second call (only for 2+ items) with the relations between them. */
     private void answerWith(String items, String relations) {
-        answer("{\"items\": [" + items + "], \"relations\": [" + relations + "]}");
+        when(llmClient.completeJson(eq("extractor"), anyString(), anyString(), any()))
+                .thenReturn("{\"items\": [" + items + "]}", "{\"relations\": [" + relations + "]}");
     }
 
     private static RecordPageDto page(RecordDto... records) {
@@ -326,13 +329,13 @@ class EmailExtractionServiceTest {
         List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
 
         assertThat(drafts).hasSize(3);
-        assertThat(drafts.get(0).ref()).isEqualTo("p1");
-        assertThat(drafts.get(1).ref()).isEqualTo("o1");
+        assertThat(drafts.get(0).ref()).isEqualTo("r1");
+        assertThat(drafts.get(1).ref()).isEqualTo("r2");
         ProposalDraft relation = drafts.get(2);
         assertThat(relation.kind()).isEqualTo(ProposalKind.CREATE_RELATION);
         assertThat(relation.payload()).containsEntry("relationTypeId", 10L)
-                .containsEntry("from", Map.of("ref", "p1")).containsEntry("to", Map.of("ref", "o1"));
-        assertThat(relation.dependsOnRefs()).containsExactly("p1", "o1");
+                .containsEntry("from", Map.of("ref", "r1")).containsEntry("to", Map.of("ref", "r2"));
+        assertThat(relation.dependsOnRefs()).containsExactly("r1", "r2");
         assertThat(relation.dependsOnProposalIds()).isEmpty();
         assertThat(relation.confidence()).isEqualByComparingTo(new BigDecimal("0.8"));
         assertThat(relation.reasoning()).isEqualTo("Signature");
@@ -350,8 +353,8 @@ class EmailExtractionServiceTest {
         assertThat(drafts).hasSize(2);
         ProposalDraft relation = relations(drafts).getFirst();
         assertThat(relation.payload()).containsEntry("from", Map.of("collectionId", 1L, "recordId", 77L))
-                .containsEntry("to", Map.of("ref", "o1"));
-        assertThat(relation.dependsOnRefs()).containsExactly("o1");
+                .containsEntry("to", Map.of("ref", "r2"));
+        assertThat(relation.dependsOnRefs()).containsExactly("r2");
     }
 
     @Test
@@ -366,7 +369,7 @@ class EmailExtractionServiceTest {
         ProposalDraft relation = relations(drafts).getFirst();
         assertThat(relation.payload()).containsEntry("to", Map.of("proposalId", 55L));
         assertThat(relation.dependsOnProposalIds()).containsExactly(55L);
-        assertThat(relation.dependsOnRefs()).containsExactly("p1");
+        assertThat(relation.dependsOnRefs()).containsExactly("r1");
     }
 
     @Test
@@ -389,10 +392,10 @@ class EmailExtractionServiceTest {
                 new RelationTypeDto(11L, "knows", "knows", false, new LinkedHashMap<>(), Creator.USER).fromCollectionId(1L).toCollectionId(1L)));
         when(recordService.listRecords(1L, List.of("email:eq:anna@acme.com"), null, null, 0, 1))
                 .thenReturn(page(record(77L, 1L, Map.of("full_name", "Anna Berger", "email", "anna@acme.com"))));
-        String second = PERSON.replace("\"p1\"", "\"p2\"").replace("Anna Berger", "A. Berger");
+        String second = PERSON.replace("Anna Berger", "A. Berger");
         answerWith(PERSON + "," + second,
-                "{\"type\": \"knows\", \"from\": \"p1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"},"
-                        + "{\"type\": \"knows\", \"from\": \"p1\", \"to\": \"p2\", \"confidence\": 0.9, \"reason\": \"r\"}");
+                "{\"type\": \"knows\", \"from\": \"r1\", \"to\": \"r1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"knows\", \"from\": \"r1\", \"to\": \"r2\", \"confidence\": 0.9, \"reason\": \"r\"}");
 
         assertThat(relations(service.analyze(EMAIL, List.of(people())))).isEmpty();
     }
@@ -400,14 +403,14 @@ class EmailExtractionServiceTest {
     @Test
     void analyze_InvalidRelationsAreDropped() {
         when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
-        String dropped = "{\"ref\": \"o2\", \"collection\": \"organizations\", \"title\": \"No name\", \"values\": {}, \"confidence\": 0.9, \"reason\": \"r\"}";
+        String dropped = "{\"collection\": \"organizations\", \"title\": \"No name\", \"values\": {}, \"confidence\": 0.9, \"reason\": \"r\"}";
         answerWith(PERSON + "," + ORGANIZATION + "," + dropped,
                 // wrong direction for a directed type
-                "{\"type\": \"works_at\", \"from\": \"o1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                "{\"type\": \"works_at\", \"from\": \"r2\", \"to\": \"r1\", \"confidence\": 0.9, \"reason\": \"r\"},"
                         // unknown type, unknown ref, a ref whose item was dropped
-                        + "{\"type\": \"friends\", \"from\": \"p1\", \"to\": \"o1\", \"confidence\": 0.9, \"reason\": \"r\"},"
-                        + "{\"type\": \"works_at\", \"from\": \"p9\", \"to\": \"o1\", \"confidence\": 0.9, \"reason\": \"r\"},"
-                        + "{\"type\": \"works_at\", \"from\": \"p1\", \"to\": \"o2\", \"confidence\": 0.9, \"reason\": \"r\"}");
+                        + "{\"type\": \"friends\", \"from\": \"r1\", \"to\": \"r2\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"works_at\", \"from\": \"r9\", \"to\": \"r2\", \"confidence\": 0.9, \"reason\": \"r\"},"
+                        + "{\"type\": \"works_at\", \"from\": \"r1\", \"to\": \"r3\", \"confidence\": 0.9, \"reason\": \"r\"}");
 
         List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(people(), organizations()));
 
@@ -420,11 +423,11 @@ class EmailExtractionServiceTest {
         when(relationTypeService.findAll()).thenReturn(List.of(
                 new RelationTypeDto(11L, "knows", "knows", false, new LinkedHashMap<>(), Creator.USER).fromCollectionId(1L).toCollectionId(2L)));
         answerWith(PERSON + "," + ORGANIZATION,
-                "{\"type\": \"knows\", \"from\": \"o1\", \"to\": \"p1\", \"confidence\": 0.9, \"reason\": \"r\"}");
+                "{\"type\": \"knows\", \"from\": \"r2\", \"to\": \"r1\", \"confidence\": 0.9, \"reason\": \"r\"}");
 
         ProposalDraft relation = relations(service.analyze(EMAIL, List.of(people(), organizations()))).getFirst();
 
-        assertThat(relation.payload()).containsEntry("from", Map.of("ref", "p1")).containsEntry("to", Map.of("ref", "o1"));
+        assertThat(relation.payload()).containsEntry("from", Map.of("ref", "r1")).containsEntry("to", Map.of("ref", "r2"));
     }
 
     @Test
@@ -436,32 +439,35 @@ class EmailExtractionServiceTest {
     }
 
     @Test
-    void analyze_PromptAndSchemaListTheRelationTypes() {
+    void analyze_RelationsAreAskedInASecondCallThatListsTheItemsAndTheRelationTypes() {
         when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
-        answerWith("", "");
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
 
         service.analyze(EMAIL, List.of(people(), organizations()));
 
         ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<tools.jackson.databind.JsonNode> schema = ArgumentCaptor.forClass(tools.jackson.databind.JsonNode.class);
-        verify(llmClient).completeJson(eq("extractor"), system.capture(), user.capture(), schema.capture());
-        assertThat(system.getValue()).contains("ref").contains("relations");
-        assertThat(user.getValue()).contains("Relation types").contains("works_at").contains("people").contains("organizations")
-                .contains("works at");
-        assertThat(schema.getValue().toString()).contains("relations").contains("works_at");
+        verify(llmClient, times(2)).completeJson(eq("extractor"), system.capture(), user.capture(), schema.capture());
+        // the extraction itself never sees the relation types: they make the model invent records just to relate them
+        assertThat(user.getAllValues().get(0)).doesNotContain("Relation types");
+        assertThat(schema.getAllValues().get(0).toString()).doesNotContain("relations");
+        assertThat(user.getAllValues().get(1)).contains("Relation types").contains("works_at").contains("people → organizations")
+                .contains("works at").contains("r1: people").contains("Anna Berger").contains("r2: organizations").contains("Acme")
+                .contains("Interview on Friday");
+        assertThat(system.getAllValues().get(1)).contains("relations");
+        assertThat(schema.getAllValues().get(1).toString()).contains("relations").contains("works_at");
     }
 
     @Test
-    void analyze_WithoutRelationTypesTheModelIsNotAskedForRelations() {
-        answer("{\"items\": []}");
+    void analyze_WithoutRelationTypesOrWithASingleItemTheModelIsNotAskedForRelations() {
+        answerWith(PERSON + "," + ORGANIZATION, "");
+        service.analyze(EMAIL, List.of(people(), organizations()));
+        verify(llmClient, times(1)).completeJson(any(), any(), any(), any());
 
-        service.analyze(EMAIL, List.of(people()));
-
-        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<tools.jackson.databind.JsonNode> schema = ArgumentCaptor.forClass(tools.jackson.databind.JsonNode.class);
-        verify(llmClient).completeJson(eq("extractor"), anyString(), user.capture(), schema.capture());
-        assertThat(user.getValue()).doesNotContain("Relation types");
-        assertThat(schema.getValue().toString()).doesNotContain("relations");
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith(PERSON, "");
+        service.analyze(EMAIL, List.of(people(), organizations()));
+        verify(llmClient, times(2)).completeJson(any(), any(), any(), any());
     }
 }

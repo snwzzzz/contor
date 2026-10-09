@@ -73,4 +73,15 @@ class BaselineComparisonTest {
 
         assertThat(BaselineComparison.regressions(slow, BASELINE, 0.05)).isEmpty();
     }
+
+    @Test
+    void relation_precision_and_recall_drops_are_regressions_but_a_missing_baseline_is_skipped() {
+        EvalReport with = new EvalReport("m", "p", 10, 0, BASELINE.collections(), Map.of(), BASELINE.fieldsOverall(), BASELINE.dates(),
+                BASELINE.falsePositives(), 0, BASELINE.latency(), new EvalReport.CollectionScore(4, 4, 3, 0.9, 0.9));
+        EvalReport worse = new EvalReport("m", "p", 10, 0, BASELINE.collections(), Map.of(), BASELINE.fieldsOverall(), BASELINE.dates(),
+                BASELINE.falsePositives(), 0, BASELINE.latency(), new EvalReport.CollectionScore(4, 4, 1, 0.2, 0.2));
+
+        assertThat(BaselineComparison.regressions(worse, with, 0.05)).hasSize(2).allSatisfy(message -> assertThat(message).contains("relations."));
+        assertThat(BaselineComparison.regressions(worse, BASELINE, 0.05)).isEmpty();
+    }
 }

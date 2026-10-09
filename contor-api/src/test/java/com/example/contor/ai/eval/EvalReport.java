@@ -14,11 +14,20 @@ import java.util.TreeMap;
  *                      (the dates of missed records count as wrong)
  * @param falsePositives share of "nothing" mails (nothing expected) that still produced a record
  * @param forbiddenHits produced records matching a {@code mustNotProduce} entry
+ * @param relations     precision and recall of relations (an expected relation counts when both of its records were
+ *                      extracted correctly and the same relation type connects them); {@code null} in old reports
  */
 public record EvalReport(String model, String promptVersion, int cases, int failedCases,
                          Map<String, CollectionScore> collections, Map<String, FieldScore> fields,
                          FieldScore fieldsOverall, FieldScore dates, FalsePositives falsePositives, int forbiddenHits,
-                         Latency latency) {
+                         Latency latency, CollectionScore relations) {
+
+    /** A report without relation scores (reports written before relations were extracted). */
+    public EvalReport(String model, String promptVersion, int cases, int failedCases, Map<String, CollectionScore> collections,
+                      Map<String, FieldScore> fields, FieldScore fieldsOverall, FieldScore dates, FalsePositives falsePositives,
+                      int forbiddenHits, Latency latency) {
+        this(model, promptVersion, cases, failedCases, collections, fields, fieldsOverall, dates, falsePositives, forbiddenHits, latency, null);
+    }
 
     public record CollectionScore(int expected, int produced, int truePositives, Double precision, Double recall) {
     }
@@ -40,6 +49,11 @@ public record EvalReport(String model, String promptVersion, int cases, int fail
         new TreeMap<>(collections).forEach((slug, score) -> md.append("| ").append(slug).append(" | ").append(score.expected())
                 .append(" | ").append(score.produced()).append(" | ").append(score.truePositives()).append(" | ")
                 .append(percent(score.precision())).append(" | ").append(percent(score.recall())).append(" |\n"));
+        if (relations != null) {
+            md.append("\n- Relations: precision ").append(percent(relations.precision())).append(", recall ").append(percent(relations.recall()))
+                    .append(" (").append(relations.truePositives()).append('/').append(relations.expected()).append(" expected, ")
+                    .append(relations.produced()).append(" produced)\n");
+        }
         md.append("\n| Field | Correct | Total | Accuracy |\n|---|---|---|---|\n");
         new TreeMap<>(fields).forEach((name, score) -> md.append("| ").append(name).append(" | ").append(score.correct())
                 .append(" | ").append(score.total()).append(" | ").append(percent(score.accuracy())).append(" |\n"));

@@ -4,6 +4,7 @@ import com.example.contor.api.model.NewRelationCommand;
 import com.example.contor.api.model.RelationDto;
 import com.example.contor.api.model.UpdateRelationCommand;
 import com.example.contor.domain.Collection;
+import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Relation;
 import com.example.contor.domain.RelationCreatedBy;
 import com.example.contor.domain.RelationType;
@@ -21,6 +22,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -44,6 +46,16 @@ public class RelationService {
 
     @Transactional
     public RelationDto createRelation(NewRelationCommand command) {
+        return create(command, RelationCreatedBy.USER, null, null);
+    }
+
+    /** A relation proposed by the AI (applied from a proposal): marked as AI, with the email it came from and the confidence. */
+    @Transactional
+    public RelationDto createAiRelation(NewRelationCommand command, EmailMessage sourceEmail, BigDecimal confidence) {
+        return create(command, RelationCreatedBy.AI, sourceEmail, confidence);
+    }
+
+    private RelationDto create(NewRelationCommand command, RelationCreatedBy origin, EmailMessage sourceEmail, BigDecimal confidence) {
         RelationType type = relationTypeRepository.findById(new RelationType.RelationTypeId(command.getRelationTypeId()))
                 .orElseThrow(() -> new RelationTypeNotFoundException(command.getRelationTypeId()));
         Collection from = collection(command.getFromCollectionId());
@@ -78,7 +90,9 @@ public class RelationService {
                 .attributes(command.getAttributes() != null ? new LinkedHashMap<>(command.getAttributes()) : new LinkedHashMap<>())
                 .validFrom(validFrom)
                 .validTo(validTo)
-                .createdBy(RelationCreatedBy.USER)
+                .createdBy(origin)
+                .sourceEmail(sourceEmail)
+                .confidence(confidence)
                 .build();
 
         return RelationMapper.toDto(relationRepository.saveAndFlush(relation));

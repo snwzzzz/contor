@@ -2407,7 +2407,14 @@ components:
         CREATE_RECORD `{"collectionId": 1, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
         UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
         CREATE_COLLECTION: a NewCollectionCommand (`{"slug", "name", "description", "icon", "matchKeys", "displayConfig",
-        "fields": [..]}`), created with createdBy AI; OWNER only.
+        "fields": [..]}`), created with createdBy AI; OWNER only ·
+        CREATE_RELATION `{"relationTypeId": 3, "from": END, "to": END}` where END is `{"collectionId": 1, "recordId": 5}`
+        (an existing record) or `{"proposalId": 21}` (the record that proposal created, read from its `result`; the
+        proposal is a dependency, so the relation can only be approved once it is applied). Validated like a manual
+        relation (type collections, records exist); created as AI with the source email and the proposal's confidence;
+        an identical existing relation is a no-op (the proposal is applied and its result names the existing relation).
+        Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
+        CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`).
         Other kinds are stored but cannot be applied yet.
       enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
     ProposalState:
