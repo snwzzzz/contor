@@ -2807,6 +2807,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AiModelDto'
+        embeddings:
+          $ref: '#/components/schemas/EmbeddingProgressDto'
+    EmbeddingProgressDto:
+      type: object
+      description: |
+        How much of the current user's inbox is indexed for semantic search with the configured embedding model.
+        Absent when the status is not requested for a signed-in user.
+      required: [indexed, total, running]
+      properties:
+        indexed:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+        running:
+          type: boolean
+          description: A backfill is currently embedding mail
     AiAccess:
       type: string
       description: OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.

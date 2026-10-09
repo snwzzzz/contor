@@ -35,6 +35,16 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "and (e.folder is null or e.folder <> 'sent') order by e.receivedAt desc")
     List<DiscoveryEmail> findDiscoveryEmails(AppUser.AppUserId ownerId, Instant since, Pageable pageable);
 
+    /** Ids of an owner's inbox emails that have no vector of {@code model} yet, newest first (embedding backfill). */
+    @Query("select e.id.id from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent') "
+            + "and not exists (select 1 from EmailEmbedding x where x.id.emailId = e.id.id and x.id.model = :model) "
+            + "order by e.receivedAt desc")
+    List<Long> findIdsWithoutEmbedding(AppUser.AppUserId ownerId, String model, Pageable pageable);
+
+    /** An owner's inbox emails: what semantic search indexes. */
+    @Query("select count(e) from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent')")
+    long countIndexable(AppUser.AppUserId ownerId);
+
     /** Moves an owner's emails received before {@code before} from one processing state to another. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update EmailMessage e set e.processingState = :to where e.processingState = :from and e.receivedAt < :before "

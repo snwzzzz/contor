@@ -13,15 +13,15 @@ import type { AiStatusDto } from "@/lib/api/generated/model/aiStatusDto";
 const PULL_POLL_MS = 1500;
 const ROLE_LABEL = { EXTRACTION: "Extraction", ROUTING: "Routing", EMBEDDING: "Embeddings" } as const;
 
-function isPulling(status: AiStatusDto | undefined): boolean {
-  return status?.models.some((model) => model.pullState === "PULLING") ?? false;
+function isBusy(status: AiStatusDto | undefined): boolean {
+  return (status?.models.some((model) => model.pullState === "PULLING") || status?.embeddings?.running) ?? false;
 }
 
 /** Whether the local Ollama runs and the configured models are installed; downloads missing ones. */
 export function AiModelStatus() {
   const queryClient = useQueryClient();
   const { data: status, isLoading, error, refetch, isFetching } = useGetAiStatus({
-    query: { refetchInterval: (query) => (isPulling(query.state.data) ? PULL_POLL_MS : false) },
+    query: { refetchInterval: (query) => (isBusy(query.state.data) ? PULL_POLL_MS : false) },
   });
   const pull = usePullAiModels({
     mutation: { onSuccess: (data) => queryClient.setQueryData(getGetAiStatusQueryKey(), data) },
@@ -64,6 +64,7 @@ export function AiModelStatus() {
           </li>
         ))}
       </ul>
+      {status.embeddings && status.embeddings.total > 0 ? <SearchIndex indexed={status.embeddings.indexed} total={status.embeddings.total} running={status.embeddings.running} /> : null}
       {status.ready ? (
         <p className="flex items-center gap-2 text-sm">
           <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
@@ -76,6 +77,28 @@ export function AiModelStatus() {
           Download missing models
         </AppButton>
       ) : null}
+    </div>
+  );
+}
+
+/** How much of the inbox the semantic search can already find. */
+function SearchIndex({ indexed, total, running }: { indexed: number; total: number; running: boolean }) {
+  return (
+    <div className="grid gap-1.5 rounded-lg border px-4 py-3">
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span>{`Search index: ${indexed} of ${total} emails`}</span>
+        {running ? <span className="text-xs text-muted-foreground">Indexing…</span> : null}
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Search index"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={indexed}
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+      >
+        <div className="h-full bg-primary transition-[width]" style={{ width: `${Math.min(100, Math.round((indexed / total) * 100))}%` }} />
+      </div>
     </div>
   );
 }

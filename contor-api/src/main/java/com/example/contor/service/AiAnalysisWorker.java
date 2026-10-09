@@ -68,6 +68,7 @@ public class AiAnalysisWorker {
     private final InboxDiscoveryService inboxDiscoveryService;
     private final ExtractionService extractionService;
     private final ProposalService proposalService;
+    private final EmailEmbeddingService emailEmbeddingService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactionTemplate;
@@ -81,8 +82,8 @@ public class AiAnalysisWorker {
     public AiAnalysisWorker(AiAnalysisRunRepository aiAnalysisRunRepository, EmailMessageRepository emailMessageRepository,
                             AiSettingsService aiSettingsService, CollectionSchemaService collectionSchemaService,
                             InboxDiscoveryService inboxDiscoveryService, ExtractionService extractionService,
-                            ProposalService proposalService, AiProperties properties, AiExecutors aiExecutors,
-                            PlatformTransactionManager transactionManager, Clock clock) {
+                            ProposalService proposalService, EmailEmbeddingService emailEmbeddingService, AiProperties properties,
+                            AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
         this.aiAnalysisRunRepository = aiAnalysisRunRepository;
         this.emailMessageRepository = emailMessageRepository;
         this.aiSettingsService = aiSettingsService;
@@ -90,6 +91,7 @@ public class AiAnalysisWorker {
         this.inboxDiscoveryService = inboxDiscoveryService;
         this.extractionService = extractionService;
         this.proposalService = proposalService;
+        this.emailEmbeddingService = emailEmbeddingService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -257,11 +259,21 @@ public class AiAnalysisWorker {
                 else suggested++;
             }
             markEmail(emailId, ProcessingState.DONE, null);
+            embed(emailId);
             return new EmailResult(suggested, autoApplied, false);
         } catch (RuntimeException e) {
             log.warn("AI processing of email {} failed: {}", emailId, e.getMessage());
             markEmail(emailId, ProcessingState.FAILED, truncate(e.getMessage()));
             return new EmailResult(0, 0, true);
+        }
+    }
+
+    /** Semantic search needs the vector; a missing embedding model never fails the email (the backfill retries). */
+    private void embed(Long emailId) {
+        try {
+            emailEmbeddingService.embedEmail(emailId);
+        } catch (RuntimeException e) {
+            log.info("Email {} was not embedded: {}", emailId, e.getMessage());
         }
     }
 

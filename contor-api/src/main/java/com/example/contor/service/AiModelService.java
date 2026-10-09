@@ -22,8 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Status of the local Ollama and the configured models, and model downloads on the AI pull executor. Download progress
- * lives in memory only (a restart forgets it; Ollama resumes partial downloads on the next pull). No database access,
- * hence no transactions.
+ * lives in memory only (a restart forgets it; Ollama resumes partial downloads on the next pull). The only database
+ * access is the embedding progress, which {@link EmailEmbeddingService} reads in its own transaction.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -36,6 +36,7 @@ public class AiModelService {
     private final AiProperties properties;
     private final OllamaClient ollamaClient;
     private final AiExecutors aiExecutors;
+    private final EmailEmbeddingService emailEmbeddingService;
     private final Map<String, Pull> pulls = new ConcurrentHashMap<>();
 
     public AiStatusDto status() {
@@ -51,7 +52,8 @@ public class AiModelService {
             models.add(model.pullError(pull.error()));
         });
         boolean ready = version.isPresent() && models.stream().allMatch(AiModelDto::getInstalled);
-        return new AiStatusDto(version.isPresent(), ready, models).version(version.orElse(null));
+        return new AiStatusDto(version.isPresent(), ready, models).version(version.orElse(null))
+                .embeddings(emailEmbeddingService.progress().orElse(null));
     }
 
     /** Whether Ollama is reachable and every configured model is installed. */

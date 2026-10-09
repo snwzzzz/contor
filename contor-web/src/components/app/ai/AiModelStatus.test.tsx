@@ -59,4 +59,31 @@ describe("AiModelStatus", () => {
     expect(await screen.findByText(/ready/i, { selector: "p" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /download/i })).not.toBeInTheDocument();
   });
+
+  it("shows how much of the mail is indexed for search", async () => {
+    mockApi({
+      "GET /api/ai/status": {
+        body: { ...missing, ready: true, models: missing.models.map((model) => ({ ...model, installed: true })), embeddings: { indexed: 40, total: 100, running: true } },
+      },
+    });
+
+    renderWithProviders(<AiModelStatus />);
+
+    expect(await screen.findByText("Search index: 40 of 100 emails")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Search index" })).toHaveAttribute("aria-valuenow", "40");
+    expect(screen.getByText("Indexing…")).toBeInTheDocument();
+  });
+
+  it("leaves the search index out when there is no mail yet", async () => {
+    mockApi({
+      "GET /api/ai/status": {
+        body: { ...missing, ready: true, models: missing.models.map((model) => ({ ...model, installed: true })), embeddings: { indexed: 0, total: 0, running: false } },
+      },
+    });
+
+    renderWithProviders(<AiModelStatus />);
+
+    await screen.findByText("Ollama 0.40.1");
+    expect(screen.queryByText(/Search index/)).not.toBeInTheDocument();
+  });
 });

@@ -7,6 +7,7 @@ import com.example.contor.api.model.AiModelDto;
 import com.example.contor.api.model.AiModelRole;
 import com.example.contor.api.model.AiPullState;
 import com.example.contor.api.model.AiStatusDto;
+import com.example.contor.api.model.EmbeddingProgressDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.exception.AiUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,9 @@ class AiModelServiceTest {
     @Mock
     private OllamaClient ollamaClient;
 
+    @Mock
+    private EmailEmbeddingService emailEmbeddingService;
+
     private final List<Runnable> pullTasks = new ArrayList<>();
     private AiModelService service;
 
@@ -50,7 +54,7 @@ class AiModelServiceTest {
                 new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(1), 8192, "10m"),
                 new AiProperties.Models("qwen3.5:9b", "qwen3.5:9b", "nomic-embed-text"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
-        service = new AiModelService(properties, ollamaClient, new AiExecutors(Runnable::run, pullTasks::add));
+        service = new AiModelService(properties, ollamaClient, new AiExecutors(Runnable::run, pullTasks::add), emailEmbeddingService);
     }
 
     @Test
@@ -163,5 +167,24 @@ class AiModelServiceTest {
                 .isInstanceOf(AiUnavailableException.class)
                 .hasMessageContaining("Ollama is not reachable");
         assertThat(pullTasks).isEmpty();
+    }
+
+    @Test
+    void status_IncludesTheEmbeddingProgressOfTheCurrentUser() {
+        when(ollamaClient.version()).thenReturn(Optional.empty());
+        when(emailEmbeddingService.progress()).thenReturn(Optional.of(new EmbeddingProgressDto(40, 100, true)));
+
+        AiStatusDto status = service.status();
+
+        assertThat(status.getEmbeddings().getIndexed()).isEqualTo(40);
+        assertThat(status.getEmbeddings().getTotal()).isEqualTo(100);
+        assertThat(status.getEmbeddings().getRunning()).isTrue();
+    }
+
+    @Test
+    void status_OmitsTheEmbeddingProgressWithoutAUser() {
+        when(ollamaClient.version()).thenReturn(Optional.empty());
+
+        assertThat(service.status().getEmbeddings()).isNull();
     }
 }

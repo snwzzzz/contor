@@ -82,6 +82,9 @@ class AiAnalysisWorkerTest {
     private ProposalService proposalService;
 
     @Mock
+    private EmailEmbeddingService emailEmbeddingService;
+
+    @Mock
     private PlatformTransactionManager transactionManager;
 
     private AiAnalysisWorker worker;
@@ -94,7 +97,7 @@ class AiAnalysisWorkerTest {
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         worker = new AiAnalysisWorker(aiAnalysisRunRepository, emailMessageRepository, aiSettingsService, collectionSchemaService,
-                inboxDiscoveryService, extractionService, proposalService, properties, new AiExecutors(Runnable::run, Runnable::run),
+                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, properties, new AiExecutors(Runnable::run, Runnable::run),
                 transactionManager, Clock.fixed(NOW, ZoneOffset.UTC));
 
         run = AiAnalysisRun.builder().id(new AiAnalysisRun.AiAnalysisRunId(10L)).user(AppUser.builder().id(OWNER).build())
@@ -444,5 +447,45 @@ class AiAnalysisWorkerTest {
         worker.run(10L);
 
         verify(proposalService, org.mockito.Mockito.times(1)).submitDraft(any(), eq(100L), any(), any(), any(), anyCollection());
+    }
+
+    // ---- embeddings -------------------------------------------------------------------------------------------
+
+    @Test
+    void run_EmbedsTheEmailAfterItWasExtracted() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+
+        worker.run(10L);
+
+        verify(emailEmbeddingService).embedEmail(100L);
+    }
+
+    @Test
+    void run_AFailingEmbeddingDoesNotFailTheEmail() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        EmailMessage email = email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(emailEmbeddingService.embedEmail(100L)).thenThrow(new OllamaException("embedding model missing"));
+
+        worker.run(10L);
+
+        assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
+        assertThat(run.getFailedEmails()).isZero();
+    }
+
+    @Test
+    void run_NoEmbeddingForAnEmailWhoseExtractionFailed() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model crashed"));
+
+        worker.run(10L);
+
+        verify(emailEmbeddingService, never()).embedEmail(any());
     }
 }

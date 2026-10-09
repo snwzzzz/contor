@@ -165,6 +165,7 @@ bar (or Settings → AI Models). The wizard walks through:
   dropped (old mail in the first analysis), past calendar events are kept as history.
 - Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
   for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
+- **Search index:** every inbox email gets a vector (`nomic-embed-text`) for semantic search, made from subject, sender and the cleaned body (no quoted history or signature; ADR 0008). New mail is embedded right after its analysis; mail that already exists, and all mail after a change of `AI_MODEL_EMBEDDING`, is embedded in the background shortly after start and then every processing interval. Progress shows under Settings → AI Models and in `GET /api/ai/status` (`embeddings`). The old model's vectors are removed once the new ones are complete.
 - Permissions can be changed any time under Settings → Autonomy; *Analyze inbox again* lives under Settings → AI Models.
 
 | Endpoint | Purpose |

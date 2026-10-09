@@ -25,6 +25,9 @@ public class EmailMessageRepositoryTest {
     private EmailMessageRepository emailMessageRepository;
 
     @Autowired
+    private EmailEmbeddingRepository emailEmbeddingRepository;
+
+    @Autowired
     private MailAccountRepository mailAccountRepository;
 
     @Autowired
@@ -164,6 +167,32 @@ public class EmailMessageRepositoryTest {
 
         assertThat(emailMessageRepository.updateProcessingState(ProcessingState.PROCESSING, ProcessingState.NEW)).isEqualTo(1);
         assertThat(emailMessageRepository.findById(interrupted.getId()).orElseThrow().getProcessingState()).isEqualTo(ProcessingState.NEW);
+    }
+
+    @Test
+    void finds_the_inbox_mail_without_a_vector_for_the_model_newest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var old = email(mine, "old", "2026-01-01T00:00:00Z", ProcessingState.DONE);
+        var recent = email(mine, "recent", "2026-03-01T00:00:00Z", ProcessingState.DONE);
+        var embedded = email(mine, "embedded", "2026-02-01T00:00:00Z", ProcessingState.DONE);
+        var embeddedWithOldModel = email(mine, "oldmodel", "2026-02-15T00:00:00Z", ProcessingState.DONE);
+        var sent = email(mine, "sent", "2026-04-01T00:00:00Z", ProcessingState.SKIPPED);
+        sent.setFolder("sent");
+        email(theirs, "foreign", "2026-05-01T00:00:00Z", ProcessingState.NEW);
+        var vector = new float[com.example.contor.domain.EmailEmbedding.DIMENSIONS];
+        emailEmbeddingRepository.save(com.example.contor.domain.EmailEmbedding.builder()
+                .id(new com.example.contor.domain.EmailEmbedding.EmailEmbeddingId(embedded.getId().id(), "nomic")).embedding(vector).build());
+        emailEmbeddingRepository.save(com.example.contor.domain.EmailEmbedding.builder()
+                .id(new com.example.contor.domain.EmailEmbedding.EmailEmbeddingId(embeddedWithOldModel.getId().id(), "old-model")).embedding(vector).build());
+        emailMessageRepository.flush();
+
+        assertThat(emailMessageRepository.findIdsWithoutEmbedding(owner.getId(), "nomic", PageRequest.of(0, 10)))
+                .containsExactly(recent.getId().id(), embeddedWithOldModel.getId().id(), old.getId().id());
+        assertThat(emailMessageRepository.findIdsWithoutEmbedding(owner.getId(), "nomic", PageRequest.of(0, 1))).containsExactly(recent.getId().id());
+        assertThat(emailMessageRepository.countIndexable(owner.getId())).isEqualTo(4);
     }
 }
 
