@@ -34,7 +34,7 @@ public class CreateRecordApplier implements ProposalApplier {
     }
 
     @Override
-    public void apply(Proposal proposal) {
+    public Map<String, Object> apply(Proposal proposal) {
         Map<String, Object> payload = proposal.getFinalPayload();
         Long collectionId = ProposalPayload.requiredId(payload, "collectionId");
         NewRecordCommand command = new NewRecordCommand()
@@ -53,5 +53,6 @@ public class CreateRecordApplier implements ProposalApplier {
                     .role(RecordSourceRole.CREATED_FROM)
                     .build());
         }
+        return Map.of("collectionId", collectionId, "recordId", record.getId());
     }
 }

@@ -1052,7 +1052,9 @@ paths:
       description: |
         APPROVE applies the proposal (status APPROVED, or EDITED_AND_APPROVED when `payload` is given). If applying
         fails validation the proposal stays PENDING and the error is returned (400), so it can be edited and retried.
-        Proposal kinds without an applier yet return 409.
+        Proposal kinds without an applier yet return 409. A proposal that depends on other proposals (e.g. a relation
+        needs its two records) can only be approved once they are applied (409 before). REJECT also rejects the pending
+        proposals that depend on it. Approving a dependency applies the dependents that were waiting for AUTO.
       requestBody:
         required: true
         content:

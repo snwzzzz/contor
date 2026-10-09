@@ -19,6 +19,9 @@ import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
 import com.example.contor.domain.UserRole;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
+import com.example.contor.exception.ProposalDependenciesPendingException;
+import com.example.contor.domain.ProposalDependency;
+import com.example.contor.persistence.ProposalDependencyRepository;
 import com.example.contor.exception.ProposalNotApplicableException;
 import com.example.contor.exception.ProposalNotFoundException;
 import com.example.contor.exception.RecordValidationException;
@@ -72,6 +75,9 @@ class ProposalServiceTest {
     private CollectionRepository collectionRepository;
 
     @Mock
+    private ProposalDependencyRepository dependencyRepository;
+
+    @Mock
     private ProposalApplier createRecordApplier;
 
     private ProposalService proposalService;
@@ -79,7 +85,7 @@ class ProposalServiceTest {
     @BeforeEach
     void setup() {
         lenient().when(createRecordApplier.kind()).thenReturn(ProposalKind.CREATE_RECORD);
-        proposalService = new ProposalService(proposalRepository, appUserRepository, emailMessageRepository, collectionRepository, auditService,
+        proposalService = new ProposalService(proposalRepository, dependencyRepository, appUserRepository, emailMessageRepository, collectionRepository, auditService,
                 new ProposalApplierRegistry(List.of(createRecordApplier)));
         lenient().when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(invocation -> invocation.getArgument(0));
         loggedInAs(UserRole.OWNER);
@@ -321,5 +327,311 @@ class ProposalServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> proposalService.submitDraft(draft(), null, AiPermissionLevel.OFF, "m", "v"));
         verify(proposalRepository, never()).saveAndFlush(any());
+    }
+
+    // ---- dependencies and results -----------------------------------------------------------------------------
+
+    private final Map<Long, Proposal> store = new java.util.HashMap<>();
+    private final List<long[]> edges = new java.util.ArrayList<>();
+    private long nextId = 100;
+
+    /** Wires an in-memory proposal store and dependency edges behind the mocked repositories. */
+    private void graph() {
+        lenient().when(proposalRepository.findById(any(Proposal.ProposalId.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(store.get(((Proposal.ProposalId) invocation.getArgument(0)).id())));
+        lenient().when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(invocation -> {
+            Proposal saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(new Proposal.ProposalId(nextId++));
+            }
+            store.put(saved.getId().id(), saved);
+            return saved;
+        });
+        lenient().when(dependencyRepository.findById_ProposalId(org.mockito.ArgumentMatchers.anyLong())).thenAnswer(invocation -> edges.stream()
+                .filter(edge -> edge[0] == (Long) invocation.getArgument(0)).map(ProposalServiceTest::dependency).toList());
+        lenient().when(dependencyRepository.findById_DependsOnProposalId(org.mockito.ArgumentMatchers.anyLong())).thenAnswer(invocation -> edges.stream()
+                .filter(edge -> edge[1] == (Long) invocation.getArgument(0)).map(ProposalServiceTest::dependency).toList());
+        lenient().when(dependencyRepository.save(any(ProposalDependency.class))).thenAnswer(invocation -> {
+            ProposalDependency saved = invocation.getArgument(0);
+            edges.add(new long[] {saved.getId().proposalId(), saved.getId().dependsOnProposalId()});
+            return saved;
+        });
+    }
+
+    private static ProposalDependency dependency(long[] edge) {
+        return new ProposalDependency(new ProposalDependency.ProposalDependencyId(edge[0], edge[1]));
+    }
+
+    private Proposal stored(long id, ProposalStatus status) {
+        Proposal proposal = Proposal.builder().id(new Proposal.ProposalId(id)).kind(ProposalKind.CREATE_RECORD).status(status)
+                .payload(Map.of("collectionId", 1, "title", "P" + id)).build();
+        store.put(id, proposal);
+        return proposal;
+    }
+
+    private void dependsOn(long proposal, long dependency) {
+        edges.add(new long[] {proposal, dependency});
+    }
+
+    private static ProposalDraft recordDraft() {
+        return new ProposalDraft(ProposalKind.CREATE_RECORD, Map.of("collectionId", 1, "title", "Anna"), BigDecimal.ONE, "r");
+    }
+
+    @Test
+    void submitDraft_AppliedResultIsStored() {
+        graph();
+        when(createRecordApplier.apply(any())).thenReturn(Map.of("collectionId", 1L, "recordId", 9L));
+
+        var submission = proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.AUTO, "m", "v1", List.of());
+
+        assertEquals(ProposalService.Outcome.AUTO_APPLIED, submission.outcome());
+        assertEquals(Map.of("collectionId", 1L, "recordId", 9L), store.get(submission.proposalId()).getResult());
+    }
+
+    @Test
+    void submitDraft_SuggestedWithDependenciesStaysPendingAndStoresTheEdges() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.APPROVED);
+
+        var submission = proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.SUGGEST, "m", "v1", List.of(5L, 6L));
+
+        assertEquals(ProposalService.Outcome.SUGGESTED, submission.outcome());
+        assertEquals(ProposalStatus.PENDING, store.get(submission.proposalId()).getStatus());
+        assertEquals(2, edges.stream().filter(edge -> edge[0] == submission.proposalId()).count());
+        verify(createRecordApplier, never()).apply(any());
+    }
+
+    @Test
+    void submitDraft_AutoWithAllDependenciesAppliedAppliesImmediately() {
+        graph();
+        stored(5, ProposalStatus.AUTO_APPLIED);
+        stored(6, ProposalStatus.EDITED_AND_APPROVED);
+
+        var submission = proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.AUTO, "m", "v1", List.of(5L, 6L));
+
+        assertEquals(ProposalService.Outcome.AUTO_APPLIED, submission.outcome());
+        assertEquals(ProposalStatus.AUTO_APPLIED, store.get(submission.proposalId()).getStatus());
+        verify(createRecordApplier).apply(any());
+    }
+
+    @Test
+    void submitDraft_AutoWithPendingDependencyWaitsAndRemembersToAutoApply() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+
+        var submission = proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.AUTO, "m", "v1", List.of(5L));
+
+        assertEquals(ProposalService.Outcome.SUGGESTED, submission.outcome());
+        Proposal waiting = store.get(submission.proposalId());
+        assertEquals(ProposalStatus.PENDING, waiting.getStatus());
+        assertTrue(waiting.isAutoApplyWhenReady());
+        verify(createRecordApplier, never()).apply(any());
+    }
+
+    @Test
+    void submitDraft_DependencyOnADeadProposalIsRejected() {
+        graph();
+        stored(5, ProposalStatus.REJECTED);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.SUGGEST, "m", "v1", List.of(5L)));
+        verify(proposalRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void submitDraft_UnknownDependencyIsNotFound() {
+        graph();
+
+        assertThrows(ProposalNotFoundException.class,
+                () -> proposalService.submitDraft(recordDraft(), null, AiPermissionLevel.SUGGEST, "m", "v1", List.of(99L)));
+        verify(proposalRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void decideProposal_ApproveStoresTheApplierResult() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        when(createRecordApplier.apply(any())).thenReturn(Map.of("recordId", 9L));
+
+        proposalService.decideProposal(5L, new DecideProposalCommand(ProposalDecision.APPROVE));
+
+        assertEquals(Map.of("recordId", 9L), store.get(5L).getResult());
+    }
+
+    @Test
+    void decideProposal_ApproveIsBlockedWhileDependenciesAreNotApplied() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+
+        assertThrows(ProposalDependenciesPendingException.class,
+                () -> proposalService.decideProposal(6L, new DecideProposalCommand(ProposalDecision.APPROVE)));
+        verify(createRecordApplier, never()).apply(any());
+        assertEquals(ProposalStatus.PENDING, store.get(6L).getStatus());
+    }
+
+    @Test
+    void decideProposal_ApproveIsAllowedOnceDependenciesAreApplied() {
+        graph();
+        stored(5, ProposalStatus.APPROVED);
+        stored(6, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+
+        ProposalDto result = proposalService.decideProposal(6L, new DecideProposalCommand(ProposalDecision.APPROVE));
+
+        assertEquals(ProposalState.APPROVED, result.getStatus());
+    }
+
+    @Test
+    void decideProposal_RejectingAnUnblockedDependentIsAlwaysAllowed() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+
+        ProposalDto result = proposalService.decideProposal(6L, new DecideProposalCommand(ProposalDecision.REJECT));
+
+        assertEquals(ProposalState.REJECTED, result.getStatus());
+        assertEquals(ProposalStatus.PENDING, store.get(5L).getStatus());
+    }
+
+    @Test
+    void decideProposal_RejectCascadesToPendingDependentsTransitively() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+        stored(7, ProposalStatus.PENDING);
+        stored(8, ProposalStatus.APPROVED);
+        stored(9, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+        dependsOn(7, 6);
+        dependsOn(8, 5);
+
+        proposalService.decideProposal(5L, new DecideProposalCommand(ProposalDecision.REJECT));
+
+        assertEquals(ProposalStatus.REJECTED, store.get(6L).getStatus());
+        assertEquals(ProposalStatus.REJECTED, store.get(7L).getStatus());
+        assertEquals(ProposalStatus.APPROVED, store.get(8L).getStatus());
+        assertEquals(ProposalStatus.PENDING, store.get(9L).getStatus());
+        assertNotNull(store.get(6L).getDecidedAt());
+        verify(auditService, times(2)).record(argThat(e -> e.action() == AuditAction.PROPOSAL_CASCADE_REJECTED));
+        verify(auditService).record(argThat(e -> e.action() == AuditAction.PROPOSAL_CASCADE_REJECTED && e.entityId() == 7L));
+        verify(auditService).record(argThat(e -> e.action() == AuditAction.PROPOSAL_REJECTED && e.entityId() == 5L));
+    }
+
+    @Test
+    void decideProposal_ApproveAutoAppliesDependentsThatAreReady() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        Proposal ready = stored(6, ProposalStatus.PENDING);
+        ready.setAutoApplyWhenReady(true);
+        Proposal blocked = stored(7, ProposalStatus.PENDING);
+        blocked.setAutoApplyWhenReady(true);
+        stored(9, ProposalStatus.PENDING);
+        Proposal manual = stored(8, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+        dependsOn(7, 5);
+        dependsOn(7, 9);
+        dependsOn(8, 5);
+        when(createRecordApplier.apply(any())).thenReturn(Map.of("recordId", 1L));
+
+        proposalService.decideProposal(5L, new DecideProposalCommand(ProposalDecision.APPROVE));
+
+        assertEquals(ProposalStatus.AUTO_APPLIED, ready.getStatus());
+        assertEquals(Map.of("recordId", 1L), ready.getResult());
+        assertEquals(ProposalStatus.PENDING, blocked.getStatus());
+        assertEquals(ProposalStatus.PENDING, manual.getStatus());
+        verify(createRecordApplier, times(2)).apply(any());
+        verify(auditService).record(argThat(e -> e.action() == AuditAction.PROPOSAL_AUTO_APPLIED && e.entityId() == 6L));
+    }
+
+    @Test
+    void decideProposal_AutoApplyCascadesThroughChains() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        Proposal second = stored(6, ProposalStatus.PENDING);
+        second.setAutoApplyWhenReady(true);
+        Proposal third = stored(7, ProposalStatus.PENDING);
+        third.setAutoApplyWhenReady(true);
+        dependsOn(6, 5);
+        dependsOn(7, 6);
+
+        proposalService.decideProposal(5L, new DecideProposalCommand(ProposalDecision.APPROVE));
+
+        assertEquals(ProposalStatus.AUTO_APPLIED, second.getStatus());
+        assertEquals(ProposalStatus.AUTO_APPLIED, third.getStatus());
+    }
+
+    @Test
+    void decideProposal_AFailingDependentAutoApplyLeavesItPendingWithoutFailingTheApproval() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        Proposal dependent = stored(6, ProposalStatus.PENDING);
+        dependent.setAutoApplyWhenReady(true);
+        dependsOn(6, 5);
+        lenient().when(createRecordApplier.apply(argThat(p -> p.getId().id() == 6L))).thenThrow(new IllegalArgumentException("payload is malformed"));
+
+        ProposalDto result = proposalService.decideProposal(5L, new DecideProposalCommand(ProposalDecision.APPROVE));
+
+        assertEquals(ProposalState.APPROVED, result.getStatus());
+        assertEquals(ProposalStatus.PENDING, dependent.getStatus());
+        assertFalse(dependent.isAutoApplyWhenReady());
+    }
+
+    @Test
+    void addDependency_StoresTheEdge() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+
+        proposalService.addDependency(6L, 5L);
+
+        verify(dependencyRepository).save(argThat(edge -> edge.getId().proposalId() == 6L && edge.getId().dependsOnProposalId() == 5L));
+    }
+
+    @Test
+    void addDependency_ExistingEdgeIsANoOp() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+
+        proposalService.addDependency(6L, 5L);
+
+        verify(dependencyRepository, never()).save(any());
+    }
+
+    @Test
+    void addDependency_SelfDependencyIsRejected() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+
+        assertThrows(IllegalArgumentException.class, () -> proposalService.addDependency(5L, 5L));
+        verify(dependencyRepository, never()).save(any());
+    }
+
+    @Test
+    void addDependency_CyclesAreRejectedDirectAndIndirect() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+        stored(6, ProposalStatus.PENDING);
+        stored(7, ProposalStatus.PENDING);
+        dependsOn(6, 5);
+        dependsOn(7, 6);
+
+        assertThrows(IllegalArgumentException.class, () -> proposalService.addDependency(5L, 6L));
+        assertThrows(IllegalArgumentException.class, () -> proposalService.addDependency(5L, 7L));
+        verify(dependencyRepository, never()).save(any());
+    }
+
+    @Test
+    void addDependency_UnknownProposalsAreNotFound() {
+        graph();
+        stored(5, ProposalStatus.PENDING);
+
+        assertThrows(ProposalNotFoundException.class, () -> proposalService.addDependency(5L, 99L));
+        assertThrows(ProposalNotFoundException.class, () -> proposalService.addDependency(99L, 5L));
     }
 }

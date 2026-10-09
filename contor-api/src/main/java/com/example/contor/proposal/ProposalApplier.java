@@ -3,6 +3,8 @@ package com.example.contor.proposal;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 
+import java.util.Map;
+
 /**
  * Applies one {@link ProposalKind}: turns the proposal's {@code finalPayload} into real changes.
  * <p>
@@ -16,7 +18,11 @@ public interface ProposalApplier {
 
     ProposalKind kind();
 
-    void apply(Proposal proposal);
+    /**
+     * Applies the proposal's final payload and returns what it produced (stored as the proposal's {@code result};
+     * e.g. {@code {"collectionId", "recordId"}} for a created record), or an empty map.
+     */
+    Map<String, Object> apply(Proposal proposal);
 
     /** Whether only the OWNER may approve proposals of this kind (schema changes, settings). */
     default boolean requiresOwner() {

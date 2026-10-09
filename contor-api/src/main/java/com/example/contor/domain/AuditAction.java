@@ -18,6 +18,8 @@ public enum AuditAction {
     COLLECTION_FIELD_ARCHIVED,
     PROPOSAL_APPROVED,
     PROPOSAL_REJECTED,
+    /** Rejected because a proposal it depends on was rejected. */
+    PROPOSAL_CASCADE_REJECTED,
     /** Applied directly by the AI because the area's permission is AUTO. */
     PROPOSAL_AUTO_APPLIED,
     AI_SETTINGS_CHANGED,

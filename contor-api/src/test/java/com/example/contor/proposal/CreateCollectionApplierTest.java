@@ -1,5 +1,6 @@
 package com.example.contor.proposal;
 
+import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.CollectionFieldType;
 import com.example.contor.api.model.NewCollectionCommand;
 import com.example.contor.domain.Proposal;
@@ -19,7 +20,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +42,7 @@ class CreateCollectionApplierTest {
 
     @Test
     void creates_the_collection_as_ai() {
+        when(collectionSchemaService.createAiCollection(any())).thenReturn(new CollectionDto().id(7L));
         applier().apply(proposal(Map.of(
                 "slug", "job_applications",
                 "name", "Job applications",
@@ -74,5 +78,14 @@ class CreateCollectionApplierTest {
         assertThatThrownBy(() -> applier().apply(proposal(Map.of("slug", "x_y", "name", "X", "fields", "nope"))))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(collectionSchemaService);
+    }
+
+    @Test
+    void returns_the_created_collection_as_result() {
+        when(collectionSchemaService.createAiCollection(any())).thenReturn(new CollectionDto().id(7L));
+
+        var result = applier().apply(proposal(Map.of("slug", "orders", "name", "Orders")));
+
+        assertThat(result).containsEntry("collectionId", 7L);
     }
 }

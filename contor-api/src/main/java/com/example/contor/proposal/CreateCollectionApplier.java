@@ -29,7 +29,7 @@ public class CreateCollectionApplier implements ProposalApplier {
     }
 
     @Override
-    public void apply(Proposal proposal) {
+    public Map<String, Object> apply(Proposal proposal) {
         Map<String, Object> payload = proposal.getFinalPayload();
         if (!(payload.get("slug") instanceof String) || !(payload.get("name") instanceof String)) {
             throw new IllegalArgumentException("payload.slug and payload.name are required");
@@ -40,7 +40,7 @@ public class CreateCollectionApplier implements ProposalApplier {
         } catch (JacksonException | IllegalArgumentException e) {
             throw new IllegalArgumentException("payload is not a valid collection definition");
         }
-        collectionSchemaService.createAiCollection(command);
+        return Map.of("collectionId", collectionSchemaService.createAiCollection(command).getId());
     }
 
     @Override
