@@ -1,0 +1,70 @@
+{
+  "id": "application-en-interview-invite",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Anna Berger",
+    "fromAddress": "anna.berger@acme-corp.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Interview for Backend Engineer",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hi,\nthank you for applying to the Backend Engineer position at Acme Corp. We would like to invite you to an interview on Friday at 9:00 at our office, Hauptstrasse 5, Vienna. Please send us your updated CV by Thursday.\nBest regards,\nAnna Berger, Talent Acquisition, Acme Corp\nPhone: +43 660 1234567"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Anna Berger",
+          "values": {
+            "email": "anna.berger@acme-corp.com",
+            "phone": "+43 660 1234567"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Acme Corp",
+          "values": {
+            "domain": "acme-corp.com"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Interview at Acme Corp",
+          "values": {
+            "starts_at": "2026-10-09T09:00:00+02:00",
+            "location": "Hauptstrasse 5, Vienna"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Send CV to Acme Corp",
+          "values": {
+            "due_date": "2026-10-08"
+          }
+        }
+      ],
+      "applications": [
+        {
+          "title": "Backend Engineer at Acme Corp",
+          "values": {
+            "company": "Acme Corp",
+            "position": "Backend Engineer",
+            "state": "interview"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Anna Berger",
+        "to": "organizations:Acme Corp"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

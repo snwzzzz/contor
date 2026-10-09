@@ -1,0 +1,45 @@
+{
+  "id": "meeting-en-friday",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Daniel Wright",
+    "fromAddress": "daniel.wright@wrightlaw.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Quick sync on the contract",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hi Alex,\ncan we meet this Friday at 10:00 in my office (Ringstrasse 14) to go through the contract? Please bring the signed NDA.\nDaniel"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Daniel Wright",
+          "values": {
+            "email": "daniel.wright@wrightlaw.com"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Meeting with Daniel Wright about the contract",
+          "values": {
+            "starts_at": "2026-10-09T10:00:00+02:00",
+            "location": "Ringstrasse 14"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Bring the signed NDA",
+          "values": {
+            "due_date": "2026-10-09"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

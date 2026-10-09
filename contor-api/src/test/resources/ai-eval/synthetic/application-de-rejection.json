@@ -1,0 +1,34 @@
+{
+  "id": "application-de-rejection",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Karriere Nordlicht",
+    "fromAddress": "karriere@nordlicht-systems.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihre Bewerbung als Frontend-Entwickler",
+    "receivedAt": "2026-10-05T10:30:00Z",
+    "body": "Sehr geehrter Herr Morgan,\nvielen Dank für Ihr Interesse an der Stelle als Frontend-Entwickler bei der Nordlicht Systems GmbH. Leider müssen wir Ihnen mitteilen, dass wir uns für andere Bewerber entschieden haben.\nWir wünschen Ihnen für Ihren weiteren Weg alles Gute.\nMit freundlichen Grüßen\nIhr Nordlicht-Team"
+  },
+  "expected": {
+    "records": {
+      "applications": [
+        {
+          "title": "Frontend-Entwickler bei Nordlicht Systems",
+          "values": {
+            "company": "Nordlicht Systems GmbH",
+            "position": "Frontend-Entwickler",
+            "state": "rejected"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    }
+  ]
+}

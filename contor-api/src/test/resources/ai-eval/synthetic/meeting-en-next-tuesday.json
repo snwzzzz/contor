@@ -1,0 +1,36 @@
+{
+  "id": "meeting-en-next-tuesday",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Priya Nair",
+    "fromAddress": "priya.nair@horizon-labs.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Project kickoff",
+    "receivedAt": "2026-10-08T14:00:00Z",
+    "body": "Hello Alex,\nlet's kick off the project next Tuesday at 14:30. I'll send the agenda beforehand.\nBest, Priya"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Priya Nair",
+          "values": {
+            "email": "priya.nair@horizon-labs.com"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Project kickoff",
+          "values": {
+            "starts_at": "2026-10-13T14:30:00+02:00"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

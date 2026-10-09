@@ -1,0 +1,61 @@
+{
+  "id": "application-en-offer",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Maria Santos",
+    "fromAddress": "maria.santos@brightwave.io",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Offer: Product Designer at Brightwave",
+    "receivedAt": "2026-10-12T09:00:00Z",
+    "body": "Dear Alex,\nwe are delighted to offer you the position of Product Designer at Brightwave. Please review the attached contract and sign it by Friday, October 16.\nYou can reach me any time at +1 415 555 0134.\nWarm regards,\nMaria Santos, Head of People, Brightwave"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Maria Santos",
+          "values": {
+            "email": "maria.santos@brightwave.io",
+            "phone": "+14155550134"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Brightwave",
+          "values": {
+            "domain": "brightwave.io"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Sign the Brightwave contract",
+          "values": {
+            "due_date": "2026-10-16"
+          }
+        }
+      ],
+      "applications": [
+        {
+          "title": "Product Designer at Brightwave",
+          "values": {
+            "company": "Brightwave",
+            "position": "Product Designer",
+            "state": "offer"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Maria Santos",
+        "to": "organizations:Brightwave"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

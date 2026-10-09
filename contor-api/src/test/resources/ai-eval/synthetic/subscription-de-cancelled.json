@@ -1,0 +1,28 @@
+{
+  "id": "subscription-de-cancelled",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "FitLife Studio",
+    "fromAddress": "mitglieder@fitlife-studio.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Bestätigung Ihrer Kündigung",
+    "receivedAt": "2026-10-07T10:00:00Z",
+    "body": "Hiermit bestätigen wir die Kündigung Ihrer Mitgliedschaft zum 31.12.2026. Wir wünschen Ihnen alles Gute und hoffen, Sie bald wiederzusehen."
+  },
+  "expected": {
+    "records": {
+      "subscriptions": [
+        {
+          "title": "FitLife Studio",
+          "values": {
+            "service": "FitLife Studio"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

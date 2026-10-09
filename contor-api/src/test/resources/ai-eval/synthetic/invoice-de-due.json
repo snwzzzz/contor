@@ -1,0 +1,43 @@
+{
+  "id": "invoice-de-due",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Stadtwerke Linz",
+    "fromAddress": "rechnung@stadtwerke-linz.at",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Rechnung 2026-118 – Strom September",
+    "receivedAt": "2026-10-05T07:30:00Z",
+    "body": "Sehr geehrter Kunde,\nanbei erhalten Sie Ihre Rechnung 2026-118 über 87,40 EUR für den Zeitraum September 2026. Bitte überweisen Sie den Betrag bis zum 19.10.2026.\nIhre Stadtwerke Linz"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Stadtwerke Linz Rechnung 2026-118",
+          "values": {
+            "invoice_number": "2026-118",
+            "issuer": "Stadtwerke Linz",
+            "amount": {
+              "amount": 87.4,
+              "currency": "EUR"
+            },
+            "due_date": "2026-10-19",
+            "state": "open"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung 2026-118 bezahlen",
+          "values": {
+            "due_date": "2026-10-19"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

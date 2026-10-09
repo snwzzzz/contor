@@ -1,0 +1,47 @@
+{
+  "id": "order-en-confirmation",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "ShopNow",
+    "fromAddress": "orders@shopnow.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your order #SN-48213 is confirmed",
+    "receivedAt": "2026-10-05T12:00:00Z",
+    "body": "Thanks for your order!\nOrder number: SN-48213\nItems: Mechanical keyboard (1x)\nTotal: 89.90 EUR\nEstimated delivery: October 9, 2026"
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "ShopNow keyboard order",
+          "values": {
+            "order_number": "SN-48213",
+            "shop": "ShopNow",
+            "total": {
+              "amount": 89.9,
+              "currency": "EUR"
+            },
+            "state": "ordered",
+            "expected_delivery": "2026-10-09"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "ShopNow",
+          "values": {
+            "domain": "shopnow.com"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    }
+  ]
+}

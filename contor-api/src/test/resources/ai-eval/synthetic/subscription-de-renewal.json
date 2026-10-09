@@ -1,0 +1,34 @@
+{
+  "id": "subscription-de-renewal",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "CloudSafe",
+    "fromAddress": "kundenservice@cloudsafe.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihr Jahresabo verlängert sich",
+    "receivedAt": "2026-10-06T08:30:00Z",
+    "body": "Hallo,\nIhr CloudSafe-Jahresabo (49,00 EUR pro Jahr) verlängert sich am 01.12.2026 automatisch. Wenn Sie nicht verlängern möchten, kündigen Sie bitte bis zum 30.11.2026 in Ihrem Konto."
+  },
+  "expected": {
+    "records": {
+      "subscriptions": [
+        {
+          "title": "CloudSafe",
+          "values": {
+            "service": "CloudSafe",
+            "price": {
+              "amount": 49.0,
+              "currency": "EUR"
+            },
+            "billing_period": "yearly",
+            "next_billing": "2026-12-01"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

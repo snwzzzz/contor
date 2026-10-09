@@ -35,13 +35,15 @@ public class SystemDataSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         Map<String, Long> createdIds = new HashMap<>();
-        seedCollection(people(), createdIds);
-        seedCollection(organizations(), createdIds);
-        seedCollection(events(), createdIds);
-        seedCollection(tasks(), createdIds);
+        systemCollections().forEach(command -> seedCollection(command, createdIds));
         seedRelationType("works_at", "works at", "employs", "people", "organizations", true, createdIds);
         seedRelationType("knows", "knows", "knows", "people", "people", false, createdIds);
         seedRelationType("attends", "attends", "attended by", "people", "events", true, createdIds);
+    }
+
+    /** The system collection definitions (also used by the AI evaluation to build its fixed schema). */
+    public static List<NewCollectionCommand> systemCollections() {
+        return List.of(people(), organizations(), events(), tasks());
     }
 
     private void seedCollection(NewCollectionCommand command, Map<String, Long> createdIds) {

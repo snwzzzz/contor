@@ -1,0 +1,34 @@
+{
+  "id": "subscription-en-music",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "TuneStream",
+    "fromAddress": "billing@tunestream.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Welcome to TuneStream Premium",
+    "receivedAt": "2026-10-09T12:00:00Z",
+    "body": "Welcome! Your TuneStream Premium subscription (9.99 EUR per month) has started. Your next payment is due on November 9, 2026."
+  },
+  "expected": {
+    "records": {
+      "subscriptions": [
+        {
+          "title": "TuneStream Premium",
+          "values": {
+            "service": "TuneStream Premium",
+            "price": {
+              "amount": 9.99,
+              "currency": "EUR"
+            },
+            "billing_period": "monthly",
+            "next_billing": "2026-11-09"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

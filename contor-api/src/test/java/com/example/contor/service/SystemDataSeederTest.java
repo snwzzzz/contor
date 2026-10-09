@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -111,5 +112,14 @@ class SystemDataSeederTest {
 
         verify(collectionSchemaService, never()).createSystemCollection(any());
         verify(relationTypeService, never()).createSystemRelationType(anyString(), anyString(), anyString(), anyLong(), anyLong(), anyBoolean());
+    }
+
+    @Test
+    void systemCollections_ListsTheSeededCollectionsWithTheirFields() {
+        var collections = SystemDataSeeder.systemCollections();
+
+        assertThat(collections).extracting(NewCollectionCommand::getSlug)
+                .containsExactly("people", "organizations", "events", "tasks");
+        assertThat(collections.get(0).getMatchKeys()).containsExactly("email");
     }
 }

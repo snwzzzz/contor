@@ -1,0 +1,34 @@
+{
+  "id": "order-de-cancelled",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Bücherhaus",
+    "fromAddress": "kundenservice@buecherhaus.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Stornierung Ihrer Bestellung 55102",
+    "receivedAt": "2026-10-07T09:10:00Z",
+    "body": "Guten Tag,\nwie gewünscht haben wir Ihre Bestellung 55102 (Gesamtsumme 34,50 EUR) storniert. Der Betrag wird innerhalb von 5 Werktagen erstattet."
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "Bücherhaus Bestellung 55102",
+          "values": {
+            "order_number": "55102",
+            "shop": "Bücherhaus",
+            "total": {
+              "amount": 34.5,
+              "currency": "EUR"
+            },
+            "state": "cancelled"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

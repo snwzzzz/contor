@@ -1,0 +1,51 @@
+{
+  "id": "invoice-en-freelancer",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Lena Fischer",
+    "fromAddress": "lena@fischer-design.co",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Invoice 0042 – logo design",
+    "receivedAt": "2026-10-07T11:20:00Z",
+    "body": "Hi Alex,\nhere is my invoice 0042 for the logo design: 1,200.00 EUR, payable within 14 days (until October 21). Bank details are on the attached PDF.\nThanks again for the project!\nLena Fischer"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Lena Fischer",
+          "values": {
+            "email": "lena@fischer-design.co"
+          }
+        }
+      ],
+      "invoices": [
+        {
+          "title": "Fischer Design invoice 0042",
+          "values": {
+            "invoice_number": "0042",
+            "issuer": "Lena Fischer",
+            "amount": {
+              "amount": 1200.0,
+              "currency": "EUR"
+            },
+            "due_date": "2026-10-21",
+            "state": "open"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Pay invoice 0042 from Lena Fischer",
+          "values": {
+            "due_date": "2026-10-21"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

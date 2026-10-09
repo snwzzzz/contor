@@ -1,0 +1,26 @@
+{
+  "id": "nothing-en-social",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "SocialNet",
+    "fromAddress": "notification@socialnet.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Sam Lee and 3 others commented on your post",
+    "receivedAt": "2026-10-08T12:00:00Z",
+    "body": "Sam Lee, Maya and 2 others commented on your photo. Open SocialNet to see what they said."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

@@ -171,6 +171,48 @@ bar (or Settings → AI Models). The wizard walks through:
 | `GET /api/ai/status`, `POST /api/ai/models/pull` | Ollama reachable? models installed? download missing (OWNER) |
 | `GET/PUT /api/ai/settings` | the current user's permissions (PUT OWNER; `completeOnboarding` ends the wizard) |
 | `POST /api/ai/analysis`, `GET /api/ai/analysis/latest`, `POST /api/ai/analysis/{id}/continue\|cancel` | inbox analysis runs (mutations OWNER) |
+| `GET /api/ai/eval/export?emailIds=` | OWNER: your emails with their applied/rejected record proposals as eval cases (see *AI evaluation*) |
+
+### AI evaluation
+
+Every change to the prompts, the model or the extraction is judged with a repeatable score instead of a feeling.
+`AiExtractionEvalTest` (`@Tag("ai-eval")`, excluded from `./mvnw test`) runs `EmailExtractionService` against the real local
+Ollama over a labelled corpus with a fixed schema (the seeded system collections plus *orders*, *invoices*, *subscriptions*,
+*applications*) and scores:
+
+- record **precision and recall** per collection (match by match key, else similar title),
+- **field accuracy** per field (normalized: dates and time zones, money, phone numbers, case/accents),
+- **date correctness** of events and to-dos (the dates of missed records count as wrong),
+- the **false-positive rate** on mails that should produce nothing, records that must never be produced, and **latency** p50/p95.
+
+```bash
+cd contor-api && ./mvnw verify -Pai-eval
+```
+
+Needs Ollama with the extraction model running; about 5 minutes for 49 mails on an RTX 3060. Each case is analyzed as if
+processed when it was received, so "Friday" resolves from the mail date. The report goes to
+`contor-api/target/ai-eval/report-<model>-<promptVersion>.json` and `.md`. The run is compared with the committed
+`ai-eval/baseline.json` and **fails when a quality metric drops by more than the threshold** (default 0.05, absolute;
+latency never fails a run).
+
+| Option | Meaning |
+|---|---|
+| `-Dai.eval.model=<name>` | model to evaluate (default `qwen3.5:9b`) |
+| `-Dai.eval.threshold=0.1` | allowed drop per metric |
+| `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
+| `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
+
+**Cases** are JSON files: `{id, email: {mailbox, fromName, fromAddress, to, subject, receivedAt, body}, expected: {records: {<collection slug>: [{title, values}]}, relations: []}, mustNotProduce: [{collection, title?}]}`;
+`values` lists only the fields worth checking. The 49 synthetic German/English cases live in
+`contor-api/src/test/resources/ai-eval/synthetic/` (a plain unit test, `SyntheticCorpusTest`, validates them against the eval
+schema). To add one, add a JSON file there. Dates in synthetic mails are relative to `receivedAt`; mind the time-zone offset
+(Europe/Berlin: +02:00 until 25 Oct 2026, then +01:00).
+
+**Real mail (private corpus).** Cases built from your own mail go into `ai-eval/private/` at the repo root; that folder is
+git-ignored and **must never be committed or shared**. To label real cases: correct the findings of an email in the UI (edit,
+approve, reject), call `GET /api/ai/eval/export?emailIds=12&emailIds=13` as the owner (e.g. from the Swagger UI in the dev
+profile) and save each case of the response as a `.json` file in `ai-eval/private/`. Applied proposals (with your corrections)
+become `expected`, rejected ones `mustNotProduce`. The private cases are scored together with the synthetic ones.
 
 ## Other resources (API overview)
 
@@ -204,6 +246,9 @@ To change the API: edit the spec, regenerate both sides, then implement. See `do
 ```bash
 # Backend: unit, slice and integration tests (Docker must be running)
 cd contor-api && ./mvnw test
+
+# Backend: extraction quality against the real local Ollama (not part of the default run; see "AI evaluation")
+cd contor-api && ./mvnw verify -Pai-eval
 
 # Frontend: unit/component tests, lint, type check
 cd contor-web && npm test && npm run lint && npm run typecheck

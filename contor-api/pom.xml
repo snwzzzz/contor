@@ -22,6 +22,9 @@
 		<microsoft-graph.version>6.23.0</microsoft-graph.version>
 		<argLine></argLine>
 		<api.spec>${project.basedir}/../api-spec/openapi.yaml</api.spec>
+		<!-- JUnit tags: the default build skips the slow AI evaluation (real Ollama); -Pai-eval runs only that -->
+		<eval.groups></eval.groups>
+		<eval.excludedGroups>ai-eval</eval.excludedGroups>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -186,6 +189,8 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off -Duser.timezone=UTC</argLine>
+					<groups>${eval.groups}</groups>
+					<excludedGroups>${eval.excludedGroups}</excludedGroups>
 				</configuration>
 			</plugin>
 			<!-- Ship the contract on the classpath so Swagger UI (dev profile only) can render it. -->
@@ -314,5 +319,16 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<!-- ./mvnw verify -Pai-eval: scores the extraction against the real local Ollama (see README, "AI evaluation") -->
+			<id>ai-eval</id>
+			<properties>
+				<eval.groups>ai-eval</eval.groups>
+				<eval.excludedGroups></eval.excludedGroups>
+			</properties>
+		</profile>
+	</profiles>
 
 </project>

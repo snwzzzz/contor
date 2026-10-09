@@ -1,0 +1,39 @@
+{
+  "id": "order-de-shipped",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Technikwelt",
+    "fromAddress": "service@technikwelt.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihre Bestellung 7781-22 wurde versendet",
+    "receivedAt": "2026-10-06T15:20:00Z",
+    "body": "Hallo Alex Morgan,\nIhre Bestellung 7781-22 (Monitor 27 Zoll, 249,00 EUR) wurde heute mit DHL versendet. Voraussichtliche Lieferung: Donnerstag.\nMit freundlichen Grüßen\nIhr Technikwelt-Team"
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "Technikwelt Monitor",
+          "values": {
+            "order_number": "7781-22",
+            "shop": "Technikwelt",
+            "total": {
+              "amount": 249.0,
+              "currency": "EUR"
+            },
+            "state": "shipped",
+            "expected_delivery": "2026-10-08"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    }
+  ]
+}

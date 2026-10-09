@@ -1,0 +1,38 @@
+{
+  "id": "invoice-en-paid",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "CloudHost",
+    "fromAddress": "billing@cloudhost.io",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Receipt for invoice INV-5521",
+    "receivedAt": "2026-10-06T06:00:00Z",
+    "body": "Thank you for your payment. Invoice INV-5521 for 24.00 USD was paid on October 6, 2026 by credit card. No further action is required."
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "CloudHost invoice INV-5521",
+          "values": {
+            "invoice_number": "INV-5521",
+            "issuer": "CloudHost",
+            "amount": {
+              "amount": 24.0,
+              "currency": "USD"
+            },
+            "state": "paid"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks"
+    }
+  ]
+}

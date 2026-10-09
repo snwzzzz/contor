@@ -21,6 +21,15 @@ public class ProposalRepositoryTest {
     @Autowired
     private ProposalRepository proposalRepository;
 
+    @Autowired
+    private EmailMessageRepository emailMessageRepository;
+
+    @Autowired
+    private MailAccountRepository mailAccountRepository;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
     private Proposal proposal(ProposalStatus status) {
         return Proposal.builder().kind(ProposalKind.CREATE_RECORD).status(status)
                 .payload(Map.of("collectionId", 1, "values", Map.of("title", "Parcel")))
@@ -99,6 +108,25 @@ public class ProposalRepositoryTest {
         assertThat(proposalRepository.existsPendingCreateRecordWithTitle(6L, "Update")).isFalse();
         assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "anna@acme.com")).isTrue();
         assertThat(proposalRepository.existsPendingCreateRecordWithValue(4L, "email", "bob@acme.com")).isFalse();
+    }
+
+    @Test
+    void finds_proposals_by_source_email() {
+        var account = mailAccountRepository.save(Fixtures.mailAccount(appUserRepository.save(Fixtures.user("owner")), "me@example.com"));
+        var first = emailMessageRepository.save(Fixtures.email(account, "m1"));
+        var second = emailMessageRepository.save(Fixtures.email(account, "m2"));
+        var other = emailMessageRepository.save(Fixtures.email(account, "m3"));
+        var fromFirst = proposal(ProposalStatus.APPROVED);
+        fromFirst.setSourceEmail(first);
+        var fromSecond = proposal(ProposalStatus.REJECTED);
+        fromSecond.setSourceEmail(second);
+        var fromOther = proposal(ProposalStatus.APPROVED);
+        fromOther.setSourceEmail(other);
+        proposalRepository.saveAll(List.of(fromFirst, fromSecond, fromOther, proposal(ProposalStatus.PENDING)));
+
+        var found = proposalRepository.findBySourceEmail_IdIn(List.of(first.getId(), second.getId()));
+
+        assertThat(found).extracting(Proposal::getStatus).containsExactlyInAnyOrder(ProposalStatus.APPROVED, ProposalStatus.REJECTED);
     }
 }
 

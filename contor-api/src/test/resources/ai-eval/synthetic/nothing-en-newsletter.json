@@ -1,0 +1,26 @@
+{
+  "id": "nothing-en-newsletter",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Tech Weekly",
+    "fromAddress": "newsletter@techweekly.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "This week in tech: 10 stories you missed",
+    "receivedAt": "2026-10-05T06:00:00Z",
+    "body": "Top stories this week: new chips, AI regulation, and the best laptops of the year. Read more on our website. Unsubscribe | View in browser"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "application-en-assessment",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Talent Team",
+    "fromAddress": "talent@cloudnine.dev",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Next step: online coding assessment",
+    "receivedAt": "2026-10-13T07:45:00Z",
+    "body": "Hello Alex,\nas the next step for the Platform Engineer role at CloudNine, please complete the online coding assessment (about 90 minutes) within 5 days. The link is valid until October 18.\nGood luck!"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Complete the CloudNine coding assessment",
+          "values": {
+            "due_date": "2026-10-18"
+          }
+        }
+      ],
+      "applications": [
+        {
+          "title": "Platform Engineer at CloudNine",
+          "values": {
+            "company": "CloudNine",
+            "position": "Platform Engineer"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

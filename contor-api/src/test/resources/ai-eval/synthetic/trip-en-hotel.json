@@ -1,0 +1,37 @@
+{
+  "id": "trip-en-hotel",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Hotel Alpenblick",
+    "fromAddress": "reservations@alpenblick.ch",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your reservation at Hotel Alpenblick",
+    "receivedAt": "2026-10-07T09:00:00Z",
+    "body": "Dear Mr Morgan,\nwe confirm your reservation from November 6 to November 8, 2026 (2 nights) at Hotel Alpenblick, Bahnhofstrasse 3, Interlaken. Check-in is possible from 15:00.\nKind regards, Reception"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Stay at Hotel Alpenblick",
+          "values": {
+            "starts_at": "2026-11-06T15:00:00+01:00",
+            "location": "Bahnhofstrasse 3, Interlaken"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Hotel Alpenblick",
+          "values": {
+            "domain": "alpenblick.ch"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

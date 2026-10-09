@@ -1,5 +1,6 @@
 package com.example.contor.persistence;
 
+import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalStatus;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,9 @@ import java.util.List;
 public interface ProposalRepository extends JpaRepository<Proposal, Proposal.ProposalId> {
 
     List<Proposal> findByStatusOrderByCreatedAtDesc(ProposalStatus status);
+
+    /** Every proposal that came from one of the given emails (AI evaluation export). */
+    List<Proposal> findBySourceEmail_IdIn(Collection<EmailMessage.EmailMessageId> emailIds);
 
     long countByStatus(ProposalStatus status);
 

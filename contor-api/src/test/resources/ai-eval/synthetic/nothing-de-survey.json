@@ -1,0 +1,26 @@
+{
+  "id": "nothing-de-survey",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Zufriedenheitsumfrage",
+    "fromAddress": "umfrage@servicecheck.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Wie zufrieden waren Sie?",
+    "receivedAt": "2026-10-12T11:00:00Z",
+    "body": "Bewerten Sie unseren Service in nur zwei Minuten und nehmen Sie an unserer Verlosung teil. Jetzt Umfrage starten."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

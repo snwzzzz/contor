@@ -1,0 +1,39 @@
+{
+  "id": "invoice-de-phone",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Mobilfunk Alpha",
+    "fromAddress": "rechnung@mobilfunk-alpha.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihre Rechnung Oktober",
+    "receivedAt": "2026-10-09T05:00:00Z",
+    "body": "Ihre Rechnung Nr. MA-88213 über 19,99 EUR ist verfügbar. Der Betrag wird am 15.10.2026 automatisch von Ihrem Konto abgebucht. Sie müssen nichts weiter tun."
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Mobilfunk Alpha Rechnung MA-88213",
+          "values": {
+            "invoice_number": "MA-88213",
+            "issuer": "Mobilfunk Alpha",
+            "amount": {
+              "amount": 19.99,
+              "currency": "EUR"
+            },
+            "due_date": "2026-10-15",
+            "state": "open"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks"
+    }
+  ]
+}

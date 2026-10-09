@@ -1,0 +1,43 @@
+{
+  "id": "application-de-recruiter",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Thomas Keller",
+    "fromAddress": "t.keller@personalwerk.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Spannende Position in München",
+    "receivedAt": "2026-10-08T11:00:00Z",
+    "body": "Hallo Herr Morgan,\nich bin Recruiter bei der Personalwerk GmbH und habe eine interessante Position als DevOps Engineer für Sie. Haben Sie diese Woche Zeit für ein kurzes Telefonat? Sie erreichen mich unter 0049 89 1234 5678.\nViele Grüße\nThomas Keller"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Thomas Keller",
+          "values": {
+            "email": "t.keller@personalwerk.de",
+            "phone": "+498912345678"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Personalwerk GmbH",
+          "values": {
+            "domain": "personalwerk.de"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Thomas Keller",
+        "to": "organizations:Personalwerk GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

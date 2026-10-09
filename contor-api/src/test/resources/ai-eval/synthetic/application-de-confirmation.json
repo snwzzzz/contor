@@ -1,0 +1,35 @@
+{
+  "id": "application-de-confirmation",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Jobportal Berlin",
+    "fromAddress": "no-reply@jobportal-berlin.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Bewerbung eingegangen: Projektleiter (m/w/d)",
+    "receivedAt": "2026-10-07T14:15:00Z",
+    "body": "Guten Tag,\nIhre Bewerbung als Projektleiter (m/w/d) bei der Hansen Bau AG ist am 07.10.2026 bei uns eingegangen. Wir melden uns innerhalb von zwei Wochen bei Ihnen.\nDiese E-Mail wurde automatisch erstellt, bitte antworten Sie nicht darauf."
+  },
+  "expected": {
+    "records": {
+      "applications": [
+        {
+          "title": "Projektleiter bei Hansen Bau AG",
+          "values": {
+            "company": "Hansen Bau AG",
+            "position": "Projektleiter",
+            "state": "applied",
+            "applied_on": "2026-10-07"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    }
+  ]
+}

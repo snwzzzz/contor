@@ -1,0 +1,37 @@
+{
+  "id": "order-de-pickup",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Packstation",
+    "fromAddress": "info@paketdienst-express.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihr Paket liegt zur Abholung bereit",
+    "receivedAt": "2026-10-12T08:00:00Z",
+    "body": "Ihr Paket von Gartenfreund (Bestellung GF-3321) liegt in der Filiale Lindenstraße 12 zur Abholung bereit. Bitte holen Sie es bis zum 19.10.2026 ab, sonst geht es an den Absender zurück."
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "Gartenfreund Bestellung GF-3321",
+          "values": {
+            "order_number": "GF-3321",
+            "shop": "Gartenfreund"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Paket in Filiale Lindenstraße abholen",
+          "values": {
+            "due_date": "2026-10-19"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

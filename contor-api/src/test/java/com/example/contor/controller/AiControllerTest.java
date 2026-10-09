@@ -12,7 +12,9 @@ import com.example.contor.api.model.AnalysisRunDto;
 import com.example.contor.api.model.AnalysisState;
 import com.example.contor.exception.AiUnavailableException;
 import com.example.contor.exception.AnalysisRunNotFoundException;
+import com.example.contor.api.model.EvalCaseExportDto;
 import com.example.contor.service.AiAnalysisService;
+import com.example.contor.service.AiEvalExportService;
 import com.example.contor.service.AiModelService;
 import com.example.contor.service.AiSettingsService;
 import org.junit.jupiter.api.Test;
@@ -50,6 +52,9 @@ class AiControllerTest {
 
     @MockitoBean
     private AiAnalysisService aiAnalysisService;
+
+    @MockitoBean
+    private AiEvalExportService aiEvalExportService;
 
     private static AiStatusDto aiStatus() {
         return new AiStatusDto(true, false, List.of(new AiModelDto("qwen3.5:9b", List.of(AiModelRole.EXTRACTION), false, AiPullState.PULLING)
@@ -173,5 +178,34 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
         mockMvc.perform(post("/api/ai/analysis/10/cancel").with(TestAuth.user()).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void evalExport_returns_the_cases_to_the_owner() throws Exception {
+        when(aiEvalExportService.exportCases(List.of(5L, 6L))).thenReturn(new EvalCaseExportDto(List.of()));
+
+        mockMvc.perform(get("/api/ai/eval/export").param("emailIds", "5", "6").with(TestAuth.owner()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cases").isArray());
+    }
+
+    @Test
+    void evalExport_is_forbidden_for_regular_users() throws Exception {
+        mockMvc.perform(get("/api/ai/eval/export").param("emailIds", "5").with(TestAuth.user()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(aiEvalExportService);
+    }
+
+    @Test
+    void evalExport_requires_authentication() throws Exception {
+        mockMvc.perform(get("/api/ai/eval/export").param("emailIds", "5"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void evalExport_rejects_a_missing_id_list() throws Exception {
+        mockMvc.perform(get("/api/ai/eval/export").with(TestAuth.owner()))
+                .andExpect(status().isBadRequest());
     }
 }

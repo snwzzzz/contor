@@ -1,0 +1,26 @@
+{
+  "id": "nothing-en-ooo",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Greg Holmes",
+    "fromAddress": "greg.holmes@trustco.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Automatic reply: Out of office",
+    "receivedAt": "2026-10-13T08:00:00Z",
+    "body": "Thank you for your message. I am out of the office until October 26 with limited access to email. For urgent matters contact the front desk."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

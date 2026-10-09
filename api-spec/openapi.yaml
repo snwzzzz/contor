@@ -1636,6 +1636,42 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/ai/eval/export:
+    get:
+      tags: [AI]
+      operationId: exportEvalCases
+      summary: Export emails with their decided AI proposals as extraction eval cases. OWNER only.
+      description: |
+        For each of the owner's own emails: the email as the extraction model sees it, `expected` built from the
+        proposals that were applied (CREATE_RECORD, using the final payload, i.e. including the user's corrections),
+        and `mustNotProduce` from the rejected CREATE_RECORD proposals. Correct the findings in the UI, export, and
+        save the result as JSON files in the git-ignored `ai-eval/private/` folder. Emails of other users are skipped.
+      parameters:
+        - name: emailIds
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items:
+              type: integer
+              format: int64
+      responses:
+        '200':
+          description: One case per found email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalCaseExportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
   parameters:
     AnalysisRunId:
@@ -2817,6 +2853,80 @@ components:
         QUEUED → DISCOVERING → (AWAITING_REVIEW when discovered categories need approval) → EXTRACTING → COMPLETED;
         FAILED or CANCELLED end a run early.
       enum: [QUEUED, DISCOVERING, AWAITING_REVIEW, EXTRACTING, COMPLETED, FAILED, CANCELLED]
+    EvalCaseExportDto:
+      type: object
+      required: [cases]
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalCaseDto'
+    EvalCaseDto:
+      type: object
+      description: One labelled email of the extraction evaluation (the file format of `ai-eval/**/*.json`).
+      required: [id, email, expected, mustNotProduce]
+      properties:
+        id:
+          type: string
+        email:
+          $ref: '#/components/schemas/EvalEmailDto'
+        expected:
+          $ref: '#/components/schemas/EvalExpectedDto'
+        mustNotProduce:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalForbiddenDto'
+    EvalEmailDto:
+      type: object
+      required: [mailbox, fromAddress, to, subject, receivedAt, body]
+      properties:
+        mailbox:
+          type: string
+        fromName:
+          type: string
+          nullable: true
+        fromAddress:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        body:
+          type: string
+    EvalExpectedDto:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: object
+          description: Expected records per collection slug.
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/EvalRecordDto'
+    EvalRecordDto:
+      type: object
+      required: [title, values]
+      properties:
+        title:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+    EvalForbiddenDto:
+      type: object
+      required: [collection]
+      properties:
+        collection:
+          type: string
+        title:
+          type: string
+          nullable: true
     AnalysisRunDto:
       type: object
       required: [id, status, discoverySteps, discoveryStepsDone, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
