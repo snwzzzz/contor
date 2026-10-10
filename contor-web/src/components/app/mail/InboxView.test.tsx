@@ -40,9 +40,33 @@ describe("InboxView", () => {
     expect(await screen.findByText("Project Update")).toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText(/search emails/i), "invoice");
+    await user.type(screen.getByRole("combobox", { name: "Search emails" }), "invoice");
 
     await waitFor(() => expect(requested.some((search) => search.includes("q=invoice"))).toBe(true));
+  });
+
+  it("searches only in the chosen field and picks a sender from the suggestions", async () => {
+    const user = userEvent.setup();
+    const requested: string[] = [];
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": ({ url }) => {
+        requested.push(url.search);
+        return { body: page([email(101, 1, "Project Update")], 1) };
+      },
+      "GET /api/emails/suggestions": { body: [{ kind: "COMPANY", label: "acme.com", value: "@acme.com", emailCount: 3 }] },
+    });
+
+    renderWithProviders(<InboxView />);
+    await screen.findByText("Project Update");
+
+    await user.click(screen.getByRole("button", { name: "Subject" }));
+    await user.type(screen.getByRole("combobox", { name: "Search emails" }), "acm");
+    await waitFor(() => expect(requested.some((search) => search.includes("q=acm") && search.includes("field=SUBJECT"))).toBe(true));
+
+    await user.click(await screen.findByRole("option", { name: /acme\.com/ }));
+
+    await waitFor(() => expect(requested.some((search) => search.includes("q=%40acme.com") && search.includes("field=PEOPLE"))).toBe(true));
   });
 
   it("selects email and shows details", async () => {

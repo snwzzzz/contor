@@ -6,6 +6,7 @@ import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Label;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.ProcessingState;
+import com.example.contor.domain.SearchField;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -25,9 +26,14 @@ public final class EmailSpecifications {
     private EmailSpecifications() {
     }
 
-    /** {@code null} filters are ignored; {@code ownerId} is mandatory. */
+    /** {@code null} filters are ignored; {@code ownerId} is mandatory; {@code text} is searched in {@code field} (default ALL). */
     public record Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
-                           ProcessingState processingState, String text) {
+                           ProcessingState processingState, String text, SearchField field) {
+
+        public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
+                        ProcessingState processingState, String text) {
+            this(ownerId, accountId, labelId, processingState, text, SearchField.ALL);
+        }
     }
 
     public static Specification<EmailMessage> matching(Criteria criteria) {
@@ -52,10 +58,23 @@ public final class EmailSpecifications {
             }
             if (criteria.text() != null && !criteria.text().isBlank()) {
                 String pattern = "%" + escapeLike(criteria.text().trim().toLowerCase(Locale.ROOT)) + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("subject")), pattern, ESCAPE),
-                        cb.like(cb.lower(root.get("fromAddress")), pattern, ESCAPE),
-                        cb.like(cb.lower(root.get("fromName")), pattern, ESCAPE)));
+                SearchField field = criteria.field() != null ? criteria.field() : SearchField.ALL;
+                List<Predicate> any = new ArrayList<>();
+                if (field == SearchField.ALL || field == SearchField.SUBJECT) {
+                    any.add(cb.like(cb.lower(root.get("subject")), pattern, ESCAPE));
+                }
+                if (field == SearchField.ALL || field == SearchField.PEOPLE) {
+                    any.add(cb.like(cb.lower(root.get("fromAddress")), pattern, ESCAPE));
+                    any.add(cb.like(cb.lower(root.get("fromName")), pattern, ESCAPE));
+                    // Recipients are jsonb lists of {name, address}: searched as their JSON text.
+                    any.add(cb.like(cb.lower(cb.function("text", String.class, root.get("toRecipients"))), pattern, ESCAPE));
+                    any.add(cb.like(cb.lower(cb.function("text", String.class, root.get("ccRecipients"))), pattern, ESCAPE));
+                }
+                if (field == SearchField.ALL || field == SearchField.CONTENT) {
+                    any.add(cb.like(cb.lower(root.get("snippet")), pattern, ESCAPE));
+                    any.add(cb.like(cb.lower(root.get("bodyText")), pattern, ESCAPE));
+                }
+                predicates.add(cb.or(any.toArray(Predicate[]::new)));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

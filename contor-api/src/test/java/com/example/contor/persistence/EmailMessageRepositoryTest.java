@@ -51,6 +51,33 @@ public class EmailMessageRepositoryTest {
     }
 
     @Test
+    void counts_matching_senders_of_one_owner_most_frequent_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        sender(mine, "1", "anna@acme.com", "Anna Acme");
+        sender(mine, "2", "anna@acme.com", "Anna Acme");
+        sender(mine, "3", "bob@acme.com", "Bob");
+        sender(mine, "4", "carl@other.example", "Carl");
+        sender(foreign, "5", "zoe@acme.com", "Zoe");
+        var sent = sender(mine, "6", "me@acme.com", "Me");
+        sent.setFolder("sent");
+        emailMessageRepository.saveAndFlush(sent);
+
+        var senders = emailMessageRepository.findSenders(owner.getId(), "%acme%", PageRequest.of(0, 10));
+
+        assertThat(senders).containsExactly(new SenderCount("Anna Acme", "anna@acme.com", 2L), new SenderCount("Bob", "bob@acme.com", 1L));
+    }
+
+    private EmailMessage sender(MailAccount account, String id, String address, String name) {
+        var email = Fixtures.email(account, id);
+        email.setFromAddress(address);
+        email.setFromName(name);
+        return emailMessageRepository.saveAndFlush(email);
+    }
+
+    @Test
     void provider_message_id_is_unique_per_account() {
         var owner = appUserRepository.save(Fixtures.user("owner"));
         var first = mailAccountRepository.save(Fixtures.mailAccount(owner, "a@example.com"));

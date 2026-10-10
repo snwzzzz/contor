@@ -230,11 +230,38 @@ class MailServiceTest {
         when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
         labelled();
 
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null);
 
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
         assertEquals("orders", page.getItems().get(0).getLabels().get(0).getSlug());
+    }
+
+    @Test
+    void suggestEmailSenders_PeopleThenCompaniesWithoutFreeMail() {
+        when(emailMessageRepository.findSenders(eq(new AppUser.AppUserId(1L)), eq("%a%"), any(Pageable.class))).thenReturn(List.of(
+                new SenderCount("Anna", "anna@acme.com", 5L),
+                new SenderCount(null, "dan@gmail.com", 3L),
+                new SenderCount("Anton", "anton@acme.com", 2L),
+                new SenderCount("Hans", "hans@hans-gmbh.at", 1L)));
+
+        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders(" A ");
+
+        assertEquals(List.of("Anna", "dan@gmail.com", "Anton", "Hans", "acme.com", "hans-gmbh.at"),
+                suggestions.stream().map(EmailSuggestionDto::getLabel).toList());
+        var company = suggestions.get(4);
+        assertEquals(EmailSuggestionKind.COMPANY, company.getKind());
+        assertEquals("@acme.com", company.getValue());
+        assertEquals(7L, company.getEmailCount());
+        assertEquals("anna@acme.com", suggestions.get(0).getValue());
+    }
+
+    @Test
+    void suggestEmailSenders_CompanyOnlyWhenTheDomainMatches() {
+        when(emailMessageRepository.findSenders(any(), eq("%anna%"), any(Pageable.class)))
+                .thenReturn(List.of(new SenderCount("Anna", "anna@acme.com", 5L)));
+
+        assertEquals(List.of("Anna"), mailService.suggestEmailSenders("anna").stream().map(EmailSuggestionDto::getLabel).toList());
     }
 
     @Test

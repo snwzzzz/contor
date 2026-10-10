@@ -24,8 +24,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -39,6 +42,14 @@ import java.util.stream.Collectors;
 public class MailService {
 
     private static final int DEFAULT_PAGE_SIZE = 25;
+    private static final int SUGGESTED_PEOPLE = 5;
+    private static final int SUGGESTED_COMPANIES = 3;
+    /** Senders read to build suggestions: enough to find the companies behind the top people. */
+    private static final int SUGGESTION_SAMPLE = 50;
+    /** Mail domains that do not stand for a company. */
+    private static final Set<String> FREE_MAIL = Set.of("gmail.com", "googlemail.com", "outlook.com", "hotmail.com",
+            "live.com", "msn.com", "icloud.com", "me.com", "yahoo.com", "gmx.at", "gmx.de", "gmx.net", "web.de", "aon.at",
+            "chello.at", "a1.net", "proton.me", "protonmail.com");
 
     private final MailAccountRepository mailAccountRepository;
     private final EmailMessageRepository emailMessageRepository;
@@ -168,13 +179,14 @@ public class MailService {
 
     @Transactional
     public EmailPageDto listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                   Integer page, Integer size) {
+                                   EmailSearchField field, Integer page, Integer size) {
         var criteria = new EmailSpecifications.Criteria(
                 currentUser(),
                 accountId != null ? new MailAccount.MailAccountId(accountId) : null,
                 labelId != null ? new Label.LabelId(labelId) : null,
                 processingState != null ? ProcessingState.valueOf(processingState.name()) : null,
-                q);
+                q,
+                field != null ? SearchField.valueOf(field.name()) : SearchField.ALL);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(criteria), pageable);
@@ -185,6 +197,40 @@ public class MailService {
                         .map(email -> MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of())))
                         .toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    /**
+     * Search-box suggestions: the most frequent matching senders (people), then the companies (sender domains) whose
+     * domain matches. Their {@code value} is what to search with field PEOPLE.
+     */
+    @Transactional
+    public List<EmailSuggestionDto> suggestEmailSenders(String q) {
+        String text = q.trim().toLowerCase(Locale.ROOT);
+        if (text.isEmpty()) {
+            return List.of();
+        }
+        String pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        List<SenderCount> senders = emailMessageRepository.findSenders(currentUser(), pattern, PageRequest.of(0, SUGGESTION_SAMPLE));
+
+        List<EmailSuggestionDto> suggestions = new ArrayList<>(senders.stream()
+                .limit(SUGGESTED_PEOPLE)
+                .map(sender -> new EmailSuggestionDto(EmailSuggestionKind.PERSON,
+                        sender.name() != null && !sender.name().isBlank() ? sender.name() : sender.address(),
+                        sender.address(), sender.emails()))
+                .toList());
+        Map<String, Long> companies = new LinkedHashMap<>();
+        for (SenderCount sender : senders) {
+            String domain = sender.address().substring(sender.address().indexOf('@') + 1);
+            if (domain.contains(text) && !FREE_MAIL.contains(domain)) {
+                companies.merge(domain, sender.emails(), Long::sum);
+            }
+        }
+        companies.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(SUGGESTED_COMPANIES)
+                .forEach(company -> suggestions.add(new EmailSuggestionDto(EmailSuggestionKind.COMPANY,
+                        company.getKey(), "@" + company.getKey(), company.getValue())));
+        return suggestions;
     }
 
     /** Emails of the current user's mailboxes in which a record comes up (see {@link EmailSpecifications#involving}). */

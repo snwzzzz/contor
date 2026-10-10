@@ -1,15 +1,17 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, ScanSearch, X } from "lucide-react";
+import { Check, CheckCheck, ScanSearch, X } from "lucide-react";
 import { Children, useState, type ReactNode } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { FilterChip } from "@/components/app/FilterChip";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRelationTypes } from "@/lib/api/generated/endpoints/relations/relations";
 import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
+import type { RelationTypeDto } from "@/lib/api/generated/model/relationTypeDto";
 import { collectionTint } from "@/lib/collection-tint";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,9 @@ function collectionOf(proposal: ProposalDto): number {
 }
 
 const isRelation = (proposal: ProposalDto) => proposal.kind === "CREATE_RELATION";
+
+/** Filter: everything, the record cards of one collection, or only the connections between existing records. */
+type Filter = number | "connections" | null;
 
 /** The pending record proposal a relation is shown under: the one it starts from, else the one it ends at. */
 function anchorOf(relation: ProposalDto, records: Map<number, ProposalDto>): { record: ProposalDto; anchor: "from" | "to" } | null {
@@ -39,7 +44,8 @@ export function FindingsList() {
   const { data, isLoading, error } = useListProposals(PENDING_FINDINGS);
   const { data: collections } = useListCollections();
   const { data: relationTypes } = useListRelationTypes();
-  const [filter, setFilter] = useState<number | null>(null);
+  const [filter, setFilter] = useState<Filter>(null);
+  const [bulkType, setBulkType] = useState<number | null>(null);
   // Keeping a finding creates or changes a record: refresh everything that may show it.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
@@ -66,7 +72,7 @@ export function FindingsList() {
   const pending = new Map(records.map((proposal) => [proposal.id, proposal]));
   const counts = new Map<number, number>();
   for (const proposal of records) counts.set(collectionOf(proposal), (counts.get(collectionOf(proposal)) ?? 0) + 1);
-  const visible = filter === null ? records : records.filter((proposal) => collectionOf(proposal) === filter);
+  const visible = filter === null ? records : filter === "connections" ? [] : records.filter((proposal) => collectionOf(proposal) === filter);
 
   // Relations hang under a record card; those between records that already exist stand on their own.
   const nested = new Map<number, { relation: ProposalDto; anchor: RelationAnchor }[]>();
@@ -76,7 +82,22 @@ export function FindingsList() {
     if (!placed) standalone.push(relation);
     else nested.set(placed.record.id, [...(nested.get(placed.record.id) ?? []), { relation, anchor: placed.anchor }]);
   }
+  // Standalone connections grouped by relation type ("attends", "works at"), largest group first.
+  const groups = [...Map.groupBy(standalone, (relation) => (relation.payload as RelationPayload).relationTypeId ?? -1)]
+    .toSorted(([, a], [, b]) => b.length - a.length);
   const busyId = decide.isPending ? decide.variables?.proposalId : undefined;
+
+  /** One decision after the other, so each refresh sees the previous one. */
+  async function decideAll(typeId: number, relations: ProposalDto[], decision: "APPROVE" | "REJECT") {
+    setBulkType(typeId);
+    try {
+      for (const relation of relations) await decide.mutateAsync({ proposalId: relation.id, data: { decision } });
+    } catch {
+      // The failed decision was reported by the global mutation error toast; the rest stays pending.
+    } finally {
+      setBulkType(null);
+    }
+  }
   const lineProps = (relation: ProposalDto, anchor: RelationAnchor) => ({
     proposal: relation,
     types,
@@ -86,10 +107,12 @@ export function FindingsList() {
     onDecide: (decision: "APPROVE" | "REJECT") => decide.mutate({ proposalId: relation.id, data: { decision } }),
   });
 
+  const showConnections = (filter === null || filter === "connections") && standalone.length > 0;
+
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-6">
       <div className="flex flex-wrap gap-1.5" aria-label="Filter by collection" role="group">
-        <FilterChip label="All" count={records.length} active={filter === null} onClick={() => setFilter(null)} />
+        <FilterChip label="All" count={records.length + standalone.length} active={filter === null} onClick={() => setFilter(null)} />
         {[...counts].map(([collectionId, count]) => (
           <FilterChip
             key={collectionId}
@@ -100,57 +123,97 @@ export function FindingsList() {
             onClick={() => setFilter(collectionId)}
           />
         ))}
+        {standalone.length > 0 ? (
+          <FilterChip label="Connections" count={standalone.length} active={filter === "connections"} onClick={() => setFilter("connections")} />
+        ) : null}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {visible.map((proposal) => (
-          <FindingCard
-            key={proposal.id}
-            proposal={proposal}
-            collectionName={names.get(collectionOf(proposal))}
-            collectionSlug={slugs.get(collectionOf(proposal))}
-            busy={busyId === proposal.id}
-            onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
-          >
-            {(nested.get(proposal.id) ?? []).map(({ relation, anchor }) => (
-              <RelationLine key={relation.id} {...lineProps(relation, anchor)} />
-            ))}
-          </FindingCard>
-        ))}
-      </div>
-      {filter === null && standalone.length > 0 ? (
-        <ul aria-label="New connections" className="grid gap-1 rounded-lg border bg-card p-3">
-          {standalone.map((relation) => (
-            <RelationLine key={relation.id} {...lineProps(relation, null)} />
+      {visible.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {visible.map((proposal) => (
+            <FindingCard
+              key={proposal.id}
+              proposal={proposal}
+              collectionName={names.get(collectionOf(proposal))}
+              collectionSlug={slugs.get(collectionOf(proposal))}
+              busy={busyId === proposal.id}
+              onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
+            >
+              {(nested.get(proposal.id) ?? []).map(({ relation, anchor }) => (
+                <RelationLine key={relation.id} {...lineProps(relation, anchor)} />
+              ))}
+            </FindingCard>
           ))}
-        </ul>
+        </div>
+      ) : null}
+      {showConnections ? (
+        <section aria-label="New connections" className="grid gap-3">
+          <div className="grid gap-0.5">
+            <h2 className="text-sm font-medium">New connections</h2>
+            <p className="text-xs text-muted-foreground">Links between records you already have. Keep the ones that are right.</p>
+          </div>
+          <div className="grid items-start gap-3 xl:grid-cols-2">
+            {groups.map(([typeId, relations]) => (
+              <ConnectionGroup
+                key={typeId}
+                type={types.get(typeId)}
+                relations={relations}
+                bulkBusy={bulkType === typeId}
+                disabled={bulkType !== null}
+                onDecideAll={(decision) => decideAll(typeId, relations, decision)}
+              >
+                {relations.map((relation) => (
+                  <RelationLine key={relation.id} {...lineProps(relation, null)} />
+                ))}
+              </ConnectionGroup>
+            ))}
+          </div>
+        </section>
       ) : null}
     </div>
   );
 }
 
-interface FilterChipProps {
-  label: string;
-  count: number;
-  tint?: string;
-  active: boolean;
-  onClick: () => void;
+interface ConnectionGroupProps {
+  type: RelationTypeDto | undefined;
+  relations: ProposalDto[];
+  bulkBusy: boolean;
+  disabled: boolean;
+  onDecideAll: (decision: "APPROVE" | "REJECT") => void;
+  /** The relation rows (`<li>`). */
+  children: ReactNode;
 }
 
-function FilterChip({ label, count, tint, active, onClick }: FilterChipProps) {
+/** Proposed connections of one kind ("attends"), with keep/dismiss for the whole group. */
+function ConnectionGroup({ type, relations, bulkBusy, disabled, onDecideAll, children }: ConnectionGroupProps) {
+  const name = type?.name ?? "relates to";
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors hover:bg-accent",
-        active && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
-      )}
-    >
-      {tint ? <span className={cn("size-2 rounded-full", tint)} aria-hidden="true" /> : null}
-      {label}{" "}
-      <span className="tabular-nums opacity-60">{count}</span>
-    </button>
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          {name}
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">{relations.length}</span>
+        </span>
+        {relations.length > 1 ? (
+          <span className="flex gap-1">
+            <AppButton size="sm" variant="ghost" disabled={disabled} aria-label={`Dismiss all ${relations.length} ${name}`} onClick={() => onDecideAll("REJECT")}>
+              Dismiss all
+            </AppButton>
+            <AppButton
+              size="sm"
+              variant="outline"
+              disabled={disabled && !bulkBusy}
+              loading={bulkBusy}
+              aria-label={`Keep all ${relations.length} ${name}`}
+              onClick={() => onDecideAll("APPROVE")}
+            >
+              {bulkBusy ? null : <CheckCheck aria-hidden="true" data-icon="inline-start" />}
+              Keep all
+            </AppButton>
+          </span>
+        ) : null}
+      </div>
+      <ul aria-label={`New connections: ${name}`} className="divide-y">{children}</ul>
+    </div>
   );
 }
 

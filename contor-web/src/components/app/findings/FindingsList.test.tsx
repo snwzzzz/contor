@@ -161,10 +161,44 @@ describe("FindingsList", () => {
 
     renderWithProviders(<FindingsList />);
 
-    const connections = await screen.findByRole("list", { name: "New connections" });
-    expect(await within(connections).findByText("Bob Stone works at Globex")).toBeInTheDocument();
+    const connections = await screen.findByRole("list", { name: "New connections: works at" });
+    expect(await within(connections).findByRole("listitem", { name: "Bob Stone works at Globex" })).toBeInTheDocument();
     await userEvent.click(within(connections).getByRole("button", { name: "Keep Bob Stone works at Globex" }));
 
     await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/27/decision")?.body).toEqual({ decision: "APPROVE" }));
+  });
+
+  it("groups connections by kind, counts them and keeps a whole group at once", async () => {
+    const record = (collectionId: number, id: number, title: string) =>
+      ({ body: { id, collectionId, title, values: {}, extra: {}, createdAt: "2026-01-01T00:00:00Z", createdBy: "USER" } });
+    const calls = mockApi({
+      "GET /api/proposals": findingsPage([
+        findings[0],
+        relation(27, { collectionId: 1, recordId: 4 }, { collectionId: 2, recordId: 9 }),
+        relation(28, { collectionId: 1, recordId: 5 }, { collectionId: 2, recordId: 9 }),
+      ]),
+      "GET /api/collections": { body: collections },
+      "GET /api/relation-types": { body: [worksAt] },
+      "GET /api/collections/1/records/4": record(1, 4, "Bob Stone"),
+      "GET /api/collections/1/records/5": record(1, 5, "Carla Diaz"),
+      "GET /api/collections/2/records/9": record(2, 9, "Globex"),
+      "POST /api/proposals/27/decision": { body: relation(27, {}, {}) },
+      "POST /api/proposals/28/decision": { body: relation(28, {}, {}) },
+    });
+
+    renderWithProviders(<FindingsList />);
+
+    expect(await screen.findByRole("button", { name: "All 3" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Connections 2" }));
+    expect(screen.queryByRole("article", { name: "Anna Berger" })).not.toBeInTheDocument();
+
+    const group = await screen.findByRole("list", { name: "New connections: works at" });
+    expect(await within(group).findByRole("listitem", { name: "Carla Diaz works at Globex" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Keep all 2 works at" }));
+
+    await waitFor(() => {
+      expect(calls.find((call) => call.path === "/api/proposals/27/decision")?.body).toEqual({ decision: "APPROVE" });
+      expect(calls.find((call) => call.path === "/api/proposals/28/decision")?.body).toEqual({ decision: "APPROVE" });
+    });
   });
 });

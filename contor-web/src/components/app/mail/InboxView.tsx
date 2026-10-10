@@ -1,27 +1,22 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Clock, Inbox, Mail, Paperclip, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox, Mail } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
 import { useGetEmail, useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
-import type { EmailLabelDto } from "@/lib/api/generated/model/emailLabelDto";
-import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto";
-import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
+import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import { settingsHref } from "@/lib/navigation";
-import { cn } from "@/lib/utils";
 import { AccountAvatar } from "./AccountAvatar";
-import { EmailHtmlBody } from "./EmailHtmlBody";
+import { EmailReader } from "./EmailReader";
+import { EmailRow } from "./EmailRow";
+import { EmailSearchBar } from "./EmailSearchBar";
 import { domainOf } from "./mail-format";
-import { PictureAvatar } from "./PictureAvatar";
 
 const PAGE_SIZE = 50;
 
@@ -32,6 +27,7 @@ const PAGE_SIZE = 50;
 export function InboxView() {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
+  const [field, setField] = useState<EmailSearchField>("ALL");
   const [accountId, setAccountId] = useState<number | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedEmailId, setSelectedEmailId] = useState<number | null>(null);
@@ -39,7 +35,7 @@ export function InboxView() {
   const { data: accounts } = useListMailAccounts();
   const query = search.trim();
   const { data: page, isLoading, error } = useListEmails({
-    ...(query ? { q: query } : {}),
+    ...(query ? { q: query, field } : {}),
     ...(accountId !== null ? { accountId } : {}),
     page: pageIndex,
     size: PAGE_SIZE,
@@ -68,18 +64,18 @@ export function InboxView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="relative shrink-0">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPageIndex(0);
-          }}
-          placeholder="Search emails by subject, sender..."
-          className="pl-9"
-        />
-      </div>
+      <EmailSearchBar
+        suggestions
+        text={search}
+        field={field}
+        placeholder="Search emails, people, companies…"
+        className="shrink-0"
+        onChange={(text, nextField) => {
+          setSearch(text);
+          setField(nextField);
+          setPageIndex(0);
+        }}
+      />
 
       {accounts && accounts.length > 0 ? (
         <div className="flex shrink-0 flex-wrap gap-2" role="group" aria-label="Filter by account">
@@ -189,45 +185,8 @@ export function InboxView() {
                 <div className="text-sm text-muted-foreground">Loading email content...</div>
               </Card>
             ) : activeEmail ? (
-              <Card className="flex h-full min-h-0 flex-col gap-0 py-0">
-                <CardHeader className="shrink-0 space-y-2 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-lg">{activeEmail.subject || "(No subject)"}</CardTitle>
-                    <Badge variant="outline" className="shrink-0 gap-1 text-xs">
-                      <Clock className="size-3" />
-                      {new Date(activeEmail.receivedAt).toLocaleString()}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <PictureAvatar
-                      label={activeEmail.fromName || activeEmail.fromAddress || "?"}
-                      src={senderPicture(activeEmail.fromAddress)}
-                      size={28}
-                    />
-                    <span>
-                      <span className="font-semibold text-foreground">From: </span>
-                      {activeEmail.fromName
-                        ? `${activeEmail.fromName} <${activeEmail.fromAddress}>`
-                        : activeEmail.fromAddress}
-                    </span>
-                  </div>
-                  {activeEmail.toRecipients.length > 0 ? (
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">To: </span>
-                      {activeEmail.toRecipients.map((r) => r.name || r.address).join(", ")}
-                    </div>
-                  ) : null}
-                </CardHeader>
-                <Separator />
-                <CardContent className="min-h-0 flex-1 overflow-y-auto py-4 text-sm leading-relaxed">
-                  {activeEmail.bodyText ? (
-                    <div className="font-sans whitespace-pre-wrap">{activeEmail.bodyText}</div>
-                  ) : activeEmail.bodyHtml ? (
-                    <EmailHtmlBody html={activeEmail.bodyHtml} />
-                  ) : (
-                    <p className="text-muted-foreground italic">No message body provided.</p>
-                  )}
-                </CardContent>
+              <Card className="h-full min-h-0 overflow-y-auto p-6">
+                <EmailReader email={activeEmail} picture={senderPicture(activeEmail.fromAddress)} />
               </Card>
             ) : null}
           </section>
@@ -237,60 +196,3 @@ export function InboxView() {
   );
 }
 
-interface EmailRowProps {
-  email: EmailSummaryDto;
-  selected: boolean;
-  /** Mailbox of the email, shown in the unified view of several accounts. */
-  account?: MailAccountDto;
-  /** Sender picture URL (contact photo or domain logo). */
-  picture?: string;
-  onSelect: (emailId: number) => void;
-}
-
-function EmailRow({ email, selected, account, picture, onSelect }: EmailRowProps) {
-  const sender = email.fromName || email.fromAddress || "";
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(email.id)}
-      className={cn(
-        "flex w-full gap-3 rounded-lg border p-3.5 text-left transition-colors",
-        selected ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40",
-        !email.read && "font-medium",
-      )}
-    >
-      <PictureAvatar label={sender || "?"} src={picture} size={32} className="mt-0.5 self-start" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="min-w-0 truncate">{sender}</span>
-          {account ? (
-            <Badge variant="outline" className="ml-auto max-w-44 gap-1 truncate text-[10px] font-normal">
-              <AccountAvatar account={account} size={14} />
-              {account.emailAddress}
-            </Badge>
-          ) : null}
-          <span className="shrink-0">{new Date(email.receivedAt).toLocaleDateString()}</span>
-        </div>
-
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <h3 className="line-clamp-1 text-sm font-semibold">{email.subject || "(No subject)"}</h3>
-          {email.hasAttachments ? <Paperclip className="size-3.5 shrink-0 text-muted-foreground" /> : null}
-        </div>
-
-        {email.snippet ? (
-          <p className="mt-1 line-clamp-2 text-xs font-normal text-muted-foreground">{email.snippet}</p>
-        ) : null}
-
-        {email.labels.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {email.labels.map((lbl: EmailLabelDto) => (
-              <Badge key={lbl.labelId} variant="secondary" className="text-[10px]">
-                {lbl.name}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </button>
-  );
-}

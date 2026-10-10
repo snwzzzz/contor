@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { AVATAR_TONES, avatarTone, domainOf, initialOf } from "./mail-format";
+import { AVATAR_TONES, avatarTone, domainOf, initialOf, matchesEmail } from "./mail-format";
 
 describe("mail-format", () => {
+  it("matches an email summary in the chosen field, case-insensitively", () => {
+    const mail = { subject: "Invoice 42", fromName: "Anna Berger", fromAddress: "anna@acme.com", snippet: "Please pay soon" };
+    expect(matchesEmail(mail, "", "ALL")).toBe(true);
+    expect(matchesEmail(mail, "INVOICE", "ALL")).toBe(true);
+    expect(matchesEmail(mail, "invoice", "SUBJECT")).toBe(true);
+    expect(matchesEmail(mail, "invoice", "PEOPLE")).toBe(false);
+    expect(matchesEmail(mail, "@acme.com", "PEOPLE")).toBe(true);
+    expect(matchesEmail(mail, "berger", "PEOPLE")).toBe(true);
+    expect(matchesEmail(mail, "pay", "CONTENT")).toBe(true);
+    expect(matchesEmail(mail, "pay", "SUBJECT")).toBe(false);
+  });
+
   it("uses the first letter or digit as avatar initial", () => {
     expect(initialOf("binford Ltd.")).toBe("B");
     expect(initialOf("\"Quoted\" Name")).toBe("Q");

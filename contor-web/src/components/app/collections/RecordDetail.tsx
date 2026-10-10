@@ -143,7 +143,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
       <Tabs active={tab} counts={counts} onChange={setTab}>
         {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
         {tab === "emails" ? <RecordEmailsTab emails={emails} /> : null}
-        {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} relations={relations} /> : null}
+        {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} recordTitle={title} relations={relations} /> : null}
       </Tabs>
     </article>
   );

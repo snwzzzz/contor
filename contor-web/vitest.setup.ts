@@ -33,4 +33,9 @@ if (typeof window !== "undefined") {
   Element.prototype.scrollIntoView ??= () => {};
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.releasePointerCapture ??= () => {};
+  // No DragEvent in jsdom: fireEvent.drag* would build a plain Event without pointer coordinates (the kanban board
+  // places a dropped card at clientY). Testing Library sets `dataTransfer` itself.
+  window.DragEvent ??= class DragEvent extends MouseEvent {
+    readonly dataTransfer: DataTransfer | null = null;
+  } as typeof DragEvent;
 }

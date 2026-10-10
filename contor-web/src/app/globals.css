@@ -5,14 +5,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Motion used by app components (AnimatedDots: dots appear one by one, then fade out). */
+/* Motion used by app components (AnimatedDots: dots appear one by one, then fade out; the to-do drop slot). */
 @theme {
   --animate-dot: dot 1.6s ease-in-out infinite;
+  /* To-do board: the drop slot opens up between the cards (grid rows 0fr -> 1fr) instead of popping in. */
+  --animate-drop-slot: drop-slot 160ms ease-out;
 
   @keyframes dot {
     0%, 10% { opacity: 0; }
     30%, 75% { opacity: 1; }
     100% { opacity: 0; }
+  }
+
+  @keyframes drop-slot {
+    from { grid-template-rows: 0fr; opacity: 0; }
+    to { grid-template-rows: 1fr; opacity: 1; }
   }
 }
 

@@ -123,12 +123,35 @@ public class MailControllerTest {
 
     @Test
     void list_emails_passes_filters() throws Exception {
-        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", 1, 10))
+        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, 1, 10))
                 .thenReturn(new EmailPageDto(List.of(), 1, 10, 0L, 0));
 
         mockMvc.perform(get("/api/emails").with(TestAuth.user()).param("accountId", "2").param("labelId", "3")
-                        .param("processingState", "NEW").param("q", "order").param("page", "1").param("size", "10"))
+                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void suggest_email_senders_returns_200() throws Exception {
+        when(mailService.suggestEmailSenders("acm")).thenReturn(List.of(
+                new EmailSuggestionDto(EmailSuggestionKind.COMPANY, "acme.com", "@acme.com", 4L)));
+
+        mockMvc.perform(get("/api/emails/suggestions").with(TestAuth.user()).param("q", "acm"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].kind").value("COMPANY"))
+                .andExpect(jsonPath("$[0].value").value("@acme.com"));
+    }
+
+    @Test
+    void suggest_email_senders_needs_a_query() throws Exception {
+        mockMvc.perform(get("/api/emails/suggestions").with(TestAuth.user()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void suggest_email_senders_requires_login() throws Exception {
+        mockMvc.perform(get("/api/emails/suggestions").param("q", "acm"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

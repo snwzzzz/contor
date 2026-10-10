@@ -1,7 +1,7 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mockApi } from "@/test/api-mock";
+import { mockApi, type RecordedCall } from "@/test/api-mock";
 import { renderWithProviders } from "@/test/render";
 import { TaskList } from "./TaskList";
 
@@ -26,8 +26,30 @@ const tasks = {
   totalPages: 1,
 };
 
+const transfer = () => ({ setData: vi.fn(), getData: vi.fn(), setDragImage: vi.fn(), dropEffect: "none", effectAllowed: "all" });
+
+/** Body of the PUT to a record, if there was one. */
+function put(calls: RecordedCall[], recordId: number): unknown {
+  return calls.find((call) => call.method === "PUT" && call.path === `/api/collections/4/records/${recordId}`)?.body;
+}
+
+/** The API with a to-do store: PUTs change it and the next GET returns it, like the real backend. */
 function api(extra: Record<string, unknown> = {}) {
-  return mockApi({ "GET /api/collections": { body: collections }, "GET /api/collections/4/records": { body: tasks }, ...extra });
+  const items = tasks.items.map((item) => ({ ...item, values: { ...item.values }, extra: { ...item.extra } }));
+  const update = (id: number) => ({ init }: { init: RequestInit }) => {
+    const body = JSON.parse(String(init.body)) as { values?: Record<string, unknown>; extra?: Record<string, unknown> };
+    const item = items.find((candidate) => candidate.id === id);
+    if (!item) return { status: 404 };
+    Object.assign(item.values, body.values ?? {});
+    if (body.extra) item.extra = body.extra;
+    return { body: item };
+  };
+  return mockApi({
+    "GET /api/collections": { body: collections },
+    "GET /api/collections/4/records": () => ({ body: { ...tasks, items } }),
+    ...Object.fromEntries(items.map((item) => [`PUT /api/collections/4/records/${item.id}`, update(item.id)])),
+    ...extra,
+  });
 }
 
 describe("TaskList", () => {
@@ -73,7 +95,69 @@ describe("TaskList", () => {
     expect(within(details).getByText(/^Added by the assistant on 1 Oct 2026/)).toBeInTheDocument();
     await userEvent.click(within(details).getByRole("button", { name: "Start" }));
 
-    await waitFor(() => expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ values: { state: "in_progress" } }));
+    // Moved to the top of "In progress"; its only card had no position yet, so the column is numbered once.
+    await waitFor(() => expect(put(calls, 1)).toEqual({ values: { state: "in_progress" }, extra: { boardPosition: 0 } }));
+    await waitFor(() => expect(put(calls, 2)).toEqual({ extra: { boardPosition: 1024 } }));
+  });
+
+  it("drags a to-do into another column, where it lands at the pointer", async () => {
+    const calls = api();
+    renderWithProviders(<TaskList />);
+
+    const card = (await screen.findByRole("checkbox", { name: "Send CV to Acme" })).closest("li") as HTMLElement;
+    const done = screen.getByRole("region", { name: "Done" });
+    const dataTransfer = transfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(done, { dataTransfer, clientY: 0 });
+
+    // Above "Book flights": the preview is the whole card, deadline, priority and notes included.
+    const rows = within(screen.getByRole("list", { name: "Done" })).getAllByRole("listitem", { hidden: true });
+    expect(rows.map((row) => row.getAttribute("data-testid") ?? row.textContent)).toEqual(["drop-preview", expect.stringContaining("Book flights")]);
+    expect(rows[0]).toHaveTextContent("Send CV to Acme");
+    expect(rows[0]).toHaveTextContent("Due today");
+    expect(rows[0]).toHaveTextContent("High");
+    expect(rows[0]).toHaveTextContent(/Recruiting asked for the CV/);
+    fireEvent.drop(done, { dataTransfer, clientY: 0 });
+
+    // Optimistic: the card is in its new place before the server answers.
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Done" })).getAllByRole("listitem")[0]).toHaveTextContent("Send CV to Acme"));
+    await waitFor(() => expect(put(calls, 1)).toEqual({ values: { state: "done" }, extra: { boardPosition: 0 } }));
+  });
+
+  it("reorders the to-dos inside a column and keeps the order", async () => {
+    const calls = api();
+    renderWithProviders(<TaskList />);
+
+    const card = (await screen.findByRole("checkbox", { name: "Send CV to Acme" })).closest("li") as HTMLElement;
+    const todo = screen.getByRole("region", { name: "To do" });
+    const dataTransfer = transfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragOver(todo, { dataTransfer, clientY: 0 });
+    fireEvent.drop(todo, { dataTransfer, clientY: 0 });
+
+    await waitFor(() =>
+      expect(within(screen.getByRole("list", { name: "To do" })).getAllByRole("checkbox").map((box) => box.getAttribute("aria-label")))
+        .toEqual(["Send CV to Acme", "Cancel subscription"]),
+    );
+    await waitFor(() => expect(put(calls, 1)).toEqual({ extra: { boardPosition: 0 } }));
+    await waitFor(() => expect(put(calls, 4)).toEqual({ extra: { boardPosition: 1024 } }));
+  });
+
+  it("orders a column by the stored positions, cards never moved first", async () => {
+    mockApi({
+      "GET /api/collections": { body: collections },
+      "GET /api/collections/4/records": {
+        body: { ...tasks, items: [
+          { ...task(1, "Third", { state: "open" }), extra: { boardPosition: 2048 } },
+          { ...task(2, "Second", { state: "open" }), extra: { boardPosition: 0 } },
+          task(3, "New one", { state: "open" }),
+        ] },
+      },
+    });
+    renderWithProviders(<TaskList />);
+
+    const list = await screen.findByRole("list", { name: "To do" });
+    expect(within(list).getAllByRole("checkbox").map((box) => box.getAttribute("aria-label"))).toEqual(["New one", "Second", "Third"]);
   });
 
   it("checks off a to-do", async () => {
@@ -82,7 +166,7 @@ describe("TaskList", () => {
 
     await userEvent.click(await screen.findByRole("checkbox", { name: "Send CV to Acme" }));
 
-    await waitFor(() => expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ values: { state: "done" } }));
+    await waitFor(() => expect(put(calls, 1)).toMatchObject({ values: { state: "done" } }));
   });
 
   it("adds a to-do", async () => {

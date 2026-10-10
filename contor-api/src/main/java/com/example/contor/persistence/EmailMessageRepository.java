@@ -41,6 +41,14 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "order by e.receivedAt desc")
     List<Long> findIdsWithoutEmbedding(AppUser.AppUserId ownerId, String model, Pageable pageable);
 
+    /** Senders of an owner's inbox whose name or address matches the (lower-case LIKE) {@code pattern}, most emails first. */
+    @Query("select new com.example.contor.persistence.SenderCount(max(e.fromName), lower(e.fromAddress), count(e)) "
+            + "from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent') "
+            + "and e.fromAddress is not null "
+            + "and (lower(e.fromAddress) like :pattern escape '\\' or lower(e.fromName) like :pattern escape '\\') "
+            + "group by lower(e.fromAddress) order by count(e) desc, lower(e.fromAddress)")
+    List<SenderCount> findSenders(AppUser.AppUserId ownerId, String pattern, Pageable pageable);
+
     /** An owner's inbox emails: what semantic search indexes. */
     @Query("select count(e) from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent')")
     long countIndexable(AppUser.AppUserId ownerId);

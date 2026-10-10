@@ -59,6 +59,20 @@ describe("ProposalList", () => {
     expect(within(screen.getByRole("article", { name: "Job Applications" })).getByText("New category")).toBeInTheDocument();
   });
 
+  it("filters by what the proposal would do", async () => {
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+
+    renderWithProviders(<ProposalList />);
+    await screen.findByRole("article", { name: "Interview at Acme" });
+
+    expect(screen.getByRole("button", { name: "All 3" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(await screen.findByRole("button", { name: "To-dos 1" }));
+
+    expect(screen.getAllByRole("article").map((card) => card.getAttribute("aria-label"))).toEqual(["Send certificates"]);
+    await userEvent.click(screen.getByRole("button", { name: "All 3" }));
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+  });
+
   it("approves and rejects", async () => {
     const calls = mockApi({
       "GET /api/proposals": actionsPage(actions),

@@ -1449,10 +1449,16 @@ paths:
         - name: q
           in: query
           required: false
-          description: Case-insensitive search in subject, sender address and sender name
+          description: Case-insensitive search text, matched in the parts named by `field`
           schema:
             type: string
             maxLength: 200
+        - name: field
+          in: query
+          required: false
+          description: Where `q` is searched (default ALL)
+          schema:
+            $ref: '#/components/schemas/EmailSearchField'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1462,6 +1468,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails/suggestions:
+    get:
+      tags: [Mail]
+      operationId: suggestEmailSenders
+      summary: Senders (people) and sender companies (domains) of the current user's inbox matching a prefix of the search box
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        '200':
+          description: Most frequent matching people first, then companies; at most a handful of each
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailSuggestionDto'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2566,6 +2598,31 @@ components:
     EmailProcessingState:
       type: string
       enum: [NEW, QUEUED, PROCESSING, DONE, FAILED, SKIPPED]
+    EmailSearchField:
+      type: string
+      description: >
+        ALL: subject, sender, recipients and body; SUBJECT: subject only; PEOPLE: sender name/address and
+        recipients (to, cc); CONTENT: body and preview text.
+      enum: [ALL, SUBJECT, PEOPLE, CONTENT]
+    EmailSuggestionKind:
+      type: string
+      description: PERSON is one sender address; COMPANY is a sender domain (free-mail domains are left out).
+      enum: [PERSON, COMPANY]
+    EmailSuggestionDto:
+      type: object
+      required: [kind, label, value, emailCount]
+      properties:
+        kind:
+          $ref: '#/components/schemas/EmailSuggestionKind'
+        label:
+          type: string
+          description: Display name (sender name, else the address; the domain for a company)
+        value:
+          type: string
+          description: What to search with field=PEOPLE (the address, or `@domain` for a company)
+        emailCount:
+          type: integer
+          format: int64
     MailAccountDto:
       type: object
       required: [id, provider, emailAddress, status]

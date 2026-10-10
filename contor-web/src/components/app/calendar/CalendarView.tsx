@@ -133,7 +133,7 @@ export function CalendarView() {
                 key={key}
                 aria-label={DAY_FORMAT.format(day)}
                 className={cn(
-                  "group/day relative flex min-h-24 flex-col gap-1 bg-background p-1.5 transition-colors hover:bg-muted/50",
+                  "relative flex min-h-24 flex-col gap-1 bg-background p-1.5 transition-colors hover:bg-muted/50",
                   !inMonth && "bg-muted/40 text-muted-foreground",
                   isSelected && "bg-primary/5 ring-2 ring-primary ring-inset",
                 )}
@@ -157,7 +157,6 @@ export function CalendarView() {
                 {events.map((event) => (
                   <EventChip key={event.id} event={event} collectionId={collection.id} />
                 ))}
-                <Plus className="pointer-events-none absolute top-2 right-2 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/day:opacity-100" aria-hidden="true" />
               </li>
             );
           })}

@@ -9,7 +9,9 @@ import com.example.contor.domain.HexColor;
 import com.example.contor.domain.Label;
 import com.example.contor.domain.LabelSource;
 import com.example.contor.domain.MailAccount;
+import com.example.contor.domain.EmailRecipient;
 import com.example.contor.domain.ProcessingState;
+import com.example.contor.domain.SearchField;
 import com.example.contor.domain.Slug;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,6 +104,27 @@ public class EmailSpecificationsTest {
     void treats_like_wildcards_in_the_search_literally() {
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "%"))).isEmpty();
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, "_"))).isEmpty();
+    }
+
+    private List<String> search(String text, SearchField field) {
+        return subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, text, field));
+    }
+
+    @Test
+    void searches_only_the_chosen_field() {
+        var invoice = emailMessageRepository.findAll().stream()
+                .filter(email -> email.getSubject().equals("Invoice")).findFirst().orElseThrow();
+        invoice.setBodyText("Please pay for ORDER 42.");
+        invoice.setToRecipients(List.of(new EmailRecipient("Anna Berger", "anna@berger.example")));
+        emailMessageRepository.save(invoice);
+
+        assertThat(search("order", SearchField.SUBJECT)).containsExactly("Your ORDER has shipped");
+        assertThat(search("order", SearchField.CONTENT)).containsExactly("Invoice");
+        assertThat(search("order", SearchField.ALL)).containsExactly("Your ORDER has shipped", "Invoice");
+        assertThat(search("berger", SearchField.PEOPLE)).containsExactly("Invoice");
+        assertThat(search("boss", SearchField.PEOPLE)).containsExactly("Meeting tomorrow");
+        assertThat(search("@shop.example", SearchField.PEOPLE)).containsExactly("Invoice");
+        assertThat(search("berger", SearchField.SUBJECT)).isEmpty();
     }
 
     private List<String> involving(List<Long> emailIds, List<String> addresses, List<String> domains) {
