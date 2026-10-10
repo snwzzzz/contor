@@ -89,6 +89,25 @@ class SenderPhotoServiceTest {
     }
 
     @Test
+    void listLogos_UpdatesTheRowAConcurrentRequestInsertedMeanwhile() {
+        var concurrent = logo("siemens.com", null, Instant.now().minus(Duration.ofDays(8)));
+        when(senderLogoRepository.findByDomainIn(anyCollection()))
+                .thenReturn(List.of())
+                .thenReturn(List.of(concurrent));
+        when(logoFetcher.fetch(new SenderDomain("siemens.com"))).thenReturn(Optional.of(new ImageData(new byte[] {1}, "image/png")));
+
+        var domains = senderPhotoService.listLogos(List.of("siemens.com"));
+
+        assertEquals(List.of("siemens.com"), domains);
+        var order = inOrder(senderLogoRepository);
+        order.verify(senderLogoRepository).lockWrites();
+        order.verify(senderLogoRepository).saveAllAndFlush(argThat(logos -> {
+            var list = (List<SenderLogo>) logos;
+            return list.size() == 1 && list.get(0) == concurrent && concurrent.getImage() != null;
+        }));
+    }
+
+    @Test
     void listLogos_RetriesMissingLogosAfterAWeek() {
         when(senderLogoRepository.findByDomainIn(anyCollection()))
                 .thenReturn(List.of(logo("siemens.com", null, Instant.now().minus(Duration.ofDays(8)))));

@@ -51,6 +51,12 @@ public class SenderPhotoRepositoryTest {
     }
 
     @Test
+    void the_write_lock_can_be_taken_repeatedly_within_a_transaction() {
+        assertThat(senderLogoRepository.lockWrites()).isEqualTo(1);
+        assertThat(senderLogoRepository.lockWrites()).isEqualTo(1);
+    }
+
+    @Test
     void contact_photos_are_scoped_to_the_mailbox_owner_and_replaced_per_account() {
         var owner = appUserRepository.save(Fixtures.user("owner"));
         var other = appUserRepository.save(Fixtures.user("other"));
