@@ -26,13 +26,21 @@ public final class EmailSpecifications {
     private EmailSpecifications() {
     }
 
-    /** {@code null} filters are ignored; {@code ownerId} is mandatory; {@code text} is searched in {@code field} (default ALL). */
+    /**
+     * {@code null} filters are ignored; {@code ownerId} is mandatory; {@code text} is searched in {@code field}
+     * (default ALL); {@code answered} true/false keeps only emails with/without a newer sent message in their conversation.
+     */
     public record Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
-                           ProcessingState processingState, String text, SearchField field) {
+                           ProcessingState processingState, String text, SearchField field, Boolean answered) {
+
+        public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
+                        ProcessingState processingState, String text, SearchField field) {
+            this(ownerId, accountId, labelId, processingState, text, field, null);
+        }
 
         public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
                         ProcessingState processingState, String text) {
-            this(ownerId, accountId, labelId, processingState, text, SearchField.ALL);
+            this(ownerId, accountId, labelId, processingState, text, SearchField.ALL, null);
         }
     }
 
@@ -55,6 +63,17 @@ public final class EmailSpecifications {
             }
             if (criteria.processingState() != null) {
                 predicates.add(cb.equal(root.get("processingState"), criteria.processingState()));
+            }
+            if (criteria.answered() != null) {
+                // Answered: a sent message of the same conversation in the same mailbox, newer than this email.
+                Subquery<Long> reply = query.subquery(Long.class);
+                Root<EmailMessage> sent = reply.from(EmailMessage.class);
+                reply.select(sent.get("id").get("id")).where(
+                        cb.equal(sent.get("account"), root.get("account")),
+                        cb.equal(sent.get("conversationId"), root.get("conversationId")),
+                        cb.equal(sent.get("folder"), EmailMessage.FOLDER_SENT),
+                        cb.greaterThan(sent.<java.time.Instant>get("receivedAt"), root.<java.time.Instant>get("receivedAt")));
+                predicates.add(criteria.answered() ? cb.exists(reply) : cb.not(cb.exists(reply)));
             }
             if (criteria.text() != null && !criteria.text().isBlank()) {
                 String pattern = "%" + escapeLike(criteria.text().trim().toLowerCase(Locale.ROOT)) + "%";

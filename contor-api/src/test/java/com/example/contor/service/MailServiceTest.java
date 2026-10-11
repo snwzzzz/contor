@@ -230,7 +230,7 @@ class MailServiceTest {
         when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
         labelled();
 
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null);
 
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
@@ -318,6 +318,57 @@ class MailServiceTest {
         when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(2L)));
 
         assertThrows(EmailNotFoundException.class, () -> mailService.getEmail(5L));
+    }
+
+    @Test
+    void getEmailThread_OldestFirstIncludingSentMail() {
+        var anchor = email(1L);
+        anchor.setConversationId("conv-1");
+        var reply = EmailMessage.builder().id(new EmailMessage.EmailMessageId(6L)).account(account(1L)).providerMessageId("AAMl")
+                .folder("sent").subject("Re: Shipped").receivedAt(Instant.parse("2026-01-02T10:00:00Z")).build();
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(anchor));
+        when(emailMessageRepository.findThread(new MailAccount.MailAccountId(2L), "conv-1")).thenReturn(List.of(anchor, reply));
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals("conv-1", thread.getConversationId());
+        assertEquals(List.of(5L, 6L), thread.getMessages().stream().map(EmailDto::getId).toList());
+        assertEquals("sent", thread.getMessages().get(1).getFolder());
+    }
+
+    @Test
+    void getEmailThread_WithoutConversationIsJustTheEmail() {
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(1L)));
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals(List.of(5L), thread.getMessages().stream().map(EmailDto::getId).toList());
+        verify(emailMessageRepository, never()).findThread(any(), any());
+    }
+
+    @Test
+    void getEmailThread_OfAnotherUserIsNotFound() {
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(2L)));
+
+        assertThrows(EmailNotFoundException.class, () -> mailService.getEmailThread(5L));
+        verify(emailMessageRepository, never()).findThread(any(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_ShowsThreadSizeAndWhetherTheUserAnswered() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var threaded = email(1L);
+        threaded.setConversationId("conv-1");
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(threaded), pageable, 1));
+        when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
+                new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-02T10:00:00Z"))));
+        labelled();
+
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null).getItems().get(0);
+
+        assertEquals(3, summary.getThreadSize());
+        assertTrue(summary.getAnswered());
     }
 
     @Test

@@ -77,6 +77,49 @@ public class EmailMessageRepositoryTest {
         return emailMessageRepository.saveAndFlush(email);
     }
 
+    private EmailMessage message(MailAccount account, String id, String conversation, String folder, String receivedAt) {
+        var email = Fixtures.email(account, id);
+        email.setConversationId(conversation);
+        email.setFolder(folder);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        return emailMessageRepository.saveAndFlush(email);
+    }
+
+    @Test
+    void finds_a_thread_of_one_mailbox_oldest_first_sent_mail_included() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var other = mailAccountRepository.save(Fixtures.mailAccount(owner, "other@example.com"));
+        message(mine, "3", "conv-1", "inbox", "2026-01-03T10:00:00Z");
+        message(mine, "1", "conv-1", "inbox", "2026-01-01T10:00:00Z");
+        message(mine, "2", "conv-1", "sent", "2026-01-02T10:00:00Z");
+        message(mine, "4", "conv-2", "inbox", "2026-01-02T10:00:00Z");
+        message(other, "5", "conv-1", "inbox", "2026-01-02T12:00:00Z");
+
+        var thread = emailMessageRepository.findThread(mine.getId(), "conv-1");
+
+        assertThat(thread).extracting(EmailMessage::getProviderMessageId).containsExactly("1", "2", "3");
+    }
+
+    @Test
+    void counts_thread_messages_and_the_last_reply_per_conversation_of_one_owner() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var stranger = appUserRepository.save(Fixtures.user("stranger"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(stranger, "them@example.com"));
+        message(mine, "1", "conv-1", "inbox", "2026-01-01T10:00:00Z");
+        message(mine, "2", "conv-1", "sent", "2026-01-02T10:00:00Z");
+        message(mine, "3", "conv-1", "sent", "2026-01-04T10:00:00Z");
+        message(mine, "4", "conv-2", "inbox", "2026-01-02T10:00:00Z");
+        message(foreign, "5", "conv-1", "inbox", "2026-01-02T12:00:00Z");
+
+        var stats = emailMessageRepository.threadStats(owner.getId(), List.of("conv-1", "conv-2", "conv-3"));
+
+        assertThat(stats).containsExactlyInAnyOrder(
+                new ThreadStat(mine.getId().id(), "conv-1", 3L, Instant.parse("2026-01-04T10:00:00Z")),
+                new ThreadStat(mine.getId().id(), "conv-2", 1L, null));
+    }
+
     @Test
     void provider_message_id_is_unique_per_account() {
         var owner = appUserRepository.save(Fixtures.user("owner"));

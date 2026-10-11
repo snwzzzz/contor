@@ -99,10 +99,10 @@ describe("RecordDetail", () => {
           page: 0, size: 25, totalElements: 1, totalPages: 1,
         },
       },
-      "GET /api/emails/31": {
-        body: { id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger", subject: "Interview invitation",
+      "GET /api/emails/31/thread": {
+        body: { messages: [{ id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger", subject: "Interview invitation",
           receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false, processingState: "DONE", labels: [],
-          toRecipients: [], ccRecipients: [], bodyText: "We would like to invite you to an interview." },
+          toRecipients: [], ccRecipients: [], bodyText: "We would like to invite you to an interview." }] },
       },
     });
 
@@ -142,7 +142,8 @@ describe("RecordDetail", () => {
     expect(within(panel).getByRole("button", { name: /Interview invitation/ })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: /Invoice/ })).toBeInTheDocument();
 
-    await userEvent.click(within(panel).getByRole("button", { name: "Subject" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "Search in: All" }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Subject" }));
     expect(within(panel).queryByRole("button", { name: /Invoice/ })).not.toBeInTheDocument();
     expect(within(panel).getByText("1 of 2 emails")).toBeInTheDocument();
   });
@@ -170,6 +171,40 @@ describe("RecordDetail", () => {
     expect(within(row).getByText("Jobs")).toBeInTheDocument();
     await waitFor(() => expect(row.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/senders/logos/acme.com")));
     expect(within(panel).getByRole("region", { name: "Email details" })).toHaveTextContent("Select an email");
+  });
+
+  it("pages through the record's emails with the pager at the end of the list", async () => {
+    const requested: string[] = [];
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/collections/1/records/5/emails": ({ url }) => {
+        requested.push(url.search);
+        const pageIndex = Number(url.searchParams.get("page") ?? 0);
+        return {
+          body: { items: [{ id: 40 + pageIndex, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger",
+            subject: `Mail on page ${pageIndex + 1}`, receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false,
+            processingState: "DONE", labels: [] }], page: pageIndex, size: 50, totalElements: 60, totalPages: 2 },
+        };
+      },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+    await userEvent.click(await screen.findByRole("tab", { name: /Emails/ }));
+    const panel = screen.getByRole("tabpanel", { name: /Emails/ });
+    const mail = await within(panel).findByText("Mail on page 1");
+
+    const pager = within(panel).getByRole("navigation", { name: "Pages" });
+    expect(pager).toHaveTextContent("Page 1 of 2 · 60 emails");
+    expect(within(panel).getByTestId("email-list-scroll")).toContainElement(pager);
+    expect(mail.compareDocumentPosition(pager) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.click(within(pager).getByRole("button", { name: /Next/ }));
+
+    expect(await within(panel).findByText("Mail on page 2")).toBeInTheDocument();
+    expect(requested.some((search) => search.includes("page=1"))).toBe(true);
   });
 
   it("describes each connection in words", async () => {

@@ -53,3 +53,24 @@ export function matchesEmail(email: SearchableEmail, text: string, field: EmailS
     : [email.subject, email.fromName, email.fromAddress, email.snippet];
   return parts.some((part) => part?.toLowerCase().includes(needle));
 }
+
+/** First line of the quoted history of a reply: "On … wrote:", "Am … schrieb …:", "-----Original Message-----", "> …". */
+const QUOTE_START = [
+  /^On\b.*\bwrote:\s*$/i,
+  /^Am\b.*\bschrieb\b.*:\s*$/i,
+  /^-{2,}\s*(Original Message|Ursprüngliche Nachricht|Forwarded message)\s*-{2,}\s*$/i,
+  /^>/,
+];
+
+/**
+ * Splits a plain-text reply into what the sender wrote and the quoted history below it (`null` when there is none, or
+ * when nothing but quotes is left): the history can then be folded away.
+ */
+export function splitQuoted(text: string): { fresh: string; quoted: string | null } {
+  const lines = text.split("\n");
+  const start = lines.findIndex((line) => QUOTE_START.some((pattern) => pattern.test(line.trim())));
+  if (start <= 0) return { fresh: text, quoted: null };
+  const fresh = lines.slice(0, start).join("\n").trimEnd();
+  if (fresh.trim() === "") return { fresh: text, quoted: null };
+  return { fresh, quoted: lines.slice(start).join("\n") };
+}

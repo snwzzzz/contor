@@ -35,11 +35,11 @@ describe("EmailSearchBar", () => {
     mockApi({});
     renderWithProviders(<Harness suggestions={false} onSearch={onSearch} />);
 
-    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(screen.getByRole("button", { name: "Content" }));
+    await userEvent.click(screen.getByRole("button", { name: "Search in: All" }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Content" }));
 
     expect(onSearch).toHaveBeenLastCalledWith("", "CONTENT");
-    expect(screen.getByRole("button", { name: "Content" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Search in: Content" })).toBeInTheDocument();
   });
 
   it("suggests people and companies and searches the picked one in people", async () => {
@@ -62,7 +62,7 @@ describe("EmailSearchBar", () => {
 
     expect(onSearch).toHaveBeenLastCalledWith("@acme.com", "PEOPLE");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "People" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Search in: People" })).toBeInTheDocument();
   });
 
   it("picks a suggestion with the keyboard and closes on Escape", async () => {

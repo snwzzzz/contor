@@ -123,11 +123,11 @@ public class MailControllerTest {
 
     @Test
     void list_emails_passes_filters() throws Exception {
-        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, 1, 10))
+        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, false, 1, 10))
                 .thenReturn(new EmailPageDto(List.of(), 1, 10, 0L, 0));
 
         mockMvc.perform(get("/api/emails").with(TestAuth.user()).param("accountId", "2").param("labelId", "3")
-                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("page", "1").param("size", "10"))
+                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("answered", "false").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk());
     }
 
@@ -151,6 +151,31 @@ public class MailControllerTest {
     @Test
     void suggest_email_senders_requires_login() throws Exception {
         mockMvc.perform(get("/api/emails/suggestions").param("q", "acm"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void get_email_thread_returns_200() throws Exception {
+        when(mailService.getEmailThread(9L)).thenReturn(new EmailThreadDto(List.of(
+                new EmailDto().id(9L).subject("Shipped"), new EmailDto().id(10L).subject("Re: Shipped").folder("sent"))).conversationId("conv-1"));
+
+        mockMvc.perform(get("/api/emails/9/thread").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conversationId").value("conv-1"))
+                .andExpect(jsonPath("$.messages[1].folder").value("sent"));
+    }
+
+    @Test
+    void get_email_thread_returns_404() throws Exception {
+        when(mailService.getEmailThread(9L)).thenThrow(new EmailNotFoundException(9L));
+
+        mockMvc.perform(get("/api/emails/9/thread").with(TestAuth.user()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void get_email_thread_requires_login() throws Exception {
+        mockMvc.perform(get("/api/emails/9/thread"))
                 .andExpect(status().isUnauthorized());
     }
 

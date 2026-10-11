@@ -18,11 +18,12 @@ import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictur
 import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { RecordConnectionsTab } from "./RecordConnectionsTab";
-import { RecordEmailsTab } from "./RecordEmailsTab";
+import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
 const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const PICTURE_SIZE = 112;
-const EMAIL_PAGE = { page: 0, size: 50 } as const;
+/** The first page of the Emails tab: its total is the tab count (the tab reuses this query for page 1). */
+const EMAIL_PAGE = { page: 0, size: RECORD_EMAIL_PAGE_SIZE } as const;
 
 type Tab = "details" | "emails" | "connections";
 const TABS: readonly { id: Tab; label: string; icon: LucideIcon }[] = [
@@ -142,7 +143,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
 
       <Tabs active={tab} counts={counts} onChange={setTab}>
         {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
-        {tab === "emails" ? <RecordEmailsTab emails={emails} /> : null}
+        {tab === "emails" ? <RecordEmailsTab collectionId={collection.id} recordId={record.id} /> : null}
         {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} recordTitle={title} relations={relations} /> : null}
       </Tabs>
     </article>

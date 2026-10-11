@@ -102,6 +102,17 @@ public class MailMapperTest {
     }
 
     @Test
+    void maps_thread_size_and_answered_of_a_summary() {
+        EmailSummaryDto threaded = MailMapper.toSummaryDto(email(), List.of(), 3, true);
+        EmailSummaryDto alone = MailMapper.toSummaryDto(email(), List.of());
+
+        assertEquals(3, threaded.getThreadSize());
+        assertTrue(threaded.getAnswered());
+        assertEquals(1, alone.getThreadSize());
+        assertFalse(alone.getAnswered());
+    }
+
+    @Test
     void maps_email_with_bodies_and_recipients() {
         EmailDto dto = MailMapper.toDto(email(), List.of());
 

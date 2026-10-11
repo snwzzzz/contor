@@ -47,6 +47,11 @@ public class MailMapper {
     }
 
     public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels) {
+        return toSummaryDto(email, labels, 1, false);
+    }
+
+    /** @param threadSize messages of the conversation, sent ones included; @param answered the user replied after it */
+    public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels, int threadSize, boolean answered) {
         if (email == null) return null;
 
         return new EmailSummaryDto()
@@ -62,7 +67,9 @@ public class MailMapper {
                 .read(email.isRead())
                 .hasAttachments(email.isHasAttachments())
                 .processingState(email.getProcessingState() != null ? EmailProcessingState.valueOf(email.getProcessingState().name()) : null)
-                .labels(new ArrayList<>(labels));
+                .labels(new ArrayList<>(labels))
+                .threadSize(threadSize)
+                .answered(answered);
     }
 
     public static EmailDto toDto(EmailMessage email, List<EmailLabelDto> labels) {

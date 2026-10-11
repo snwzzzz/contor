@@ -1,48 +1,49 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Inbox, Mail } from "lucide-react";
+import { Inbox } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { Card } from "@/components/ui/card";
-import { useGetEmail, useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
+import { useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import { settingsHref } from "@/lib/navigation";
-import { AccountAvatar } from "./AccountAvatar";
-import { EmailReader } from "./EmailReader";
-import { EmailRow } from "./EmailRow";
+import { EmailThread } from "./EmailThread";
+import { EmailList } from "./EmailList";
+import { EmailPager } from "./EmailPager";
+import { ReadingPanePlaceholder } from "./ReadingPanePlaceholder";
 import { EmailSearchBar } from "./EmailSearchBar";
+import { InboxFilter } from "./InboxFilter";
 import { domainOf } from "./mail-format";
 
 const PAGE_SIZE = 50;
 
 /**
- * Unified inbox over all connected mailboxes, filterable by account. The list scrolls on its own; the reading pane
- * takes the rest of the width and stays put while scrolling through emails.
+ * Unified inbox over all connected mailboxes, structured like Outlook: the message list (compact search and filter on
+ * top, email boxes under period headings, its own scroll) and the reading pane over the rest of the width: the subject
+ * box and each message of the conversation in its own box below it.
  */
 export function InboxView() {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [field, setField] = useState<EmailSearchField>("ALL");
   const [accountId, setAccountId] = useState<number | null>(null);
+  const [unanswered, setUnanswered] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedEmailId, setSelectedEmailId] = useState<number | null>(null);
+  const listScroll = useRef<HTMLDivElement>(null);
 
   const { data: accounts } = useListMailAccounts();
   const query = search.trim();
   const { data: page, isLoading, error } = useListEmails({
     ...(query ? { q: query, field } : {}),
     ...(accountId !== null ? { accountId } : {}),
+    ...(unanswered ? { answered: false } : {}),
     page: pageIndex,
     size: PAGE_SIZE,
-  });
-
-  const { data: activeEmail, isLoading: isLoadingEmail } = useGetEmail(selectedEmailId ?? 0, {
-    query: { enabled: selectedEmailId !== null },
   });
 
   const emails = page?.items ?? [];
@@ -56,6 +57,12 @@ export function InboxView() {
   const accountById = new Map((accounts ?? []).map((account) => [account.id, account]));
   const showAccountOnRows = accountId === null && accountById.size > 1;
 
+  /** The pager sits at the end of the list: start the next page at its top. */
+  function goToPage(index: number) {
+    setPageIndex(index);
+    if (listScroll.current) listScroll.current.scrollTop = 0;
+  }
+
   function selectAccount(id: number | null) {
     setAccountId(id);
     setPageIndex(0);
@@ -63,136 +70,80 @@ export function InboxView() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <EmailSearchBar
-        suggestions
-        text={search}
-        field={field}
-        placeholder="Search emails, people, companies…"
-        className="shrink-0"
-        onChange={(text, nextField) => {
-          setSearch(text);
-          setField(nextField);
-          setPageIndex(0);
-        }}
-      />
-
-      {accounts && accounts.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap gap-2" role="group" aria-label="Filter by account">
-          <AppButton
-            size="sm"
-            variant={accountId === null ? "default" : "outline"}
-            aria-pressed={accountId === null}
-            onClick={() => selectAccount(null)}
-          >
-            All accounts
-          </AppButton>
-          {accounts.map((account) => (
-            <AppButton
-              key={account.id}
-              size="sm"
-              variant={accountId === account.id ? "default" : "outline"}
-              aria-pressed={accountId === account.id}
-              onClick={() => selectAccount(account.id)}
-            >
-              <AccountAvatar account={account} size={18} />
-              {account.emailAddress}
-            </AppButton>
-          ))}
+    <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+      {/* Message list: search and filter on top, the email boxes below in their own scroll area */}
+      <section aria-label="Email list" className="flex min-h-0 flex-col gap-3 max-lg:max-h-[55svh] lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
+        <div className="flex shrink-0 items-center gap-2">
+          <EmailSearchBar
+            suggestions
+            text={search}
+            field={field}
+            placeholder="Search mail…"
+            className="flex-1"
+            onChange={(text, nextField) => {
+              setSearch(text);
+              setField(nextField);
+              setPageIndex(0);
+            }}
+          />
+          <InboxFilter
+            accounts={accounts ?? []}
+            accountId={accountId}
+            onAccountChange={selectAccount}
+            unanswered={unanswered}
+            onUnansweredChange={(next) => {
+              setUnanswered(next);
+              setPageIndex(0);
+            }}
+          />
         </div>
-      ) : null}
 
-      {isLoading ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">Loading emails...</div>
-      ) : error ? (
-        <ErrorMessage message={error.message} />
-      ) : emails.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title="No emails found"
-          description={
-            query
-              ? "No emails matched your search query."
-              : accountId !== null
-                ? "No emails synced for this account yet."
-                : "No emails synced yet. Connect an account or trigger a sync."
-          }
-          action={
-            <Link href={settingsHref(pathname, "accounts")} scroll={false}>
-              <AppButton variant="outline">Manage Accounts</AppButton>
-            </Link>
-          }
-        />
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-          {/* Email list: its own scroll area, fixed width */}
-          <section
-            aria-label="Email list"
-            className="flex min-h-0 flex-col max-lg:max-h-[45svh] lg:w-96 lg:shrink-0 xl:w-[28rem]"
-          >
-            <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pr-1">
-              {emails.map((email) => (
-                <EmailRow
-                  key={email.id}
-                  email={email}
-                  selected={email.id === selectedEmailId}
-                  account={showAccountOnRows ? accountById.get(email.accountId) : undefined}
-                  picture={senderPicture(email.fromAddress)}
-                  onSelect={setSelectedEmailId}
-                />
-              ))}
-            </div>
-            {totalPages > 1 ? (
-              <div className="flex shrink-0 items-center justify-between pt-3 text-xs text-muted-foreground">
-                <span>
-                  Page {pageIndex + 1} of {totalPages} · {page?.totalElements} emails
-                </span>
-                <div className="flex gap-1">
-                  <AppButton
-                    size="sm"
-                    variant="outline"
-                    disabled={pageIndex === 0}
-                    onClick={() => setPageIndex((current) => current - 1)}
-                  >
-                    <ChevronLeft className="size-3.5" />
-                    Previous
-                  </AppButton>
-                  <AppButton
-                    size="sm"
-                    variant="outline"
-                    disabled={pageIndex + 1 >= totalPages}
-                    onClick={() => setPageIndex((current) => current + 1)}
-                  >
-                    Next
-                    <ChevronRight className="size-3.5" />
-                  </AppButton>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          {/* Email details: the rest of the width, stays put while the list scrolls */}
-          <section aria-label="Email details" className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {selectedEmailId === null ? (
-              <Card className="flex h-full items-center justify-center border-dashed">
-                <div className="text-center text-sm text-muted-foreground">
-                  <Mail className="mx-auto mb-2 size-8 text-muted-foreground/60" />
-                  Select an email to view its details
-                </div>
-              </Card>
-            ) : isLoadingEmail ? (
-              <Card className="flex h-full items-center justify-center">
-                <div className="text-sm text-muted-foreground">Loading email content...</div>
-              </Card>
-            ) : activeEmail ? (
-              <Card className="h-full min-h-0 overflow-y-auto p-6">
-                <EmailReader email={activeEmail} picture={senderPicture(activeEmail.fromAddress)} />
-              </Card>
-            ) : null}
-          </section>
+        <div ref={listScroll} data-testid="email-list-scroll" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+          {isLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading emails…</div>
+          ) : error ? (
+            <ErrorMessage message={error.message} />
+          ) : emails.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No emails found"
+              description={
+                query
+                  ? "No emails matched your search query."
+                  : accountId !== null || unanswered
+                    ? "No emails match these filters."
+                    : "No emails synced yet. Connect an account or trigger a sync."
+              }
+              action={
+                <Link href={settingsHref(pathname, "accounts")} scroll={false}>
+                  <AppButton variant="outline">Manage Accounts</AppButton>
+                </Link>
+              }
+            />
+          ) : (
+            <>
+              <EmailList
+                emails={emails}
+                selectedId={selectedEmailId}
+                onSelect={setSelectedEmailId}
+                picture={senderPicture}
+                accountOf={showAccountOnRows ? (email) => accountById.get(email.accountId) : undefined}
+              />
+              {/* The pager ends the list: it shows up once you scrolled to the last email of the page. */}
+              <EmailPager pageIndex={pageIndex} totalPages={totalPages} totalElements={page?.totalElements ?? 0} onPage={goToPage} />
+            </>
+          )}
         </div>
-      )}
+      </section>
+
+      {/* Reading pane: the subject box and one box per message (like Outlook); the thread scrolls its history itself */}
+      <section aria-label="Email details" className="flex min-h-0 min-w-0 flex-1 flex-col max-lg:min-h-[60svh]">
+        {selectedEmailId === null ? (
+          <ReadingPanePlaceholder />
+        ) : (
+          <EmailThread key={selectedEmailId} emailId={selectedEmailId} picture={senderPicture} />
+        )}
+      </section>
     </div>
   );
 }
-

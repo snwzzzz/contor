@@ -1,12 +1,12 @@
 "use client";
 
-import { Paperclip } from "lucide-react";
+import { CornerUpLeft, MessagesSquare, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { EmailLabelDto } from "@/lib/api/generated/model/emailLabelDto";
 import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto";
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
 import { cn } from "@/lib/utils";
 import { AccountAvatar } from "./AccountAvatar";
+import { listTime } from "./mail-dates";
 import { PictureAvatar } from "./PictureAvatar";
 
 export interface EmailRowProps {
@@ -16,50 +16,69 @@ export interface EmailRowProps {
   account?: MailAccountDto;
   /** Sender picture URL (contact photo or domain logo). */
   picture?: string;
+  /** Reference time for the short time label ("12:46", "Tue 21:05", "7 Sept"). */
+  now: Date;
   onSelect: (emailId: number) => void;
 }
 
-/** One email in a list: sender picture, sender, date, subject, preview and labels. */
-export function EmailRow({ email, selected, account, picture, onSelect }: EmailRowProps) {
+/**
+ * One email in the list as a box, structured like Outlook's rows: picture, sender and time, subject with
+ * thread/answered/attachment marks, one line of preview, labels. Unread mail has a bar on the left and a bold subject in
+ * the primary color.
+ */
+export function EmailRow({ email, selected, account, picture, now, onSelect }: EmailRowProps) {
   const sender = email.fromName || email.fromAddress || "";
+  const unread = !email.read;
   return (
     <button
       type="button"
       onClick={() => onSelect(email.id)}
       aria-current={selected ? "true" : undefined}
+      data-unread={unread ? "true" : undefined}
       className={cn(
-        "flex w-full gap-3 rounded-lg border p-3.5 text-left transition-colors",
-        selected ? "border-primary bg-muted/60" : "border-border hover:bg-muted/40",
-        !email.read && "font-medium",
+        "relative flex w-full gap-3 overflow-hidden rounded-lg border bg-card px-3.5 py-3 text-left transition-colors",
+        selected ? "border-primary/60 bg-primary/5" : "hover:bg-muted/40",
       )}
     >
-      <PictureAvatar label={sender || "?"} src={picture} size={32} className="mt-0.5 self-start" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="min-w-0 truncate">{sender}</span>
-          {account ? (
-            <Badge variant="outline" className="ml-auto max-w-44 gap-1 truncate text-[10px] font-normal">
-              <AccountAvatar account={account} size={14} />
-              {account.emailAddress}
-            </Badge>
-          ) : null}
-          <span className="shrink-0">{new Date(email.receivedAt).toLocaleDateString()}</span>
+      {unread ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" /> : null}
+      <PictureAvatar label={sender || "?"} src={picture} size={36} className="mt-0.5 self-start" />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={cn("min-w-0 truncate text-sm", unread && "font-semibold")}>{sender}</span>
+          <time dateTime={email.receivedAt} className={cn("shrink-0 text-xs", unread ? "font-medium text-primary" : "text-muted-foreground")}>
+            {listTime(email.receivedAt, now)}
+          </time>
         </div>
 
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <h3 className="line-clamp-1 text-sm font-semibold">{email.subject || "(No subject)"}</h3>
-          {email.hasAttachments ? <Paperclip className="size-3.5 shrink-0 text-muted-foreground" /> : null}
+        <div className="flex items-center gap-2">
+          <h3 className={cn("min-w-0 truncate text-sm", unread ? "font-semibold text-primary" : "text-foreground/90")}>
+            {email.subject || "(No subject)"}
+          </h3>
+          <span className="ml-auto flex shrink-0 items-center gap-2 text-muted-foreground">
+            {email.threadSize != null && email.threadSize > 1 ? (
+              <span aria-label={`${email.threadSize} messages`} title={`${email.threadSize} messages in this conversation`} className="flex items-center gap-0.5 text-xs tabular-nums">
+                <MessagesSquare className="size-3.5" aria-hidden="true" />
+                {email.threadSize}
+              </span>
+            ) : null}
+            {email.answered ? <CornerUpLeft aria-label="Answered" className="size-3.5 text-success" /> : null}
+            {email.hasAttachments ? <Paperclip className="size-3.5" /> : null}
+          </span>
         </div>
 
-        {email.snippet ? (
-          <p className="mt-1 line-clamp-2 text-xs font-normal text-muted-foreground">{email.snippet}</p>
-        ) : null}
+        {email.snippet ? <p className="line-clamp-1 text-xs text-muted-foreground">{email.snippet}</p> : null}
 
-        {email.labels.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {email.labels.map((lbl: EmailLabelDto) => (
-              <Badge key={lbl.labelId} variant="secondary" className="text-[10px]">
-                {lbl.name}
+        {email.labels.length > 0 || account ? (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {account ? (
+              <Badge variant="outline" className="max-w-44 gap-1 truncate text-[10px] font-normal">
+                <AccountAvatar account={account} size={14} />
+                {account.emailAddress}
+              </Badge>
+            ) : null}
+            {email.labels.map((label) => (
+              <Badge key={label.labelId} variant="secondary" className="text-[10px]">
+                {label.name}
               </Badge>
             ))}
           </div>

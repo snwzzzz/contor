@@ -90,7 +90,7 @@ export function ProposalList() {
   const visible = filter === null ? described : described.filter(({ description }) => description.group === filter);
 
   return (
-    <div className="grid max-w-7xl gap-4">
+    <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{data.totalElements} waiting for your decision</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by kind">
@@ -100,7 +100,8 @@ export function ProposalList() {
           ))}
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      {/* As many columns as fit; each card only as tall as its content (no blank space under short cards). */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] items-start gap-4">
         {visible.map(({ proposal, description }) => (
           <ActionCard
             key={proposal.id}
@@ -143,7 +144,7 @@ function ActionCard({ proposal, description, busy, onDecide }: ActionCardProps) 
       aria-label={title}
       className={cn("flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-sm", busy && "opacity-60")}
     >
-      <div className="flex-1 pb-4">
+      <div className="pb-4">
         <div className="flex items-start gap-3 p-4 pb-3">
           <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tint ? tintClass(tint) : "bg-muted")} aria-hidden="true">
             <Icon className="size-4" />

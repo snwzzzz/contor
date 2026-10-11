@@ -1459,6 +1459,14 @@ paths:
           description: Where `q` is searched (default ALL)
           schema:
             $ref: '#/components/schemas/EmailSearchField'
+        - name: answered
+          in: query
+          required: false
+          description: >
+            true: only emails the user already answered (a newer sent message in the same conversation);
+            false: only emails not answered yet; omitted: all.
+          schema:
+            type: boolean
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1498,6 +1506,29 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/emails/{emailId}/thread:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmailThread
+      summary: The conversation an email belongs to, in its mailbox, the user's own replies (Sent Items) included
+      responses:
+        '200':
+          description: The messages of the conversation, oldest first (just the email itself when it has no conversation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailThreadDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/emails/{emailId}:
     parameters:
       - name: emailId
@@ -2748,6 +2779,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EmailLabelDto'
+        threadSize:
+          type: integer
+          format: int32
+          minimum: 1
+          description: "Messages in the email's conversation (sent ones included); 1 when it has no conversation"
+        answered:
+          type: boolean
+          description: "The user replied: a sent message in the same conversation is newer than this email"
+    EmailThreadDto:
+      type: object
+      required: [messages]
+      properties:
+        conversationId:
+          type: string
+        messages:
+          type: array
+          description: Oldest first; the user's own replies have `folder` = "sent"
+          items:
+            $ref: '#/components/schemas/EmailDto'
     EmailDto:
       type: object
       required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels, toRecipients, ccRecipients]

@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,6 +49,18 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "and (lower(e.fromAddress) like :pattern escape '\\' or lower(e.fromName) like :pattern escape '\\') "
             + "group by lower(e.fromAddress) order by count(e) desc, lower(e.fromAddress)")
     List<SenderCount> findSenders(AppUser.AppUserId ownerId, String pattern, Pageable pageable);
+
+    /** All messages of one conversation in a mailbox (sent mail included), oldest first. */
+    @Query("select e from EmailMessage e where e.account.id = :accountId and e.conversationId = :conversationId "
+            + "order by e.receivedAt asc, e.id.id asc")
+    List<EmailMessage> findThread(MailAccount.MailAccountId accountId, String conversationId);
+
+    /** Message count and last reply per conversation, for the conversations of a page of emails (one query, no N+1). */
+    @Query("select new com.example.contor.persistence.ThreadStat(e.account.id.id, e.conversationId, count(e), "
+            + "max(case when e.folder = 'sent' then e.receivedAt else null end)) "
+            + "from EmailMessage e where e.account.owner.id = :ownerId and e.conversationId in :conversationIds "
+            + "group by e.account.id.id, e.conversationId")
+    List<ThreadStat> threadStats(AppUser.AppUserId ownerId, Collection<String> conversationIds);
 
     /** An owner's inbox emails: what semantic search indexes. */
     @Query("select count(e) from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent')")

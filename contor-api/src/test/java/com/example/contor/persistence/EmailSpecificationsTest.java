@@ -127,6 +127,33 @@ public class EmailSpecificationsTest {
         assertThat(search("berger", SearchField.SUBJECT)).isEmpty();
     }
 
+    private List<String> answered(Boolean answered) {
+        return subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, answered));
+    }
+
+    @Test
+    void filters_by_whether_a_newer_sent_message_exists_in_the_conversation() {
+        // "Meeting tomorrow" (work, 2 Jan) gets a reply on 3 Jan; "Your ORDER has shipped" (work, 3 Jan 00:00) has a conversation
+        // whose only sent message is older; "Invoice" has no conversation at all.
+        var meeting = emailMessageRepository.findAll().stream().filter(e -> e.getSubject().equals("Meeting tomorrow")).findFirst().orElseThrow();
+        var shipped = emailMessageRepository.findAll().stream().filter(e -> e.getSubject().equals("Your ORDER has shipped")).findFirst().orElseThrow();
+        meeting.setConversationId("conv-meeting");
+        shipped.setConversationId("conv-shipped");
+        emailMessageRepository.save(meeting);
+        emailMessageRepository.save(shipped);
+        var reply = save(work, "5", "Re: Meeting tomorrow", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-03T09:00:00Z");
+        reply.setFolder("sent");
+        reply.setConversationId("conv-meeting");
+        var oldNote = save(work, "6", "Note", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-01T09:00:00Z");
+        oldNote.setFolder("sent");
+        oldNote.setConversationId("conv-shipped");
+        emailMessageRepository.saveAll(List.of(reply, oldNote));
+
+        assertThat(answered(true)).containsExactly("Meeting tomorrow");
+        assertThat(answered(false)).containsExactly("Your ORDER has shipped", "Invoice");
+        assertThat(answered(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
+    }
+
     private List<String> involving(List<Long> emailIds, List<String> addresses, List<String> domains) {
         return emailMessageRepository.findAll(
                         EmailSpecifications.matching(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null))

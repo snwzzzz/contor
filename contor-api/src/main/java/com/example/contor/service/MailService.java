@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -179,24 +180,20 @@ public class MailService {
 
     @Transactional
     public EmailPageDto listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                   EmailSearchField field, Integer page, Integer size) {
+                                   EmailSearchField field, Boolean answered, Integer page, Integer size) {
         var criteria = new EmailSpecifications.Criteria(
                 currentUser(),
                 accountId != null ? new MailAccount.MailAccountId(accountId) : null,
                 labelId != null ? new Label.LabelId(labelId) : null,
                 processingState != null ? ProcessingState.valueOf(processingState.name()) : null,
                 q,
-                field != null ? SearchField.valueOf(field.name()) : SearchField.ALL);
+                field != null ? SearchField.valueOf(field.name()) : SearchField.ALL,
+                answered);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(criteria), pageable);
 
-        Map<Long, List<EmailLabelDto>> labels = labelsOf(result.getContent().stream().map(email -> email.getId().id()).toList());
-        return new EmailPageDto(
-                new ArrayList<>(result.getContent().stream()
-                        .map(email -> MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of())))
-                        .toList()),
-                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+        return toPage(result);
     }
 
     /**
@@ -254,12 +251,52 @@ public class MailService {
         Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(owner)
                 .and(EmailSpecifications.involving(sourceEmailIds, contacts.addresses(), contacts.domains())), pageable);
 
-        Map<Long, List<EmailLabelDto>> labels = labelsOf(result.getContent().stream().map(email -> email.getId().id()).toList());
+        return toPage(result);
+    }
+
+    /** One page of summaries with labels and thread info, each from a single query for the whole page. */
+    private EmailPageDto toPage(Page<EmailMessage> result) {
+        List<EmailMessage> emails = result.getContent();
+        Map<Long, List<EmailLabelDto>> labels = labelsOf(emails.stream().map(email -> email.getId().id()).toList());
+        Map<String, ThreadStat> threads = threadStatsOf(emails);
         return new EmailPageDto(
-                new ArrayList<>(result.getContent().stream()
-                        .map(email -> MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of())))
-                        .toList()),
+                new ArrayList<>(emails.stream().map(email -> {
+                    ThreadStat thread = email.getConversationId() != null
+                            ? threads.get(threadKey(email.getAccount().getId().id(), email.getConversationId())) : null;
+                    boolean answered = thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.getReceivedAt());
+                    return MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of()),
+                            thread != null ? thread.messages().intValue() : 1, answered);
+                }).toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    private Map<String, ThreadStat> threadStatsOf(List<EmailMessage> emails) {
+        List<String> conversationIds = emails.stream().map(EmailMessage::getConversationId).filter(Objects::nonNull).distinct().toList();
+        if (conversationIds.isEmpty()) {
+            return Map.of();
+        }
+        return emailMessageRepository.threadStats(currentUser(), conversationIds).stream()
+                .collect(Collectors.toMap(stat -> threadKey(stat.accountId(), stat.conversationId()), Function.identity(), (a, b) -> a));
+    }
+
+    private static String threadKey(Long accountId, String conversationId) {
+        return accountId + "/" + conversationId;
+    }
+
+    /** The conversation of an email in its mailbox, oldest first, with the user's own replies (Sent Items). */
+    @Transactional
+    public EmailThreadDto getEmailThread(Long id) {
+        EmailMessage email = emailMessageRepository.findById(new EmailMessage.EmailMessageId(id))
+                .filter(candidate -> candidate.getAccount().getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new EmailNotFoundException(id));
+        List<EmailMessage> messages = email.getConversationId() == null
+                ? List.of(email)
+                : emailMessageRepository.findThread(email.getAccount().getId(), email.getConversationId());
+        Map<Long, List<EmailLabelDto>> labels = labelsOf(messages.stream().map(message -> message.getId().id()).toList());
+        return new EmailThreadDto(new ArrayList<>(messages.stream()
+                .map(message -> MailMapper.toDto(message, labels.getOrDefault(message.getId().id(), List.of())))
+                .toList()))
+                .conversationId(email.getConversationId());
     }
 
     @Transactional
