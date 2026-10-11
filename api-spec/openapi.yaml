@@ -46,6 +46,8 @@ tags:
     description: Pictures of mail senders (sender domain logos, Outlook contact photos)
   - name: AI
     description: Local Ollama assistant - model status, permissions (setup wizard) and inbox analysis runs
+  - name: ReplyDrafts
+    description: Reply drafts the assistant wrote for inbox emails. Nothing is ever sent or written to the mailbox.
 paths:
   /api/system/version:
     get:
@@ -1520,11 +1522,85 @@ paths:
       summary: The conversation an email belongs to, in its mailbox, the user's own replies (Sent Items) included
       responses:
         '200':
-          description: The messages of the conversation, oldest first (just the email itself when it has no conversation)
+          description: |
+            The messages of the conversation, oldest first (just the email itself when it has no conversation), with
+            the assistant's reply drafts for it
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailThreadDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}/reply-suggestion:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [ReplyDrafts]
+      operationId: suggestReply
+      summary: Ask the assistant for a reply draft to this email (on demand, in the background)
+      description: |
+        Queues one draft call on the AI thread; the candidate rules and the triage call are skipped because you asked.
+        The result is a pending DRAFT_REPLY proposal (it replaces an older pending one of the conversation). Poll
+        `GET /api/emails/{emailId}/thread` (`replySuggestion` RUNNING, then IDLE or FAILED). 409 when mail access or
+        reply drafts are turned off in the AI settings, or when the email is one of your own sent messages.
+      responses:
+        '202':
+          description: Queued
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    patch:
+      tags: [ReplyDrafts]
+      operationId: updateReplyDraft
+      summary: Edit a kept reply draft (partial update)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReplyDraftCommand'
+      responses:
+        '200':
+          description: The updated draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}/discard:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    post:
+      tags: [ReplyDrafts]
+      operationId: discardReplyDraft
+      summary: Discard a kept reply draft (it disappears from the thread)
+      responses:
+        '200':
+          description: The discarded draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1776,6 +1852,13 @@ components:
         format: int64
     ProposalId:
       name: proposalId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ReplyDraftId:
+      name: replyDraftId
       in: path
       required: true
       schema:
@@ -2476,8 +2559,15 @@ components:
         proposal is a dependency, so the relation can only be approved once it is applied). Validated like a manual
         relation (type collections, records exist); created as AI with the source email and the proposal's confidence;
         an identical existing relation is a no-op (the proposal is applied and its result names the existing relation).
+        DRAFT_REPLY `{"emailId": 8, "accountId": 1, "conversationId": "..", "to": [{"name": "..", "address": ".."}],
+        "cc": [..], "subject": "Re: ..", "body": "plain text", "language": "de", "placeholders": ["[available times]"]}`:
+        a reply the assistant wrote for the source email (`to` = its sender, `cc` = its Cc without your own addresses;
+        `placeholders` are the `[...]` parts you still have to fill in). Approving keeps it as a reply draft (never
+        sent, nothing is written to the mailbox); it needs `to` and `body`, and the email must be in your mailboxes.
+        A pending draft is rejected automatically when you answer in Outlook or a newer email arrives in the conversation.
         Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
-        CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`).
+        CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
+        a proposal the system rejected carries `{"reason"}`.
         Other kinds are stored but cannot be applied yet.
       enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
     ProposalState:
@@ -2488,7 +2578,7 @@ components:
       description: |
         FINDINGS: data the AI extracted (CREATE_RECORD / UPDATE_RECORD in any collection except the assistant's
         calendar `events` and to-dos `tasks`). ACTIONS: everything else – things the AI proposes to do (calendar
-        entries, to-dos, new categories, later replies and labels).
+        entries, to-dos, new categories, reply drafts, later labels).
       enum: [ACTIONS, FINDINGS]
     ProposalDecision:
       type: string
@@ -2787,9 +2877,23 @@ components:
         answered:
           type: boolean
           description: "The user replied: a sent message in the same conversation is newer than this email"
+        replyState:
+          $ref: '#/components/schemas/ReplyMarker'
+    ReplyMarker:
+      type: string
+      description: |
+        The assistant's reply for this email: SUGGESTED = a draft waits for your decision (DRAFT_REPLY proposal),
+        DRAFT_READY = you kept a draft (not sent). Absent when there is neither.
+      enum: [SUGGESTED, DRAFT_READY]
+    ReplySuggestionState:
+      type: string
+      description: |
+        On-demand reply suggestion for the email of a thread: RUNNING while it is queued or the model writes it,
+        FAILED when the last attempt failed (try again), IDLE otherwise.
+      enum: [IDLE, RUNNING, FAILED]
     EmailThreadDto:
       type: object
-      required: [messages]
+      required: [messages, replyDrafts, replySuggestion]
       properties:
         conversationId:
           type: string
@@ -2798,6 +2902,79 @@ components:
           description: Oldest first; the user's own replies have `folder` = "sent"
           items:
             $ref: '#/components/schemas/EmailDto'
+        replyDrafts:
+          type: array
+          description: Kept (READY) reply drafts for messages of this conversation, oldest first
+          items:
+            $ref: '#/components/schemas/ReplyDraftDto'
+        pendingReplyProposal:
+          $ref: '#/components/schemas/ProposalDto'
+        replySuggestion:
+          $ref: '#/components/schemas/ReplySuggestionState'
+    ReplyDraftState:
+      type: string
+      description: READY = kept and shown in the thread (never sent) · DISCARDED = thrown away.
+      enum: [READY, DISCARDED]
+    ReplyDraftDto:
+      type: object
+      required: [id, emailId, accountId, toRecipients, ccRecipients, subject, body, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        emailId:
+          type: integer
+          format: int64
+          description: The email this draft answers
+        accountId:
+          type: integer
+          format: int64
+        conversationId:
+          type: string
+        toRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        body:
+          type: string
+          description: Plain text
+        status:
+          $ref: '#/components/schemas/ReplyDraftState'
+        proposalId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    UpdateReplyDraftCommand:
+      type: object
+      description: Partial update; null = unchanged. Only READY drafts can be edited (409 otherwise).
+      properties:
+        toRecipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+          maxLength: 998
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
     EmailDto:
       type: object
       required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels, toRecipients, ccRecipients]
@@ -2934,11 +3111,13 @@ components:
           description: A backfill is currently embedding mail
     AiAccess:
       type: string
-      description: OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.
+      description: |
+        OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.
+        `replies` (reply drafts) only knows OFF and SUGGEST: a draft is never sent, so AUTO is rejected (400).
       enum: ['OFF', SUGGEST, AUTO]
     AiSettingsDto:
       type: object
-      required: [mailAccess, historyDays, categories, records, calendar, tasks]
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies]
       properties:
         mailAccess:
           type: boolean
@@ -2954,6 +3133,8 @@ components:
         calendar:
           $ref: '#/components/schemas/AiAccess'
         tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
           $ref: '#/components/schemas/AiAccess'
         onboardedAt:
           type: string
@@ -2977,6 +3158,8 @@ components:
         calendar:
           $ref: '#/components/schemas/AiAccess'
         tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
           $ref: '#/components/schemas/AiAccess'
         completeOnboarding:
           type: boolean

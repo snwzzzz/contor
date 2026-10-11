@@ -27,6 +27,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -80,6 +81,7 @@ class AiSettingsServiceTest {
         assertThat(dto.getRecords()).isEqualTo(AiAccess.SUGGEST);
         assertThat(dto.getCalendar()).isEqualTo(AiAccess.SUGGEST);
         assertThat(dto.getTasks()).isEqualTo(AiAccess.SUGGEST);
+        assertThat(dto.getReplies()).isEqualTo(AiAccess.OFF);
         assertThat(dto.getOnboardedAt()).isNull();
         verify(aiSettingsRepository, never()).saveAndFlush(any());
     }
@@ -153,5 +155,29 @@ class AiSettingsServiceTest {
         assertThat(captor.getValue().action()).isEqualTo(AuditAction.AI_SETTINGS_CHANGED);
         assertThat(captor.getValue().before()).containsEntry("tasks", "OFF");
         assertThat(captor.getValue().after()).containsEntry("tasks", "AUTO");
+    }
+
+    @Test
+    void updateSettings_RepliesRoundTrip() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().replies(AiAccess.SUGGEST));
+
+        assertThat(dto.getReplies()).isEqualTo(AiAccess.SUGGEST);
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("replies", "OFF");
+        assertThat(captor.getValue().after()).containsEntry("replies", "SUGGEST");
+    }
+
+    @Test
+    void updateSettings_RepliesAutoRejected() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+
+        assertThatThrownBy(() -> service.updateSettings(new UpdateAiSettingsCommand().replies(AiAccess.AUTO)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(aiSettingsRepository, never()).saveAndFlush(any());
+        verify(auditService, never()).record(any());
     }
 }

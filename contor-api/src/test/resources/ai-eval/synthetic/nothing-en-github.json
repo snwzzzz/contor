@@ -1,5 +1,6 @@
 {
   "id": "nothing-en-github",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "GitHub",

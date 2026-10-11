@@ -157,12 +157,16 @@ public class MailControllerTest {
     @Test
     void get_email_thread_returns_200() throws Exception {
         when(mailService.getEmailThread(9L)).thenReturn(new EmailThreadDto(List.of(
-                new EmailDto().id(9L).subject("Shipped"), new EmailDto().id(10L).subject("Re: Shipped").folder("sent"))).conversationId("conv-1"));
+                new EmailDto().id(9L).subject("Shipped"), new EmailDto().id(10L).subject("Re: Shipped").folder("sent")),
+                List.of(new ReplyDraftDto().id(4L).body("Thanks").status(ReplyDraftState.READY)), ReplySuggestionState.IDLE)
+                .conversationId("conv-1"));
 
         mockMvc.perform(get("/api/emails/9/thread").with(TestAuth.user()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conversationId").value("conv-1"))
-                .andExpect(jsonPath("$.messages[1].folder").value("sent"));
+                .andExpect(jsonPath("$.messages[1].folder").value("sent"))
+                .andExpect(jsonPath("$.replyDrafts[0].status").value("READY"))
+                .andExpect(jsonPath("$.replySuggestion").value("IDLE"));
     }
 
     @Test

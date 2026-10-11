@@ -11,12 +11,18 @@ import java.util.Map;
  * @param email         what the model sees (same shape as {@link EmailContent}; {@code id} may be absent)
  * @param expected      what a perfect extraction records
  * @param mustNotProduce things that must never be recorded for this email (counted as forbidden hits)
+ * @param needsReply     whether the email needs a written answer from the user (reply triage); {@code null} = not labelled
  */
-public record EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce) {
+public record EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce, Boolean needsReply) {
 
     public EvalCase {
         expected = expected != null ? expected : new Expected(null, null);
         mustNotProduce = mustNotProduce != null ? mustNotProduce : List.of();
+    }
+
+    /** A case without a reply label. */
+    public EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce) {
+        this(id, email, expected, mustNotProduce, null);
     }
 
     /**

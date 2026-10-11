@@ -1,5 +1,6 @@
 {
   "id": "nothing-en-newsletter",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Tech Weekly",

@@ -1,5 +1,6 @@
 {
   "id": "application-de-recruiter",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Thomas Keller",

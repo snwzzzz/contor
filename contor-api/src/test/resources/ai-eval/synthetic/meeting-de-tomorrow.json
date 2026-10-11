@@ -1,5 +1,6 @@
 {
   "id": "meeting-de-tomorrow",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Zahnarztpraxis Dr. Weber",

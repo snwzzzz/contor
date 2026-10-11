@@ -66,7 +66,7 @@ class AiControllerTest {
     }
 
     private static AiSettingsDto settings() {
-        return new AiSettingsDto(true, 90, AiAccess.SUGGEST, AiAccess.AUTO, AiAccess.AUTO, AiAccess.OFF);
+        return new AiSettingsDto(true, 90, AiAccess.SUGGEST, AiAccess.AUTO, AiAccess.AUTO, AiAccess.OFF, AiAccess.SUGGEST);
     }
 
     @Test
@@ -139,6 +139,17 @@ class AiControllerTest {
                         .content("{\"tasks\": \"SOMETIMES\"}"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(aiSettingsService);
+    }
+
+    @Test
+    void automatic_reply_drafts_are_a_bad_request() throws Exception {
+        when(aiSettingsService.updateSettings(argThat(c -> c.getReplies() == AiAccess.AUTO)))
+                .thenThrow(new IllegalArgumentException("Reply drafts can only be OFF or SUGGEST: a draft is never sent"));
+
+        mockMvc.perform(put("/api/ai/settings").with(TestAuth.owner()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"replies\": \"AUTO\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Reply drafts can only be OFF or SUGGEST: a draft is never sent"));
     }
 
     @Test

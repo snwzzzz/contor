@@ -1,5 +1,6 @@
 {
   "id": "meeting-en-friday",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Daniel Wright",

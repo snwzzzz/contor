@@ -1,5 +1,6 @@
 {
   "id": "meeting-en-cancelled",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Tom Becker",

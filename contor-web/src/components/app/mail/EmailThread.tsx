@@ -7,9 +7,11 @@ import { AppButton } from "@/components/app/AppButton";
 import { useGetEmailThread } from "@/lib/api/generated/endpoints/mail/mail";
 import type { EmailDto } from "@/lib/api/generated/model/emailDto";
 import { cn } from "@/lib/utils";
+import { ThreadReplies } from "@/components/app/replies/ThreadReplies";
 import { EmailBody, Recipients } from "./EmailReader";
 import { PictureAvatar } from "./PictureAvatar";
 
+const SUGGESTION_POLL_MS = 3000;
 const WHEN = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 interface EmailThreadProps {
@@ -26,7 +28,10 @@ interface EmailThreadProps {
  * are open, earlier ones are one line until clicked. Use `key={emailId}` to start over for another email.
  */
 export function EmailThread({ emailId, picture }: EmailThreadProps) {
-  const { data, isLoading, error } = useGetEmailThread(emailId);
+  // While the assistant writes a reply on demand, look again every few seconds.
+  const { data, isLoading, error } = useGetEmailThread(emailId, {
+    query: { refetchInterval: (query) => (query.state.data?.replySuggestion === "RUNNING" ? SUGGESTION_POLL_MS : false) },
+  });
   const [toggled, setToggled] = useState<ReadonlySet<number>>(new Set());
   const [allOpen, setAllOpen] = useState(false);
 
@@ -73,6 +78,9 @@ export function EmailThread({ emailId, picture }: EmailThreadProps) {
             />
           </li>
         ))}
+        <li className="empty:hidden">
+          <ThreadReplies emailId={emailId} thread={data} />
+        </li>
       </ol>
     </section>
   );

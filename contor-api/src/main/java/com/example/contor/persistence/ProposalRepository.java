@@ -1,7 +1,9 @@
 package com.example.contor.persistence;
 
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.Proposal;
+import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -62,4 +64,26 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
             + "order by id limit 1",
             nativeQuery = true)
     Optional<Long> findPendingCreateRecordIdWithValue(Long collectionId, String key, String value);
+
+    /** Proposals of {@code kind} in {@code status} whose source is one of the emails (thread view, inbox markers). */
+    List<Proposal> findByKindAndStatusAndSourceEmail_IdIn(ProposalKind kind, ProposalStatus status,
+                                                          Collection<EmailMessage.EmailMessageId> emailIds);
+
+    /** Proposals of {@code kind} in {@code status} for one conversation of a mailbox (via their source email). */
+    @Query("select p from Proposal p join p.sourceEmail s where p.kind = :kind and p.status = :status "
+            + "and s.account.id = :accountId and s.conversationId = :conversationId order by p.id")
+    List<Proposal> findForConversation(ProposalKind kind, ProposalStatus status, MailAccount.MailAccountId accountId,
+                                       String conversationId);
+
+    String NEWER_IN_CONVERSATION = "select p from Proposal p join p.sourceEmail s where p.kind = :kind and p.status = :status "
+            + "and s.account.id = :accountId and s.conversationId is not null and exists (select 1 from EmailMessage e "
+            + "where e.account.id = s.account.id and e.conversationId = s.conversationId and e.receivedAt > s.receivedAt and ";
+
+    /** Proposals of {@code kind} in {@code status} of a mailbox whose conversation has a newer message the user sent. */
+    @Query(NEWER_IN_CONVERSATION + "e.folder = 'sent') order by p.id")
+    List<Proposal> findWithNewerSent(ProposalKind kind, ProposalStatus status, MailAccount.MailAccountId accountId);
+
+    /** Proposals of {@code kind} in {@code status} of a mailbox whose conversation has a newer received message. */
+    @Query(NEWER_IN_CONVERSATION + "(e.folder is null or e.folder <> 'sent')) order by p.id")
+    List<Proposal> findWithNewerReceived(ProposalKind kind, ProposalStatus status, MailAccount.MailAccountId accountId);
 }

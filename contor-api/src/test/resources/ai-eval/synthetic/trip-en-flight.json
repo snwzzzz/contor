@@ -1,5 +1,6 @@
 {
   "id": "trip-en-flight",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "SkyJet Airways",

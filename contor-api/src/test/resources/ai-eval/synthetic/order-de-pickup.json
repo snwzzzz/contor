@@ -1,5 +1,6 @@
 {
   "id": "order-de-pickup",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Packstation",

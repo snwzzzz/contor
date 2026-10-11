@@ -1,5 +1,6 @@
 {
   "id": "meeting-en-teams",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Ravi Patel",

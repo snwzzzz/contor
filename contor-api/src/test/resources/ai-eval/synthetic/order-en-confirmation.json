@@ -1,5 +1,6 @@
 {
   "id": "order-en-confirmation",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "ShopNow",

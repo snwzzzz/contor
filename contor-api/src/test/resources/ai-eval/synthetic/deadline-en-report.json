@@ -1,5 +1,6 @@
 {
   "id": "deadline-en-report",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Elena Costa",

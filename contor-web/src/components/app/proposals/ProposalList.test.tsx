@@ -92,6 +92,73 @@ describe("ProposalList", () => {
     });
   });
 
+  const reply = {
+    id: 21,
+    kind: "DRAFT_REPLY",
+    status: "PENDING",
+    payload: {
+      emailId: 8,
+      accountId: 3,
+      conversationId: "conv",
+      to: [{ name: "Anna Berger", address: "anna@acme.com" }],
+      cc: [],
+      subject: "Re: Workshop",
+      body: "Hallo Anna,\n\nich komme am [Tag].\n\nMax",
+      language: "de",
+      placeholders: ["[Tag]"],
+    },
+    reasoning: "Proposes a day",
+    sourceEmailId: 8,
+    createdAt: "2026-10-08T12:00:00Z",
+  };
+
+  it("shows a reply draft with recipients, subject and highlighted placeholders", async () => {
+    mockApi({ "GET /api/proposals": actionsPage([reply]), "GET /api/collections": { body: collections } });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "Re: Workshop" });
+    expect(within(card).getByText("Draft reply")).toBeInTheDocument();
+    expect(within(card).getByText("Anna Berger <anna@acme.com>")).toBeInTheDocument();
+    expect(within(card).getByText("[Tag]").tagName).toBe("MARK");
+    expect(screen.getByRole("button", { name: /Replies/ })).toBeInTheDocument();
+  });
+
+  it("keeps an edited reply draft by approving it with the edited payload", async () => {
+    const calls = mockApi({
+      "GET /api/proposals": actionsPage([reply]),
+      "GET /api/collections": { body: collections },
+      "POST /api/proposals/21/decision": { body: { ...reply, status: "EDITED_AND_APPROVED" } },
+    });
+    renderWithProviders(<ProposalList />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Edit & keep Re: Workshop" }));
+    const text = await screen.findByRole("textbox", { name: "Text" });
+    await userEvent.clear(text);
+    await userEvent.type(text, "Hallo Anna, ich komme am Freitag. Max");
+    await userEvent.click(screen.getByRole("button", { name: "Keep" }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.path === "/api/proposals/21/decision")?.body).toEqual({
+        decision: "APPROVE",
+        payload: { ...reply.payload, body: "Hallo Anna, ich komme am Freitag. Max", placeholders: [] },
+      }),
+    );
+  });
+
+  it("dismisses a reply draft", async () => {
+    const calls = mockApi({
+      "GET /api/proposals": actionsPage([reply]),
+      "GET /api/collections": { body: collections },
+      "POST /api/proposals/21/decision": { body: { ...reply, status: "REJECTED" } },
+    });
+    renderWithProviders(<ProposalList />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Dismiss Re: Workshop" }));
+
+    await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/21/decision")?.body).toEqual({ decision: "REJECT" }));
+  });
+
   it("says when there is nothing to do", async () => {
     mockApi({ "GET /api/proposals": actionsPage([]), "GET /api/collections": { body: collections } });
 

@@ -60,6 +60,19 @@ class AiSettingsRepositoryTest {
     }
 
     @Test
+    void reply_drafts_default_to_off_and_never_allow_auto() {
+        AppUser owner = appUserRepository.save(Fixtures.user("owner"));
+        AiSettings saved = aiSettingsRepository.saveAndFlush(settings(owner));
+        assertThat(aiSettingsRepository.findByUser_Id(owner.getId()).orElseThrow().getReplies()).isEqualTo(AiPermissionLevel.OFF);
+
+        saved.setReplies(AiPermissionLevel.AUTO);
+
+        assertThatThrownBy(() -> aiSettingsRepository.saveAndFlush(saved))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_ai_settings_replies");
+    }
+
+    @Test
     void allows_one_row_per_user() {
         AppUser owner = appUserRepository.save(Fixtures.user("owner"));
         aiSettingsRepository.saveAndFlush(settings(owner));

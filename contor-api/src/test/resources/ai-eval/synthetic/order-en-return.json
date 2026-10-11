@@ -1,5 +1,6 @@
 {
   "id": "order-en-return",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Zalora Style",

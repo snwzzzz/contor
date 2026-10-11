@@ -8,6 +8,7 @@ import com.example.contor.api.model.LabelOrigin;
 import com.example.contor.api.model.MailAccountDto;
 import com.example.contor.api.model.MailAccountState;
 import com.example.contor.api.model.MailProviderKind;
+import com.example.contor.api.model.ReplyMarker;
 import com.example.contor.domain.Email;
 import com.example.contor.domain.EmailLabel;
 import com.example.contor.domain.EmailMessage;
@@ -103,13 +104,15 @@ public class MailMapperTest {
 
     @Test
     void maps_thread_size_and_answered_of_a_summary() {
-        EmailSummaryDto threaded = MailMapper.toSummaryDto(email(), List.of(), 3, true);
+        EmailSummaryDto threaded = MailMapper.toSummaryDto(email(), List.of(), 3, true, ReplyMarker.DRAFT_READY);
         EmailSummaryDto alone = MailMapper.toSummaryDto(email(), List.of());
 
         assertEquals(3, threaded.getThreadSize());
         assertTrue(threaded.getAnswered());
+        assertEquals(ReplyMarker.DRAFT_READY, threaded.getReplyState());
         assertEquals(1, alone.getThreadSize());
         assertFalse(alone.getAnswered());
+        assertNull(alone.getReplyState());
     }
 
     @Test

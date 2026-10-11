@@ -1,5 +1,6 @@
 {
   "id": "trip-de-train",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Bahn Ticket",

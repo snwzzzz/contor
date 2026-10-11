@@ -1,5 +1,6 @@
 {
   "id": "order-en-delay",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "BookNook",

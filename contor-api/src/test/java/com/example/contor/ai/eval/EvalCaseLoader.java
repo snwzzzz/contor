@@ -52,7 +52,7 @@ final class EvalCaseLoader {
                 return parsed;
             }
             String name = file.getFileName().toString();
-            return new EvalCase(name.substring(0, name.length() - ".json".length()), parsed.email(), parsed.expected(), parsed.mustNotProduce());
+            return new EvalCase(name.substring(0, name.length() - ".json".length()), parsed.email(), parsed.expected(), parsed.mustNotProduce(), parsed.needsReply());
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Cannot read eval case " + file + ": " + e.getMessage(), e);
         }

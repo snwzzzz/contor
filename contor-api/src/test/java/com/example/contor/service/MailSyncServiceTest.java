@@ -43,6 +43,9 @@ class MailSyncServiceTest {
     @Mock
     private ContactPhotoRepository contactPhotoRepository;
 
+    @Mock
+    private ReplyLifecycleService replyLifecycleService;
+
     @InjectMocks
     private MailSyncService mailSyncService;
 
@@ -263,6 +266,17 @@ class MailSyncServiceTest {
         verify(emailMessageRepository).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getFolder()).isEqualTo("inbox");
         assertThat(saved.getValue().getProcessingState()).isEqualTo(ProcessingState.NEW);
+    }
+
+    @Test
+    void syncAccount_RetiresReplyDraftsOvertakenByTheSyncedMail() {
+        emptyInbox();
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "sent-delta"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(replyLifecycleService).retireOvertaken(account.getId());
     }
 
     @Test

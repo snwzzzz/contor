@@ -1,5 +1,6 @@
 {
   "id": "nothing-en-social",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "SocialNet",

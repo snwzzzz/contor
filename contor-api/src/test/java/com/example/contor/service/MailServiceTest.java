@@ -75,6 +75,15 @@ class MailServiceTest {
     @Mock
     private RecordSourceRepository recordSourceRepository;
 
+    @Mock
+    private ReplyDraftRepository replyDraftRepository;
+
+    @Mock
+    private ProposalRepository proposalRepository;
+
+    @Mock
+    private ReplySuggestionService replySuggestionService;
+
     @Spy
     private WebProperties webProperties = new WebProperties("http://localhost:3000");
 
@@ -334,6 +343,48 @@ class MailServiceTest {
         assertEquals("conv-1", thread.getConversationId());
         assertEquals(List.of(5L, 6L), thread.getMessages().stream().map(EmailDto::getId).toList());
         assertEquals("sent", thread.getMessages().get(1).getFolder());
+    }
+
+    @Test
+    void getEmailThread_CarriesKeptDraftsThePendingSuggestionAndItsState() {
+        var anchor = email(1L);
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(anchor));
+        var draft = ReplyDraft.builder().id(new ReplyDraft.ReplyDraftId(4L)).email(anchor).account(anchor.getAccount())
+                .subject("Re: Shipped").body("Thanks").status(ReplyDraftStatus.READY).build();
+        when(replyDraftRepository.findByEmail_IdInAndStatusOrderByCreatedAtAsc(List.of(anchor.getId()), ReplyDraftStatus.READY))
+                .thenReturn(List.of(draft));
+        var older = Proposal.builder().id(new Proposal.ProposalId(10L)).kind(ProposalKind.DRAFT_REPLY).payload(Map.of("body", "a")).build();
+        var newer = Proposal.builder().id(new Proposal.ProposalId(11L)).kind(ProposalKind.DRAFT_REPLY).payload(Map.of("body", "b")).build();
+        when(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, List.of(anchor.getId())))
+                .thenReturn(List.of(older, newer));
+        when(replySuggestionService.state(5L)).thenReturn(ReplySuggestionState.RUNNING);
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals(List.of(4L), thread.getReplyDrafts().stream().map(ReplyDraftDto::getId).toList());
+        assertEquals(11L, thread.getPendingReplyProposal().getId());
+        assertEquals(ReplySuggestionState.RUNNING, thread.getReplySuggestion());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_MarksSuggestedAndKeptReplies() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var suggested = email(1L);
+        var kept = EmailMessage.builder().id(new EmailMessage.EmailMessageId(6L)).account(account(1L)).providerMessageId("AAMl")
+                .subject("Other").receivedAt(Instant.parse("2026-01-02T10:00:00Z")).build();
+        var plain = EmailMessage.builder().id(new EmailMessage.EmailMessageId(7L)).account(account(1L)).providerMessageId("AAMm")
+                .subject("Plain").receivedAt(Instant.parse("2026-01-03T10:00:00Z")).build();
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(suggested, kept, plain), pageable, 3));
+        when(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(eq(ProposalKind.DRAFT_REPLY), eq(ProposalStatus.PENDING), any()))
+                .thenReturn(List.of(Proposal.builder().sourceEmail(suggested).build()));
+        when(replyDraftRepository.findEmailIdsWithStatus(List.of(5L, 6L, 7L), ReplyDraftStatus.READY)).thenReturn(List.of(6L));
+
+        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null).getItems();
+
+        assertEquals(ReplyMarker.SUGGESTED, items.get(0).getReplyState());
+        assertEquals(ReplyMarker.DRAFT_READY, items.get(1).getReplyState());
+        assertNull(items.get(2).getReplyState());
     }
 
     @Test

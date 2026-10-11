@@ -1,5 +1,6 @@
 {
   "id": "meeting-de-reschedule",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Sabine Roth",

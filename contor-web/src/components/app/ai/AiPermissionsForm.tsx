@@ -5,22 +5,30 @@ import type { AiAccess } from "@/lib/api/generated/model/aiAccess";
 import type { AiSettingsDto } from "@/lib/api/generated/model/aiSettingsDto";
 
 export type AiPermissions = Omit<AiSettingsDto, "onboardedAt">;
-type AreaKey = "categories" | "records" | "calendar" | "tasks";
+type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies";
 
 /** The editable part of the settings (everything except the onboarding timestamp). */
 export function permissionsOf(settings: AiSettingsDto): AiPermissions {
-  const { mailAccess, historyDays, categories, records, calendar, tasks } = settings;
-  return { mailAccess, historyDays, categories, records, calendar, tasks };
+  const { mailAccess, historyDays, categories, records, calendar, tasks, replies } = settings;
+  return { mailAccess, historyDays, categories, records, calendar, tasks, replies };
 }
 
 export const ACCESS_LABEL: Record<AiAccess, string> = { OFF: "Off", SUGGEST: "Ask me", AUTO: "Automatic" };
 const LEVELS: readonly AiAccess[] = ["OFF", "SUGGEST", "AUTO"];
+/** A reply draft is never sent, so "Automatic" would have nothing to do. */
+const REPLY_LEVELS: readonly AiAccess[] = ["OFF", "SUGGEST"];
 
-export const AREAS: readonly { key: AreaKey; label: string; description: string }[] = [
-  { key: "categories", label: "New categories", description: "Create collections for what your inbox is about, e.g. job applications or orders." },
-  { key: "records", label: "Contacts & records", description: "Add and update people, organizations and entries in your collections." },
-  { key: "calendar", label: "Calendar", description: "Put appointments, interviews, deadlines and trips into the assistant's calendar." },
-  { key: "tasks", label: "To-dos", description: "Turn requests in emails into to-dos with due dates." },
+export const AREAS: readonly { key: AreaKey; label: string; description: string; levels: readonly AiAccess[] }[] = [
+  { key: "categories", label: "New categories", description: "Create collections for what your inbox is about, e.g. job applications or orders.", levels: LEVELS },
+  { key: "records", label: "Contacts & records", description: "Add and update people, organizations and entries in your collections.", levels: LEVELS },
+  { key: "calendar", label: "Calendar", description: "Put appointments, interviews, deadlines and trips into the assistant's calendar.", levels: LEVELS },
+  { key: "tasks", label: "To-dos", description: "Turn requests in emails into to-dos with due dates.", levels: LEVELS },
+  {
+    key: "replies",
+    label: "Reply drafts",
+    description: "Write a reply for emails that need an answer from you. Drafts are never sent; you copy or open them in your mail app.",
+    levels: REPLY_LEVELS,
+  },
 ];
 
 export const HISTORY_OPTIONS: readonly { days: number; label: string }[] = [
@@ -39,7 +47,7 @@ interface AiPermissionsFormProps {
   onChange: (value: AiPermissions) => void;
 }
 
-/** What the AI may do: the mail-access master switch, the history window and Off / Ask me / Automatic per area. */
+/** What the AI may do: the mail-access master switch, the history window and Off / Ask me / Automatic per area (reply drafts: Off / Ask me). */
 export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
   const historyId = useId();
   return (
@@ -84,6 +92,7 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
             key={area.key}
             label={area.label}
             description={area.description}
+            levels={area.levels}
             value={value[area.key]}
             disabled={!value.mailAccess}
             onChange={(level) => onChange({ ...value, [area.key]: level })}
@@ -97,12 +106,13 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
 interface AccessLevelPickerProps {
   label: string;
   description: string;
+  levels: readonly AiAccess[];
   value: AiAccess;
   disabled: boolean;
   onChange: (value: AiAccess) => void;
 }
 
-function AccessLevelPicker({ label, description, value, disabled, onChange }: AccessLevelPickerProps) {
+function AccessLevelPicker({ label, description, levels, value, disabled, onChange }: AccessLevelPickerProps) {
   const id = useId();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -120,7 +130,7 @@ function AccessLevelPicker({ label, description, value, disabled, onChange }: Ac
         aria-describedby={`${id}-description`}
         className="inline-flex rounded-md border p-0.5"
       >
-        {LEVELS.map((level) => (
+        {levels.map((level) => (
           <label
             key={level}
             className="cursor-pointer rounded px-3 py-1 text-sm has-checked:bg-primary has-checked:text-primary-foreground has-disabled:cursor-not-allowed has-disabled:opacity-50 has-focus-visible:ring-2 has-focus-visible:ring-ring"

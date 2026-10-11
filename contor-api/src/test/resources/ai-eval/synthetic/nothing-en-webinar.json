@@ -1,5 +1,6 @@
 {
   "id": "nothing-en-webinar",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "GrowthLab",

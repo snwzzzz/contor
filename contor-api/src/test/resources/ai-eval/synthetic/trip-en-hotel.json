@@ -1,5 +1,6 @@
 {
   "id": "trip-en-hotel",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Hotel Alpenblick",

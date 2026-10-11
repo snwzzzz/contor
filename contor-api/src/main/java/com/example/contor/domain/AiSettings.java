@@ -5,7 +5,7 @@ import lombok.*;
 
 import java.time.Instant;
 
-/** A user's AI permissions (setup wizard). No row means {@link #defaults}: no mail access, everything SUGGEST. */
+/** A user's AI permissions (setup wizard). No row means {@link #defaults}: no mail access, everything SUGGEST, reply drafts OFF. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -55,6 +55,12 @@ public class AiSettings extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AiPermissionLevel tasks = AiPermissionLevel.SUGGEST;
+
+    /** Reply drafts (DRAFT_REPLY): OFF or SUGGEST, never AUTO (a draft is never sent). */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AiPermissionLevel replies = AiPermissionLevel.OFF;
 
     @Column(name = "onboarded_at")
     private Instant onboardedAt;

@@ -48,6 +48,10 @@ public final class JsonSchemas {
         return Map.of("type", "integer");
     }
 
+    public static Map<String, Object> bool() {
+        return Map.of("type", "boolean");
+    }
+
     public static Map<String, Object> number() {
         return Map.of("type", "number");
     }

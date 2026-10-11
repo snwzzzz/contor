@@ -1,5 +1,6 @@
 {
   "id": "nothing-en-ooo",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Greg Holmes",

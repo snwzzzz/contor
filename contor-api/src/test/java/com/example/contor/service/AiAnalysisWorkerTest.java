@@ -51,6 +51,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,6 +86,9 @@ class AiAnalysisWorkerTest {
     private EmailEmbeddingService emailEmbeddingService;
 
     @Mock
+    private ReplySuggestionService replySuggestionService;
+
+    @Mock
     private PlatformTransactionManager transactionManager;
 
     private AiAnalysisWorker worker;
@@ -97,7 +101,8 @@ class AiAnalysisWorkerTest {
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         worker = new AiAnalysisWorker(aiAnalysisRunRepository, emailMessageRepository, aiSettingsService, collectionSchemaService,
-                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, properties, new AiExecutors(Runnable::run, Runnable::run),
+                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, replySuggestionService, properties,
+                new AiExecutors(Runnable::run, Runnable::run),
                 transactionManager, Clock.fixed(NOW, ZoneOffset.UTC));
 
         run = AiAnalysisRun.builder().id(new AiAnalysisRun.AiAnalysisRunId(10L)).user(AppUser.builder().id(OWNER).build())
@@ -344,6 +349,62 @@ class AiAnalysisWorkerTest {
         worker.processNewMail();
 
         assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
+    }
+
+    @Test
+    void processNewMail_RepliesOffMakesNoReplyCall() {
+        when(aiSettingsService.onboardedUsers()).thenReturn(List.of(OWNER));
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        email(200L);
+        when(emailMessageRepository.findIdsForProcessing(eq(OWNER), eq(ProcessingState.NEW), eq(Instant.EPOCH), any())).thenReturn(List.of(200L));
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+
+        worker.processNewMail();
+
+        verifyNoInteractions(replySuggestionService);
+    }
+
+    @Test
+    void run_RepliesSuggestAsksForADraftAfterExtractionAndCountsIt() {
+        when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
+                .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
+        EmailMessage email = email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(replySuggestionService.suggestIfNeeded(100L)).thenReturn(true);
+
+        worker.run(10L);
+
+        assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
+        assertThat(run.getProposalsCreated()).isEqualTo(1);
+    }
+
+    @Test
+    void run_AFailingReplyDraftDoesNotFailTheEmail() {
+        when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
+                .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
+        EmailMessage email = email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(replySuggestionService.suggestIfNeeded(100L)).thenThrow(new OllamaException("model gone"));
+
+        worker.run(10L);
+
+        assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
+        assertThat(run.getFailedEmails()).isZero();
+    }
+
+    @Test
+    void run_NoReplyDraftForAnEmailWhoseExtractionFailed() {
+        when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
+                .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model gone"));
+
+        worker.run(10L);
+
+        verifyNoInteractions(replySuggestionService);
     }
 
     @Test

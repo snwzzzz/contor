@@ -1,5 +1,6 @@
 {
   "id": "trip-en-car-rental",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "DriveEasy",

@@ -1,5 +1,6 @@
 {
   "id": "trip-de-checkin",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Eurowings Reisen",

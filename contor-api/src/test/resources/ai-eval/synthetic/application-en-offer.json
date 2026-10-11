@@ -1,5 +1,6 @@
 {
   "id": "application-en-offer",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Maria Santos",

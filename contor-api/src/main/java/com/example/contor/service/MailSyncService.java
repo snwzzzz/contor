@@ -36,6 +36,7 @@ public class MailSyncService {
     private final MsGraphAuthService msGraphAuthService;
     private final MsGraphMailService msGraphMailService;
     private final ContactPhotoRepository contactPhotoRepository;
+    private final ReplyLifecycleService replyLifecycleService;
 
     private static final Duration CONTACTS_REFRESH = Duration.ofDays(1);
 
@@ -120,6 +121,8 @@ public class MailSyncService {
         account.setLastSyncedAt(now);
         account.setStatus(MailAccountStatus.ACTIVE);
         mailAccountRepository.saveAndFlush(account);
+        // New mail may have answered or overtaken a pending reply draft (same transaction: it sees what was just synced).
+        replyLifecycleService.retireOvertaken(account.getId());
 
         return new MailSyncStatusDto(account.getId().id(), MailAccountState.ACTIVE)
                 .lastSyncedAt(now.atOffset(ZoneOffset.UTC))

@@ -7,6 +7,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
+import { ReplySuggestionCard } from "@/components/app/replies/ReplySuggestionCard";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
@@ -55,7 +56,7 @@ function describe(proposal: ProposalDto, slug: string | undefined): Description 
   }
 }
 
-/** Things the assistant proposes to do (calendar entries, to-dos, categories, later replies): approve or reject. */
+/** Things the assistant proposes to do (calendar entries, to-dos, categories, reply drafts): approve or reject. */
 export function ProposalList() {
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useListProposals(PENDING_ACTIONS);
@@ -102,15 +103,19 @@ export function ProposalList() {
       </div>
       {/* As many columns as fit; each card only as tall as its content (no blank space under short cards). */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] items-start gap-4">
-        {visible.map(({ proposal, description }) => (
-          <ActionCard
-            key={proposal.id}
-            proposal={proposal}
-            description={description}
-            busy={decide.isPending && decide.variables?.proposalId === proposal.id}
-            onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
-          />
-        ))}
+        {visible.map(({ proposal, description }) =>
+          proposal.kind === "DRAFT_REPLY" ? (
+            <ReplySuggestionCard key={proposal.id} proposal={proposal} />
+          ) : (
+            <ActionCard
+              key={proposal.id}
+              proposal={proposal}
+              description={description}
+              busy={decide.isPending && decide.variables?.proposalId === proposal.id}
+              onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
+            />
+          ),
+        )}
       </div>
     </div>
   );

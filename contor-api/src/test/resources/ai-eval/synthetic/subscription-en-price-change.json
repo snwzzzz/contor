@@ -1,5 +1,6 @@
 {
   "id": "subscription-en-price-change",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "StreamBox",

@@ -1,5 +1,6 @@
 {
   "id": "invoice-de-phone",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Mobilfunk Alpha",

@@ -7,7 +7,7 @@ import { ProcessingIndicator } from "./ProcessingIndicator";
 
 vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
-const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST" };
+const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST", replies: "OFF" };
 
 describe("ProcessingIndicator", () => {
   beforeEach(() => resetNavigation("/inbox"));

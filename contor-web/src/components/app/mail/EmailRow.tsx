@@ -23,7 +23,7 @@ export interface EmailRowProps {
 
 /**
  * One email in the list as a box, structured like Outlook's rows: picture, sender and time, subject with
- * thread/answered/attachment marks, one line of preview, labels. Unread mail has a bar on the left and a bold subject in
+ * reply-draft/thread/answered/attachment marks, one line of preview, labels. Unread mail has a bar on the left and a bold subject in
  * the primary color.
  */
 export function EmailRow({ email, selected, account, picture, now, onSelect }: EmailRowProps) {
@@ -59,6 +59,11 @@ export function EmailRow({ email, selected, account, picture, now, onSelect }: E
               <span aria-label={`${email.threadSize} messages`} title={`${email.threadSize} messages in this conversation`} className="flex items-center gap-0.5 text-xs tabular-nums">
                 <MessagesSquare className="size-3.5" aria-hidden="true" />
                 {email.threadSize}
+              </span>
+            ) : null}
+            {email.replyState ? (
+              <span className="rounded bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">
+                {email.replyState === "DRAFT_READY" ? "Draft ready" : "Reply suggested"}
               </span>
             ) : null}
             {email.answered ? <CornerUpLeft aria-label="Answered" className="size-3.5 text-success" /> : null}

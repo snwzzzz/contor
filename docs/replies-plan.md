@@ -1,8 +1,21 @@
 # Replies implementation plan (threads + AI reply drafts)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0) and updates the README in the same change.
-> **Status:** Part A (threads) implemented — thread endpoint, `threadSize`/`answered`, `?answered=` filter and the
-> thread view in the inbox and the record Emails tab. Part B (AI reply drafts) and C open; nothing is ever sent.
+> **Status:** Part A (threads) and Part B (AI reply drafts, B1–B7) implemented; Part C open. Nothing is ever sent.
+>
+> Implementation notes (where it differs from or refines the text below):
+> - A1's index is `V1_0_21__email_threads.sql` (it was missing when A shipped); B1 is `V1_0_22`, B4 `V1_0_23`.
+> - Services: `ReplyCandidateFilter` (ai, pure rules), `ReplyTriageService`, `ReplyComposerService` (B3, prompt `reply-v1`),
+>   `ReplySuggestionService` (orchestration, worker and on-demand), `ReplyLifecycleService` (supersede/retire),
+>   `ReplyDraftService` (edit/discard), `DraftReplyApplier`.
+> - Rules: an email with a newer *received* message in its conversation is skipped too (the newer one gets the draft).
+> - The thread returns the whole `pendingReplyProposal` (not only its id) so the thread view needs no second request,
+>   plus `replySuggestion` (IDLE/RUNNING/FAILED) for the on-demand **Suggest a reply** (`POST /api/emails/{id}/reply-suggestion`,
+>   202, runs on the AI thread; the state is kept in memory). Inbox rows carry `replyState` (SUGGESTED / DRAFT_READY).
+> - A new draft (worker or on demand) rejects the conversation's older pending draft ("replaced by a newer suggestion").
+> - The placeholders are exactly the `[…]` parts of the body (the model's own list is only a hint).
+> - B6: `needsReply` labels on the synthetic corpus (person-* left unlabelled as ambiguous), six reply cases in
+>   `ai-eval/replies`, scored by `AiReplyTriageEvalTest` (report only unless min precision/recall are given).
 
 ## Goal
 

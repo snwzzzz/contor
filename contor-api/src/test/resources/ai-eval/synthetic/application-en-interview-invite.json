@@ -1,5 +1,6 @@
 {
   "id": "application-en-interview-invite",
+  "needsReply": true,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Anna Berger",

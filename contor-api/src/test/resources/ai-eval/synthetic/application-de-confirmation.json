@@ -1,5 +1,6 @@
 {
   "id": "application-de-confirmation",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Jobportal Berlin",

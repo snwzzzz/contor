@@ -1,5 +1,6 @@
 {
   "id": "subscription-en-trial",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "NoteMate",

@@ -1,5 +1,6 @@
 {
   "id": "nothing-de-sale",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "ModeOutlet",

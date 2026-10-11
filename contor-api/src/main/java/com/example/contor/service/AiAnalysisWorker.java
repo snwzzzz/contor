@@ -69,6 +69,7 @@ public class AiAnalysisWorker {
     private final ExtractionService extractionService;
     private final ProposalService proposalService;
     private final EmailEmbeddingService emailEmbeddingService;
+    private final ReplySuggestionService replySuggestionService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactionTemplate;
@@ -82,8 +83,9 @@ public class AiAnalysisWorker {
     public AiAnalysisWorker(AiAnalysisRunRepository aiAnalysisRunRepository, EmailMessageRepository emailMessageRepository,
                             AiSettingsService aiSettingsService, CollectionSchemaService collectionSchemaService,
                             InboxDiscoveryService inboxDiscoveryService, ExtractionService extractionService,
-                            ProposalService proposalService, EmailEmbeddingService emailEmbeddingService, AiProperties properties,
-                            AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
+                            ProposalService proposalService, EmailEmbeddingService emailEmbeddingService,
+                            ReplySuggestionService replySuggestionService, AiProperties properties, AiExecutors aiExecutors,
+                            PlatformTransactionManager transactionManager, Clock clock) {
         this.aiAnalysisRunRepository = aiAnalysisRunRepository;
         this.emailMessageRepository = emailMessageRepository;
         this.aiSettingsService = aiSettingsService;
@@ -92,6 +94,7 @@ public class AiAnalysisWorker {
         this.extractionService = extractionService;
         this.proposalService = proposalService;
         this.emailEmbeddingService = emailEmbeddingService;
+        this.replySuggestionService = replySuggestionService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -260,6 +263,9 @@ public class AiAnalysisWorker {
             }
             markEmail(emailId, ProcessingState.DONE, null);
             embed(emailId);
+            if (settings.isMailAccess() && settings.getReplies() == AiPermissionLevel.SUGGEST && suggestReply(emailId)) {
+                suggested++;
+            }
             return new EmailResult(suggested, autoApplied, false);
         } catch (RuntimeException e) {
             log.warn("AI processing of email {} failed: {}", emailId, e.getMessage());
@@ -274,6 +280,19 @@ public class AiAnalysisWorker {
             emailEmbeddingService.embedEmail(emailId);
         } catch (RuntimeException e) {
             log.info("Email {} was not embedded: {}", emailId, e.getMessage());
+        }
+    }
+
+    /**
+     * A reply draft for the email if it needs one. Its extraction result stays when this fails: the failure is logged,
+     * not retried (the thread view offers "Suggest a reply" on demand).
+     */
+    private boolean suggestReply(Long emailId) {
+        try {
+            return replySuggestionService.suggestIfNeeded(emailId);
+        } catch (RuntimeException e) {
+            log.warn("Reply draft for email {} failed: {}", emailId, e.getMessage());
+            return false;
         }
     }
 

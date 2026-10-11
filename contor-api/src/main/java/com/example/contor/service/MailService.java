@@ -8,6 +8,8 @@ import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.mapper.MailMapper;
+import com.example.contor.mapper.ProposalMapper;
+import com.example.contor.mapper.ReplyDraftMapper;
 import com.example.contor.persistence.*;
 import com.example.contor.security.CurrentActor;
 import jakarta.transaction.Transactional;
@@ -23,6 +25,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,6 +67,9 @@ public class MailService {
     private final RecordService recordService;
     private final CollectionSchemaService collectionSchemaService;
     private final RecordSourceRepository recordSourceRepository;
+    private final ReplyDraftRepository replyDraftRepository;
+    private final ProposalRepository proposalRepository;
+    private final ReplySuggestionService replySuggestionService;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
@@ -254,18 +260,19 @@ public class MailService {
         return toPage(result);
     }
 
-    /** One page of summaries with labels and thread info, each from a single query for the whole page. */
+    /** One page of summaries with labels, thread info and reply markers, each from a single query for the whole page. */
     private EmailPageDto toPage(Page<EmailMessage> result) {
         List<EmailMessage> emails = result.getContent();
         Map<Long, List<EmailLabelDto>> labels = labelsOf(emails.stream().map(email -> email.getId().id()).toList());
         Map<String, ThreadStat> threads = threadStatsOf(emails);
+        Map<Long, ReplyMarker> replies = replyMarkersOf(emails);
         return new EmailPageDto(
                 new ArrayList<>(emails.stream().map(email -> {
                     ThreadStat thread = email.getConversationId() != null
                             ? threads.get(threadKey(email.getAccount().getId().id(), email.getConversationId())) : null;
                     boolean answered = thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.getReceivedAt());
                     return MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of()),
-                            thread != null ? thread.messages().intValue() : 1, answered);
+                            thread != null ? thread.messages().intValue() : 1, answered, replies.get(email.getId().id()));
                 }).toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
@@ -277,6 +284,20 @@ public class MailService {
         }
         return emailMessageRepository.threadStats(currentUser(), conversationIds).stream()
                 .collect(Collectors.toMap(stat -> threadKey(stat.accountId(), stat.conversationId()), Function.identity(), (a, b) -> a));
+    }
+
+    /** A kept draft wins over a pending suggestion (it is what the user chose). */
+    private Map<Long, ReplyMarker> replyMarkersOf(List<EmailMessage> emails) {
+        if (emails.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ReplyMarker> markers = new HashMap<>();
+        proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING,
+                        emails.stream().map(EmailMessage::getId).toList())
+                .forEach(proposal -> markers.put(proposal.getSourceEmail().getId().id(), ReplyMarker.SUGGESTED));
+        replyDraftRepository.findEmailIdsWithStatus(emails.stream().map(email -> email.getId().id()).toList(), ReplyDraftStatus.READY)
+                .forEach(emailId -> markers.put(emailId, ReplyMarker.DRAFT_READY));
+        return markers;
     }
 
     private static String threadKey(Long accountId, String conversationId) {
@@ -293,10 +314,20 @@ public class MailService {
                 ? List.of(email)
                 : emailMessageRepository.findThread(email.getAccount().getId(), email.getConversationId());
         Map<Long, List<EmailLabelDto>> labels = labelsOf(messages.stream().map(message -> message.getId().id()).toList());
+        List<EmailMessage.EmailMessageId> ids = messages.stream().map(EmailMessage::getId).toList();
+        List<ReplyDraftDto> drafts = replyDraftRepository.findByEmail_IdInAndStatusOrderByCreatedAtAsc(ids, ReplyDraftStatus.READY).stream()
+                .map(ReplyDraftMapper::toDto)
+                .toList();
+        ProposalDto pending = proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, ids)
+                .stream()
+                .max(Comparator.comparing(proposal -> proposal.getId().id()))
+                .map(ProposalMapper::toDto)
+                .orElse(null);
         return new EmailThreadDto(new ArrayList<>(messages.stream()
                 .map(message -> MailMapper.toDto(message, labels.getOrDefault(message.getId().id(), List.of())))
-                .toList()))
-                .conversationId(email.getConversationId());
+                .toList()), new ArrayList<>(drafts), replySuggestionService.state(id))
+                .conversationId(email.getConversationId())
+                .pendingReplyProposal(pending);
     }
 
     @Transactional

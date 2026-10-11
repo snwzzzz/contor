@@ -99,6 +99,22 @@ describe("InboxView", () => {
     }
   });
 
+  it("marks emails with a suggested reply or a kept draft", async () => {
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": {
+        body: page([{ ...email(101, 1, "Workshop"), replyState: "SUGGESTED" }, { ...email(102, 1, "Invoice"), replyState: "DRAFT_READY" },
+          email(103, 1, "Lunch?")], 1),
+      },
+    });
+
+    renderWithProviders(<InboxView />);
+
+    expect(within((await screen.findByText("Workshop")).closest("button") as HTMLElement).getByText("Reply suggested")).toBeInTheDocument();
+    expect(within(screen.getByText("Invoice").closest("button") as HTMLElement).getByText("Draft ready")).toBeInTheDocument();
+    expect(within(screen.getByText("Lunch?").closest("button") as HTMLElement).queryByText(/Draft ready|Reply suggested/)).not.toBeInTheDocument();
+  });
+
   it("marks threads and answered emails and filters the ones not answered yet", async () => {
     const user = userEvent.setup();
     const requested: string[] = [];
@@ -139,6 +155,8 @@ describe("InboxView", () => {
             { ...email(101, 1, "Re: Offer"), folder: "sent", fromName: "Me", fromAddress: "me@outlook.com", bodyText: "Sounds good, thanks.",
               toRecipients: [], ccRecipients: [], receivedAt: "2026-03-02T10:00:00Z" },
           ],
+          replyDrafts: [],
+          replySuggestion: "IDLE",
         },
       },
     });
@@ -175,6 +193,8 @@ describe("InboxView", () => {
             ccRecipients: [],
             bodyText: "Full email body text goes here.",
           }],
+          replyDrafts: [],
+          replySuggestion: "IDLE",
         },
       },
     });

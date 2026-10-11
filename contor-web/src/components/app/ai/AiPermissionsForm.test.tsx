@@ -11,6 +11,7 @@ const initial: AiPermissions = {
   records: "SUGGEST",
   calendar: "SUGGEST",
   tasks: "SUGGEST",
+  replies: "OFF",
 };
 
 function Harness({ onChange }: { onChange: (value: AiPermissions) => void }) {
@@ -35,6 +36,19 @@ describe("AiPermissionsForm", () => {
       expect(within(group).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["OFF", "SUGGEST", "AUTO"]);
       expect(within(group).getByRole("radio", { name: "Ask me" })).toBeChecked();
     }
+  });
+
+  it("offers reply drafts only off or ask-me, never automatic", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /read and analyze my mailboxes/i }));
+
+    const replies = screen.getByRole("radiogroup", { name: "Reply drafts" });
+    expect(within(replies).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["OFF", "SUGGEST"]);
+    expect(screen.getByText(/drafts are never sent/i)).toBeInTheDocument();
+    await userEvent.click(within(replies).getByRole("radio", { name: "Ask me" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({ ...initial, mailAccess: true, replies: "SUGGEST" });
   });
 
   it("grants mail access and picks the history window", async () => {

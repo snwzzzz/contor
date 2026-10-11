@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.AiSettingsDto;
 import com.example.contor.api.model.UpdateAiSettingsCommand;
+import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AiSettings;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
@@ -46,6 +47,13 @@ public class AiSettingsService {
         if (command.getRecords() != null) settings.setRecords(AiMapper.toLevel(command.getRecords()));
         if (command.getCalendar() != null) settings.setCalendar(AiMapper.toLevel(command.getCalendar()));
         if (command.getTasks() != null) settings.setTasks(AiMapper.toLevel(command.getTasks()));
+        if (command.getReplies() != null) {
+            AiPermissionLevel replies = AiMapper.toLevel(command.getReplies());
+            if (replies == AiPermissionLevel.AUTO) {
+                throw new IllegalArgumentException("Reply drafts can only be OFF or SUGGEST: a draft is never sent");
+            }
+            settings.setReplies(replies);
+        }
         if (Boolean.TRUE.equals(command.getCompleteOnboarding()) && settings.getOnboardedAt() == null) {
             settings.setOnboardedAt(clock.instant());
         }
@@ -81,6 +89,7 @@ public class AiSettingsService {
         snapshot.put("records", settings.getRecords().name());
         snapshot.put("calendar", settings.getCalendar().name());
         snapshot.put("tasks", settings.getTasks().name());
+        snapshot.put("replies", settings.getReplies().name());
         snapshot.put("onboarded", settings.getOnboardedAt() != null);
         return snapshot;
     }

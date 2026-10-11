@@ -1,5 +1,6 @@
 {
   "id": "invoice-en-freelancer",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Lena Fischer",

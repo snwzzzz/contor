@@ -1,5 +1,6 @@
 {
   "id": "application-de-rejection",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Karriere Nordlicht",

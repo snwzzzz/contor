@@ -1,6 +1,9 @@
 package com.example.contor.persistence;
 
 import com.example.contor.RepositoryTest;
+import com.example.contor.domain.AppUser;
+import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
@@ -10,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -149,6 +153,57 @@ public class ProposalRepositoryTest {
         assertThat(proposalRepository.countActions("PENDING", actionCollections)).isEqualTo(1);
         assertThat(proposalRepository.findFindings("PENDING", actionCollections, PageRequest.of(0, 10)).getContent())
                 .extracting(Proposal::getKind).containsExactly(ProposalKind.CREATE_RELATION);
+    }
+
+    private EmailMessage message(MailAccount account, String id, String conversationId, String folder, String receivedAt) {
+        EmailMessage email = Fixtures.email(account, id);
+        email.setConversationId(conversationId);
+        email.setFolder(folder);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        return emailMessageRepository.save(email);
+    }
+
+    private Proposal draftReply(EmailMessage source, ProposalStatus status) {
+        return proposalRepository.save(Proposal.builder().kind(ProposalKind.DRAFT_REPLY).status(status)
+                .payload(Map.of("body", "Thanks")).sourceEmail(source).build());
+    }
+
+    @Test
+    void finds_pending_reply_drafts_of_a_conversation_and_of_emails() {
+        AppUser owner = appUserRepository.save(Fixtures.user("owner"));
+        MailAccount account = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        EmailMessage first = message(account, "a", "conv-a", "inbox", "2026-01-01T10:00:00Z");
+        EmailMessage elsewhere = message(account, "b", "conv-b", "inbox", "2026-01-01T10:00:00Z");
+        Proposal pending = draftReply(first, ProposalStatus.PENDING);
+        draftReply(first, ProposalStatus.REJECTED);
+        draftReply(elsewhere, ProposalStatus.PENDING);
+        proposalRepository.flush();
+
+        assertThat(proposalRepository.findForConversation(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId(), "conv-a"))
+                .extracting(Proposal::getId).containsExactly(pending.getId());
+        assertThat(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING,
+                List.of(first.getId()))).extracting(Proposal::getId).containsExactly(pending.getId());
+    }
+
+    @Test
+    void finds_reply_drafts_overtaken_by_a_newer_sent_or_received_message() {
+        AppUser owner = appUserRepository.save(Fixtures.user("owner"));
+        MailAccount account = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        EmailMessage answered = message(account, "a1", "conv-a", "inbox", "2026-01-01T10:00:00Z");
+        message(account, "a2", "conv-a", "sent", "2026-01-01T11:00:00Z");
+        EmailMessage followedUp = message(account, "b1", "conv-b", "inbox", "2026-01-01T10:00:00Z");
+        message(account, "b2", "conv-b", "inbox", "2026-01-02T10:00:00Z");
+        EmailMessage newest = message(account, "c1", "conv-c", "inbox", "2026-01-03T10:00:00Z");
+        message(account, "c0", "conv-c", "sent", "2026-01-02T10:00:00Z");
+        Proposal answeredDraft = draftReply(answered, ProposalStatus.PENDING);
+        Proposal followedUpDraft = draftReply(followedUp, ProposalStatus.PENDING);
+        draftReply(newest, ProposalStatus.PENDING);
+        proposalRepository.flush();
+
+        assertThat(proposalRepository.findWithNewerSent(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId()))
+                .extracting(Proposal::getId).containsExactly(answeredDraft.getId());
+        assertThat(proposalRepository.findWithNewerReceived(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId()))
+                .extracting(Proposal::getId).containsExactly(followedUpDraft.getId());
     }
 }
 

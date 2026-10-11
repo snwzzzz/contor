@@ -1,5 +1,6 @@
 {
   "id": "order-en-preorder",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "GameVault",

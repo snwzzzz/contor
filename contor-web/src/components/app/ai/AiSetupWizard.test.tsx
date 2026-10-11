@@ -15,6 +15,7 @@ const settings = {
   records: "SUGGEST",
   calendar: "SUGGEST",
   tasks: "SUGGEST",
+  replies: "OFF",
 };
 
 const readyStatus = {

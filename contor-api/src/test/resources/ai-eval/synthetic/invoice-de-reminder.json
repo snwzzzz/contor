@@ -1,5 +1,6 @@
 {
   "id": "invoice-de-reminder",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Müller & Partner Steuerberatung",

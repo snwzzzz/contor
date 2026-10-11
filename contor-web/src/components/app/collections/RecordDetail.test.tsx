@@ -102,7 +102,7 @@ describe("RecordDetail", () => {
       "GET /api/emails/31/thread": {
         body: { messages: [{ id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger", subject: "Interview invitation",
           receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false, processingState: "DONE", labels: [],
-          toRecipients: [], ccRecipients: [], bodyText: "We would like to invite you to an interview." }] },
+          toRecipients: [], ccRecipients: [], bodyText: "We would like to invite you to an interview." }], replyDrafts: [], replySuggestion: "IDLE" },
       },
     });
 

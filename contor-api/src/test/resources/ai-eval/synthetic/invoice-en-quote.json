@@ -1,5 +1,6 @@
 {
   "id": "invoice-en-quote",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "Roofing Pros",

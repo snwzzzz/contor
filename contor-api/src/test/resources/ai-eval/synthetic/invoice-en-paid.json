@@ -1,5 +1,6 @@
 {
   "id": "invoice-en-paid",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "CloudHost",

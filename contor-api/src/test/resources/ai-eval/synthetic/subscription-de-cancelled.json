@@ -1,5 +1,6 @@
 {
   "id": "subscription-de-cancelled",
+  "needsReply": false,
   "email": {
     "mailbox": "me@example.com",
     "fromName": "FitLife Studio",
