@@ -97,6 +97,15 @@ app:
       enabled: ${AI_PROCESSING_ENABLED:true}
       interval: ${AI_PROCESSING_INTERVAL:2m}
       batch-size: ${AI_PROCESSING_BATCH_SIZE:20}
+    # What the model reads of your other mail with each email (ADR 0009): the conversation, the sender's earlier
+    # emails, related emails (embeddings) and records already created from them. Only mail received before the email.
+    context:
+      enabled: ${AI_CONTEXT_ENABLED:true}
+      budget-chars: ${AI_CONTEXT_BUDGET_CHARS:6000}
+      sender-emails: ${AI_CONTEXT_SENDER_EMAILS:5}
+      related-emails: ${AI_CONTEXT_RELATED_EMAILS:5}
+      related-max-distance: ${AI_CONTEXT_RELATED_MAX_DISTANCE:0.25}
+      related-within: ${AI_CONTEXT_RELATED_WITHIN:180d}
   security:
     secure-cookies: ${APP_SECURE_COOKIES:false}
     session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}

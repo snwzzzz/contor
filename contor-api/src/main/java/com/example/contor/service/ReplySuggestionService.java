@@ -249,9 +249,7 @@ public class ReplySuggestionService {
     }
 
     private static ReplyThread.Message threadMessage(EmailMessage message) {
-        List<String> to = Optional.ofNullable(message.getToRecipients()).orElse(List.of()).stream().map(EmailRecipient::address).toList();
-        return new ReplyThread.Message(isSent(message), message.getFromName(), message.getFromAddress(), to, message.getSubject(),
-                message.getReceivedAt(), EmailTextCleaner.clean(AiAnalysisWorker.plainText(message), BODY_CHARS));
+        return ThreadMessages.of(message);
     }
 
     private static List<Map<String, Object>> recipients(List<EmailRecipient> recipients) {

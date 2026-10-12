@@ -19,7 +19,7 @@ import java.util.Optional;
 
 @Repository
 public interface EmailMessageRepository extends JpaRepository<EmailMessage, EmailMessage.EmailMessageId>,
-        JpaSpecificationExecutor<EmailMessage> {
+        JpaSpecificationExecutor<EmailMessage>, EmailSummaryQueries {
 
     Optional<EmailMessage> findByAccount_IdAndProviderMessageId(MailAccount.MailAccountId accountId, String providerMessageId);
 
@@ -74,6 +74,11 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
                 .map(row -> new SenderCount(row.getName(), row.getAddress(), row.getEmails()))
                 .toList();
     }
+
+    /** An owner's inbox emails from {@code address} (any case) received before {@code before}, newest first. */
+    @Query("select e from EmailMessage e where e.account.owner.id = :ownerId and lower(e.fromAddress) = lower(:address) "
+            + "and (e.folder is null or e.folder <> 'sent') and e.receivedAt < :before order by e.receivedAt desc")
+    List<EmailMessage> findFromSenderBefore(AppUser.AppUserId ownerId, String address, Instant before, Pageable pageable);
 
     /** All messages of one conversation in a mailbox (sent mail included), oldest first. */
     @Query("select e from EmailMessage e where e.account.id = :accountId and e.conversationId = :conversationId "

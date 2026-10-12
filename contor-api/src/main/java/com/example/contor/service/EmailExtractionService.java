@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 @Service
 public class EmailExtractionService implements ExtractionService {
 
-    public static final String PROMPT_VERSION = "extract-v5";
+    public static final String PROMPT_VERSION = "extract-v6";
 
     static final int MAX_BODY_CHARS = 8000;
     private static final String TASKS = "tasks";
@@ -69,7 +69,8 @@ public class EmailExtractionService implements ExtractionService {
             You find the relations between records extracted from one email of the user. Answer with JSON only.
             Return a relation only when the email clearly states how two of the listed items are related (for example a \
             person's employer in the signature, or who attends a meeting). Use the refs of the items and one of the \
-            listed relation types, from the item that the type's first collection describes. When unsure, return an empty list.""";
+            listed relation types, from the item that the type's first collection describes. List each relation once. \
+            reason: at most 12 words. When unsure, return an empty list.""";
 
     private static final String SYSTEM = """
             You are the assistant inside contor, a personal management app. You read one email of the user and \
@@ -335,7 +336,11 @@ public class EmailExtractionService implements ExtractionService {
                 prompt.append('\n');
             }
         }
-        return prompt.append('\n').append(emailText(email)).toString();
+        prompt.append('\n');
+        if (email.hasContext()) {
+            prompt.append(email.context().strip()).append("\n\n");
+        }
+        return prompt.append(emailText(email)).toString();
     }
 
     /** The email as the model reads it: sender, recipients, date with weekday, subject, body (truncated). */

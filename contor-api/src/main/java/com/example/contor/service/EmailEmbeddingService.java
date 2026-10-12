@@ -19,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -35,6 +38,8 @@ public class EmailEmbeddingService {
 
     static final String DOCUMENT_PREFIX = "search_document: ";
     private static final int BATCH_SIZE = 50;
+    /** Texts per model call in the backfill: batching halves the time per email, larger batches gain nothing more. */
+    private static final int EMBED_CHUNK = 16;
     /** nomic-embed-text reads 2048 tokens by default in Ollama; this stays safely inside (about 1000 tokens). */
     private static final int MAX_BODY_CHARS = 4000;
 
@@ -145,22 +150,55 @@ public class EmailEmbeddingService {
                 return true;
             }
             int stored = 0;
-            for (Long id : ids) {
+            for (int from = 0; from < ids.size(); from += EMBED_CHUNK) {
                 try {
-                    if (embedEmail(id)) {
-                        stored++;
-                    }
+                    stored += embedEmails(ids.subList(from, Math.min(from + EMBED_CHUNK, ids.size())), model);
                 } catch (OllamaException e) {
                     log.warn("Embedding backfill stopped, the embedding model is not available: {}", e.getMessage());
                     return false;
-                } catch (IllegalArgumentException e) {
-                    log.warn("Email {} could not be embedded: {}", id, e.getMessage());
                 }
             }
             if (stored == 0) {
                 return false;
             }
         }
+    }
+
+    /**
+     * Embeds the emails among {@code emailIds} that lack a vector of {@code model} with one model call; a vector of the
+     * wrong size skips only its email.
+     *
+     * @return how many vectors were stored
+     * @throws OllamaException the embedding model failed
+     */
+    private int embedEmails(List<Long> emailIds, String model) {
+        Map<Long, String> texts = transactions.execute(status -> {
+            Map<Long, String> byId = new LinkedHashMap<>();
+            for (Long id : emailIds) {
+                emailMessageRepository.findById(new EmailMessage.EmailMessageId(id))
+                        .filter(email -> !emailEmbeddingRepository.existsById(new EmailEmbedding.EmailEmbeddingId(id, model)))
+                        .ifPresent(email -> byId.put(id, documentText(email)));
+            }
+            return byId;
+        });
+        if (texts == null || texts.isEmpty()) {
+            return 0;
+        }
+        List<float[]> vectors = embeddingClient.embedAll(List.copyOf(texts.values()));
+        List<EmailEmbedding> embeddings = new ArrayList<>();
+        int index = 0;
+        for (Long id : texts.keySet()) {
+            float[] vector = vectors.get(index++);
+            if (vector.length != EmailEmbedding.DIMENSIONS) {
+                log.warn("Email {} could not be embedded: model {} returned {} dimensions", id, model, vector.length);
+                continue;
+            }
+            embeddings.add(EmailEmbedding.builder().id(new EmailEmbedding.EmailEmbeddingId(id, model)).embedding(vector).build());
+        }
+        if (!embeddings.isEmpty()) {
+            transactions.executeWithoutResult(status -> emailEmbeddingRepository.saveAllAndFlush(embeddings));
+        }
+        return embeddings.size();
     }
 
     /** Indexing progress of the signed-in user; empty without one (background callers). */

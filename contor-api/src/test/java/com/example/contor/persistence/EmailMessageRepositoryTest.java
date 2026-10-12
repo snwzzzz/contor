@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.List;
@@ -88,6 +89,76 @@ public class EmailMessageRepositoryTest {
 
         assertThat(recipients).containsExactly(new SenderCount("Anna Acme", "anna@acme.com", 2L), new SenderCount(null, "bob@acme.com", 1L));
         assertThat(emailMessageRepository.findRecipients(owner.getId(), "%\\%%", 10)).isEmpty();
+    }
+
+    @Test
+    void finds_summaries_of_one_owners_mail_as_a_page_newest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        message(mine, "1", "conv-a", "inbox", "2026-01-01T10:00:00Z");
+        var newest = message(mine, "2", "conv-b", "inbox", "2026-01-03T10:00:00Z");
+        message(mine, "3", "conv-a", "inbox", "2026-01-02T10:00:00Z");
+        message(foreign, "4", "conv-c", "inbox", "2026-01-04T10:00:00Z");
+        newest.setBodyText("long body");
+        newest.setSnippet("snippet");
+        newest.setRead(true);
+        newest.setProcessingState(ProcessingState.DONE);
+        emailMessageRepository.saveAndFlush(newest);
+
+        var page = emailMessageRepository.findSummaries(
+                EmailSpecifications.matching(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null)),
+                PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "receivedAt")));
+
+        assertThat(page.getTotalElements()).isEqualTo(3);
+        assertThat(page.getContent()).extracting(EmailSummary::conversationId).containsExactly("conv-b", "conv-a");
+        assertThat(page.getContent().getFirst()).isEqualTo(new EmailSummary(newest.getId().id(), mine.getId().id(), "conv-b",
+                "inbox", "shop@example.com", "Shop", List.of(new EmailRecipient("Me", "me@example.com")), "Your order has shipped",
+                "snippet", Instant.parse("2026-01-03T10:00:00Z"), true, false, ProcessingState.DONE));
+    }
+
+    @Test
+    void summaries_honour_the_search_filters() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var match = sender(mine, "1", "anna@acme.com", "Anna");
+        sender(mine, "2", "bob@other.example", "Bob");
+
+        var page = emailMessageRepository.findSummaries(EmailSpecifications.matching(
+                        new EmailSpecifications.Criteria(owner.getId(), null, null, null, "acme")),
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "receivedAt")));
+
+        assertThat(page.getContent()).extracting(EmailSummary::id).containsExactly(match.getId().id());
+        assertThat(page.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void finds_earlier_inbox_mail_from_a_sender_of_one_owner_newest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var older = from(mine, "1", "Anna@Acme.com", "2026-01-01T10:00:00Z");
+        var newer = from(mine, "2", "anna@acme.com", "2026-01-02T10:00:00Z");
+        from(mine, "3", "anna@acme.com", "2026-01-05T10:00:00Z");
+        from(mine, "4", "bob@acme.com", "2026-01-02T10:00:00Z");
+        from(foreign, "5", "anna@acme.com", "2026-01-02T10:00:00Z");
+        var sent = from(mine, "6", "anna@acme.com", "2026-01-02T11:00:00Z");
+        sent.setFolder("sent");
+        emailMessageRepository.saveAndFlush(sent);
+
+        var history = emailMessageRepository.findFromSenderBefore(owner.getId(), "ANNA@acme.com", Instant.parse("2026-01-04T00:00:00Z"),
+                PageRequest.of(0, 5));
+
+        assertThat(history).extracting(EmailMessage::getId).containsExactly(newer.getId(), older.getId());
+    }
+
+    private EmailMessage from(MailAccount account, String id, String address, String receivedAt) {
+        var email = Fixtures.email(account, id);
+        email.setFromAddress(address);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        return emailMessageRepository.saveAndFlush(email);
     }
 
     private void sentTo(MailAccount account, String id, EmailRecipient... recipients) {

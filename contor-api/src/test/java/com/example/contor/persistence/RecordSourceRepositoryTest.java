@@ -6,6 +6,8 @@ import com.example.contor.domain.RecordSourceRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RepositoryTest
@@ -41,5 +43,21 @@ public class RecordSourceRepositoryTest {
         assertThat(sources.get(0).getRole()).isEqualTo(RecordSourceRole.CREATED_FROM);
         assertThat(sources.get(0).getCreatedAt()).isNotNull();
         assertThat(recordSourceRepository.findByEmail_Id(email.getId())).hasSize(2);
+    }
+
+    @Test
+    void finds_the_sources_of_several_emails_at_once() {
+        var orders = collectionRepository.save(Fixtures.collection("orders"));
+        var account = mailAccountRepository.save(Fixtures.mailAccount(appUserRepository.save(Fixtures.user("owner")), "me@example.com"));
+        var first = emailMessageRepository.save(Fixtures.email(account, "AAMk-1"));
+        var second = emailMessageRepository.save(Fixtures.email(account, "AAMk-2"));
+        var other = emailMessageRepository.save(Fixtures.email(account, "AAMk-3"));
+        recordSourceRepository.save(RecordSource.builder().collection(orders).recordId(1L).email(first).role(RecordSourceRole.CREATED_FROM).build());
+        recordSourceRepository.save(RecordSource.builder().collection(orders).recordId(2L).email(second).role(RecordSourceRole.CREATED_FROM).build());
+        recordSourceRepository.save(RecordSource.builder().collection(orders).recordId(3L).email(other).role(RecordSourceRole.CREATED_FROM).build());
+
+        var sources = recordSourceRepository.findByEmail_IdIn(List.of(first.getId(), second.getId()));
+
+        assertThat(sources).extracting(RecordSource::getRecordId).containsExactlyInAnyOrder(1L, 2L);
     }
 }

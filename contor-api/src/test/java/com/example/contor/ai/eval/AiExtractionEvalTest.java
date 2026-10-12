@@ -1,5 +1,6 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.AiTimings;
 import com.example.contor.ai.OllamaClient;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
@@ -30,6 +31,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,7 +50,8 @@ import static org.mockito.Mockito.when;
  * run with {@code ./mvnw verify -Pai-eval}. Each case is analyzed as if processed right when it was received (so
  * "Friday" resolves from the mail date and no to-do counts as outdated).
  * <p>
- * System properties: {@code ai.eval.model} (default: the app default), {@code ai.eval.threshold} (default 0.05),
+ * System properties: {@code ai.eval.model} (default: the app default), {@code ai.eval.threshold} (default 0.05), {@code ai.eval.tolerance}
+ * (records per metric given the benefit of the doubt against run-to-run noise, default 1),
  * {@code ai.eval.baseline} (default {@code ../ai-eval/baseline.json}), {@code ai.eval.private} (default
  * {@code ../ai-eval/private}), {@code ai.eval.updateBaseline=true} to overwrite the baseline with this run.
  */
@@ -64,6 +67,7 @@ class AiExtractionEvalTest {
     void extraction_quality_does_not_regress_against_the_baseline() throws IOException {
         String model = System.getProperty("ai.eval.model", DEFAULT_MODEL);
         double threshold = Double.parseDouble(System.getProperty("ai.eval.threshold", "0.05"));
+        int tolerance = Integer.parseInt(System.getProperty("ai.eval.tolerance", "1"));
         Path baselineFile = Path.of(System.getProperty("ai.eval.baseline", "../ai-eval/baseline.json"));
         Path privateDir = Path.of(System.getProperty("ai.eval.private", "../ai-eval/private"));
 
@@ -71,7 +75,10 @@ class AiExtractionEvalTest {
                 new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(5), 16384, "30m"),
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
-        OllamaClient client = new OllamaClient(properties, mapper);
+        AiTimings timings = new AiTimings();
+        OllamaClient client = new OllamaClient(properties, mapper, timings);
+        List<AiTimings.Call> extractionCalls = new ArrayList<>();
+        List<AiTimings.Call> relationCalls = new ArrayList<>();
 
         List<EvalCase> cases = new ArrayList<>(EvalCaseLoader.loadClasspath("ai-eval/synthetic"));
         cases.addAll(EvalCaseLoader.load(privateDir));
@@ -96,8 +103,9 @@ class AiExtractionEvalTest {
             EmailExtractionService service = new EmailExtractionService(client, properties, mapper, TestFieldTypes.registry(),
                     recordService, proposalRepository, relationTypeService, relationService, Clock.fixed(evalCase.email().receivedAt(), ZONE));
             long start = System.nanoTime();
+            timings.begin(0L);
             try {
-                List<ProposalDraft> drafts = service.analyze(evalCase.email(), collections);
+                List<ProposalDraft> drafts = timings.stage("extract", () -> service.analyze(evalCase.email(), collections));
                 long millis = Duration.ofNanos(System.nanoTime() - start).toMillis();
                 results.add(new CaseResult(evalCase.id(),
                         drafts.stream().filter(draft -> draft.kind() != ProposalKind.CREATE_RELATION).map(draft -> produced(draft, slugById)).toList(),
@@ -105,7 +113,14 @@ class AiExtractionEvalTest {
             } catch (RuntimeException e) {
                 results.add(new CaseResult(evalCase.id(), List.of(), 0, e.getClass().getSimpleName() + ": " + e.getMessage()));
             }
+            timings.finish().ifPresent(report -> report.stages().forEach(stage -> {
+                // the first call reads the email, a second one (2+ records) asks for relations
+                List<AiTimings.Call> calls = stage.calls();
+                if (!calls.isEmpty()) extractionCalls.add(calls.getFirst());
+                if (calls.size() > 1) relationCalls.addAll(calls.subList(1, calls.size()));
+            }));
         }
+        System.out.println("[ai-eval] where the time goes – extraction: " + split(extractionCalls) + "; relations: " + split(relationCalls));
 
         EvalReport report = new EvalScorer(collections, undirected).score(model, EmailExtractionService.PROMPT_VERSION, cases, results);
         writeReports(report);
@@ -120,10 +135,26 @@ class AiExtractionEvalTest {
         }
         if (Files.exists(baselineFile)) {
             EvalReport baseline = mapper.readValue(baselineFile, EvalReport.class);
-            assertThat(BaselineComparison.regressions(report, baseline, threshold)).as("regressions against %s", baselineFile).isEmpty();
+            assertThat(BaselineComparison.regressions(report, baseline, threshold, tolerance)).as("regressions against %s", baselineFile).isEmpty();
         } else {
             System.out.println("[ai-eval] No baseline at " + baselineFile + "; run with -Dai.eval.updateBaseline=true to create it.");
         }
+    }
+
+    /** Totals and per-call averages of the model calls: tokens and time for loading, reading the prompt, writing the answer. */
+    private static String split(List<AiTimings.Call> calls) {
+        if (calls.isEmpty()) {
+            return "no calls";
+        }
+        long promptTokens = calls.stream().mapToLong(AiTimings.Call::promptTokens).sum();
+        long answerTokens = calls.stream().mapToLong(AiTimings.Call::answerTokens).sum();
+        Duration load = calls.stream().map(AiTimings.Call::load).reduce(Duration.ZERO, Duration::plus);
+        Duration prompt = calls.stream().map(AiTimings.Call::prompt).reduce(Duration.ZERO, Duration::plus);
+        Duration answer = calls.stream().map(AiTimings.Call::answer).reduce(Duration.ZERO, Duration::plus);
+        int n = calls.size();
+        return String.format(Locale.ROOT, "%d calls, per call %d→%d tokens, load %.2fs, prompt %.2fs, answer %.2fs (answer %.0f tok/s)",
+                n, promptTokens / n, answerTokens / n, load.toMillis() / 1000.0 / n, prompt.toMillis() / 1000.0 / n,
+                answer.toMillis() / 1000.0 / n, answer.isZero() ? 0.0 : answerTokens / (answer.toMillis() / 1000.0));
     }
 
     /** The relation drafts, with their {@code {"ref": x}} ends named by the collection and title of the draft with that ref. */
@@ -146,7 +177,7 @@ class AiExtractionEvalTest {
         return relations;
     }
 
-    private static ProducedRecord produced(ProposalDraft draft, Map<Long, String> slugById) {
+    static ProducedRecord produced(ProposalDraft draft, Map<Long, String> slugById) {
         Map<String, Object> payload = draft.payload();
         @SuppressWarnings("unchecked")
         Map<String, Object> values = payload.get("values") instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();

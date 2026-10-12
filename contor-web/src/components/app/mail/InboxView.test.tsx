@@ -389,6 +389,90 @@ describe("InboxView", () => {
     expect(requested[0]).toContain("domain=nologo.example");
   });
 
+  it("prefetches the conversation when the pointer rests on an email", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": { body: page([email(101, 1, "Project Update")], 1) },
+      "GET /api/emails/101/thread": { body: thread() },
+    });
+    renderWithProviders(<InboxView />);
+
+    await user.hover(await screen.findByText("Project Update"));
+
+    await waitFor(() => expect(calls.some((call) => call.path === "/api/emails/101/thread")).toBe(true));
+  });
+
+  it("does not prefetch emails the pointer only passes over", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": { body: page([email(101, 1, "Project Update")], 1) },
+    });
+    renderWithProviders(<InboxView />);
+    const row = await screen.findByText("Project Update");
+
+    await user.hover(row);
+    await user.unhover(row);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(calls.some((call) => call.path === "/api/emails/101/thread")).toBe(false);
+  });
+
+  it("prefetches the emails next to the one you open", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": { body: page([email(101, 1, "First"), email(102, 1, "Second"), email(103, 1, "Third")], 1) },
+      "GET /api/emails/101/thread": { body: thread() },
+      "GET /api/emails/102/thread": { body: thread() },
+      "GET /api/emails/103/thread": { body: thread() },
+    });
+    renderWithProviders(<InboxView />);
+
+    await user.click(await screen.findByText("Second"));
+
+    await waitFor(() => {
+      const paths = calls.map((call) => call.path);
+      expect(paths).toContain("/api/emails/101/thread");
+      expect(paths).toContain("/api/emails/103/thread");
+    });
+  });
+
+  it("shows sender and subject of the opened email at once while its conversation loads", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": { body: page([email(101, 1, "Project Update")], 1) },
+      "GET /api/emails/101/thread": () => new Promise(() => {}),
+    });
+    renderWithProviders(<InboxView />);
+
+    await user.click(await screen.findByText("Project Update"));
+
+    const pane = screen.getByRole("region", { name: "Email details" });
+    expect(within(pane).getByRole("heading", { name: "Project Update" })).toBeInTheDocument();
+    expect(within(pane).getByText("Alice")).toBeInTheDocument();
+    expect(within(pane).getByText("Here is the latest status...")).toBeInTheDocument();
+    expect(within(pane).getByText("Loading conversation…")).toBeInTheDocument();
+  });
+
+  it("keeps the current page visible while the next one loads", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": ({ url }) =>
+        url.searchParams.get("page") === "1" ? new Promise(() => {}) : { body: page([email(101, 1, "First page mail")], 3) },
+    });
+    renderWithProviders(<InboxView />);
+    await screen.findByText("First page mail");
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(screen.getByText("First page mail")).toBeInTheDocument();
+    expect(screen.queryByText("Loading emails…")).not.toBeInTheDocument();
+  });
+
   it("pages through all emails", async () => {
     const user = userEvent.setup();
     const requested: string[] = [];
@@ -433,6 +517,10 @@ function email(id: number, accountId: number, subject: string) {
     processingState: "NEW",
     labels: [],
   };
+}
+
+function thread() {
+  return { conversationId: "c", messages: [], replyDrafts: [], replySuggestion: "IDLE" };
 }
 
 function page(items: unknown[], totalPages: number) {

@@ -8,7 +8,23 @@ import java.util.List;
  *
  * @param mailbox address of the mailbox the email arrived in (the user), so the model does not file the user as a contact
  * @param body    plain text (HTML already stripped)
+ * @param context the user's other mail about this email, already rendered ({@link MailContextPrompt}); empty or
+ *                {@code null} when there is none
  */
 public record EmailContent(Long id, String mailbox, String fromName, String fromAddress, List<String> to, String subject,
-                           Instant receivedAt, String body) {
+                           Instant receivedAt, String body, String context) {
+
+    /** An email read on its own. */
+    public EmailContent(Long id, String mailbox, String fromName, String fromAddress, List<String> to, String subject,
+                        Instant receivedAt, String body) {
+        this(id, mailbox, fromName, fromAddress, to, subject, receivedAt, body, "");
+    }
+
+    public EmailContent withContext(String context) {
+        return new EmailContent(id, mailbox, fromName, fromAddress, to, subject, receivedAt, body, context);
+    }
+
+    public boolean hasContext() {
+        return context != null && !context.isBlank();
+    }
 }

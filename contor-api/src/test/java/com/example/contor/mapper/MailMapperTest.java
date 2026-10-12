@@ -17,6 +17,7 @@ import com.example.contor.domain.HexColor;
 import com.example.contor.domain.Label;
 import com.example.contor.domain.LabelSource;
 import com.example.contor.domain.MailAccount;
+import com.example.contor.persistence.EmailSummary;
 import com.example.contor.domain.MailAccountStatus;
 import com.example.contor.domain.MailProvider;
 import com.example.contor.domain.ProcessingState;
@@ -90,7 +91,7 @@ public class MailMapperTest {
 
     @Test
     void maps_email_summary_without_bodies() {
-        EmailSummaryDto dto = MailMapper.toSummaryDto(email(), List.of(label()));
+        EmailSummaryDto dto = MailMapper.toSummaryDto(EmailSummary.of(email()), List.of(label()));
 
         assertEquals(5L, dto.getId());
         assertEquals(2L, dto.getAccountId());
@@ -104,7 +105,7 @@ public class MailMapperTest {
 
     @Test
     void maps_the_to_recipients_of_a_summary() {
-        EmailSummaryDto dto = MailMapper.toSummaryDto(email(), List.of());
+        EmailSummaryDto dto = MailMapper.toSummaryDto(EmailSummary.of(email()), List.of());
 
         assertEquals(1, dto.getToRecipients().size());
         assertEquals("me@example.com", dto.getToRecipients().get(0).getAddress());
@@ -112,8 +113,8 @@ public class MailMapperTest {
 
     @Test
     void maps_thread_size_and_answered_of_a_summary() {
-        EmailSummaryDto threaded = MailMapper.toSummaryDto(email(), List.of(), 3, true, ReplyMarker.DRAFT_READY);
-        EmailSummaryDto alone = MailMapper.toSummaryDto(email(), List.of());
+        EmailSummaryDto threaded = MailMapper.toSummaryDto(EmailSummary.of(email()), List.of(), 3, true, ReplyMarker.DRAFT_READY);
+        EmailSummaryDto alone = MailMapper.toSummaryDto(EmailSummary.of(email()), List.of());
 
         assertEquals(3, threaded.getThreadSize());
         assertTrue(threaded.getAnswered());
@@ -140,11 +141,12 @@ public class MailMapperTest {
         assertNull(MailMapper.toDto((MailAccount) null));
         assertNull(MailMapper.toDto((EmailMessage) null, List.of()));
         assertNull(MailMapper.toSummaryDto(null, List.of()));
+        assertNull(EmailSummary.of(null));
     }
 
     @Test
     void handles_null_id_and_account() {
-        var dto = MailMapper.toSummaryDto(EmailMessage.builder().build(), List.of());
+        var dto = MailMapper.toSummaryDto(EmailSummary.of(EmailMessage.builder().build()), List.of());
 
         assertNull(dto.getId());
         assertNull(dto.getAccountId());

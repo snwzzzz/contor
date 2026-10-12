@@ -84,4 +84,41 @@ class BaselineComparisonTest {
         assertThat(BaselineComparison.regressions(worse, with, 0.05)).hasSize(2).allSatisfy(message -> assertThat(message).contains("relations."));
         assertThat(BaselineComparison.regressions(worse, BASELINE, 0.05)).isEmpty();
     }
+    private static EvalReport counts(int expected, int produced, int truePositives, int datesCorrect, int datesTotal, int nothingWithOutput) {
+        return new EvalReport("m", "p", 10, 0,
+                Map.of("tasks", new EvalReport.CollectionScore(expected, produced, truePositives,
+                        produced == 0 ? null : (double) truePositives / produced, (double) truePositives / expected)),
+                Map.of(), new EvalReport.FieldScore(9, 10, 0.9), new EvalReport.FieldScore(datesCorrect, datesTotal, (double) datesCorrect / datesTotal),
+                new EvalReport.FalsePositives(11, nothingWithOutput, nothingWithOutput / 11.0), 0, new EvalReport.Latency(1, 1));
+    }
+
+    @Test
+    void with_a_tolerance_of_one_record_a_single_flipped_record_is_not_a_regression() {
+        // the run-to-run noise seen on an unchanged prompt: tasks 5/7 → 4/7 precision, 5/13 → 4/13 recall
+        EvalReport baseline = counts(13, 7, 5, 9, 24, 2);
+        EvalReport oneRecordWorse = counts(13, 7, 4, 8, 24, 3);
+
+        assertThat(BaselineComparison.regressions(oneRecordWorse, baseline, 0.05)).isNotEmpty();
+        assertThat(BaselineComparison.regressions(oneRecordWorse, baseline, 0.05, 1)).isEmpty();
+    }
+
+    @Test
+    void with_a_tolerance_of_one_record_a_real_drop_is_still_a_regression() {
+        // compact JSON: events recall 6/12 → 3/12, dates 9/24 → 3/24
+        EvalReport baseline = counts(12, 15, 6, 9, 24, 2);
+        EvalReport worse = counts(12, 13, 3, 3, 24, 2);
+
+        assertThat(BaselineComparison.regressions(worse, baseline, 0.05, 1))
+                .anySatisfy(message -> assertThat(message).contains("tasks.recall").contains("one record"))
+                .anySatisfy(message -> assertThat(message).contains("dates.accuracy"));
+    }
+
+    @Test
+    void the_tolerance_also_covers_one_more_false_positive_mail_and_one_fewer_produced_record() {
+        EvalReport baseline = counts(13, 6, 4, 9, 24, 2);
+        // one more "nothing" mail with output; one more wrong record produced (precision 4/6 → 4/7)
+        EvalReport noisy = counts(13, 7, 4, 9, 24, 3);
+
+        assertThat(BaselineComparison.regressions(noisy, baseline, 0.05, 1)).isEmpty();
+    }
 }

@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -105,6 +107,10 @@ class MailServiceTest {
     private static MailAccount account(long ownerId) {
         return MailAccount.builder().id(new MailAccount.MailAccountId(2L)).owner(AppUser.builder().id(new AppUser.AppUserId(ownerId)).build())
                 .provider(MailProvider.MICROSOFT_GRAPH).emailAddress(new Email("me@example.com")).status(MailAccountStatus.ACTIVE).build();
+    }
+
+    private static Page<EmailSummary> summaries(Pageable pageable, long total, EmailMessage... emails) {
+        return new PageImpl<>(Arrays.stream(emails).map(EmailSummary::of).toList(), pageable, total);
     }
 
     private static EmailMessage email(long ownerId) {
@@ -236,7 +242,7 @@ class MailServiceTest {
     @Test
     void listEmails_NewestFirstWithLabels() {
         var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
-        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
+        when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, email(1L)));
         labelled();
 
         EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, null);
@@ -253,7 +259,7 @@ class MailServiceTest {
         var sent = email(1L);
         sent.setFolder("sent");
         sent.setConversationId("conv-1");
-        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(sent), pageable, 1));
+        when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, sent));
         when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
                 new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-09T10:00:00Z"))));
         labelled();
@@ -313,7 +319,7 @@ class MailServiceTest {
         when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of(
                 RecordSource.builder().email(EmailMessage.builder().id(new EmailMessage.EmailMessageId(31L)).build()).build()));
         var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
-        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
+        when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, email(1L)));
         labelled();
 
         EmailPageDto page = mailService.listRecordEmails(1L, 5L, null, null);
@@ -332,7 +338,7 @@ class MailServiceTest {
         EmailPageDto page = mailService.listRecordEmails(1L, 5L, 0, 10);
 
         assertEquals(0L, page.getTotalElements());
-        verify(emailMessageRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(emailMessageRepository, never()).findSummaries(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -406,7 +412,7 @@ class MailServiceTest {
                 .subject("Other").receivedAt(Instant.parse("2026-01-02T10:00:00Z")).build();
         var plain = EmailMessage.builder().id(new EmailMessage.EmailMessageId(7L)).account(account(1L)).providerMessageId("AAMm")
                 .subject("Plain").receivedAt(Instant.parse("2026-01-03T10:00:00Z")).build();
-        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(suggested, kept, plain), pageable, 3));
+        when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 3, suggested, kept, plain));
         when(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(eq(ProposalKind.DRAFT_REPLY), eq(ProposalStatus.PENDING), any()))
                 .thenReturn(List.of(Proposal.builder().sourceEmail(suggested).build()));
         when(replyDraftRepository.findEmailIdsWithStatus(List.of(5L, 6L, 7L), ReplyDraftStatus.READY)).thenReturn(List.of(6L));
@@ -442,7 +448,7 @@ class MailServiceTest {
         var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
         var threaded = email(1L);
         threaded.setConversationId("conv-1");
-        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(threaded), pageable, 1));
+        when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, threaded));
         when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
                 new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-02T10:00:00Z"))));
         labelled();

@@ -6,6 +6,7 @@ import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { AppButton } from "@/components/app/AppButton";
 import { useGetEmailThread } from "@/lib/api/generated/endpoints/mail/mail";
 import type { EmailDto } from "@/lib/api/generated/model/emailDto";
+import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto";
 import { cn } from "@/lib/utils";
 import { ThreadReplies } from "@/components/app/replies/ThreadReplies";
 import { EmailBody, Recipients } from "./EmailReader";
@@ -17,6 +18,8 @@ const WHEN = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric"
 interface EmailThreadProps {
   /** The email the conversation is shown for; its message and the newest one start expanded. */
   emailId: number;
+  /** The email's list row, shown at once while the conversation loads. */
+  preview?: EmailSummaryDto;
   /** Sender picture URL for an address (contact photo or domain logo). */
   picture: (address: string | undefined) => string | undefined;
 }
@@ -27,7 +30,7 @@ interface EmailThreadProps {
  * only the history below it scrolls, so messages vanish under the subject. Fills the height of its container. The email itself and the newest message
  * are open, earlier ones are one line until clicked. Use `key={emailId}` to start over for another email.
  */
-export function EmailThread({ emailId, picture }: EmailThreadProps) {
+export function EmailThread({ emailId, preview, picture }: EmailThreadProps) {
   // While the assistant writes a reply on demand, look again every few seconds.
   const { data, isLoading, error } = useGetEmailThread(emailId, {
     query: { refetchInterval: (query) => (query.state.data?.replySuggestion === "RUNNING" ? SUGGESTION_POLL_MS : false) },
@@ -36,7 +39,9 @@ export function EmailThread({ emailId, picture }: EmailThreadProps) {
   const [allOpen, setAllOpen] = useState(false);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading conversation…</p>;
+    return preview ? <ThreadPreview email={preview} picture={picture(preview.fromAddress)} /> : (
+      <p className="text-sm text-muted-foreground">Loading conversation…</p>
+    );
   }
   if (error || !data) {
     return <ErrorMessage message={error?.message ?? "The conversation could not be loaded."} />;
@@ -82,6 +87,32 @@ export function EmailThread({ emailId, picture }: EmailThreadProps) {
           <ThreadReplies emailId={emailId} thread={data} />
         </li>
       </ol>
+    </section>
+  );
+}
+
+/** The list row's data in the reading pane's layout until the conversation arrived. */
+function ThreadPreview({ email, picture }: { email: EmailSummaryDto; picture: string | undefined }) {
+  const own = email.folder === "sent";
+  const sender = own ? "You" : email.fromName || email.fromAddress || "Unknown sender";
+  return (
+    <section aria-label="Conversation" aria-busy="true" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <header className="flex shrink-0 items-center rounded-lg border bg-card px-5 py-3.5 shadow-xs">
+        <h2 className="text-lg leading-snug font-semibold tracking-tight">{email.subject || "(No subject)"}</h2>
+      </header>
+      <article className="flex shrink-0 items-start gap-3 rounded-lg border border-primary/40 bg-card px-5 py-3.5 shadow-xs">
+        <PictureAvatar label={sender} src={own ? undefined : picture} size={40} className="self-start" />
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="truncate text-sm font-medium">{sender}</span>
+            <time dateTime={email.receivedAt} className="shrink-0 text-xs text-muted-foreground">
+              {WHEN.format(new Date(email.receivedAt))}
+            </time>
+          </span>
+          {email.snippet ? <span className="line-clamp-2 text-xs text-muted-foreground">{email.snippet}</span> : null}
+          <span className="mt-2 text-xs text-muted-foreground">Loading conversation…</span>
+        </span>
+      </article>
     </section>
   );
 }

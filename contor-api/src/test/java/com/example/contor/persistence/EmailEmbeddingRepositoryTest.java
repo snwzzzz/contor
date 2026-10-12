@@ -2,8 +2,13 @@ package com.example.contor.persistence;
 
 import com.example.contor.RepositoryTest;
 import com.example.contor.domain.EmailEmbedding;
+import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.MailAccount;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -78,5 +83,62 @@ public class EmailEmbeddingRepositoryTest {
         emailEmbeddingRepository.flush();
 
         assertThat(emailEmbeddingRepository.findById_EmailId(email.getId().id())).extracting(found -> found.getId().model()).containsExactly("nomic");
+    }
+    private EmailMessage received(MailAccount account, String id, String receivedAt) {
+        var email = Fixtures.email(account, id);
+        email.setReceivedAt(Instant.parse(receivedAt));
+        return emailMessageRepository.save(email);
+    }
+
+    /** A unit vector pointing mostly along the first axis, tilted by {@code tilt} along the second. */
+    private EmailEmbedding vector(EmailMessage email, String model, float tilt) {
+        var vector = new float[EmailEmbedding.DIMENSIONS];
+        vector[0] = 1f;
+        vector[1] = tilt;
+        return EmailEmbedding.builder().id(new EmailEmbedding.EmailEmbeddingId(email.getId().id(), model)).embedding(vector).build();
+    }
+
+    @Test
+    void finds_the_nearest_inbox_mail_of_the_same_owner_closest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var query = received(mine, "q", "2026-06-01T10:00:00Z");
+        var closest = received(mine, "a", "2026-05-01T10:00:00Z");
+        var close = received(mine, "b", "2026-05-02T10:00:00Z");
+        var far = received(mine, "c", "2026-05-03T10:00:00Z");
+        var old = received(mine, "d", "2025-01-01T10:00:00Z");
+        var sent = Fixtures.email(mine, "e");
+        sent.setFolder("sent");
+        sent = emailMessageRepository.save(sent);
+        var foreign = received(theirs, "f", "2026-05-04T10:00:00Z");
+        var otherModel = received(mine, "g", "2026-05-05T10:00:00Z");
+        emailEmbeddingRepository.saveAll(List.of(vector(query, "nomic", 0f), vector(closest, "nomic", 0.1f), vector(close, "nomic", 0.3f),
+                vector(far, "nomic", 5f), vector(old, "nomic", 0f), vector(sent, "nomic", 0f), vector(foreign, "nomic", 0f),
+                vector(otherModel, "old-model", 0f)));
+        emailEmbeddingRepository.flush();
+
+        var nearest = emailEmbeddingRepository.findNearest(owner.getId(), query.getId().id(), "nomic",
+                Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-06-01T10:00:00Z"), 0.25, 10);
+
+        assertThat(nearest).extracting(NearEmail::emailId).containsExactly(closest.getId().id(), close.getId().id());
+        assertThat(nearest.getFirst().distance()).isLessThan(nearest.get(1).distance());
+        assertThat(emailEmbeddingRepository.findNearest(owner.getId(), query.getId().id(), "nomic",
+                Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-06-01T10:00:00Z"), 0.25, 1)).hasSize(1);
+    }
+
+    @Test
+    void finds_nothing_for_an_email_without_a_vector_or_of_another_owner() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var query = received(mine, "q", "2026-06-01T10:00:00Z");
+        var neighbour = received(mine, "a", "2026-05-01T10:00:00Z");
+        emailEmbeddingRepository.saveAndFlush(vector(neighbour, "nomic", 0f));
+
+        assertThat(emailEmbeddingRepository.findNearest(owner.getId(), query.getId().id(), "nomic", Instant.EPOCH, Instant.parse("2027-01-01T00:00:00Z"), 1.0, 5)).isEmpty();
+        emailEmbeddingRepository.saveAndFlush(vector(query, "nomic", 0f));
+        assertThat(emailEmbeddingRepository.findNearest(other.getId(), query.getId().id(), "nomic", Instant.EPOCH, Instant.parse("2027-01-01T00:00:00Z"), 1.0, 5)).isEmpty();
     }
 }

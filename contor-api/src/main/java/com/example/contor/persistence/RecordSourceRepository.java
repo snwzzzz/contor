@@ -14,4 +14,6 @@ public interface RecordSourceRepository extends JpaRepository<RecordSource, Long
     List<RecordSource> findByCollection_IdAndRecordId(Collection.CollectionId collectionId, Long recordId);
 
     List<RecordSource> findByEmail_Id(EmailMessage.EmailMessageId emailId);
+
+    List<RecordSource> findByEmail_IdIn(List<EmailMessage.EmailMessageId> emailIds);
 }
