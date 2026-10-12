@@ -1,8 +1,8 @@
 # contor
 
-Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, and later an Outlook inbox sync with a local Ollama model proposing actions.
+Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
 
-> **Status: Phase 1, step 6 (frontend shell).** Backend API complete (security, collection engine, labels, rules, relations, proposals, saved queries, read-only mail). Frontend: first-run setup, login/logout, app shell with sidebar, top bar and command palette, light/dark theme. The collection UI and TOTP 2FA follow in the next steps.
+> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent).
 
 ## Repository layout
 
@@ -20,7 +20,7 @@ Personal, self-hosted management platform: dynamic collections (Deliveries, Orde
 - Java 21 (no Maven install needed, use `./mvnw`)
 - Node.js 24+ and npm 11+
 - Docker (Docker Desktop or compatible): Postgres for dev, Testcontainers for backend tests
-- Later phases: Ollama running natively on the host (it must stay bound to localhost)
+- [Ollama](https://ollama.com) running natively on the host (bound to localhost, the default) for the AI assistant; see *Local AI*
 
 Optional, faster backend tests: let Testcontainers reuse the Postgres container between runs:
 
@@ -103,7 +103,7 @@ With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAM
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
-- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions (later: 2FA).
+- Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
 
@@ -124,9 +124,119 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 
 - Creating a collection, adding and archiving fields is OWNER-only. Each change runs the generated DDL, bumps the collection's `schema_version`, and writes `collection_schema_change` and the audit log in one transaction.
 - Archived fields are hidden and read-only; their column and data stay.
-- Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`).
-- On first start contor seeds the system collections **People** and **Organizations** and the relation types `works_at` (People → Organizations, inverse `employs`) and `knows` (People ↔ People).
+- Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`); `?q=` searches the title and every text-like field case-insensitively.
+- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: a full-width banner in the dominant color of its picture, the picture itself (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
+- On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
+
+## Local AI (Ollama)
+
+The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and
+extraction (one resident model, reliable JSON, German and English) plus `nomic-embed-text`; details and alternatives in
+`docs/decisions/0007-local-ai-with-ollama.md`.
+
+```bash
+ollama pull qwen3.5:9b
+```
+
+```bash
+ollama pull nomic-embed-text
+```
+
+(Or use the *Download missing models* button in the setup wizard.) Then open the app and click **Set up AI** in the top
+bar (or Settings → AI Models). The wizard walks through:
+
+1. **Welcome** – what the assistant does; nothing leaves the machine.
+2. **Model** – checks that Ollama runs and the models are installed, downloads missing ones.
+3. **Permissions** – read the mailboxes (off until you allow it), how far back (30/90/365 days or everything), and
+   *Off / Ask me / Automatic* for new categories, contacts & records, calendar and to-dos, and *Off / Ask me* for
+   **reply drafts** (default off; there is no *Automatic*: drafts are never sent).
+4. **Start** – saves the permissions and starts the analysis.
+5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
+   each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
+
+- *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
+  actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject, filterable by kind; the cards of a row have the same height; a click opens the **detail sidebar** with every value, a before/after view for updates, the full reasoning, model/prompt version and the email it came from, and approve/reject there; record proposals can be edited there before approving (*Edit*: inputs of the collection's fields, sent as the edited payload → `EDITED_AND_APPROVED`)). Findings open the same sidebar (Keep/Dismiss, editable too). Proposal, finding and to-do cards share one hover (primary border, shadow; `lib/card-hover.ts`). *Automatic* applies
+  them directly (audited; if applying fails the proposal waits for review instead).
+- **Relations**: besides records, the assistant proposes relations between them ("Anna works at Acme", using the existing relation types such as *works at*). They appear as findings nested under the record they start from (relations between records that already exist are listed on their own, grouped by relation type with *Keep all* / *Dismiss all*, and filterable as *Connections*) and can only be kept once the records they connect are decided; dismissing a record dismisses its pending relations. With *Automatic* for records they are created as soon as their records exist. The record's Connections tab describes each one in a sentence with its attributes, period and whether it was found in an email; AI-created relations carry a small bot badge there. Relations follow the *contacts & records* permission.
+- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: click a day for its agenda and to add an event, click an event to open it) and **Tasks**
+  (`/tasks`: a To do / In progress / Done board with fixed-height columns that scroll on their own; drag cards between and within columns (a slot with the whole card opens where it will land, at the pointer; the order is kept per to-do in `extra.boardPosition`, to-dos never moved come first by deadline; the drag logic is the reusable `components/app/board/KanbanBoard`); cards show the deadline relative to today; a click opens the **detail sidebar** where title, deadline, priority and notes are editable (explicit *Save*, only changed fields are sent; the form is built from the collection's fields, so new fields show up without code), with Start / Mark done, the emails it came from and *Delete*; closing with unsaved changes asks first); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
+- Dates: every extraction call gets today's date, weekday and your time zone (`AI_TIMEZONE`); relative dates in a mail
+  ("Friday", "by Thursday") are resolved from the date the mail was sent. To-dos whose deadline already passed are
+  dropped (old mail in the first analysis), past calendar events are kept as history.
+- Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
+  for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
+- **Search index:** every inbox email gets a vector (`nomic-embed-text`) for semantic search, made from subject, sender and the cleaned body (no quoted history or signature; ADR 0008). New mail is embedded right after its analysis; mail that already exists, and all mail after a change of `AI_MODEL_EMBEDDING`, is embedded in the background shortly after start and then every processing interval. Progress shows under Settings → AI Models and in `GET /api/ai/status` (`embeddings`). The old model's vectors are removed once the new ones are complete.
+- **Reply drafts** (`replies = SUGGEST`, `docs/replies-plan.md`): after an inbox email was analyzed, cheap rules skip mail
+  that needs no answer from you (your own mail, no-reply/notification senders, automated texts, mail where you are only
+  in Cc, conversations you already answered or that have a newer email, mail older than 14 days); a short triage call
+  then decides whether it needs a reply, and the model writes a draft in the language and tone of the thread, grounded
+  in the thread (your own sent messages marked as yours) and your records (the sender's contact and organization,
+  upcoming appointments and open to-dos that mention them). It never invents facts: what you must decide is a
+  `[placeholder]`. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
+  **Edit & keep** opens the editor (*Keep* waits until every placeholder is filled in, *Keep anyway* does not), *Dismiss*
+  rejects it. A kept draft shows in the thread as *Draft — not sent* with **Copy** and **Open in mail app** (`mailto:`,
+  only when short enough) — **nothing is ever sent or written to your mailbox**. A pending draft is rejected
+  automatically after a sync when you answered in Outlook or a newer email arrived (audited as `PROPOSAL_SUPERSEDED`).
+  A failed draft never fails the email; the thread offers **Suggest a reply** to ask for one on demand. Inbox rows show
+  *Reply suggested* / *Draft ready*.
+- Permissions can be changed any time under Settings → Autonomy; *Analyze inbox again* lives under Settings → AI Models.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/ai/status`, `POST /api/ai/models/pull` | Ollama reachable? models installed? download missing (OWNER) |
+| `GET/PUT /api/ai/settings` | the current user's permissions (PUT OWNER; `completeOnboarding` ends the wizard) |
+| `POST /api/ai/analysis`, `GET /api/ai/analysis/latest`, `POST /api/ai/analysis/{id}/continue\|cancel` | inbox analysis runs (mutations OWNER) |
+| `GET /api/ai/eval/export?emailIds=` | OWNER: your emails with their applied/rejected record proposals as eval cases (see *AI evaluation*) |
+| `POST /api/emails/{id}/reply-suggestion` | ask for a reply draft for one of your emails now (202; runs on the AI thread, the thread's `replySuggestion` shows RUNNING/FAILED; 409 when reply drafts are off) |
+| `PATCH /api/reply-drafts/{id}`, `POST /api/reply-drafts/{id}/discard` | edit or discard a kept draft (your mailboxes only; 404 otherwise) |
+
+### AI evaluation
+
+Every change to the prompts, the model or the extraction is judged with a repeatable score instead of a feeling.
+`AiExtractionEvalTest` (`@Tag("ai-eval")`, excluded from `./mvnw test`) runs `EmailExtractionService` against the real local
+Ollama over a labelled corpus with a fixed schema (the seeded system collections plus *orders*, *invoices*, *subscriptions*,
+*applications*) and scores:
+
+- record **precision and recall** per collection (match by match key, else similar title) and for **relations** (found when both records were extracted and the same relation type connects them),
+- **field accuracy** per field (normalized: dates and time zones, money, phone numbers, case/accents),
+- **date correctness** of events and to-dos (the dates of missed records count as wrong),
+- the **false-positive rate** on mails that should produce nothing, records that must never be produced, and **latency** p50/p95.
+
+```bash
+cd contor-api && ./mvnw verify -Pai-eval
+```
+
+Needs Ollama with the extraction model running; about 6 minutes for 49 mails on an RTX 3060. Relations are extracted in a second, short call (only for mails with two or more extracted records): listing relation types in the extraction prompt itself made the model invent organizations and events just to relate them (measured with this eval: 31 instead of 12 organizations). Each case is analyzed as if
+processed when it was received, so "Friday" resolves from the mail date. The report goes to
+`contor-api/target/ai-eval/report-<model>-<promptVersion>.json` and `.md`. The run is compared with the committed
+`ai-eval/baseline.json` and **fails when a quality metric drops by more than the threshold** (default 0.05, absolute;
+latency never fails a run).
+
+| Option | Meaning |
+|---|---|
+| `-Dai.eval.model=<name>` | model to evaluate (default `qwen3.5:9b`) |
+| `-Dai.eval.threshold=0.1` | allowed drop per metric |
+| `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
+| `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
+
+**Cases** are JSON files: `{id, email: {mailbox, fromName, fromAddress, to, subject, receivedAt, body}, expected: {records: {<collection slug>: [{title, values}]}, relations: []}, mustNotProduce: [{collection, title?}]}`;
+`values` lists only the fields worth checking. The 49 synthetic German/English cases live in
+`contor-api/src/test/resources/ai-eval/synthetic/` (a plain unit test, `SyntheticCorpusTest`, validates them against the eval
+schema). To add one, add a JSON file there. Dates in synthetic mails are relative to `receivedAt`; mind the time-zone offset
+(Europe/Berlin: +02:00 until 25 Oct 2026, then +01:00).
+
+**Real mail (private corpus).** Cases built from your own mail go into `ai-eval/private/` at the repo root; that folder is
+git-ignored and **must never be committed or shared**. To label real cases: correct the findings of an email in the UI (edit,
+approve, reject), call `GET /api/ai/eval/export?emailIds=12&emailIds=13` as the owner (e.g. from the Swagger UI in the dev
+profile) and save each case of the response as a `.json` file in `ai-eval/private/`. Applied proposals (with your corrections)
+become `expected`, rejected ones `mustNotProduce`. The private cases are scored together with the synthetic ones.
+
+**Reply triage.** `AiReplyTriageEvalTest` (same profile) scores which emails would get a reply draft (candidate rules,
+then the triage call) as **precision/recall** against the optional `needsReply` label of each case: the synthetic corpus,
+the reply cases in `contor-api/src/test/resources/ai-eval/replies/` and your private cases (add `"needsReply": true|false`
+by hand). It prints the score and the wrongly decided cases; `-Dai.eval.reply.minPrecision=0.8` /
+`-Dai.eval.reply.minRecall=0.8` turn it into a gate. The drafts themselves are judged by reading them.
 
 ## Other resources (API overview)
 
@@ -135,9 +245,9 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 | Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
 | Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
-| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; CREATE_RECORD / UPDATE_RECORD can be applied in phase 1 |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, CREATE_COLLECTION (OWNER) and DRAFT_REPLY (keeps a reply draft, never sends) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`) |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account |
+| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
@@ -160,6 +270,9 @@ To change the API: edit the spec, regenerate both sides, then implement. See `do
 ```bash
 # Backend: unit, slice and integration tests (Docker must be running)
 cd contor-api && ./mvnw test
+
+# Backend: extraction quality against the real local Ollama (not part of the default run; see "AI evaluation")
+cd contor-api && ./mvnw verify -Pai-eval
 
 # Frontend: unit/component tests, lint, type check
 cd contor-web && npm test && npm run lint && npm run typecheck
@@ -194,10 +307,17 @@ All variables are listed in `.env.example`.
 | `APP_SECURE_COOKIES` | backend | `false` | add `Secure` to session and CSRF cookies; set `true` when served over HTTPS |
 | `APP_SESSION_IDLE_TIMEOUT` | backend | `30m` | session idle timeout |
 | `APP_SESSION_ABSOLUTE_TIMEOUT` | backend | `12h` | maximum session lifetime regardless of activity |
-| `OLLAMA_BASE_URL` | backend | `http://127.0.0.1:11434` | local Ollama (not called in phase 1; must stay on localhost) |
-| `AI_MODEL_ROUTING` | backend | `qwen3:4b` | small model that classifies emails (next phase) |
-| `AI_MODEL_EXTRACTION` | backend | `qwen3:14b` | model that drafts proposals (next phase) |
-| `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions (next phase) |
+| `OLLAMA_BASE_URL` | backend | `http://127.0.0.1:11434` | local Ollama; must be localhost/127.0.0.1/::1 (the backend refuses to start otherwise) |
+| `OLLAMA_TIMEOUT` | backend | `5m` | read timeout of one model call |
+| `OLLAMA_NUM_CTX` | backend | `16384` | context window in tokens (more needs more VRAM; changing it reloads the model) |
+| `OLLAMA_KEEP_ALIVE` | backend | `30m` | how long Ollama keeps the model loaded after a call |
+| `AI_MODEL_ROUTING` | backend | `qwen3.5:9b` | model for category discovery |
+| `AI_MODEL_EXTRACTION` | backend | `qwen3.5:9b` | model that reads each email and drafts records (same model = no swapping on 12 GB) |
+| `AI_MODEL_EMBEDDING` | backend | `nomic-embed-text` | embedding model, 768 dimensions |
+| `AI_TIMEZONE` | backend | `Europe/Berlin` | time zone local times in emails are read in ("Friday 9:00") |
+| `AI_PROCESSING_ENABLED` | backend | `true` | analyze new mail in the background after the AI setup |
+| `AI_PROCESSING_INTERVAL` | backend | `2m` | pause between background passes |
+| `AI_PROCESSING_BATCH_SIZE` | backend | `20` | emails per user and pass |
 | `MSGRAPH_CLIENT_ID` | backend | – | Azure app registration client ID |
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
@@ -223,9 +343,11 @@ The UI is built so a visual redesign does not touch pages or data logic:
 
 Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and command palette). `npm run screenshots` captures before/after images.
 
+The sidebar can be resized (drag its right edge, or focus the edge and use the arrow keys; double-click collapses it) and collections can be reordered (drag them, or focus a collection's grip and press Alt+↑/↓). Both are per-browser preferences in `localStorage` (`contor.sidebar.width`, `contor.sidebar.collectionOrder`), never stored on the server. The primary color is blue (buttons, tabs, progress, focus rings, current page); otherwise color comes from `success`/`info`/`warning`, ten tints (`--tint-1..10`: same lightness and chroma, only the hue changes; collections by id, Calendar and To-dos in their section colors, records in their own color so a collection's banners differ) and their vivid variants for the sidebar icons, all in `src/styles/tokens.css`. The command palette hint shows ⌘K on macOS/iOS and Ctrl K elsewhere. Scrollbars are thin everywhere (`globals.css`).
+
 ## Notes
 
 - Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.
-- Ollama is not part of compose; it runs natively for GPU access and must stay on localhost.
+- Ollama is not part of compose; it runs natively for GPU access and must stay on localhost (enforced by the backend).

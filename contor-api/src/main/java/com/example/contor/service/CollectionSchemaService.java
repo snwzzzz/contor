@@ -82,13 +82,19 @@ public class CollectionSchemaService {
 
     @Transactional
     public CollectionDto createCollection(NewCollectionCommand command) {
-        return create(command, false);
+        return create(command, false, CreatedBy.USER);
     }
 
-    /** Collections contor ships with (People, Organizations). */
+    /** Collections contor ships with (People, Organizations, Events, Tasks). */
     @Transactional
     public CollectionDto createSystemCollection(NewCollectionCommand command) {
-        return create(command, true);
+        return create(command, true, CreatedBy.USER);
+    }
+
+    /** Collections the AI discovered in the inbox (applied CREATE_COLLECTION proposals or AUTO permission). */
+    @Transactional
+    public CollectionDto createAiCollection(NewCollectionCommand command) {
+        return create(command, false, CreatedBy.AI);
     }
 
     @Transactional
@@ -178,7 +184,7 @@ public class CollectionSchemaService {
         return CollectionMapper.toDto(collection);
     }
 
-    private CollectionDto create(NewCollectionCommand command, boolean system) {
+    private CollectionDto create(NewCollectionCommand command, boolean system, CreatedBy createdBy) {
         Slug slug = new Slug(command.getSlug());
         String tableName = DynamicNames.tableName(slug);
         if (collectionRepository.existsBySlug(slug) || collectionRepository.existsByTableName(tableName)) {
@@ -208,7 +214,7 @@ public class CollectionSchemaService {
                 .matchKeys(new ArrayList<>(matchKeys))
                 .displayConfig(displayConfig)
                 .schemaVersion(1)
-                .createdBy(CreatedBy.USER)
+                .createdBy(createdBy)
                 .fields(new ArrayList<>())
                 .build());
 

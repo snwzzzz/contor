@@ -2,8 +2,9 @@ package com.example.contor.ai;
 
 import tools.jackson.databind.JsonNode;
 
-/** Local LLM (Ollama, next phase) constrained to answer with JSON matching {@code jsonSchema}. */
+/** Local LLM (Ollama) constrained to answer with JSON matching {@code jsonSchema}. */
 public interface LlmClient {
 
-    String completeJson(String systemPrompt, String userPrompt, JsonNode jsonSchema);
+    /** Returns the raw JSON answer of {@code model}; throws {@link OllamaException} when the call fails. */
+    String completeJson(String model, String systemPrompt, String userPrompt, JsonNode jsonSchema);
 }

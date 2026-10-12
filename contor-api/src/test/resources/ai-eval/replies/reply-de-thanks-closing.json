@@ -1,0 +1,15 @@
+{
+  "id": "reply-de-thanks-closing",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Sabine Roth",
+    "fromAddress": "sabine.roth@gmx.at",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Re: Unterlagen",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hallo Alex,\nvielen Dank für die Unterlagen, damit ist alles erledigt. Schönes Wochenende!\nSabine"
+  }
+}

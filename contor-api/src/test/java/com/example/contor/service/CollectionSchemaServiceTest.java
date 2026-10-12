@@ -11,6 +11,7 @@ import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.CollectionSchemaChange;
 import com.example.contor.domain.CreatedBy;
+import com.example.contor.api.model.Creator;
 import com.example.contor.domain.DisplayConfig;
 import com.example.contor.domain.FieldType;
 import com.example.contor.domain.Slug;
@@ -141,6 +142,15 @@ class CollectionSchemaServiceTest {
         CollectionDto result = service.createSystemCollection(new NewCollectionCommand("people", "People"));
 
         assertTrue(result.getSystem());
+    }
+
+    @Test
+    void createAiCollection_MarkedAsCreatedByAi() {
+        CollectionDto result = service.createAiCollection(new NewCollectionCommand("job_applications", "Job applications"));
+
+        assertEquals(Creator.AI, result.getCreatedBy());
+        assertFalse(result.getSystem());
+        verify(collectionRepository).saveAndFlush(argThat(c -> c.getCreatedBy() == CreatedBy.AI));
     }
 
     @Test

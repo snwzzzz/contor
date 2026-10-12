@@ -32,7 +32,7 @@ public class UpdateRecordApplier implements ProposalApplier {
     }
 
     @Override
-    public void apply(Proposal proposal) {
+    public Map<String, Object> apply(Proposal proposal) {
         Map<String, Object> payload = proposal.getFinalPayload();
         Long collectionId = ProposalPayload.requiredId(payload, "collectionId");
         Long recordId = ProposalPayload.requiredId(payload, "recordId");
@@ -52,5 +52,6 @@ public class UpdateRecordApplier implements ProposalApplier {
                     .role(RecordSourceRole.UPDATED_FROM)
                     .build());
         }
+        return Map.of("collectionId", collectionId, "recordId", recordId);
     }
 }

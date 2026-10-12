@@ -18,6 +18,7 @@ import {
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
 import { ALL_NAV, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
+import { shortcutLabel, useIsApplePlatform } from "@/lib/platform";
 
 /** ⌘K / Ctrl+K: jump to any section or collection, switch theme, log out. One instance lives in the top bar. */
 export function CommandPalette() {
@@ -27,6 +28,7 @@ export function CommandPalette() {
   const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
   const { data: collections } = useListCollections({ query: { enabled: open } });
+  const apple = useIsApplePlatform();
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -54,7 +56,7 @@ export function CommandPalette() {
       <AppButton variant="outline" className="w-56 justify-start text-muted-foreground" onClick={() => setOpen(true)}>
         <Search aria-hidden="true" data-icon="inline-start" />
         <span>Search or jump to…</span>
-        <kbd className="ml-auto rounded border bg-muted px-1.5 font-mono text-[10px]">⌘K</kbd>
+        <kbd className="ml-auto rounded border bg-muted px-1.5 font-mono text-[10px]">{shortcutLabel("K", apple)}</kbd>
       </AppButton>
       <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Jump to a page or collection, or run an action">
         <Command>

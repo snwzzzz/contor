@@ -1,0 +1,30 @@
+{
+  "id": "person-en-personal",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Jonas Weber",
+    "fromAddress": "jonas.weber@gmail-mail.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Hello from Zurich",
+    "receivedAt": "2026-10-09T19:00:00Z",
+    "body": "Hey Alex, long time no see! I moved to Zurich and started working as an architect. My new number is +41 79 555 01 22 – call me when you are around.\nJonas"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Jonas Weber",
+          "values": {
+            "email": "jonas.weber@gmail-mail.com",
+            "phone": "+41795550122",
+            "role_title": "Architect"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

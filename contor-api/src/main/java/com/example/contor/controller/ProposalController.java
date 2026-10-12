@@ -4,6 +4,7 @@ import com.example.contor.api.ProposalsApi;
 import com.example.contor.api.model.DecideProposalCommand;
 import com.example.contor.api.model.ProposalCountDto;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.service.ProposalService;
@@ -18,13 +19,13 @@ public class ProposalController implements ProposalsApi {
     private final ProposalService proposalService;
 
     @Override
-    public ResponseEntity<ProposalPageDto> listProposals(ProposalState status, Integer page, Integer size) {
-        return ResponseEntity.ok(proposalService.listProposals(status, page, size));
+    public ResponseEntity<ProposalPageDto> listProposals(ProposalState status, ProposalGroup group, Integer page, Integer size) {
+        return ResponseEntity.ok(proposalService.listProposals(status, group, page, size));
     }
 
     @Override
-    public ResponseEntity<ProposalCountDto> countProposals(ProposalState status) {
-        return ResponseEntity.ok(proposalService.countProposals(status));
+    public ResponseEntity<ProposalCountDto> countProposals(ProposalState status, ProposalGroup group) {
+        return ResponseEntity.ok(proposalService.countProposals(status, group));
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.microsoft.graph.models.Recipient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,6 +42,9 @@ class MailSyncServiceTest {
 
     @Mock
     private ContactPhotoRepository contactPhotoRepository;
+
+    @Mock
+    private ReplyLifecycleService replyLifecycleService;
 
     @InjectMocks
     private MailSyncService mailSyncService;
@@ -198,5 +202,116 @@ class MailSyncServiceTest {
         assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
         assertThat(account.getContactsCheckedAt()).isNotNull();
         verify(contactPhotoRepository, never()).deleteByAccount_Id(any());
+    }
+
+    private static Message sentMessage(String id, OffsetDateTime sentAt) {
+        var message = new Message();
+        message.setId(id);
+        message.setSubject("Re: Interview");
+        message.setSentDateTime(sentAt);
+        message.setReceivedDateTime(sentAt.plusSeconds(5));
+        message.setConversationId("conv-1");
+        var recipient = new Recipient();
+        var address = new EmailAddress();
+        address.setAddress("anna@acme.com");
+        address.setName("Anna");
+        recipient.setEmailAddress(address);
+        message.setToRecipients(List.of(recipient));
+        var body = new com.microsoft.graph.models.ItemBody();
+        body.setContentType(com.microsoft.graph.models.BodyType.Text);
+        body.setContent("Thanks, Friday works.");
+        message.setBody(body);
+        return message;
+    }
+
+    private void emptyInbox() {
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "inbox-delta"));
+    }
+
+    @Test
+    void syncAccount_StoresSentItemsAsSentFolderAndKeepsThemOutOfTheAiQueue() {
+        emptyInbox();
+        var sentAt = OffsetDateTime.parse("2026-10-07T09:00:00Z");
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(sentMessage("s1", sentAt)), null, "sent-delta-1"));
+        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "s1")).thenReturn(Optional.empty());
+
+        mailSyncService.syncAccount(account);
+
+        var saved = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailMessageRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getFolder()).isEqualTo("sent");
+        assertThat(saved.getValue().getProcessingState()).isEqualTo(ProcessingState.SKIPPED);
+        assertThat(saved.getValue().getReceivedAt()).isEqualTo(sentAt.toInstant());
+        assertThat(saved.getValue().isRead()).isTrue();
+        assertThat(saved.getValue().getConversationId()).isEqualTo("conv-1");
+        assertThat(saved.getValue().getToRecipients()).extracting(EmailRecipient::address).containsExactly("anna@acme.com");
+        assertThat(account.getSentDeltaLink()).isEqualTo("sent-delta-1");
+        assertThat(account.getDeltaLink()).isEqualTo("inbox-delta");
+    }
+
+    @Test
+    void syncAccount_InboxMessagesStayInTheInboxFolderAndAreQueuedForTheAi() {
+        var message = new Message();
+        message.setId("m1");
+        message.setReceivedDateTime(OffsetDateTime.now());
+        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(message), null, "delta"));
+        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "m1")).thenReturn(Optional.empty());
+
+        mailSyncService.syncAccount(account);
+
+        var saved = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailMessageRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getFolder()).isEqualTo("inbox");
+        assertThat(saved.getValue().getProcessingState()).isEqualTo(ProcessingState.NEW);
+    }
+
+    @Test
+    void syncAccount_RetiresReplyDraftsOvertakenByTheSyncedMail() {
+        emptyInbox();
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "sent-delta"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(replyLifecycleService).retireOvertaken(account.getId());
+    }
+
+    @Test
+    void syncAccount_SentItemsDoNotCountTowardsTheSyncedMessages() {
+        emptyInbox();
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null)).thenReturn(new MsGraphMailService.DeltaResult(
+                List.of(sentMessage("s1", OffsetDateTime.parse("2026-10-07T09:00:00Z"))), null, "sent-delta"));
+        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(any(), any())).thenReturn(Optional.empty());
+
+        assertThat(mailSyncService.syncAccount(account).getMessagesSynced()).isZero();
+    }
+
+    @Test
+    void syncAccount_AFailingSentSyncDoesNotFailTheInboxSync() {
+        emptyInbox();
+        when(msGraphMailService.fetchSentMessagesDelta(eq("valid-token"), any())).thenThrow(new IllegalStateException("403 Forbidden"));
+
+        var status = mailSyncService.syncAccount(account);
+
+        assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
+        assertThat(status.getLastError()).isNull();
+        assertThat(account.getDeltaLink()).isEqualTo("inbox-delta");
+        assertThat(account.getSentDeltaLink()).isNull();
+    }
+
+    @Test
+    void syncAccount_ExpiredSentDeltaLinkIsResetAndSyncedFromScratch() {
+        emptyInbox();
+        account.setSentDeltaLink("stale");
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", "stale")).thenThrow(new IllegalStateException("410 Gone"));
+        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
+                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "fresh"));
+
+        mailSyncService.syncAccount(account);
+
+        assertThat(account.getSentDeltaLink()).isEqualTo("fresh");
     }
 }

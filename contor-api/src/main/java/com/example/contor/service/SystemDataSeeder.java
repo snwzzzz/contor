@@ -18,8 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Seeds the system collections (People, Organizations) and relation types (works_at, knows) through the services on
- * startup. Idempotent: anything that already exists is left alone.
+ * Seeds the system collections (People, Organizations, and the assistant's own calendar and to-do list: Events,
+ * Tasks) and relation types (works_at, knows, attends) through the services on startup. Idempotent: anything that
+ * already exists is left alone.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -34,10 +35,15 @@ public class SystemDataSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         Map<String, Long> createdIds = new HashMap<>();
-        seedCollection(people(), createdIds);
-        seedCollection(organizations(), createdIds);
+        systemCollections().forEach(command -> seedCollection(command, createdIds));
         seedRelationType("works_at", "works at", "employs", "people", "organizations", true, createdIds);
         seedRelationType("knows", "knows", "knows", "people", "people", false, createdIds);
+        seedRelationType("attends", "attends", "attended by", "people", "events", true, createdIds);
+    }
+
+    /** The system collection definitions (also used by the AI evaluation to build its fixed schema). */
+    public static List<NewCollectionCommand> systemCollections() {
+        return List.of(people(), organizations(), events(), tasks());
     }
 
     private void seedCollection(NewCollectionCommand command, Map<String, Long> createdIds) {
@@ -92,5 +98,34 @@ public class SystemDataSeeder implements ApplicationRunner {
                         field("domain", "Domain", CollectionFieldType.TEXT, "Email/web domain, e.g. example.com"),
                         field("website", "Website", CollectionFieldType.URL, "Website URL"),
                         field("notes", "Notes", CollectionFieldType.LONG_TEXT, "Free-form notes")));
+    }
+
+    /** The assistant's calendar: appointments, meetings, deadlines and trips found in mail. Title = what happens. */
+    private static NewCollectionCommand events() {
+        return new NewCollectionCommand("events", "Calendar")
+                .description("Appointments, meetings, deadlines, bookings and trips. The title says what happens.")
+                .icon("calendar")
+                .displayConfig(new DisplayConfigDto().defaultView("calendar").calendarDateField("starts_at"))
+                .fields(List.of(
+                        field("starts_at", "Starts", CollectionFieldType.DATETIME, "Start date and time (ISO-8601 with offset)").required(true),
+                        field("ends_at", "Ends", CollectionFieldType.DATETIME, "End date and time, if known"),
+                        field("all_day", "All day", CollectionFieldType.BOOLEAN, "true when the event has no time of day"),
+                        field("location", "Location", CollectionFieldType.TEXT, "Address, room or video call link"),
+                        field("notes", "Notes", CollectionFieldType.LONG_TEXT, "Details, agenda, booking codes")));
+    }
+
+    /** The assistant's to-do list: things the user has to do, found in mail. Title = the action. */
+    private static NewCollectionCommand tasks() {
+        return new NewCollectionCommand("tasks", "To-dos")
+                .description("Things you have to do: reply, pay, sign, send, prepare. The title is the action to take.")
+                .icon("check-square")
+                .displayConfig(new DisplayConfigDto().defaultView("list").kanbanStatusField("state"))
+                .fields(List.of(
+                        field("state", "State", CollectionFieldType.STATUS, "open, in_progress or done")
+                                .options(Map.of("states", List.of("open", "in_progress", "done"))),
+                        field("due_date", "Due", CollectionFieldType.DATE, "Deadline (YYYY-MM-DD), if any"),
+                        field("priority", "Priority", CollectionFieldType.ENUM, "low, normal or high")
+                                .options(Map.of("values", List.of("low", "normal", "high"))),
+                        field("notes", "Notes", CollectionFieldType.LONG_TEXT, "Details and context")));
     }
 }

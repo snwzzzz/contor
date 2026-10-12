@@ -1,0 +1,44 @@
+{
+  "id": "invoice-de-reminder",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Müller & Partner Steuerberatung",
+    "fromAddress": "buchhaltung@mueller-partner.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Zahlungserinnerung Rechnung R-2026-044",
+    "receivedAt": "2026-10-12T09:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\nzu unserer Rechnung R-2026-044 über 450,00 EUR liegt uns bis heute kein Zahlungseingang vor. Bitte begleichen Sie den offenen Betrag bis spätestens Freitag, den 16.10.2026."
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Müller & Partner Rechnung R-2026-044",
+          "values": {
+            "invoice_number": "R-2026-044",
+            "issuer": "Müller & Partner Steuerberatung",
+            "amount": {
+              "amount": 450.0,
+              "currency": "EUR"
+            },
+            "due_date": "2026-10-16",
+            "state": "open"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung R-2026-044 bezahlen",
+          "values": {
+            "due_date": "2026-10-16"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -1,0 +1,27 @@
+{
+  "id": "nothing-en-security",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Account Security",
+    "fromAddress": "no-reply@accounts.example-id.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "New sign-in to your account",
+    "receivedAt": "2026-10-07T21:10:00Z",
+    "body": "We noticed a new sign-in to your account from a Windows device in Vienna. If this was you, you don't need to do anything."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

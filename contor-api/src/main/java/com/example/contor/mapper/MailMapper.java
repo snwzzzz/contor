@@ -9,6 +9,7 @@ import com.example.contor.api.model.MailAccountDto;
 import com.example.contor.api.model.MailAccountState;
 import com.example.contor.api.model.MailProviderKind;
 import com.example.contor.api.model.RecipientDto;
+import com.example.contor.api.model.ReplyMarker;
 import com.example.contor.domain.EmailLabel;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.EmailRecipient;
@@ -47,6 +48,16 @@ public class MailMapper {
     }
 
     public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels) {
+        return toSummaryDto(email, labels, 1, false, null);
+    }
+
+    /**
+     * @param threadSize messages of the conversation, sent ones included
+     * @param answered   the user replied after it
+     * @param replyState the assistant's reply for it (pending suggestion or kept draft), {@code null} when none
+     */
+    public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels, int threadSize, boolean answered,
+                                               ReplyMarker replyState) {
         if (email == null) return null;
 
         return new EmailSummaryDto()
@@ -56,13 +67,17 @@ public class MailMapper {
                 .folder(email.getFolder())
                 .fromAddress(email.getFromAddress())
                 .fromName(email.getFromName())
+                .toRecipients(recipients(email.getToRecipients()))
                 .subject(email.getSubject())
                 .snippet(email.getSnippet())
                 .receivedAt(MapperSupport.toOffset(email.getReceivedAt()))
                 .read(email.isRead())
                 .hasAttachments(email.isHasAttachments())
                 .processingState(email.getProcessingState() != null ? EmailProcessingState.valueOf(email.getProcessingState().name()) : null)
-                .labels(new ArrayList<>(labels));
+                .labels(new ArrayList<>(labels))
+                .threadSize(threadSize)
+                .answered(answered)
+                .replyState(replyState);
     }
 
     public static EmailDto toDto(EmailMessage email, List<EmailLabelDto> labels) {

@@ -71,4 +71,13 @@ class UpdateRecordApplierTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("payload.recordId is required");
         verifyNoInteractions(recordService);
     }
+
+    @Test
+    void returns_the_updated_record_as_result() {
+        when(recordService.updateRecord(eq(1L), eq(5L), any())).thenReturn(new RecordDto().id(5L).collectionId(1L));
+
+        var result = applier.apply(proposal(Map.of("collectionId", 1, "recordId", 5, "values", Map.of()), null));
+
+        assertThat(result).containsEntry("collectionId", 1L).containsEntry("recordId", 5L);
+    }
 }

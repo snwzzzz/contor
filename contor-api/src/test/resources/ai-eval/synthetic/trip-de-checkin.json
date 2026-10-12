@@ -1,0 +1,37 @@
+{
+  "id": "trip-de-checkin",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Eurowings Reisen",
+    "fromAddress": "checkin@flug-reise.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Online-Check-in jetzt möglich",
+    "receivedAt": "2026-10-22T05:00:00Z",
+    "body": "Der Online-Check-in für Ihren Flug EW 8812 nach Palma am Freitag, 23.10.2026 um 14:05 Uhr ist geöffnet. Bitte checken Sie bis spätestens 2 Stunden vor Abflug ein."
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Flug nach Palma",
+          "values": {
+            "starts_at": "2026-10-23T14:05:00+02:00"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Online-Check-in für Flug EW 8812",
+          "values": {
+            "due_date": "2026-10-23"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

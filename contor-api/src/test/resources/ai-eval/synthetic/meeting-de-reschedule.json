@@ -1,0 +1,49 @@
+{
+  "id": "meeting-de-reschedule",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Sabine Roth",
+    "fromAddress": "sabine.roth@kreativ-agentur.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Terminverschiebung",
+    "receivedAt": "2026-10-13T08:15:00Z",
+    "body": "Hallo Alex,\nleider muss ich unseren Termin am Donnerstag verschieben. Passt es dir stattdessen am Freitag um 16:00 Uhr? Gib mir bitte kurz Bescheid.\nLiebe Grüße\nSabine"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Sabine Roth",
+          "values": {
+            "email": "sabine.roth@kreativ-agentur.de"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Termin mit Sabine Roth",
+          "values": {
+            "starts_at": "2026-10-16T16:00:00+02:00"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Sabine Roth wegen neuem Termin antworten",
+          "values": {}
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Sabine Roth",
+        "to": "events:Termin mit Sabine Roth"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

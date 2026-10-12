@@ -71,6 +71,11 @@ public class SenderPhotoService {
         List<SenderDomain> due = domains.stream().filter(domain -> isDue(logos.get(domain), now)).toList();
         if (!due.isEmpty()) {
             Map<SenderDomain, Optional<ImageData>> fetched = fetchAll(due);
+            // Fetching took a while: a concurrent request may have cached some of these domains meanwhile. Take the
+            // write lock and re-read, so such rows are updated instead of inserted twice (uq_sender_logo_domain).
+            senderLogoRepository.lockWrites();
+            senderLogoRepository.findByDomainIn(fetched.keySet())
+                    .forEach(existing -> logos.put(existing.getDomain(), existing));
             List<SenderLogo> changed = new ArrayList<>();
             fetched.forEach((domain, image) -> {
                 SenderLogo logo = logos.computeIfAbsent(domain, d -> SenderLogo.builder().domain(d).build());

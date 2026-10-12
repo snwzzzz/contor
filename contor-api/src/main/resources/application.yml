@@ -79,13 +79,24 @@ app:
     key-version: ${APP_ENCRYPTION_KEY_VERSION:1}
   version: '@project.version@'
   ai:
-    # Ollama runs natively on the host (GPU) and must stay bound to localhost. Not called in phase 1.
+    # Ollama runs natively on the host (GPU) and must stay bound to localhost (the app refuses other hosts).
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+      timeout: ${OLLAMA_TIMEOUT:5m}
+      num-ctx: ${OLLAMA_NUM_CTX:16384}
+      keep-alive: ${OLLAMA_KEEP_ALIVE:30m}
+    # One model for routing and extraction (fits a 12 GB GPU next to the embedding model, no model swapping).
     models:
-      routing: ${AI_MODEL_ROUTING:qwen3:4b}
-      extraction: ${AI_MODEL_EXTRACTION:qwen3:14b}
+      routing: ${AI_MODEL_ROUTING:qwen3.5:9b}
+      extraction: ${AI_MODEL_EXTRACTION:qwen3.5:9b}
       embedding: ${AI_MODEL_EMBEDDING:nomic-embed-text}
+    # Time zone local times in emails are read in ("Friday 9:00"); the JVM itself runs in UTC.
+    timezone: ${AI_TIMEZONE:Europe/Berlin}
+    # Background analysis of new mail for users who completed the AI setup.
+    processing:
+      enabled: ${AI_PROCESSING_ENABLED:true}
+      interval: ${AI_PROCESSING_INTERVAL:2m}
+      batch-size: ${AI_PROCESSING_BATCH_SIZE:20}
   security:
     secure-cookies: ${APP_SECURE_COOKIES:false}
     session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}

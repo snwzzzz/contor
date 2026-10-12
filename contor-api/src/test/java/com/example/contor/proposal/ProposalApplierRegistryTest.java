@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -16,7 +17,8 @@ class ProposalApplierRegistryTest {
 
     private record FakeApplier(ProposalKind kind) implements ProposalApplier {
         @Override
-        public void apply(Proposal proposal) {
+        public Map<String, Object> apply(Proposal proposal) {
+            return Map.of();
         }
     }
 

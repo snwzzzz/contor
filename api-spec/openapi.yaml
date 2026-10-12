@@ -44,6 +44,10 @@ tags:
     description: Local development only (backend `dev` profile); these paths do not exist otherwise
   - name: Senders
     description: Pictures of mail senders (sender domain logos, Outlook contact photos)
+  - name: AI
+    description: Local Ollama assistant - model status, permissions (setup wizard) and inbox analysis runs
+  - name: ReplyDrafts
+    description: Reply drafts the assistant wrote for inbox emails. Nothing is ever sent or written to the mailbox.
 paths:
   /api/system/version:
     get:
@@ -394,6 +398,13 @@ paths:
               type: string
           style: form
           explode: true
+        - name: q
+          in: query
+          required: false
+          description: Global search, case-insensitive, in the title and every text-like field (text, long text, email, URL, phone, enum, status); AND-combined with `filter`.
+          schema:
+            type: string
+            maxLength: 200
         - name: sort
           in: query
           required: false
@@ -522,6 +533,37 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/collections/{collectionId}/records/{recordId}/emails:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Records]
+      operationId: listRecordEmails
+      summary: Emails of the current user's mailboxes in which the record comes up, newest first
+      description: |
+        An email belongs to a record when the record was created or updated from it (record source), when it was sent
+        from one of the record's EMAIL field addresses, or when its sender address is at the record's domain (a field
+        named `domain`, or the host of a URL field).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of emails (summaries without bodies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailPageDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/labels:
     get:
       tags: [Labels]
@@ -941,6 +983,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -965,6 +1012,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
       responses:
         '200':
           description: The count
@@ -1002,7 +1054,9 @@ paths:
       description: |
         APPROVE applies the proposal (status APPROVED, or EDITED_AND_APPROVED when `payload` is given). If applying
         fails validation the proposal stays PENDING and the error is returned (400), so it can be edited and retried.
-        Proposal kinds without an applier yet return 409.
+        Proposal kinds without an applier yet return 409. A proposal that depends on other proposals (e.g. a relation
+        needs its two records) can only be approved once they are applied (409 before). REJECT also rejects the pending
+        proposals that depend on it. Approving a dependency applies the dependents that were waiting for AUTO.
       requestBody:
         required: true
         content:
@@ -1397,10 +1451,30 @@ paths:
         - name: q
           in: query
           required: false
-          description: Case-insensitive search in subject, sender address and sender name
+          description: Case-insensitive search text, matched in the parts named by `field`
           schema:
             type: string
             maxLength: 200
+        - name: field
+          in: query
+          required: false
+          description: Where `q` is searched (default ALL)
+          schema:
+            $ref: '#/components/schemas/EmailSearchField'
+        - name: answered
+          in: query
+          required: false
+          description: >
+            true: only emails the user already answered (a newer sent message in the same conversation);
+            false: only emails not answered yet; omitted: all. Ignored for the SENT folder.
+          schema:
+            type: boolean
+        - name: folder
+          in: query
+          required: false
+          description: INBOX (default) or SENT (the user's own sent mail, Sent Items)
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1414,6 +1488,136 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/emails/suggestions:
+    get:
+      tags: [Mail]
+      operationId: suggestEmailSenders
+      summary: Senders (people) and sender companies (domains) of the current user's inbox matching a prefix of the search box
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - name: folder
+          in: query
+          required: false
+          description: SENT suggests the people you wrote to (recipients of your sent mail) instead of senders
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
+
+      responses:
+        '200':
+          description: Most frequent matching people first, then companies; at most a handful of each
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailSuggestionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails/{emailId}/thread:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmailThread
+      summary: The conversation an email belongs to, in its mailbox, the user's own replies (Sent Items) included
+      responses:
+        '200':
+          description: |
+            The messages of the conversation, oldest first (just the email itself when it has no conversation), with
+            the assistant's reply drafts for it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailThreadDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}/reply-suggestion:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [ReplyDrafts]
+      operationId: suggestReply
+      summary: Ask the assistant for a reply draft to this email (on demand, in the background)
+      description: |
+        Queues one draft call on the AI thread; the candidate rules and the triage call are skipped because you asked.
+        The result is a pending DRAFT_REPLY proposal (it replaces an older pending one of the conversation). Poll
+        `GET /api/emails/{emailId}/thread` (`replySuggestion` RUNNING, then IDLE or FAILED). 409 when mail access or
+        reply drafts are turned off in the AI settings, or when the email is one of your own sent messages.
+      responses:
+        '202':
+          description: Queued
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    patch:
+      tags: [ReplyDrafts]
+      operationId: updateReplyDraft
+      summary: Edit a kept reply draft (partial update)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReplyDraftCommand'
+      responses:
+        '200':
+          description: The updated draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}/discard:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    post:
+      tags: [ReplyDrafts]
+      operationId: discardReplyDraft
+      summary: Discard a kept reply draft (it disappears from the thread)
+      responses:
+        '200':
+          description: The discarded draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/emails/{emailId}:
     parameters:
       - name: emailId
@@ -1438,8 +1642,199 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/ai/status:
+    get:
+      tags: [AI]
+      operationId: getAiStatus
+      summary: Whether the local Ollama is reachable and the configured models are installed
+      responses:
+        '200':
+          description: Current status (never fails when Ollama is down; `reachable` is false then)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/ai/models/pull:
+    post:
+      tags: [AI]
+      operationId: pullAiModels
+      summary: Start downloading every configured model that is not installed yet (background). OWNER only.
+      responses:
+        '202':
+          description: Downloads started; poll GET /api/ai/status for progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/settings:
+    get:
+      tags: [AI]
+      operationId: getAiSettings
+      summary: The current user's AI permissions (defaults until the setup wizard saved them)
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [AI]
+      operationId: updateAiSettings
+      summary: Change AI permissions (partial update). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAiSettingsCommand'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/ai/analysis:
+    post:
+      tags: [AI]
+      operationId: startAnalysis
+      summary: Start the inbox analysis (discovery, then extraction) in the background. OWNER only.
+      description: |
+        409 when a run is already active, mail access is not granted, or the models are not ready.
+      responses:
+        '201':
+          description: The queued run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/analysis/latest:
+    get:
+      tags: [AI]
+      operationId: getLatestAnalysis
+      summary: The current user's most recent analysis run
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/ai/analysis/{runId}/continue:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: continueAnalysis
+      summary: Continue a run waiting for the review of discovered categories (starts extraction). OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/analysis/{runId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: cancelAnalysis
+      summary: Stop an active run after the email currently being analyzed. OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/ai/eval/export:
+    get:
+      tags: [AI]
+      operationId: exportEvalCases
+      summary: Export emails with their decided AI proposals as extraction eval cases. OWNER only.
+      description: |
+        For each of the owner's own emails: the email as the extraction model sees it, `expected` built from the
+        proposals that were applied (CREATE_RECORD, using the final payload, i.e. including the user's corrections),
+        and `mustNotProduce` from the rejected CREATE_RECORD proposals. Correct the findings in the UI, export, and
+        save the result as JSON files in the git-ignored `ai-eval/private/` folder. Emails of other users are skipped.
+      parameters:
+        - name: emailIds
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items:
+              type: integer
+              format: int64
+      responses:
+        '200':
+          description: One case per found email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalCaseExportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
   parameters:
+    AnalysisRunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     LabelId:
       name: labelId
       in: path
@@ -1470,6 +1865,13 @@ components:
         format: int64
     ProposalId:
       name: proposalId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ReplyDraftId:
+      name: replyDraftId
       in: path
       required: true
       schema:
@@ -1713,7 +2115,7 @@ components:
           type: string
         system:
           type: boolean
-          description: Seeded by contor (People, Organizations)
+          description: Seeded by contor (People, Organizations, Events, Tasks)
         matchKeys:
           type: array
           description: Field slugs used to recognise an existing record
@@ -2162,12 +2564,35 @@ components:
       description: |
         What a proposal does when applied. Payloads (phase 1 appliers):
         CREATE_RECORD `{"collectionId": 1, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
-        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}`.
+        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
+        CREATE_COLLECTION: a NewCollectionCommand (`{"slug", "name", "description", "icon", "matchKeys", "displayConfig",
+        "fields": [..]}`), created with createdBy AI; OWNER only ·
+        CREATE_RELATION `{"relationTypeId": 3, "from": END, "to": END}` where END is `{"collectionId": 1, "recordId": 5}`
+        (an existing record) or `{"proposalId": 21}` (the record that proposal created, read from its `result`; the
+        proposal is a dependency, so the relation can only be approved once it is applied). Validated like a manual
+        relation (type collections, records exist); created as AI with the source email and the proposal's confidence;
+        an identical existing relation is a no-op (the proposal is applied and its result names the existing relation).
+        DRAFT_REPLY `{"emailId": 8, "accountId": 1, "conversationId": "..", "to": [{"name": "..", "address": ".."}],
+        "cc": [..], "subject": "Re: ..", "body": "plain text", "language": "de", "placeholders": ["[available times]"]}`:
+        a reply the assistant wrote for the source email (`to` = its sender, `cc` = its Cc without your own addresses;
+        `placeholders` are the `[...]` parts you still have to fill in). Approving keeps it as a reply draft (never
+        sent, nothing is written to the mailbox); it needs `to` and `body`, and the email must be in your mailboxes.
+        A pending draft is rejected automatically when you answer in Outlook or a newer email arrives in the conversation.
+        Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
+        CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
+        a proposal the system rejected carries `{"reason"}`.
         Other kinds are stored but cannot be applied yet.
       enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
     ProposalState:
       type: string
       enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
+    ProposalGroup:
+      type: string
+      description: |
+        FINDINGS: data the AI extracted (CREATE_RECORD / UPDATE_RECORD in any collection except the assistant's
+        calendar `events` and to-dos `tasks`). ACTIONS: everything else – things the AI proposes to do (calendar
+        entries, to-dos, new categories, reply drafts, later labels).
+      enum: [ACTIONS, FINDINGS]
     ProposalDecision:
       type: string
       enum: [APPROVE, REJECT]
@@ -2307,6 +2732,37 @@ components:
     EmailProcessingState:
       type: string
       enum: [NEW, QUEUED, PROCESSING, DONE, FAILED, SKIPPED]
+    EmailFolder:
+      type: string
+      description: >
+        INBOX: received mail; SENT: the user's own sent mail. Sent mail is shown and searched, never analyzed by the
+        assistant.
+      enum: [INBOX, SENT]
+    EmailSearchField:
+      type: string
+      description: >
+        ALL: subject, sender, recipients and body; SUBJECT: subject only; PEOPLE: sender name/address and
+        recipients (to, cc); CONTENT: body and preview text.
+      enum: [ALL, SUBJECT, PEOPLE, CONTENT]
+    EmailSuggestionKind:
+      type: string
+      description: PERSON is one sender address; COMPANY is a sender domain (free-mail domains are left out).
+      enum: [PERSON, COMPANY]
+    EmailSuggestionDto:
+      type: object
+      required: [kind, label, value, emailCount]
+      properties:
+        kind:
+          $ref: '#/components/schemas/EmailSuggestionKind'
+        label:
+          type: string
+          description: Display name (sender name, else the address; the domain for a company)
+        value:
+          type: string
+          description: What to search with field=PEOPLE (the address, or `@domain` for a company)
+        emailCount:
+          type: integer
+          format: int64
     MailAccountDto:
       type: object
       required: [id, provider, emailAddress, status]
@@ -2415,6 +2871,11 @@ components:
           type: string
         fromName:
           type: string
+        toRecipients:
+          type: array
+          description: The To recipients (the list of a sent email shows them instead of the sender)
+          items:
+            $ref: '#/components/schemas/RecipientDto'
         subject:
           type: string
         snippet:
@@ -2432,6 +2893,112 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EmailLabelDto'
+        threadSize:
+          type: integer
+          format: int32
+          minimum: 1
+          description: "Messages in the email's conversation (sent ones included); 1 when it has no conversation"
+        answered:
+          type: boolean
+          description: "The user replied: a sent message in the same conversation is newer than this email"
+        replyState:
+          $ref: '#/components/schemas/ReplyMarker'
+    ReplyMarker:
+      type: string
+      description: |
+        The assistant's reply for this email: SUGGESTED = a draft waits for your decision (DRAFT_REPLY proposal),
+        DRAFT_READY = you kept a draft (not sent). Absent when there is neither.
+      enum: [SUGGESTED, DRAFT_READY]
+    ReplySuggestionState:
+      type: string
+      description: |
+        On-demand reply suggestion for the email of a thread: RUNNING while it is queued or the model writes it,
+        FAILED when the last attempt failed (try again), IDLE otherwise.
+      enum: [IDLE, RUNNING, FAILED]
+    EmailThreadDto:
+      type: object
+      required: [messages, replyDrafts, replySuggestion]
+      properties:
+        conversationId:
+          type: string
+        messages:
+          type: array
+          description: Oldest first; the user's own replies have `folder` = "sent"
+          items:
+            $ref: '#/components/schemas/EmailDto'
+        replyDrafts:
+          type: array
+          description: Kept (READY) reply drafts for messages of this conversation, oldest first
+          items:
+            $ref: '#/components/schemas/ReplyDraftDto'
+        pendingReplyProposal:
+          $ref: '#/components/schemas/ProposalDto'
+        replySuggestion:
+          $ref: '#/components/schemas/ReplySuggestionState'
+    ReplyDraftState:
+      type: string
+      description: READY = kept and shown in the thread (never sent) · DISCARDED = thrown away.
+      enum: [READY, DISCARDED]
+    ReplyDraftDto:
+      type: object
+      required: [id, emailId, accountId, toRecipients, ccRecipients, subject, body, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        emailId:
+          type: integer
+          format: int64
+          description: The email this draft answers
+        accountId:
+          type: integer
+          format: int64
+        conversationId:
+          type: string
+        toRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        body:
+          type: string
+          description: Plain text
+        status:
+          $ref: '#/components/schemas/ReplyDraftState'
+        proposalId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    UpdateReplyDraftCommand:
+      type: object
+      description: Partial update; null = unchanged. Only READY drafts can be edited (409 otherwise).
+      properties:
+        toRecipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+          maxLength: 998
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
     EmailDto:
       type: object
       required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels, toRecipients, ccRecipients]
@@ -2504,3 +3071,257 @@ components:
         totalPages:
           type: integer
           format: int32
+    AiModelRole:
+      type: string
+      description: What a configured model is used for.
+      enum: [EXTRACTION, ROUTING, EMBEDDING]
+    AiPullState:
+      type: string
+      enum: [IDLE, PULLING, FAILED]
+    AiModelDto:
+      type: object
+      required: [name, roles, installed, pullState]
+      properties:
+        name:
+          type: string
+          description: Ollama model tag, e.g. qwen3.5:9b
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelRole'
+        installed:
+          type: boolean
+        pullState:
+          $ref: '#/components/schemas/AiPullState'
+        pullPercent:
+          type: integer
+          format: int32
+          description: Download progress 0-100 while PULLING
+        pullError:
+          type: string
+    AiStatusDto:
+      type: object
+      required: [reachable, ready, models]
+      properties:
+        reachable:
+          type: boolean
+          description: Ollama answered on its (loopback) base URL
+        version:
+          type: string
+        ready:
+          type: boolean
+          description: Reachable and every configured model installed
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelDto'
+        embeddings:
+          $ref: '#/components/schemas/EmbeddingProgressDto'
+    EmbeddingProgressDto:
+      type: object
+      description: |
+        How much of the current user's inbox is indexed for semantic search with the configured embedding model.
+        Absent when the status is not requested for a signed-in user.
+      required: [indexed, total, running]
+      properties:
+        indexed:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+        running:
+          type: boolean
+          description: A backfill is currently embedding mail
+    AiAccess:
+      type: string
+      description: |
+        OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.
+        `replies` (reply drafts) only knows OFF and SUGGEST: a draft is never sent, so AUTO is rejected (400).
+      enum: ['OFF', SUGGEST, AUTO]
+    AiSettingsDto:
+      type: object
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies]
+      properties:
+        mailAccess:
+          type: boolean
+          description: The AI may read and analyze the user's mailboxes (master switch)
+        historyDays:
+          type: integer
+          format: int32
+          description: How many days back the inbox analysis reads; 0 = everything
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
+          $ref: '#/components/schemas/AiAccess'
+        onboardedAt:
+          type: string
+          format: date-time
+          description: When the setup wizard was completed; new mail is only processed afterwards
+    UpdateAiSettingsCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        mailAccess:
+          type: boolean
+        historyDays:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 3650
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
+          $ref: '#/components/schemas/AiAccess'
+        completeOnboarding:
+          type: boolean
+          description: true marks the setup wizard as completed (sets onboardedAt once)
+    AnalysisState:
+      type: string
+      description: |
+        QUEUED → DISCOVERING → (AWAITING_REVIEW when discovered categories need approval) → EXTRACTING → COMPLETED;
+        FAILED or CANCELLED end a run early.
+      enum: [QUEUED, DISCOVERING, AWAITING_REVIEW, EXTRACTING, COMPLETED, FAILED, CANCELLED]
+    EvalCaseExportDto:
+      type: object
+      required: [cases]
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalCaseDto'
+    EvalCaseDto:
+      type: object
+      description: One labelled email of the extraction evaluation (the file format of `ai-eval/**/*.json`).
+      required: [id, email, expected, mustNotProduce]
+      properties:
+        id:
+          type: string
+        email:
+          $ref: '#/components/schemas/EvalEmailDto'
+        expected:
+          $ref: '#/components/schemas/EvalExpectedDto'
+        mustNotProduce:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalForbiddenDto'
+    EvalEmailDto:
+      type: object
+      required: [mailbox, fromAddress, to, subject, receivedAt, body]
+      properties:
+        mailbox:
+          type: string
+        fromName:
+          type: string
+          nullable: true
+        fromAddress:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        body:
+          type: string
+    EvalExpectedDto:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: object
+          description: Expected records per collection slug.
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/EvalRecordDto'
+    EvalRecordDto:
+      type: object
+      required: [title, values]
+      properties:
+        title:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+    EvalForbiddenDto:
+      type: object
+      required: [collection]
+      properties:
+        collection:
+          type: string
+        title:
+          type: string
+          nullable: true
+    AnalysisRunDto:
+      type: object
+      required: [id, status, discoverySteps, discoveryStepsDone, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/AnalysisState'
+        since:
+          type: string
+          format: date-time
+          description: Oldest email included; absent = everything
+        discoverySteps:
+          type: integer
+          format: int32
+          description: Model calls the category discovery needs (one per batch of emails plus one merge); 0 before it starts
+        discoveryStepsDone:
+          type: integer
+          format: int32
+        currentEmailSubject:
+          type: string
+          description: Subject of the email the model is reading right now (EXTRACTING only)
+        currentEmailFrom:
+          type: string
+          description: Sender name (or address) of that email
+        totalEmails:
+          type: integer
+          format: int32
+        processedEmails:
+          type: integer
+          format: int32
+        failedEmails:
+          type: integer
+          format: int32
+        proposalsCreated:
+          type: integer
+          format: int32
+          description: Proposals waiting for review
+        autoApplied:
+          type: integer
+          format: int32
+          description: Changes applied directly (AUTO permissions)
+        categoriesDiscovered:
+          type: integer
+          format: int32
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time

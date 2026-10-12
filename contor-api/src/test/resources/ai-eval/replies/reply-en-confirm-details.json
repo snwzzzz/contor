@@ -1,0 +1,15 @@
+{
+  "id": "reply-en-confirm-details",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Sarah Lim",
+    "fromAddress": "sarah.lim@brightwave.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your start date",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Dear Alex,\nwelcome aboard! Could you confirm that November 2 works as your start date and send me your preferred laptop setup (Mac or Windows)?\nBest,\nSarah"
+  }
+}

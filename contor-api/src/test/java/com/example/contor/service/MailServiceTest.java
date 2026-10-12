@@ -7,6 +7,7 @@ import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
+import com.example.contor.exception.RecordNotFoundException;
 import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
@@ -19,13 +20,18 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +65,24 @@ class MailServiceTest {
 
     @Mock
     private MailSyncService mailSyncService;
+
+    @Mock
+    private RecordService recordService;
+
+    @Mock
+    private CollectionSchemaService collectionSchemaService;
+
+    @Mock
+    private RecordSourceRepository recordSourceRepository;
+
+    @Mock
+    private ReplyDraftRepository replyDraftRepository;
+
+    @Mock
+    private ProposalRepository proposalRepository;
+
+    @Mock
+    private ReplySuggestionService replySuggestionService;
 
     @Spy
     private WebProperties webProperties = new WebProperties("http://localhost:3000");
@@ -180,9 +204,14 @@ class MailServiceTest {
     @Test
     void disconnectAccount_Success() {
         var acc = account(1L);
+        acc.setDeltaLink("inbox-delta");
+        acc.setSentDeltaLink("sent-delta");
         when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
 
         mailService.disconnectAccount(2L);
+
+        assertNull(acc.getDeltaLink());
+        assertNull(acc.getSentDeltaLink());
 
         assertEquals(MailAccountStatus.DISABLED, acc.getStatus());
         assertNull(acc.getAccessToken());
@@ -210,11 +239,107 @@ class MailServiceTest {
         when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
         labelled();
 
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, null);
 
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
         assertEquals("orders", page.getItems().get(0).getLabels().get(0).getSlug());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_SentFolderNeverCountsAsAnswered() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var sent = email(1L);
+        sent.setFolder("sent");
+        sent.setConversationId("conv-1");
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(sent), pageable, 1));
+        when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
+                new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-09T10:00:00Z"))));
+        labelled();
+
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, EmailFolder.SENT, null, null).getItems().get(0);
+
+        assertEquals("sent", summary.getFolder());
+        assertEquals(3, summary.getThreadSize());
+        assertFalse(summary.getAnswered());
+    }
+
+    @Test
+    void suggestEmailSenders_SentFolderSuggestsRecipients() {
+        when(emailMessageRepository.findRecipients(new AppUser.AppUserId(1L), "%an%", 50)).thenReturn(List.of(
+                new SenderCount("Anna", "anna@acme.com", 4L),
+                new SenderCount(null, "dan@gmail.com", 1L)));
+
+        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders("an", EmailFolder.SENT);
+
+        assertEquals(List.of("Anna", "dan@gmail.com"), suggestions.stream().map(EmailSuggestionDto::getLabel).toList());
+        verify(emailMessageRepository, never()).findSenders(any(), any(), any());
+    }
+
+    @Test
+    void suggestEmailSenders_PeopleThenCompaniesWithoutFreeMail() {
+        when(emailMessageRepository.findSenders(eq(new AppUser.AppUserId(1L)), eq("%a%"), any(Pageable.class))).thenReturn(List.of(
+                new SenderCount("Anna", "anna@acme.com", 5L),
+                new SenderCount(null, "dan@gmail.com", 3L),
+                new SenderCount("Anton", "anton@acme.com", 2L),
+                new SenderCount("Hans", "hans@hans-gmbh.at", 1L)));
+
+        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders(" A ", null);
+
+        assertEquals(List.of("Anna", "dan@gmail.com", "Anton", "Hans", "acme.com", "hans-gmbh.at"),
+                suggestions.stream().map(EmailSuggestionDto::getLabel).toList());
+        var company = suggestions.get(4);
+        assertEquals(EmailSuggestionKind.COMPANY, company.getKind());
+        assertEquals("@acme.com", company.getValue());
+        assertEquals(7L, company.getEmailCount());
+        assertEquals("anna@acme.com", suggestions.get(0).getValue());
+    }
+
+    @Test
+    void suggestEmailSenders_CompanyOnlyWhenTheDomainMatches() {
+        when(emailMessageRepository.findSenders(any(), eq("%anna%"), any(Pageable.class)))
+                .thenReturn(List.of(new SenderCount("Anna", "anna@acme.com", 5L)));
+
+        assertEquals(List.of("Anna"), mailService.suggestEmailSenders("anna", null).stream().map(EmailSuggestionDto::getLabel).toList());
+    }
+
+    @Test
+    void listRecordEmails_MatchesSourcesAddressesAndDomains() {
+        when(collectionSchemaService.findById(1L)).thenReturn(new CollectionDto().id(1L).fields(List.of(
+                new CollectionFieldDto(1L, "email", "Email", CollectionFieldType.EMAIL, new LinkedHashMap<>(), false, false, 1))));
+        when(recordService.getRecord(1L, 5L)).thenReturn(new RecordDto(5L, 1L, new HashMap<>(Map.of("email", "anna@acme.com")),
+                new HashMap<>(), OffsetDateTime.parse("2026-10-01T00:00:00Z"), "AI"));
+        when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of(
+                RecordSource.builder().email(EmailMessage.builder().id(new EmailMessage.EmailMessageId(31L)).build()).build()));
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
+        labelled();
+
+        EmailPageDto page = mailService.listRecordEmails(1L, 5L, null, null);
+
+        assertEquals(1L, page.getTotalElements());
+        assertEquals("Shipped", page.getItems().get(0).getSubject());
+    }
+
+    @Test
+    void listRecordEmails_NothingToMatchQueriesNothing() {
+        when(collectionSchemaService.findById(1L)).thenReturn(new CollectionDto().id(1L).fields(List.of()));
+        when(recordService.getRecord(1L, 5L)).thenReturn(new RecordDto(5L, 1L, new HashMap<>(), new HashMap<>(),
+                OffsetDateTime.parse("2026-10-01T00:00:00Z"), "AI"));
+        when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of());
+
+        EmailPageDto page = mailService.listRecordEmails(1L, 5L, 0, 10);
+
+        assertEquals(0L, page.getTotalElements());
+        verify(emailMessageRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void listRecordEmails_UnknownRecord() {
+        when(recordService.getRecord(1L, 5L)).thenThrow(new RecordNotFoundException(1L, 5L));
+
+        assertThrows(RecordNotFoundException.class, () -> mailService.listRecordEmails(1L, 5L, null, null));
     }
 
     @Test
@@ -233,6 +358,99 @@ class MailServiceTest {
         when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(2L)));
 
         assertThrows(EmailNotFoundException.class, () -> mailService.getEmail(5L));
+    }
+
+    @Test
+    void getEmailThread_OldestFirstIncludingSentMail() {
+        var anchor = email(1L);
+        anchor.setConversationId("conv-1");
+        var reply = EmailMessage.builder().id(new EmailMessage.EmailMessageId(6L)).account(account(1L)).providerMessageId("AAMl")
+                .folder("sent").subject("Re: Shipped").receivedAt(Instant.parse("2026-01-02T10:00:00Z")).build();
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(anchor));
+        when(emailMessageRepository.findThread(new MailAccount.MailAccountId(2L), "conv-1")).thenReturn(List.of(anchor, reply));
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals("conv-1", thread.getConversationId());
+        assertEquals(List.of(5L, 6L), thread.getMessages().stream().map(EmailDto::getId).toList());
+        assertEquals("sent", thread.getMessages().get(1).getFolder());
+    }
+
+    @Test
+    void getEmailThread_CarriesKeptDraftsThePendingSuggestionAndItsState() {
+        var anchor = email(1L);
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(anchor));
+        var draft = ReplyDraft.builder().id(new ReplyDraft.ReplyDraftId(4L)).email(anchor).account(anchor.getAccount())
+                .subject("Re: Shipped").body("Thanks").status(ReplyDraftStatus.READY).build();
+        when(replyDraftRepository.findByEmail_IdInAndStatusOrderByCreatedAtAsc(List.of(anchor.getId()), ReplyDraftStatus.READY))
+                .thenReturn(List.of(draft));
+        var older = Proposal.builder().id(new Proposal.ProposalId(10L)).kind(ProposalKind.DRAFT_REPLY).payload(Map.of("body", "a")).build();
+        var newer = Proposal.builder().id(new Proposal.ProposalId(11L)).kind(ProposalKind.DRAFT_REPLY).payload(Map.of("body", "b")).build();
+        when(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, List.of(anchor.getId())))
+                .thenReturn(List.of(older, newer));
+        when(replySuggestionService.state(5L)).thenReturn(ReplySuggestionState.RUNNING);
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals(List.of(4L), thread.getReplyDrafts().stream().map(ReplyDraftDto::getId).toList());
+        assertEquals(11L, thread.getPendingReplyProposal().getId());
+        assertEquals(ReplySuggestionState.RUNNING, thread.getReplySuggestion());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_MarksSuggestedAndKeptReplies() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var suggested = email(1L);
+        var kept = EmailMessage.builder().id(new EmailMessage.EmailMessageId(6L)).account(account(1L)).providerMessageId("AAMl")
+                .subject("Other").receivedAt(Instant.parse("2026-01-02T10:00:00Z")).build();
+        var plain = EmailMessage.builder().id(new EmailMessage.EmailMessageId(7L)).account(account(1L)).providerMessageId("AAMm")
+                .subject("Plain").receivedAt(Instant.parse("2026-01-03T10:00:00Z")).build();
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(suggested, kept, plain), pageable, 3));
+        when(proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(eq(ProposalKind.DRAFT_REPLY), eq(ProposalStatus.PENDING), any()))
+                .thenReturn(List.of(Proposal.builder().sourceEmail(suggested).build()));
+        when(replyDraftRepository.findEmailIdsWithStatus(List.of(5L, 6L, 7L), ReplyDraftStatus.READY)).thenReturn(List.of(6L));
+
+        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems();
+
+        assertEquals(ReplyMarker.SUGGESTED, items.get(0).getReplyState());
+        assertEquals(ReplyMarker.DRAFT_READY, items.get(1).getReplyState());
+        assertNull(items.get(2).getReplyState());
+    }
+
+    @Test
+    void getEmailThread_WithoutConversationIsJustTheEmail() {
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(1L)));
+
+        EmailThreadDto thread = mailService.getEmailThread(5L);
+
+        assertEquals(List.of(5L), thread.getMessages().stream().map(EmailDto::getId).toList());
+        verify(emailMessageRepository, never()).findThread(any(), any());
+    }
+
+    @Test
+    void getEmailThread_OfAnotherUserIsNotFound() {
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(2L)));
+
+        assertThrows(EmailNotFoundException.class, () -> mailService.getEmailThread(5L));
+        verify(emailMessageRepository, never()).findThread(any(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_ShowsThreadSizeAndWhetherTheUserAnswered() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var threaded = email(1L);
+        threaded.setConversationId("conv-1");
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(threaded), pageable, 1));
+        when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
+                new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-02T10:00:00Z"))));
+        labelled();
+
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems().get(0);
+
+        assertEquals(3, summary.getThreadSize());
+        assertTrue(summary.getAnswered());
     }
 
     @Test

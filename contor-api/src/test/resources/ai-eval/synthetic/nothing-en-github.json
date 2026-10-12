@@ -1,0 +1,27 @@
+{
+  "id": "nothing-en-github",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "GitHub",
+    "fromAddress": "notifications@github.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "[acme/app] Bump lodash from 4.17.20 to 4.17.21 (#412)",
+    "receivedAt": "2026-10-09T09:30:00Z",
+    "body": "Dependabot opened a pull request bumping lodash. Merge when ready. You are receiving this because you are watching this repository."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

@@ -67,8 +67,19 @@ public class MailController implements MailApi {
 
     @Override
     public ResponseEntity<EmailPageDto> listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
+                                                   EmailSearchField field, Boolean answered, EmailFolder folder,
                                                    Integer page, Integer size) {
-        return ResponseEntity.ok(mailService.listEmails(accountId, labelId, processingState, q, page, size));
+        return ResponseEntity.ok(mailService.listEmails(accountId, labelId, processingState, q, field, answered, folder, page, size));
+    }
+
+    @Override
+    public ResponseEntity<EmailThreadDto> getEmailThread(Long emailId) {
+        return ResponseEntity.ok(mailService.getEmailThread(emailId));
+    }
+
+    @Override
+    public ResponseEntity<List<EmailSuggestionDto>> suggestEmailSenders(String q, EmailFolder folder) {
+        return ResponseEntity.ok(mailService.suggestEmailSenders(q, folder));
     }
 
     @Override

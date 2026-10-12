@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
 import { resetNavigation, router } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
@@ -30,6 +30,19 @@ describe("CommandPalette", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await userEvent.keyboard("{Meta>}k{/Meta}");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows the shortcut the way the operating system names it", () => {
+    vi.spyOn(window.navigator, "platform", "get").mockReturnValue("Win32");
+    const { unmount } = renderWithProviders(<CommandPalette />);
+    expect(screen.getByRole("button", { name: /Search or jump to/ })).toHaveTextContent("Ctrl K");
+    unmount();
+
+    vi.spyOn(window.navigator, "platform", "get").mockReturnValue("MacIntel");
+    renderWithProviders(<CommandPalette />);
+    expect(screen.getByRole("button", { name: /Search or jump to/ })).toHaveTextContent("⌘K");
   });
 
   it("opens from the top bar button", async () => {

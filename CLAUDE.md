@@ -40,7 +40,8 @@ Commands: see README. Backend tests need Docker (Testcontainers). `./mvnw test` 
 API enum schemas must not share a name with a domain enum, or mappers would need inline FQNs. Existing pairs:
 `UserRole`→`Role`, `CreatedBy`→`Creator`, `FieldType`→`CollectionFieldType`, `ProposalKind`→`ProposalAction`,
 `ProposalStatus`→`ProposalState`, `LabelSource`→`LabelOrigin`, `RelationCreatedBy`→`RelationOrigin`,
-`ProcessingState`→`EmailProcessingState`, `MailAccountStatus`→`MailAccountState`, `MailProvider`→`MailProviderKind`.
+`ProcessingState`→`EmailProcessingState`, `MailAccountStatus`→`MailAccountState`, `MailProvider`→`MailProviderKind`,
+`ReplyDraftStatus`→`ReplyDraftState`.
 Map with `ApiEnum.valueOf(domain.name())` and back.
 
 ### Packages (by layer, under `com.example.contor`)

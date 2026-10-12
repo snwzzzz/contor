@@ -17,5 +17,14 @@ public enum AuditAction {
     COLLECTION_FIELD_ADDED,
     COLLECTION_FIELD_ARCHIVED,
     PROPOSAL_APPROVED,
-    PROPOSAL_REJECTED
+    PROPOSAL_REJECTED,
+    /** Rejected because a proposal it depends on was rejected. */
+    PROPOSAL_CASCADE_REJECTED,
+    /** Applied directly by the AI because the area's permission is AUTO. */
+    PROPOSAL_AUTO_APPLIED,
+    /** Rejected by the system because it is out of date (e.g. a reply draft after you answered in Outlook). */
+    PROPOSAL_SUPERSEDED,
+    AI_SETTINGS_CHANGED,
+    AI_ANALYSIS_STARTED,
+    AI_ANALYSIS_CANCELLED
 }

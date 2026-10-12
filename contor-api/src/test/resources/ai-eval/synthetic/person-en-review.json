@@ -1,0 +1,36 @@
+{
+  "id": "person-en-review",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Chris Lawson",
+    "fromAddress": "chris.lawson@pixelworks.dev",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Please review the design doc",
+    "receivedAt": "2026-10-06T16:30:00Z",
+    "body": "Alex, I shared the design doc for the new API. Could you review it and add your comments by Thursday? Thanks!\nChris"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Chris Lawson",
+          "values": {
+            "email": "chris.lawson@pixelworks.dev"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Review the API design doc",
+          "values": {
+            "due_date": "2026-10-08"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

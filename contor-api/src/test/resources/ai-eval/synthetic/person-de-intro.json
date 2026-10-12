@@ -1,0 +1,49 @@
+{
+  "id": "person-de-intro",
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Katrin Vogel",
+    "fromAddress": "katrin.vogel@vogel-consulting.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Vorstellung: Markus Lang",
+    "receivedAt": "2026-10-12T13:00:00Z",
+    "body": "Hallo Alex,\nich möchte dich mit Markus Lang bekannt machen, er leitet den Vertrieb bei Solartec und sucht einen Entwickler für sein Portal. Seine Mail: markus.lang@solartec.de. Meldet euch gern direkt beieinander.\nLiebe Grüße, Katrin"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Katrin Vogel",
+          "values": {
+            "email": "katrin.vogel@vogel-consulting.de"
+          }
+        },
+        {
+          "title": "Markus Lang",
+          "values": {
+            "email": "markus.lang@solartec.de",
+            "role_title": "Head of Sales"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Solartec",
+          "values": {
+            "domain": "solartec.de"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Markus Lang",
+        "to": "organizations:Solartec"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

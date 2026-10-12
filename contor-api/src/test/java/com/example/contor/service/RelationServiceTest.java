@@ -171,4 +171,26 @@ class RelationServiceTest {
 
         assertThrows(RelationNotFoundException.class, () -> relationService.deleteRelation(2L));
     }
+
+    @Test
+    void createAiRelation_IsMarkedAsAiAndKeepsTheSourceEmailAndConfidence() {
+        var email = com.example.contor.domain.EmailMessage.builder().id(new com.example.contor.domain.EmailMessage.EmailMessageId(8L)).build();
+
+        RelationDto result = relationService.createAiRelation(new NewRelationCommand(3L, 1L, 10L, 2L, 20L), email, new java.math.BigDecimal("0.8"));
+
+        assertEquals(RelationOrigin.AI, result.getCreatedBy());
+        assertEquals(8L, result.getSourceEmailId());
+        assertEquals(0, new java.math.BigDecimal("0.8").compareTo(result.getConfidence()));
+    }
+
+    @Test
+    void createAiRelation_StillRejectsDuplicatesAndWrongCollections() {
+        when(relationRepository.existsByRelationType_IdAndFromCollection_IdAndFromRecordIdAndToCollection_IdAndToRecordId(
+                worksAt.getId(), people.getId(), 10L, organizations.getId(), 20L)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> relationService.createAiRelation(new NewRelationCommand(3L, 1L, 10L, 2L, 20L), null, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> relationService.createAiRelation(new NewRelationCommand(3L, 2L, 20L, 1L, 10L), null, null));
+    }
 }

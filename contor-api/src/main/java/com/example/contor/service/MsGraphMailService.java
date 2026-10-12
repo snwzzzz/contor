@@ -163,10 +163,19 @@ public class MsGraphMailService {
     }
 
     public DeltaResult fetchMessagesDelta(String accessToken, String deltaLinkOrNextLink) {
+        return fetchFolderDelta(accessToken, "inbox", deltaLinkOrNextLink);
+    }
+
+    /** Delta of the Sent Items folder (covered by the Mail.Read scope). */
+    public DeltaResult fetchSentMessagesDelta(String accessToken, String deltaLinkOrNextLink) {
+        return fetchFolderDelta(accessToken, "sentitems", deltaLinkOrNextLink);
+    }
+
+    private DeltaResult fetchFolderDelta(String accessToken, String wellKnownFolder, String deltaLinkOrNextLink) {
         GraphServiceClient client = createClient(accessToken);
         DeltaGetResponse response;
         if (deltaLinkOrNextLink == null || deltaLinkOrNextLink.isBlank()) {
-            response = client.me().mailFolders().byMailFolderId("inbox").messages().delta().get();
+            response = client.me().mailFolders().byMailFolderId(wellKnownFolder).messages().delta().get();
         } else {
             response = new DeltaRequestBuilder(deltaLinkOrNextLink, client.getRequestAdapter()).get();
         }

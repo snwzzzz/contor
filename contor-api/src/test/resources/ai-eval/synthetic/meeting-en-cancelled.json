@@ -1,0 +1,24 @@
+{
+  "id": "meeting-en-cancelled",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Tom Becker",
+    "fromAddress": "tom.becker@summit-co.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Cancelled: Review on Monday",
+    "receivedAt": "2026-10-09T15:00:00Z",
+    "body": "Hi, I have to cancel our review meeting on Monday, October 12. I will propose a new date next week. Sorry!"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks"
+    }
+  ]
+}

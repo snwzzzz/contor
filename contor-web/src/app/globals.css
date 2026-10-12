@@ -5,6 +5,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Motion used by app components (AnimatedDots: dots appear one by one, then fade out; the to-do drop slot). */
+@theme {
+  --animate-dot: dot 1.6s ease-in-out infinite;
+  /* To-do board: the drop slot opens up between the cards (grid rows 0fr -> 1fr) instead of popping in. */
+  --animate-drop-slot: drop-slot 160ms ease-out;
+
+  @keyframes dot {
+    0%, 10% { opacity: 0; }
+    30%, 75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes drop-slot {
+    from { grid-template-rows: 0fr; opacity: 0; }
+    to { grid-template-rows: 1fr; opacity: 1; }
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -46,6 +64,42 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-tint-1: var(--tint-1);
+  --color-tint-1-foreground: var(--tint-1-foreground);
+  --color-tint-1-vivid: var(--tint-1-vivid);
+  --color-tint-2: var(--tint-2);
+  --color-tint-2-foreground: var(--tint-2-foreground);
+  --color-tint-2-vivid: var(--tint-2-vivid);
+  --color-tint-3: var(--tint-3);
+  --color-tint-3-foreground: var(--tint-3-foreground);
+  --color-tint-3-vivid: var(--tint-3-vivid);
+  --color-tint-4: var(--tint-4);
+  --color-tint-4-foreground: var(--tint-4-foreground);
+  --color-tint-4-vivid: var(--tint-4-vivid);
+  --color-tint-5: var(--tint-5);
+  --color-tint-5-foreground: var(--tint-5-foreground);
+  --color-tint-5-vivid: var(--tint-5-vivid);
+  --color-tint-6: var(--tint-6);
+  --color-tint-6-foreground: var(--tint-6-foreground);
+  --color-tint-6-vivid: var(--tint-6-vivid);
+  --color-tint-7: var(--tint-7);
+  --color-tint-7-foreground: var(--tint-7-foreground);
+  --color-tint-7-vivid: var(--tint-7-vivid);
+  --color-tint-8: var(--tint-8);
+  --color-tint-8-foreground: var(--tint-8-foreground);
+  --color-tint-8-vivid: var(--tint-8-vivid);
+  --color-tint-9: var(--tint-9);
+  --color-tint-9-foreground: var(--tint-9-foreground);
+  --color-tint-9-vivid: var(--tint-9-vivid);
+  --color-tint-10: var(--tint-10);
+  --color-tint-10-foreground: var(--tint-10-foreground);
+  --color-tint-10-vivid: var(--tint-10-vivid);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -68,5 +122,30 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Thin scrollbars everywhere: 6px rounded thumb, no track (Chromium/WebKit); Firefox gets its thin variant. */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: var(--scrollbar);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-hover);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar) transparent;
+    }
   }
 }

@@ -41,6 +41,15 @@ public class Proposal extends AuditableEntity {
     @Column(name = "final_payload")
     private Map<String, Object> finalPayload;
 
+    /** What applying produced (e.g. the created record); dependent proposals and undo read it. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, Object> result;
+
+    /** AUTO proposal waiting for its dependencies: applied by the system once they are applied. */
+    @Builder.Default
+    @Column(name = "auto_apply_when_ready", nullable = false)
+    private boolean autoApplyWhenReady = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_email_id")
     private EmailMessage sourceEmail;

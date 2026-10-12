@@ -1,0 +1,24 @@
+{
+  "id": "invoice-en-quote",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Roofing Pros",
+    "fromAddress": "info@roofingpros.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your quote Q-3302",
+    "receivedAt": "2026-10-08T09:40:00Z",
+    "body": "Hello,\nplease find attached our quote Q-3302 for the roof repair: 3,850.00 EUR. The quote is valid until the end of the month. This is not an invoice, no payment is due yet."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "invoices"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "order-en-delivered",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "ParcelPost",
+    "fromAddress": "notifications@parcelpost.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your package was delivered",
+    "receivedAt": "2026-10-09T13:05:00Z",
+    "body": "Your package for order SN-48213 from ShopNow was delivered today at 13:00 and left at the front door."
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "ShopNow keyboard order",
+          "values": {
+            "order_number": "SN-48213",
+            "state": "delivered"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

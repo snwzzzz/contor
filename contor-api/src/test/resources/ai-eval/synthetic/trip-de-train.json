@@ -1,0 +1,30 @@
+{
+  "id": "trip-de-train",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Bahn Ticket",
+    "fromAddress": "ticket@bahn-online.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihr Ticket: Hamburg → Berlin am 14.10.2026",
+    "receivedAt": "2026-10-08T07:00:00Z",
+    "body": "Ihre Fahrkarte ist bestätigt.\nHinfahrt: Mittwoch, 14.10.2026, Hamburg Hbf ab 08:12, Berlin Hbf an 10:01, Sitzplatz Wagen 5 Platz 62.\nPreis: 39,90 EUR"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Zugfahrt Hamburg nach Berlin",
+          "values": {
+            "starts_at": "2026-10-14T08:12:00+02:00",
+            "location": "Hamburg Hbf"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

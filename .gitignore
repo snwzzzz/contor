@@ -12,3 +12,6 @@
 # Optional private style reference (not part of the product)
 reference/java-style/*
 !reference/java-style/README.md
+
+# Private real-mail eval corpus (never commit, never share)
+ai-eval/private/

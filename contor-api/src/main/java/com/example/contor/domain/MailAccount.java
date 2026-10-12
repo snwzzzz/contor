@@ -47,6 +47,10 @@ public class MailAccount extends AuditableEntity {
     @Column(name = "delta_link")
     private String deltaLink;
 
+    /** Graph delta link of the Sent Items folder. */
+    @Column(name = "sent_delta_link")
+    private String sentDeltaLink;
+
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 

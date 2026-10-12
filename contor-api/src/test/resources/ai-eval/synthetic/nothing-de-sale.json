@@ -1,0 +1,27 @@
+{
+  "id": "nothing-de-sale",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "ModeOutlet",
+    "fromAddress": "angebote@modeoutlet.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Nur heute: 30 % auf alles!",
+    "receivedAt": "2026-10-06T07:00:00Z",
+    "body": "Nur heute 30 % Rabatt auf die gesamte Herbstkollektion! Jetzt zugreifen und sparen. Gutscheincode: HERBST30. Abmelden"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

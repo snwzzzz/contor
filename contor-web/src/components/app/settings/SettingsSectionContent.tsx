@@ -1,4 +1,6 @@
-import { Bot, Brain, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { AiAutonomySettings } from "@/components/app/ai/AiAutonomySettings";
+import { AiSettingsPanel } from "@/components/app/ai/AiSettingsPanel";
 import { EmptyState } from "@/components/app/EmptyState";
 import { AccountsList } from "@/components/app/mail/AccountsList";
 import type { SettingsSection } from "@/lib/navigation";
@@ -16,21 +18,9 @@ export function SettingsSectionContent({ section, connected, mailError }: Settin
     case "accounts":
       return <AccountsList connected={connected} mailError={mailError} />;
     case "ai":
-      return (
-        <EmptyState
-          icon={Brain}
-          title="AI is not active yet"
-          description="Model selection arrives with the AI pipeline in the next phase. Ollama runs locally and must stay bound to localhost."
-        />
-      );
+      return <AiSettingsPanel />;
     case "autonomy":
-      return (
-        <EmptyState
-          icon={Bot}
-          title="Everything is a suggestion"
-          description="Until autonomy settings arrive, every AI action needs your approval."
-        />
-      );
+      return <AiAutonomySettings />;
     case "security":
       return (
         <EmptyState
