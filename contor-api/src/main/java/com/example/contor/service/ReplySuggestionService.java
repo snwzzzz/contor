@@ -57,6 +57,7 @@ public class ReplySuggestionService {
 
     private static final int BODY_CHARS = 4000;
     private static final int MAX_GROUNDING_RECORDS = 5;
+    private static final String COURTESY = "COURTESY";
 
     private final EmailMessageRepository emailMessageRepository;
     private final MailAccountRepository mailAccountRepository;
@@ -106,9 +107,14 @@ public class ReplySuggestionService {
     }
 
     /** Everything about one email the reply steps need, read in one short transaction. */
-    private record Context(Long emailId, MailAccount.MailAccountId accountId, String conversationId, ReplyThread thread,
-                           ReplyCandidateFilter.Candidate candidate, List<EmailRecipient> to, List<EmailRecipient> cc,
-                           String senderName, String senderAddress, String subject, boolean pending) {
+    /**
+     * @param pending         a pending draft exists for this very email
+     * @param replyInProgress a pending draft that is not an optional polite one exists in the conversation
+     */
+    private record Context(Long emailId, AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, String conversationId,
+                           ReplyThread thread, ReplyCandidateFilter.Candidate candidate, List<EmailRecipient> to,
+                           List<EmailRecipient> cc, String senderName, String senderAddress, String subject, boolean pending,
+                           boolean replyInProgress) {
     }
 
     /**
@@ -126,10 +132,16 @@ public class ReplySuggestionService {
             return false;
         }
         ReplyTriageService.Triage triage = replyTriageService.triage(context.thread());
-        if (!triage.needsReply()) {
-            return false;
+        if (triage.needsReply()) {
+            return composeAndSubmit(context, triage);
         }
-        return composeAndSubmit(context, triage);
+        // No answer needed, but a polite one is customary (a rejection, a thank-you): only when the user wants those,
+        // and never instead of a real reply that waits in the conversation.
+        if (COURTESY.equals(triage.intent()) && !context.replyInProgress()
+                && aiSettingsService.settingsFor(context.ownerId()).isCourtesyReplies()) {
+            return composeAndSubmit(context, triage);
+        }
+        return false;
     }
 
     /**
@@ -196,7 +208,7 @@ public class ReplySuggestionService {
     private boolean composeAndSubmit(Context context, ReplyTriageService.Triage triage) {
         List<SlotFinder.Slot> slots = triage.asksForTimes() ? freeSlots(triage) : List.of();
         ReplyComposerService.Brief brief = new ReplyComposerService.Brief(triage.intent(), triage.questions(),
-                slots.stream().map(SlotFinder.Slot::describe).toList(), replyContext(context.emailId()));
+                slots.stream().map(SlotFinder.Slot::describe).toList(), replyContext(context.emailId()), triage.courtesyKind());
         Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context), brief);
         if (composed.isEmpty()) {
             return false;
@@ -214,6 +226,9 @@ public class ReplySuggestionService {
         payload.put("placeholders", reply.placeholders());
         if (triage.intent() != null && !"NONE".equals(triage.intent())) {
             payload.put("intent", triage.intent());
+        }
+        if (triage.courtesyKind() != null) {
+            payload.put("courtesyKind", triage.courtesyKind());
         }
         if (!reply.answers().isEmpty()) {
             payload.put("questions", reply.answers().stream().map(answer -> {
@@ -311,10 +326,14 @@ public class ReplySuggestionService {
                 .toList();
         boolean pending = !proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING,
                 List.of(email.getId())).isEmpty();
+        boolean replyInProgress = email.getConversationId() != null && proposalRepository.findForConversation(ProposalKind.DRAFT_REPLY,
+                        ProposalStatus.PENDING, account.getId(), email.getConversationId()).stream()
+                .anyMatch(proposal -> !COURTESY.equals(proposal.getPayload().get("intent")));
         ReplyThread thread = new ReplyThread(account.getDisplayName(),
                 account.getEmailAddress() != null ? account.getEmailAddress().value() : null, messages);
-        return new Context(email.getId().id(), account.getId(), email.getConversationId(), thread, candidate,
-                List.of(new EmailRecipient(email.getFromName(), sender)), cc, email.getFromName(), sender, email.getSubject(), pending);
+        return new Context(email.getId().id(), account.getOwner().getId(), account.getId(), email.getConversationId(), thread,
+                candidate, List.of(new EmailRecipient(email.getFromName(), sender)), cc, email.getFromName(), sender, email.getSubject(),
+                pending, replyInProgress);
     }
 
     private static boolean isSent(EmailMessage message) {

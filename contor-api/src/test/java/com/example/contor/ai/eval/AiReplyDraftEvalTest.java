@@ -2,6 +2,7 @@ package com.example.contor.ai.eval;
 
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.OllamaClient;
+import com.example.contor.ai.ReplyCandidateFilter;
 import com.example.contor.ai.ReplyThread;
 import com.example.contor.ai.SlotFinder;
 import com.example.contor.config.AiProperties;
@@ -103,5 +104,51 @@ class AiReplyDraftEvalTest {
                 + "%d of %d scheduling drafts name an offered day%n", model, cases.size(), drafts, questions, answered, open,
                 schedulingNamingADay, scheduling);
         assertThat(drafts).as("drafts written (Ollama running? model pulled?)").isPositive();
+    }
+
+    /** {@code ai-eval/courtesy}: personal mail that needs no answer but deserves one; automated senders must get none. */
+    @Test
+    void polite_replies_for_rejections_thanks_and_good_news() {
+        String model = System.getProperty("ai.eval.model", DEFAULT_MODEL);
+        AiProperties properties = new AiProperties(
+                new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(5), 16384, "30m"),
+                new AiProperties.Models(model, model, "nomic-embed-text"),
+                new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
+        JsonMapper mapper = JsonMapper.builder().build();
+        OllamaClient client = new OllamaClient(properties, mapper);
+        ReplyTriageService triageService = new ReplyTriageService(client, properties, mapper);
+
+        int personal = 0;
+        int recognized = 0;
+        int drafts = 0;
+        int automatedWithoutDraft = 0;
+        for (EvalCase evalCase : EvalCaseLoader.loadClasspath("ai-eval/courtesy")) {
+            EmailContent email = evalCase.email();
+            if (ReplyCandidateFilter.isAutomatedSender(email.fromAddress())) {
+                automatedWithoutDraft++;
+                System.out.println("[ai-eval] " + evalCase.id() + ": automated sender, no draft (rules)");
+                continue;
+            }
+            personal++;
+            ReplyThread thread = new ReplyThread("Alex Morgan", email.mailbox(), List.of(new ReplyThread.Message(false, email.fromName(),
+                    email.fromAddress(), email.to(), email.subject(), email.receivedAt(), email.body())));
+            ReplyTriageService.Triage triage = triageService.triage(thread);
+            System.out.printf("[ai-eval] %s: needsReply %s, intent %s, kind %s%n", evalCase.id(), triage.needsReply(), triage.intent(),
+                    triage.courtesyKind());
+            if (!"COURTESY".equals(triage.intent())) {
+                continue;
+            }
+            recognized++;
+            Optional<ReplyComposerService.ComposedReply> reply = new ReplyComposerService(client, properties, mapper,
+                    Clock.fixed(email.receivedAt(), ZONE)).compose(thread, List.of(),
+                    new ReplyComposerService.Brief("COURTESY", List.of(), List.of(), "", triage.courtesyKind()));
+            if (reply.isPresent()) {
+                drafts++;
+                System.out.println(reply.get().body().indent(4));
+            }
+        }
+        System.out.printf("[ai-eval] courtesy (%s): %d of %d personal mails recognized, %d drafts, %d automated without draft%n",
+                model, recognized, personal, drafts, automatedWithoutDraft);
+        assertThat(personal).as("personal courtesy cases").isPositive();
     }
 }

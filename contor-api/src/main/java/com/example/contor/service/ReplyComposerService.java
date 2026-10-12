@@ -85,17 +85,31 @@ public class ReplyComposerService {
      * @param questions what the reply must answer, in order
      * @param freeTimes offered meeting times, already formatted ("Tuesday, 13 October 2026, 11:00–12:00")
      * @param context   the user's other mail about the email ({@code MailContextPrompt}), "" when none
+     * @param courtesyKind for intent COURTESY: what the polite reply does (REJECTION_THANKS, …), else {@code null}
      */
-    public record Brief(String intent, List<String> questions, List<String> freeTimes, String context) {
+    public record Brief(String intent, List<String> questions, List<String> freeTimes, String context, String courtesyKind) {
 
-        public static final Brief NONE = new Brief(null, List.of(), List.of(), "");
+        public static final Brief NONE = new Brief(null, List.of(), List.of(), "", null);
 
         public Brief {
             questions = questions != null ? List.copyOf(questions) : List.of();
             freeTimes = freeTimes != null ? List.copyOf(freeTimes) : List.of();
             context = context != null ? context : "";
         }
+
+        public Brief(String intent, List<String> questions, List<String> freeTimes, String context) {
+            this(intent, questions, freeTimes, context, null);
+        }
     }
+
+    /** How an optional polite reply is written, per courtesy kind; all are short, warm and promise nothing new. */
+    private static final Map<String, String> COURTESY_GUIDANCE = Map.of(
+            "REJECTION_THANKS", "thank them for the opportunity and their time, say you remain interested and ask them to keep "
+                    + "you in mind for future openings; you may add a placeholder like [request for feedback]",
+            "DECLINE_OFFER", "thank them for the offer and decline it kindly, with a short reason only as a placeholder like [reason]",
+            "THANK_YOU", "thank them warmly for what they did, naming it",
+            "CONGRATULATE", "congratulate them warmly on their news, naming it",
+            "KEEP_IN_TOUCH", "thank them for the collaboration, wish them well and say you would like to stay in touch");
 
     /** @param answered true/false as the model reported it; {@code null} when it did not report on the question */
     public record Answer(String question, Boolean answered) {
@@ -190,6 +204,10 @@ public class ReplyComposerService {
         }
         if (brief.intent() != null) {
             prompt.append("What the reply has to do: ").append(brief.intent()).append("\n\n");
+        }
+        if (brief.courtesyKind() != null && COURTESY_GUIDANCE.containsKey(brief.courtesyKind())) {
+            prompt.append("An optional polite reply, 2 to 4 sentences, no new commitments: ")
+                    .append(COURTESY_GUIDANCE.get(brief.courtesyKind())).append(".\n\n");
         }
         if (!brief.questions().isEmpty()) {
             prompt.append("Questions:\n");

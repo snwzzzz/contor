@@ -12,6 +12,7 @@ const initial: AiPermissions = {
   calendar: "SUGGEST",
   tasks: "SUGGEST",
   replies: "OFF",
+  courtesyReplies: false,
 };
 
 function Harness({ onChange }: { onChange: (value: AiPermissions) => void }) {
@@ -49,6 +50,19 @@ describe("AiPermissionsForm", () => {
     await userEvent.click(within(replies).getByRole("radio", { name: "Ask me" }));
 
     expect(onChange).toHaveBeenLastCalledWith({ ...initial, mailAccess: true, replies: "SUGGEST" });
+  });
+
+  it("offers polite replies as an extra once reply drafts are on", async () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /read and analyze my mailboxes/i }));
+    const courtesy = screen.getByRole("checkbox", { name: /also suggest polite replies/i });
+    expect(courtesy).toBeDisabled();
+
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "Reply drafts" })).getByRole("radio", { name: "Ask me" }));
+    await userEvent.click(courtesy);
+
+    expect(onChange).toHaveBeenLastCalledWith({ ...initial, mailAccess: true, replies: "SUGGEST", courtesyReplies: true });
   });
 
   it("grants mail access and picks the history window", async () => {

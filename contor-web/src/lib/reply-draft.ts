@@ -19,6 +19,8 @@ export interface ReplyDraftPayload {
   intent?: string;
   /** The questions of the email and whether the draft answers them. */
   questions?: ReplyQuestion[];
+  /** For an optional polite reply (intent COURTESY): REJECTION_THANKS, THANK_YOU, … */
+  courtesyKind?: string;
   /** Free times from the calendar the draft offers. */
   proposedSlots?: ReplySlot[];
 }

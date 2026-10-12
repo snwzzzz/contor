@@ -249,6 +249,51 @@ class ReplySuggestionServiceTest {
         verify(availabilityService).freeSlots(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 30), SlotFinder.TimeOfDay.EVENING);
     }
 
+    private static final String TRIAGE_COURTESY = """
+            {"needsReply": false, "reason": "A rejection", "urgency": "low", "intent": "COURTESY", "courtesyKind": "REJECTION_THANKS"}""";
+
+    private void courtesyReplies(boolean on) {
+        lenient().when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
+                .replies(AiPermissionLevel.SUGGEST).courtesyReplies(on).build());
+    }
+
+    @Test
+    void suggestIfNeeded_AnOptionalPoliteReplyWhenCourtesyRepliesAreOn() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(true);
+
+        assertThat(service.suggestIfNeeded(8L)).isTrue();
+
+        Map<String, Object> payload = submitted().payload();
+        assertThat(payload.get("intent")).isEqualTo("COURTESY");
+        assertThat(payload.get("courtesyKind")).isEqualTo("REJECTION_THANKS");
+    }
+
+    @Test
+    void suggestIfNeeded_NoPoliteReplyWhenCourtesyRepliesAreOff() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(false);
+
+        assertThat(service.suggestIfNeeded(8L)).isFalse();
+
+        verify(proposalService, never()).submitDraft(any(), any(), any(), any(), any(), anyCollection());
+    }
+
+    @Test
+    void suggestIfNeeded_NoPoliteReplyWhileARealReplyWaitsInTheConversation() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(true);
+        when(proposalRepository.findForConversation(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId(), "conv"))
+                .thenReturn(List.of(Proposal.builder().kind(ProposalKind.DRAFT_REPLY).payload(Map.of("intent", "SCHEDULE")).build()));
+
+        assertThat(service.suggestIfNeeded(8L)).isFalse();
+
+        verify(proposalService, never()).submitDraft(any(), any(), any(), any(), any(), anyCollection());
+    }
+
     @Test
     void suggestIfNeeded_NoFreeTimesUnlessTheReplyIsAboutScheduling() {
         question();
@@ -398,7 +443,7 @@ class ReplySuggestionServiceTest {
     void requestSuggestion_RepliesOff_Conflict() {
         login(1L);
         question();
-        when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
+        lenient().when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
                 .replies(AiPermissionLevel.OFF).build());
 
         assertThatThrownBy(() -> service.requestSuggestion(8L)).isInstanceOf(ReplySuggestionUnavailableException.class);

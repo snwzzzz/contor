@@ -23,6 +23,7 @@ public final class ImportanceScorer {
 
     private static final String TASKS = "tasks";
     private static final String EVENTS = "events";
+    private static final String COURTESY = "COURTESY";
 
     private ImportanceScorer() {
     }
@@ -40,7 +41,9 @@ public final class ImportanceScorer {
     public static Importance score(ProposalKind kind, String collectionSlug, Map<String, Object> payload, ImportanceSignals signals,
                                    Instant now, ZoneId zone) {
         List<String> reasons = new ArrayList<>();
-        int score = base(kind, collectionSlug, reasons);
+        // An optional polite reply (a thank-you after a rejection) never competes with real work: always LOW.
+        boolean courtesy = kind == ProposalKind.DRAFT_REPLY && COURTESY.equals(payload.get("intent"));
+        int score = courtesy ? reason(reasons, "an optional polite reply", 20) : base(kind, collectionSlug, reasons);
 
         Long days = daysUntil(payload, now, zone);
         if (days != null) {
@@ -74,7 +77,7 @@ public final class ImportanceScorer {
             score -= 30;
             reasons.add("bulk sender");
         }
-        int clamped = Math.clamp(score, 0, 100);
+        int clamped = Math.clamp(score, 0, courtesy ? ProposalImportance.NORMAL.minScore() - 1 : 100);
         return new Importance(clamped, ProposalImportance.of(clamped), String.join("; ", reasons));
     }
 

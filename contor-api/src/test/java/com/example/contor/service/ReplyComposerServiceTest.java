@@ -111,6 +111,19 @@ class ReplyComposerServiceTest {
     }
 
     @Test
+    void compose_ACourtesyReplyFollowsTheGuidanceForItsKind() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Danke!", "language": "de", "placeholders": [], "summary": "s", "answers": []}""");
+
+        service(8192).compose(thread(), List.of(), new ReplyComposerService.Brief("COURTESY", List.of(), List.of(), "", "REJECTION_THANKS"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), anyString(), prompt.capture(), any());
+        assertThat(prompt.getValue()).contains("What the reply has to do: COURTESY")
+                .contains("thank them for the opportunity").contains("no new commitments");
+    }
+
+    @Test
     void compose_AnOpenQuestionWithoutAPlaceholderGivesNoDraft() {
         answer("""
                 {"subject": "Re: Termin", "body": "Hallo Anna, gerne!", "language": "de", "placeholders": [], "summary": "s",

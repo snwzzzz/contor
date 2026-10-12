@@ -6,7 +6,7 @@ import { mockApi } from "@/test/api-mock";
 import { renderWithProviders } from "@/test/render";
 import { ThreadReplies } from "./ThreadReplies";
 
-const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST", replies: "SUGGEST" };
+const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST", replies: "SUGGEST", courtesyReplies: false };
 
 const message = {
   id: 8, accountId: 1, folder: "inbox", fromAddress: "anna@acme.com", fromName: "Anna Berger", subject: "Workshop",

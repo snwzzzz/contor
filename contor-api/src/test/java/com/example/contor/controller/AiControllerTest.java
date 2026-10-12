@@ -66,7 +66,7 @@ class AiControllerTest {
     }
 
     private static AiSettingsDto settings() {
-        return new AiSettingsDto(true, 90, AiAccess.SUGGEST, AiAccess.AUTO, AiAccess.AUTO, AiAccess.OFF, AiAccess.SUGGEST);
+        return new AiSettingsDto(true, 90, AiAccess.SUGGEST, AiAccess.AUTO, AiAccess.AUTO, AiAccess.OFF, AiAccess.SUGGEST, false);
     }
 
     @Test

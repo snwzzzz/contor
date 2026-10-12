@@ -1,0 +1,13 @@
+{
+  "id": "courtesy-de-new-job",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Jonas Weber",
+    "fromAddress": "jonas.weber@posteo.de",
+    "to": ["me@example.com"],
+    "subject": "Neuigkeiten",
+    "receivedAt": "2026-10-10T18:00:00Z",
+    "body": "Hey Alex,\nich wollte es dir als Erstes erzählen: Ich habe die Stelle in Zürich bekommen! Ab Januar geht es los.\nLiebe Grüße\nJonas"
+  }
+}

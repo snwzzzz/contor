@@ -134,6 +134,59 @@ class ReplyTriageServiceTest {
     }
 
     @Test
+    void triage_RecognizesWhereAPoliteReplyIsCustomary() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": false, "reason": "A rejection", "urgency": "low", "intent": "COURTESY", "courtesyKind": "REJECTION_THANKS"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.needsReply()).isFalse();
+        assertThat(triage.intent()).isEqualTo("COURTESY");
+        assertThat(triage.courtesyKind()).isEqualTo("REJECTION_THANKS");
+    }
+
+    @Test
+    void triage_ACourtesyKindOnAMailThatNeedsNoAnswerMakesItACourtesy() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": false, "intent": "NONE", "courtesyKind": "THANK_YOU"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.intent()).isEqualTo("COURTESY");
+        assertThat(triage.courtesyKind()).isEqualTo("THANK_YOU");
+    }
+
+    @Test
+    void triage_ACourtesyNeverCountsAsNeedingAnAnswer() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": true, "intent": "COURTESY", "courtesyKind": "REJECTION_THANKS"}""");
+
+        assertThat(service.triage(thread()).needsReply()).isFalse();
+    }
+
+    @Test
+    void triage_ACourtesyKindWithAnotherIntentIsDropped() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": true, "intent": "ANSWER_QUESTIONS", "questions": ["When?"], "courtesyKind": "THANK_YOU"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.needsReply()).isTrue();
+        assertThat(triage.courtesyKind()).isNull();
+    }
+
+    @Test
+    void triage_AnUnknownCourtesyKindIsDropped() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": false, "intent": "COURTESY", "courtesyKind": "FLATTERY"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.courtesyKind()).isNull();
+        assertThat(triage.intent()).isEqualTo("COURTESY");
+    }
+
+    @Test
     void triage_UnreadableAnswerMeansNoReply() {
         when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("not json");
 

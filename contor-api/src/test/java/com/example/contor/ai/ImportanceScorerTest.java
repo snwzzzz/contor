@@ -99,6 +99,15 @@ class ImportanceScorerTest {
     }
 
     @Test
+    void an_optional_polite_reply_is_always_low() {
+        ImportanceScorer.Importance courtesy = score(ProposalKind.DRAFT_REPLY, null, Map.of("intent", "COURTESY"),
+                new ImportanceSignals("high", true, true, false));
+
+        assertThat(courtesy.level()).isEqualTo(ProposalImportance.LOW);
+        assertThat(courtesy.reason()).startsWith("an optional polite reply");
+    }
+
+    @Test
     void the_score_stays_between_0_and_100_and_unreadable_dates_are_ignored() {
         ImportanceSignals everything = new ImportanceSignals("high", true, true, false);
         ImportanceSignals nothing = new ImportanceSignals("low", false, false, true);

@@ -3,7 +3,7 @@
 > Living plan. Each step is done test-first (CLAUDE.md §0), follows the React best-practices skill for frontend work, and
 > updates the README in the same change. Builds on `ai-plan.md` (extraction, runs) and `replies-plan.md` (threads, reply
 > drafts). Nothing is ever sent; everything stays on the local Ollama.
-> **Status:** steps 1–6 implemented (step 3 with mostly negative results, see notes); steps 7–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
+> **Status:** steps 1–7 implemented (step 3 with mostly negative results, see notes); steps 8–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - Step 1: `ai/AiTimings` (per-thread session, no Micrometer) is fed by `OllamaClient` and opened per email by
@@ -86,6 +86,14 @@
 >   debatable). `AiReplyDraftEvalTest` (5 reply cases, 2 new): 5 drafts, 10 questions found, 9 answered, 1 left open as a
 >   placeholder; the dinner gets 18:00 slots, the meeting request Monday/Tuesday 09:00, the quote request three November
 >   dates.
+> - Step 7: setting `ai_settings.courtesy_replies` (`V1_0_25`), triage intent COURTESY + `courtesyKind`, composer
+>   guidance per kind, `ImportanceScorer` caps courtesy drafts below NORMAL, card label *Optional reply*, checkbox under
+>   *Reply drafts*. Differences from the plan: the triage answer is made consistent in code — measured, the model named
+>   a courtesy kind but left the intent at NONE (thanks, good news), or called a rejection COURTESY *and* "needs a
+>   reply" (which would have bypassed the opt-in and cost triage precision 0.69 → 0.61): a kind on a no-answer mail means
+>   COURTESY, COURTESY never needs a reply, a kind without COURTESY is dropped. No `KEEP_IN_TOUCH` eval case yet.
+>   Eval (`ai-eval/courtesy`, 4 cases): 3 of 3 personal mails recognized and drafted, the no-reply rejection gets none;
+>   triage precision 0.69, recall 1.00 on 58 cases.
 > - Consequence for step 4: extra context in the prompt is cheap (reading ≈ 1 s per 1 200 tokens), so the budget can
 >   be generous; asking for more output is what costs time.
 

@@ -2594,7 +2594,9 @@ components:
         "cc": [..], "subject": "Re: ..", "body": "plain text", "language": "de", "placeholders": ["[available times]"]}`:
         a reply the assistant wrote for the source email (`to` = its sender, `cc` = its Cc without your own addresses;
         `placeholders` are the `[...]` parts you still have to fill in; optional since reply-v2: `intent` = what the reply
-        does (SCHEDULE, ANSWER_QUESTIONS, CONFIRM, DECLINE, PROVIDE_INFO), `questions` = `[{"question": "..", "answered":
+        does (SCHEDULE, ANSWER_QUESTIONS, CONFIRM, DECLINE, PROVIDE_INFO, COURTESY = an optional polite reply to an email
+        that needs no answer, with `courtesyKind` REJECTION_THANKS, DECLINE_OFFER, THANK_YOU, CONGRATULATE or
+        KEEP_IN_TOUCH; only with the courtesyReplies setting, always LOW importance), `questions` = `[{"question": "..", "answered":
         true|false|null}]` the questions of the email and whether the draft answers them (false = left as a placeholder,
         null = not reported), `proposedSlots` = `[{"start": "ISO-8601", "end": "ISO-8601"}]` the free times from your
         calendar the draft offers). Approving keeps it as a reply draft (never
@@ -3185,7 +3187,7 @@ components:
       enum: ['OFF', SUGGEST, AUTO]
     AiSettingsDto:
       type: object
-      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies]
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies]
       properties:
         mailAccess:
           type: boolean
@@ -3204,6 +3206,9 @@ components:
           $ref: '#/components/schemas/AiAccess'
         replies:
           $ref: '#/components/schemas/AiAccess'
+        courtesyReplies:
+          type: boolean
+          description: Also suggest optional polite replies to emails that need no answer (a job rejection, a thank-you); only with replies = SUGGEST
         onboardedAt:
           type: string
           format: date-time
@@ -3229,6 +3234,8 @@ components:
           $ref: '#/components/schemas/AiAccess'
         replies:
           $ref: '#/components/schemas/AiAccess'
+        courtesyReplies:
+          type: boolean
         completeOnboarding:
           type: boolean
           description: true marks the setup wizard as completed (sets onboardedAt once)

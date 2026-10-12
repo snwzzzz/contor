@@ -1,0 +1,13 @@
+{
+  "id": "courtesy-en-thanks-for-help",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Priya Nair",
+    "fromAddress": "priya.nair@horizon-labs.com",
+    "to": ["me@example.com"],
+    "subject": "Thank you!",
+    "receivedAt": "2026-10-09T16:30:00Z",
+    "body": "Hi Alex,\njust wanted to say thank you for jumping in on the database migration last week. Your script saved the team days of work and the release went out on time.\nPriya"
+  }
+}

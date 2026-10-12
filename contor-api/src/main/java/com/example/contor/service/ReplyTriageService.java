@@ -29,8 +29,13 @@ public class ReplyTriageService {
 
     private static final List<String> URGENCY = List.of("low", "normal", "high");
     /** What the reply has to do; NONE when no reply is needed. */
-    static final List<String> INTENTS = List.of("ANSWER_QUESTIONS", "SCHEDULE", "CONFIRM", "DECLINE", "PROVIDE_INFO", "NONE");
+    static final List<String> INTENTS = List.of("ANSWER_QUESTIONS", "SCHEDULE", "CONFIRM", "DECLINE", "PROVIDE_INFO", "COURTESY",
+            "NONE");
+    /** What an optional polite reply (intent COURTESY) does. */
+    static final List<String> COURTESY_KINDS = List.of("REJECTION_THANKS", "DECLINE_OFFER", "THANK_YOU", "CONGRATULATE",
+            "KEEP_IN_TOUCH");
     static final int MAX_QUESTIONS = 5;
+    private static final String COURTESY = "COURTESY";
 
     private static final String SYSTEM = """
             You decide whether an email needs a personal written answer from the user. Answer with JSON only.
@@ -46,7 +51,12 @@ public class ReplyTriageService {
             reason: one short sentence. urgency: high when the email names a deadline within the next days, low when an \
             answer can wait, normal otherwise.
             intent: what the reply has to do — SCHEDULE (agree on a date or time), ANSWER_QUESTIONS, CONFIRM (say yes to \
-            something proposed), DECLINE, PROVIDE_INFO (send a document or information), NONE when no reply is needed.
+            something proposed), DECLINE, PROVIDE_INFO (send a document or information), COURTESY (needsReply is false, but a \
+            person wrote personally and a short polite reply is customary), NONE when no reply is needed.
+            courtesyKind, only for COURTESY: REJECTION_THANKS (a person turned down the user's application or offer — thank \
+            them, stay in touch), DECLINE_OFFER (an offer or invitation the user will not take), THANK_YOU (the sender helped \
+            or did the user a favour), CONGRATULATE (good news of the sender), KEEP_IN_TOUCH (someone says goodbye or changes \
+            jobs). Never COURTESY for automated senders, newsletters, receipts, notifications or mass mail.
             questions: each question or request the reply must answer, in the words of the email, at most 5.
             scheduleFrom, scheduleTo: for SCHEDULE, the first and last day (YYYY-MM-DD) the email asks about, resolved from \
             the email's date ("next week" = its Monday to Friday); leave them out when it names no days. Give them for any \
@@ -63,9 +73,10 @@ public class ReplyTriageService {
      * @param questions    what the reply must answer, at most {@link #MAX_QUESTIONS}
      * @param scheduleFrom first day a meeting is asked for, {@code null} when the email names none
      * @param scheduleTo   last day, {@code null} when none (or before {@code scheduleFrom})
+     * @param courtesyKind for intent COURTESY: one of {@link #COURTESY_KINDS}, else {@code null}
      */
     public record Triage(boolean needsReply, String reason, String urgency, String intent, List<String> questions,
-                         LocalDate scheduleFrom, LocalDate scheduleTo, SlotFinder.TimeOfDay timeOfDay) {
+                         LocalDate scheduleFrom, LocalDate scheduleTo, SlotFinder.TimeOfDay timeOfDay, String courtesyKind) {
 
         public Triage {
             questions = questions != null ? List.copyOf(questions) : List.of();
@@ -79,7 +90,7 @@ public class ReplyTriageService {
 
         /** A triage without the reply's details (no answer from the model). */
         public static Triage none(String reason) {
-            return new Triage(false, reason, "normal", "NONE", List.of(), null, null, SlotFinder.TimeOfDay.ANY);
+            return new Triage(false, reason, "normal", "NONE", List.of(), null, null, SlotFinder.TimeOfDay.ANY, null);
         }
     }
 
@@ -93,7 +104,8 @@ public class ReplyTriageService {
                 "questions", JsonSchemas.array(JsonSchemas.string()),
                 "scheduleFrom", JsonSchemas.string(),
                 "scheduleTo", JsonSchemas.string(),
-                "timeOfDay", JsonSchemas.oneOf(List.of("ANY", "MORNING", "AFTERNOON", "EVENING"))));
+                "timeOfDay", JsonSchemas.oneOf(List.of("ANY", "MORNING", "AFTERNOON", "EVENING")),
+                "courtesyKind", JsonSchemas.oneOf(COURTESY_KINDS)));
         String answer = llmClient.completeJson(properties.models().routing(), SYSTEM,
                 ReplyPrompts.recent(thread, properties.timezone(), 2), objectMapper.valueToTree(schema));
         JsonNode json;
@@ -124,8 +136,20 @@ public class ReplyTriageService {
         }
         SlotFinder.TimeOfDay timeOfDay = Arrays.stream(SlotFinder.TimeOfDay.values())
                 .filter(value -> value.name().equals(json.path("timeOfDay").asString(""))).findFirst().orElse(SlotFinder.TimeOfDay.ANY);
-        return new Triage(json.path("needsReply").asBoolean(false), json.path("reason").asString(""),
-                URGENCY.contains(urgency) ? urgency : "normal", intent, questions, from, to, timeOfDay);
+        // The model's answer made consistent (measured: it names a courtesy kind but leaves the intent at NONE, or calls a
+        // courtesy "needs a reply"): a polite reply is by definition one the email does not need.
+        boolean needsReply = json.path("needsReply").asBoolean(false);
+        String courtesyKind = COURTESY_KINDS.contains(json.path("courtesyKind").asString("")) ? json.path("courtesyKind").asString() : null;
+        if (courtesyKind != null && !needsReply && "NONE".equals(intent)) {
+            intent = COURTESY;
+        }
+        if (COURTESY.equals(intent)) {
+            needsReply = false;
+        } else {
+            courtesyKind = null;
+        }
+        return new Triage(needsReply, json.path("reason").asString(""), URGENCY.contains(urgency) ? urgency : "normal", intent,
+                questions, from, to, timeOfDay, courtesyKind);
     }
 
     private static LocalDate date(JsonNode node) {

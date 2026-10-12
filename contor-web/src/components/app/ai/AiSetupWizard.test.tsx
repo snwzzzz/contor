@@ -16,6 +16,7 @@ const settings = {
   calendar: "SUGGEST",
   tasks: "SUGGEST",
   replies: "OFF",
+  courtesyReplies: false,
 };
 
 const readyStatus = {

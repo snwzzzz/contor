@@ -55,6 +55,7 @@ class AiReplyTriageEvalTest {
 
         List<EvalCase> cases = new ArrayList<>(EvalCaseLoader.loadClasspath("ai-eval/synthetic"));
         cases.addAll(EvalCaseLoader.loadClasspath("ai-eval/replies"));
+        cases.addAll(EvalCaseLoader.loadClasspath("ai-eval/courtesy"));
         cases.addAll(EvalCaseLoader.load(privateDir));
         List<EvalCase> labelled = cases.stream().filter(evalCase -> evalCase.needsReply() != null).toList();
 

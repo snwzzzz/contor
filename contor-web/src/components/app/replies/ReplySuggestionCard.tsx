@@ -18,7 +18,7 @@ import { ReplyQuestions } from "./ReplyQuestions";
 interface ReplySuggestionCardProps {
   /** A pending DRAFT_REPLY proposal. */
   proposal: ProposalDto;
-  /** Small heading above the subject. */
+  /** Small heading above the subject; by default "Draft reply", or "Optional reply" for a polite one. */
   label?: string;
   /** Show the whole text instead of its first lines (thread view). */
   full?: boolean;
@@ -30,12 +30,13 @@ interface ReplySuggestionCardProps {
  * A reply the assistant suggests: recipients, subject and text with the placeholders highlighted. "Edit & keep" opens
  * the editor and approves the proposal with the edited text (kept as a draft, never sent); "Dismiss" rejects it.
  */
-export function ReplySuggestionCard({ proposal, label = "Draft reply", full = false, onOpen }: ReplySuggestionCardProps) {
+export function ReplySuggestionCard({ proposal, label, full = false, onOpen }: ReplySuggestionCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   // Keeping or dismissing changes the proposals, the thread and the inbox markers: refresh them all.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
   const payload = proposal.payload as unknown as ReplyDraftPayload;
+  const heading = label ?? (payload.intent === "COURTESY" ? "Optional reply" : "Draft reply");
   const text: ReplyText = { to: payload.to ?? [], cc: payload.cc ?? [], subject: payload.subject ?? "", body: payload.body ?? "" };
   const subject = text.subject || "(No subject)";
   const left = placeholdersIn(text.body).length;
@@ -58,7 +59,7 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              {label}
+              {heading}
               <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
             </span>
             <h2 className="line-clamp-2 leading-snug font-medium">

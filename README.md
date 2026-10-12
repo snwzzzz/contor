@@ -183,7 +183,12 @@ bar (or Settings → AI Models). The wizard walks through:
   inside your working hours (`AI_WORK_*`, evenings 18:00–22:00 for e.g. a dinner; one slot per day; the Outlook
   calendar is not read). It also reads your earlier mail with the sender and related mail (ADR 0009). The card shows
   the questions with *answered* / *still open* and the offered times. Bills, payment and appointment reminders and
-  requests to *do* something (pay, attend, take a test) count as not needing an answer. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
+  requests to *do* something (pay, attend, take a test) count as not needing an answer. With *Also suggest polite
+  replies* (Settings → Autonomy and the setup wizard, under *Reply drafts*; off by default, `courtesyReplies`) the
+  assistant also drafts an **optional reply** to personal mail that needs no answer but usually gets one — a job
+  rejection (thank them, stay in touch), an offer you decline, thanks for help, good news to congratulate on; never to
+  automated senders, never while a real reply waits in the conversation, always LOW importance, labelled *Optional
+  reply*. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
   **Edit & keep** opens the editor (*Keep* waits until every placeholder is filled in, *Keep anyway* does not), *Dismiss*
   rejects it. A kept draft shows in the thread as *Draft — not sent* with **Copy** and **Open in mail app** (`mailto:`,
   only when short enough) — **nothing is ever sent or written to your mailbox**. A pending draft is rejected
@@ -239,7 +244,8 @@ cd contor-api && ./mvnw verify -Pai-eval
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
 `AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
 `reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
-name an offered day (both report only).
+name an offered day, and runs the `ai-eval/courtesy` cases (rejection by a person, thanks, good news must get a polite
+draft; a rejection from a no-reply address must get none) — all report only.
 
 Needs Ollama with the extraction model running; about 6 minutes for 49 mails on an RTX 3060. Relations are extracted in a second, short call (only for mails with two or more extracted records): listing relation types in the extraction prompt itself made the model invent organizations and events just to relate them (measured with this eval: 31 instead of 12 organizations). Each case is analyzed as if
 processed when it was received, so "Friday" resolves from the mail date. The report goes to

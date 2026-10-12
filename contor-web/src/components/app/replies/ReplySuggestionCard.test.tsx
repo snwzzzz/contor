@@ -56,6 +56,13 @@ describe("ReplySuggestionCard", () => {
     expect(times).toHaveTextContent(/13 Oct/);
   });
 
+  it("calls a polite reply optional", () => {
+    renderWithProviders(<ReplySuggestionCard proposal={proposal({ intent: "COURTESY", courtesyKind: "REJECTION_THANKS" })} />);
+
+    expect(screen.getByText("Optional reply")).toBeInTheDocument();
+    expect(screen.queryByText("Draft reply")).not.toBeInTheDocument();
+  });
+
   it("shows neither for a draft without questions or times", () => {
     renderWithProviders(<ReplySuggestionCard proposal={proposal({})} />);
 
