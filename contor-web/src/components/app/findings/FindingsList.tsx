@@ -7,6 +7,8 @@ import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
+import { PictureAvatar } from "@/components/app/mail/PictureAvatar";
+import { domainOf } from "@/components/app/mail/mail-format";
 import { ProposalDetail } from "@/components/app/proposals/ProposalDetail";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRelationTypes } from "@/lib/api/generated/endpoints/relations/relations";
@@ -15,6 +17,7 @@ import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { RelationTypeDto } from "@/lib/api/generated/model/relationTypeDto";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { collectionTint } from "@/lib/collection-tint";
+import { useSenderPictures, isFreeMailDomain } from "@/lib/hooks/useSenderPictures";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { RelationLine, type RelationAnchor, type RelationPayload } from "./RelationLine";
@@ -27,6 +30,19 @@ function collectionOf(proposal: ProposalDto): number {
 }
 
 const isRelation = (proposal: ProposalDto) => proposal.kind === "CREATE_RELATION";
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const WEBSITE = /^(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?:[/:?#]\S*)?$/i;
+
+/** Where a finding's picture can come from: its first email address (contact photo), else a company domain (logo). */
+function pictureKeys(proposal: ProposalDto): { address?: string; domain?: string } {
+  const texts = Object.values((proposal.payload as ProposalPayload).values ?? {}).filter((value): value is string => typeof value === "string");
+  const address = texts.find((text) => EMAIL.test(text.trim()))?.trim().toLowerCase();
+  const mailDomain = domainOf(address);
+  const website = texts.map((text) => WEBSITE.exec(text.trim())?.[1]).find((domain) => domain !== undefined && !EMAIL.test(domain));
+  const domain = mailDomain && !isFreeMailDomain(mailDomain) ? mailDomain : website?.toLowerCase();
+  return { address, domain };
+}
 
 /** Filter: everything, the record cards of one collection, or only the connections between existing records. */
 type Filter = number | "connections" | null;
@@ -49,6 +65,8 @@ export function FindingsList() {
   const [filter, setFilter] = useState<Filter>(null);
   const [bulkType, setBulkType] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const keys = new Map((data?.items ?? []).filter((proposal) => !isRelation(proposal)).map((proposal) => [proposal.id, pictureKeys(proposal)]));
+  const pictures = useSenderPictures([...keys.values()].map((key) => key.domain).filter((domain) => domain !== undefined));
   // Keeping a finding creates or changes a record: refresh everything that may show it.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
@@ -132,13 +150,15 @@ export function FindingsList() {
         ) : null}
       </div>
       {visible.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        // As many columns as fit; the cards of a row stretch to the same height.
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4">
           {visible.map((proposal) => (
             <FindingCard
               key={proposal.id}
               proposal={proposal}
               collectionName={names.get(collectionOf(proposal))}
               collectionSlug={slugs.get(collectionOf(proposal))}
+              picture={pictures.contactPhoto(keys.get(proposal.id)?.address) ?? pictures.logo(keys.get(proposal.id)?.domain)}
               busy={busyId === proposal.id}
               onOpen={() => setSelectedId(proposal.id)}
               onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
@@ -244,6 +264,8 @@ interface FindingCardProps {
   proposal: ProposalDto;
   collectionName: string | undefined;
   collectionSlug: string | undefined;
+  /** Contact photo or company logo, if there is one. */
+  picture: string | undefined;
   busy: boolean;
   onOpen: () => void;
   onDecide: (decision: "APPROVE" | "REJECT") => void;
@@ -251,33 +273,57 @@ interface FindingCardProps {
   children?: ReactNode;
 }
 
-function FindingCard({ proposal, collectionName, collectionSlug, busy, onOpen, onDecide, children }: FindingCardProps) {
+/**
+ * One extracted record: picture (contact photo, company logo or initial), its collection as a colored chip with
+ * New/Update, the values that say more than the title, the reasoning and how sure the assistant is.
+ */
+function FindingCard({ proposal, collectionName, collectionSlug, picture, busy, onOpen, onDecide, children }: FindingCardProps) {
   const payload = proposal.payload as ProposalPayload;
   const title = proposalTitle(payload);
   const collectionId = collectionOf(proposal);
+  const update = proposal.kind === "UPDATE_RECORD";
+  const confidence = proposal.confidence != null ? Math.round(proposal.confidence * 100) : null;
   const values = Object.entries(payload.values ?? {})
-    .filter(([, value]) => value !== null && value !== "")
+    .filter(([, value]) => value !== null && value !== "" && formatValue(value) !== title)
     .slice(0, MAX_VALUES);
 
   return (
     <article
       aria-label={title}
       data-collection={collectionId}
-      className={cn("relative flex flex-col overflow-hidden rounded-lg border bg-card", CARD_HOVER, busy && "opacity-60")}
+      className={cn("relative flex h-full flex-col overflow-hidden rounded-xl border bg-card", CARD_HOVER, busy && "opacity-60")}
     >
-      <div className={cn("flex items-center justify-between gap-2 px-4 py-1.5 text-xs font-medium", collectionTint(collectionId, collectionSlug))}>
-        <span className="truncate">{collectionName ?? "Collection"}</span>
-        <span className="opacity-80">{proposal.kind === "UPDATE_RECORD" ? "Update" : "New"}</span>
-      </div>
-      <div className="grid flex-1 content-start gap-2 p-4">
-        <h2 className="truncate font-medium">
-          {/* Stretched over the whole card; the buttons and connections sit above it. */}
-          <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>
-            {title}
-          </button>
-        </h2>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-start gap-3">
+          <PictureAvatar label={title} src={picture} size={40} className="shrink-0" />
+          <div className="grid min-w-0 flex-1 gap-1">
+            <div className="flex min-w-0 items-center gap-1.5 text-xs">
+              <span className={cn("truncate rounded-full px-2 py-0.5 font-medium", collectionTint(collectionId, collectionSlug))}>
+                {collectionName ?? "Collection"}
+              </span>
+              <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 font-medium", update ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary")}>
+                {update ? "Update" : "New"}
+              </span>
+            </div>
+            <h2 className="line-clamp-2 leading-snug font-medium">
+              {/* Stretched over the whole card; the buttons and connections sit above it. */}
+              <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>
+                {title}
+              </button>
+            </h2>
+          </div>
+          {confidence !== null ? (
+            <span className="flex shrink-0 flex-col items-end gap-1" title="How sure the assistant is">
+              <span className="text-xs tabular-nums text-muted-foreground">{confidence}%</span>
+              <span className="h-1 w-10 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <span className="block h-full rounded-full bg-primary" style={{ width: `${confidence}%` }} />
+              </span>
+            </span>
+          ) : null}
+        </div>
+
         {values.length > 0 ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
             {values.map(([key, value]) => (
               <div key={key} className="contents">
                 <dt className="text-muted-foreground">{humanize(key)}</dt>
@@ -286,17 +332,19 @@ function FindingCard({ proposal, collectionName, collectionSlug, busy, onOpen, o
             ))}
           </dl>
         ) : null}
-        {proposal.reasoning ? <p className="line-clamp-2 text-xs text-muted-foreground">{proposal.reasoning}</p> : null}
+        {proposal.reasoning ? (
+          <p className="line-clamp-2 rounded-lg bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{proposal.reasoning}</p>
+        ) : null}
         {Children.count(children) > 0 ? (
-          <ul aria-label="Connections" className="relative z-10 mt-1 grid gap-0.5 border-t pt-2">{children}</ul>
+          <ul aria-label="Connections" className="relative z-10 grid gap-0.5 border-t pt-2">{children}</ul>
         ) : null}
       </div>
-      <div className="relative z-10 flex justify-end gap-1 border-t px-2 py-1.5">
+      <div className="relative z-10 mt-auto flex justify-end gap-2 border-t px-3 py-2">
         <AppButton size="sm" variant="ghost" disabled={busy} aria-label={`Dismiss ${title}`} onClick={() => onDecide("REJECT")}>
           <X aria-hidden="true" data-icon="inline-start" />
           Dismiss
         </AppButton>
-        <AppButton size="sm" variant="ghost" loading={busy} aria-label={`Keep ${title}`} onClick={() => onDecide("APPROVE")}>
+        <AppButton size="sm" loading={busy} aria-label={`Keep ${title}`} onClick={() => onDecide("APPROVE")}>
           {busy ? null : <Check aria-hidden="true" data-icon="inline-start" />}
           Keep
         </AppButton>

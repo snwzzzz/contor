@@ -38,13 +38,14 @@ export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint
             ) : null}
             <div className="grid min-w-0 flex-1 gap-0.5">
               {label ? <span className="text-xs font-medium text-muted-foreground">{label}</span> : null}
-              <SheetTitle className="leading-snug break-words">{title}</SheetTitle>
+              <SheetTitle className="leading-snug [overflow-wrap:anywhere]">{title}</SheetTitle>
             </div>
             {aside}
           </div>
           <SheetDescription className="sr-only">Details of {title}</SheetDescription>
         </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        {/* Nothing may widen the sheet: long values wrap, a wide mail scrolls in its own frame. */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">{children}</div>
         {footer ? <SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t">{footer}</SheetFooter> : null}
       </SheetContent>
     </Sheet>

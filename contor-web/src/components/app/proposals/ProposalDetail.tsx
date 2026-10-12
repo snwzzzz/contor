@@ -146,7 +146,7 @@ function EditValues({ collection, draft, onChange }: { collection: CollectionDto
           ) : (
             <div key={key} className="grid gap-1 text-sm">
               <span className="font-medium">{humanize(key)}</span>
-              <span className="text-muted-foreground">{formatValue(value)}</span>
+              <span className="text-muted-foreground [overflow-wrap:anywhere]">{formatValue(value)}</span>
             </div>
           );
         })}
@@ -172,18 +172,18 @@ function Changes({ proposal, payload, collectionName }: { proposal: ProposalDto;
     <Section heading={isUpdate ? "Changes" : "Would store"}>
       {collectionName ? <p className="text-sm text-muted-foreground">In {collectionName}</p> : null}
       {visible.length > 0 ? (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
           {visible.map((row) => (
             <div key={row.key} className="contents">
               <dt className="text-muted-foreground">{humanize(row.key)}</dt>
-              <dd className="grid gap-0.5 break-words">
+              <dd className="grid min-w-0 gap-0.5">
                 {compare && row.changed ? (
                   <>
-                    <span className="text-muted-foreground line-through">{formatValue(row.before)}</span>
-                    <span className="rounded bg-primary/5 px-1 font-medium">{formatValue(row.next)}</span>
+                    <span className="text-muted-foreground line-through [overflow-wrap:anywhere]">{formatValue(row.before)}</span>
+                    <span className="rounded bg-primary/5 px-1 font-medium [overflow-wrap:anywhere]">{formatValue(row.next)}</span>
                   </>
                 ) : (
-                  <span className="whitespace-pre-line">{formatValue(row.next)}</span>
+                  <span className="whitespace-pre-line [overflow-wrap:anywhere]">{formatValue(row.next)}</span>
                 )}
               </dd>
             </div>
@@ -221,13 +221,13 @@ function SourceEmail({ emailId }: { emailId: number }) {
 
   return (
     <Section heading="From this email">
-      <div className="grid gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-medium">{email.fromName || email.fromAddress}</span>
-          <span className="text-xs text-muted-foreground">{RECEIVED.format(new Date(email.receivedAt))}</span>
+      <div className="grid min-w-0 gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <span className="min-w-0 truncate font-medium">{email.fromName || email.fromAddress}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">{RECEIVED.format(new Date(email.receivedAt))}</span>
         </div>
-        <span>{email.subject || "(No subject)"}</span>
-        {!open && email.snippet ? <span className="line-clamp-2 text-xs text-muted-foreground">{email.snippet}</span> : null}
+        <span className="[overflow-wrap:anywhere]">{email.subject || "(No subject)"}</span>
+        {!open && email.snippet ? <span className="line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">{email.snippet}</span> : null}
       </div>
       {open ? <EmailBody email={email} /> : null}
       <div className="flex gap-3">

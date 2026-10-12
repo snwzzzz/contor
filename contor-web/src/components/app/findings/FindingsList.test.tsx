@@ -74,7 +74,7 @@ describe("FindingsList", () => {
 
   it("lifts a card on hover and opens its details with every value", async () => {
     const calls = mockApi({
-      "GET /api/proposals": findingsPage([{ ...findings[0], payload: { ...findings[0].payload, values: { ...findings[0].payload.values, phone: "+49 1", city: "Munich" } } }]),
+      "GET /api/proposals": findingsPage([{ ...findings[0], payload: { ...findings[0].payload, values: { ...findings[0].payload.values, phone: "+49 1", zip: "80331", city: "Munich" } } }]),
       "GET /api/collections": { body: collections },
       "POST /api/proposals/21/decision": { body: { ...findings[0], status: "APPROVED" } },
     });
@@ -92,6 +92,22 @@ describe("FindingsList", () => {
 
     await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/21/decision")?.body).toEqual({ decision: "APPROVE" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("shows the person's contact photo, how sure the assistant is, and lines the cards up", async () => {
+    mockApi({
+      "GET /api/proposals": findingsPage([{ ...findings[0], confidence: 0.87 }, findings[1]]),
+      "GET /api/collections": { body: collections },
+      "GET /api/senders/contact-photos": { body: [{ id: 9, emailAddress: "anna@acme.com" }] },
+    });
+    renderWithProviders(<FindingsList />);
+
+    const anna = await screen.findByRole("article", { name: "Anna Berger" });
+    await waitFor(() => expect(anna.querySelector("img")?.getAttribute("src")).toContain("/api/senders/contact-photos/9"));
+    expect(within(anna).getByText("87%")).toBeInTheDocument();
+    expect(anna).toHaveClass("h-full");
+    // Without a picture: the initial of the title.
+    expect(within(screen.getByRole("article", { name: "Software Engineer at Acme" })).getByText("S")).toBeInTheDocument();
   });
 
   it("filters by collection", async () => {

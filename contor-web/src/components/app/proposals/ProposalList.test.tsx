@@ -214,11 +214,13 @@ describe("ProposalList", () => {
 
       const sheet = await screen.findByRole("dialog", { name: "Workshop day" });
       expect(within(sheet).getByText("Bring a laptop")).toBeInTheDocument();
+      // Long values (URLs) wrap anywhere instead of widening the sheet.
+      expect(within(sheet).getByText("Bring a laptop")).toHaveClass("[overflow-wrap:anywhere]");
       expect(within(sheet).getByText("Casual")).toBeInTheDocument();
       expect(within(sheet).getByText("The mail announces a workshop day with room and dress code.")).toBeInTheDocument();
       expect(within(sheet).getByText(/qwen3:8b/)).toBeInTheDocument();
       expect(await within(sheet).findByText("Workshop on Friday")).toBeInTheDocument();
-      expect(within(sheet).getByText("Anna Berger")).toBeInTheDocument();
+      expect(within(sheet).getByText("Anna Berger")).toHaveClass("truncate");
       expect(within(sheet).queryByText("Hi, see you on Friday at the office.")).not.toBeInTheDocument();
 
       await userEvent.click(within(sheet).getByRole("button", { name: "Show email" }));
