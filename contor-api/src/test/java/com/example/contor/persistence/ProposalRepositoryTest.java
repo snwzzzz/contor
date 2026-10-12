@@ -5,6 +5,7 @@ import com.example.contor.domain.AppUser;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.Proposal;
+import com.example.contor.domain.ProposalImportance;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
 import org.springframework.data.domain.PageRequest;
@@ -60,6 +61,56 @@ public class ProposalRepositoryTest {
     }
 
     @Test
+    void new_proposals_are_of_normal_importance() {
+        var saved = proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.SET_LABEL).payload(Map.of()).build());
+
+        assertThat(saved.getImportance()).isEqualTo(ProposalImportance.NORMAL);
+        assertThat(saved.getImportanceScore()).isEqualTo(50);
+        assertThat(saved.getImportanceReason()).isNull();
+    }
+
+    private Proposal scored(ProposalKind kind, Map<String, Object> payload, int score) {
+        return proposalRepository.save(Proposal.builder().kind(kind).status(ProposalStatus.PENDING).payload(payload)
+                .importanceScore(score).importance(ProposalImportance.of(score)).importanceReason("r").build());
+    }
+
+    @Test
+    void filters_by_a_minimum_score_and_sorts_by_importance() {
+        var low = scored(ProposalKind.CREATE_RECORD, Map.of("collectionId", 1, "title", "Anna"), 20);
+        var urgentAction = scored(ProposalKind.CREATE_RECORD, Map.of("collectionId", 4, "title", "Pay"), 90);
+        var highAction = scored(ProposalKind.DRAFT_REPLY, Map.of(), 65);
+        var highFinding = scored(ProposalKind.CREATE_RECORD, Map.of("collectionId", 1, "title", "Acme"), 70);
+        proposalRepository.flush();
+        List<Long> actionCollections = List.of(3L, 4L);
+        Sort byImportance = Sort.by(Sort.Order.desc("importanceScore"), Sort.Order.desc("createdAt"));
+
+        var all = proposalRepository.findByImportanceScoreGreaterThanEqual(60, PageRequest.of(0, 10, byImportance));
+        var pending = proposalRepository.findByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 0,
+                PageRequest.of(0, 10, byImportance));
+        var actions = proposalRepository.findActions("PENDING", actionCollections, 60, true, PageRequest.of(0, 10));
+        var findings = proposalRepository.findFindings("PENDING", actionCollections, 0, true, PageRequest.of(0, 10));
+
+        assertThat(all.getContent()).extracting(Proposal::getId).containsExactly(urgentAction.getId(), highFinding.getId(), highAction.getId());
+        assertThat(pending.getContent()).extracting(Proposal::getId).last().isEqualTo(low.getId());
+        assertThat(actions.getContent()).extracting(Proposal::getId).containsExactly(urgentAction.getId(), highAction.getId());
+        assertThat(actions.getTotalElements()).isEqualTo(2);
+        assertThat(findings.getContent()).extracting(Proposal::getId).containsExactly(highFinding.getId(), low.getId());
+        assertThat(proposalRepository.countFindings("PENDING", actionCollections, 60)).isEqualTo(1);
+        assertThat(proposalRepository.countActions("PENDING", actionCollections, 80)).isEqualTo(1);
+        assertThat(proposalRepository.countByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 60)).isEqualTo(3);
+    }
+
+    @Test
+    void knows_whether_an_insight_was_proposed_before_whatever_became_of_it() {
+        proposalRepository.saveAndFlush(of(ProposalKind.INSIGHT, ProposalStatus.REJECTED, Map.of("insightKey", "unanswered:42")));
+        proposalRepository.saveAndFlush(of(ProposalKind.CREATE_RECORD, ProposalStatus.PENDING, Map.of("insightKey", "other")));
+
+        assertThat(proposalRepository.existsInsightKey("unanswered:42")).isTrue();
+        assertThat(proposalRepository.existsInsightKey("other")).isFalse();
+        assertThat(proposalRepository.existsInsightKey("unanswered:43")).isFalse();
+    }
+
+    @Test
     void pages_proposals_by_status() {
         for (int i = 0; i < 3; i++) proposalRepository.save(proposal(ProposalStatus.PENDING));
         proposalRepository.save(proposal(ProposalStatus.APPROVED));
@@ -85,16 +136,16 @@ public class ProposalRepositoryTest {
         proposalRepository.saveAndFlush(of(ProposalKind.CREATE_RECORD, ProposalStatus.REJECTED, Map.of("collectionId", 1, "title", "Old")));
         List<Long> actionCollections = List.of(3L, 4L);
 
-        var findings = proposalRepository.findFindings("PENDING", actionCollections, PageRequest.of(0, 10));
-        var actions = proposalRepository.findActions("PENDING", actionCollections, PageRequest.of(0, 10));
+        var findings = proposalRepository.findFindings("PENDING", actionCollections, 0, false, PageRequest.of(0, 10));
+        var actions = proposalRepository.findActions("PENDING", actionCollections, 0, false, PageRequest.of(0, 10));
 
         assertThat(findings.getContent()).extracting(p -> p.getPayload().get("collectionId")).containsExactlyInAnyOrder(1, 7);
         assertThat(findings.getTotalElements()).isEqualTo(2);
         assertThat(actions.getContent()).extracting(Proposal::getKind)
                 .containsExactlyInAnyOrder(ProposalKind.CREATE_RECORD, ProposalKind.CREATE_RECORD, ProposalKind.CREATE_COLLECTION);
-        assertThat(proposalRepository.countFindings("PENDING", actionCollections)).isEqualTo(2);
-        assertThat(proposalRepository.countActions("PENDING", actionCollections)).isEqualTo(3);
-        assertThat(proposalRepository.countFindings("REJECTED", actionCollections)).isEqualTo(1);
+        assertThat(proposalRepository.countFindings("PENDING", actionCollections, 0)).isEqualTo(2);
+        assertThat(proposalRepository.countActions("PENDING", actionCollections, 0)).isEqualTo(3);
+        assertThat(proposalRepository.countFindings("REJECTED", actionCollections, 0)).isEqualTo(1);
     }
 
     @Test
@@ -149,9 +200,9 @@ public class ProposalRepositoryTest {
         proposalRepository.saveAndFlush(of(ProposalKind.SET_LABEL, ProposalStatus.PENDING, Map.of("labelId", 3)));
         var actionCollections = List.of(3L, 4L);
 
-        assertThat(proposalRepository.countFindings("PENDING", actionCollections)).isEqualTo(1);
-        assertThat(proposalRepository.countActions("PENDING", actionCollections)).isEqualTo(1);
-        assertThat(proposalRepository.findFindings("PENDING", actionCollections, PageRequest.of(0, 10)).getContent())
+        assertThat(proposalRepository.countFindings("PENDING", actionCollections, 0)).isEqualTo(1);
+        assertThat(proposalRepository.countActions("PENDING", actionCollections, 0)).isEqualTo(1);
+        assertThat(proposalRepository.findFindings("PENDING", actionCollections, 0, false, PageRequest.of(0, 10)).getContent())
                 .extracting(Proposal::getKind).containsExactly(ProposalKind.CREATE_RELATION);
     }
 

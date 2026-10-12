@@ -57,6 +57,21 @@ public class Proposal extends AuditableEntity {
     @Column(precision = 5, scale = 4)
     private BigDecimal confidence;
 
+    /** Derived from {@link #importanceScore} (see ImportanceScorer). */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProposalImportance importance = ProposalImportance.NORMAL;
+
+    /** 0–100; sorting by importance uses it. */
+    @Builder.Default
+    @Column(name = "importance_score", nullable = false)
+    private int importanceScore = 50;
+
+    /** Why the proposal got its importance; {@code null} for proposals that were never scored. */
+    @Column(name = "importance_reason")
+    private String importanceReason;
+
     private String reasoning;
 
     private String model;

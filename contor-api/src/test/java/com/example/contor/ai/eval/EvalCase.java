@@ -12,17 +12,40 @@ import java.util.Map;
  * @param expected      what a perfect extraction records
  * @param mustNotProduce things that must never be recorded for this email (counted as forbidden hits)
  * @param needsReply     whether the email needs a written answer from the user (reply triage); {@code null} = not labelled
+ * @param context        earlier emails the model may read with this one (cases in {@code ai-eval/context}); {@code null} = none
  */
-public record EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce, Boolean needsReply) {
+public record EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce, Boolean needsReply,
+                       Context context) {
 
     public EvalCase {
         expected = expected != null ? expected : new Expected(null, null);
         mustNotProduce = mustNotProduce != null ? mustNotProduce : List.of();
     }
 
+    /** A case without earlier emails. */
+    public EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce, Boolean needsReply) {
+        this(id, email, expected, mustNotProduce, needsReply, null);
+    }
+
     /** A case without a reply label. */
     public EvalCase(String id, EmailContent email, Expected expected, List<Forbidden> mustNotProduce) {
-        this(id, email, expected, mustNotProduce, null);
+        this(id, email, expected, mustNotProduce, null, null);
+    }
+
+    /**
+     * Earlier emails in the shape of {@code MailContext}; an email from the case's mailbox counts as
+     * written by the user.
+     *
+     * @param records lines like {@code events: Interview at Acme} for records already created from these emails
+     */
+    public record Context(List<EmailContent> thread, List<EmailContent> fromSender, List<EmailContent> related, List<String> records) {
+
+        public Context {
+            thread = thread != null ? thread : List.of();
+            fromSender = fromSender != null ? fromSender : List.of();
+            related = related != null ? related : List.of();
+            records = records != null ? records : List.of();
+        }
     }
 
     /**

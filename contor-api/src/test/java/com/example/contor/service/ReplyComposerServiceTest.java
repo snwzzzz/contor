@@ -75,6 +75,72 @@ class ReplyComposerServiceTest {
         });
     }
 
+    private static final ReplyComposerService.Brief SCHEDULE = new ReplyComposerService.Brief("SCHEDULE",
+            List.of("Wann hättest du Zeit?", "Was kostet der Workshop?"),
+            List.of("Tuesday, 13 October 2026, 11:00–12:00", "Wednesday, 14 October 2026, 09:00–10:00"),
+            "Earlier emails, for context only: CONTEXT-MARKER");
+
+    @Test
+    void compose_AnswersEveryQuestionAndSaysWhichAreStillOpen() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Hallo Anna,\\nich könnte Dienstag, 13.10., 11 Uhr oder Mittwoch, 14.10., 9 Uhr. Der Workshop kostet [Preis].\\nMax",
+                 "language": "de", "placeholders": ["[Preis]"], "summary": "Offers two times",
+                 "answers": [{"question": "Wann hättest du Zeit?", "answered": true}, {"question": "Was kostet der Workshop?", "answered": false}]}""");
+
+        ReplyComposerService.ComposedReply reply = service(8192).compose(thread(), List.of(), SCHEDULE).orElseThrow();
+
+        assertThat(reply.answers()).containsExactly(new ReplyComposerService.Answer("Wann hättest du Zeit?", true),
+                new ReplyComposerService.Answer("Was kostet der Workshop?", false));
+    }
+
+    @Test
+    void compose_ThePromptListsTheQuestionsTheFreeTimesAndTheContext() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Gerne [Zeit].", "language": "de", "placeholders": [], "summary": "s", "answers": []}""");
+
+        service(8192).compose(thread(), List.of(), SCHEDULE);
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), prompt.capture(), any());
+        assertThat(system.getValue()).contains("Answer every question").contains("only the free times");
+        assertThat(prompt.getValue()).contains("What the reply has to do: SCHEDULE")
+                .contains("1. Wann hättest du Zeit?").contains("2. Was kostet der Workshop?")
+                .contains("- Tuesday, 13 October 2026, 11:00–12:00").contains("CONTEXT-MARKER");
+        assertThat(prompt.getValue().indexOf("CONTEXT-MARKER")).isLessThan(prompt.getValue().indexOf("ANSWER THIS"));
+    }
+
+    @Test
+    void compose_ACourtesyReplyFollowsTheGuidanceForItsKind() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Danke!", "language": "de", "placeholders": [], "summary": "s", "answers": []}""");
+
+        service(8192).compose(thread(), List.of(), new ReplyComposerService.Brief("COURTESY", List.of(), List.of(), "", "REJECTION_THANKS"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), anyString(), prompt.capture(), any());
+        assertThat(prompt.getValue()).contains("What the reply has to do: COURTESY")
+                .contains("thank them for the opportunity").contains("no new commitments");
+    }
+
+    @Test
+    void compose_AnOpenQuestionWithoutAPlaceholderGivesNoDraft() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Hallo Anna, gerne!", "language": "de", "placeholders": [], "summary": "s",
+                 "answers": [{"question": "Wann hättest du Zeit?", "answered": false}]}""");
+
+        assertThat(service(8192).compose(thread(), List.of(), SCHEDULE)).isEmpty();
+    }
+
+    @Test
+    void compose_QuestionsTheModelDidNotReportOnStayUnchecked() {
+        answer("""
+                {"subject": "Re: Termin", "body": "Gerne am Dienstag.", "language": "de", "placeholders": [], "summary": "s"}""");
+
+        assertThat(service(8192).compose(thread(), List.of(), SCHEDULE).orElseThrow().answers())
+                .extracting(ReplyComposerService.Answer::answered).containsExactly(null, null);
+    }
+
     @Test
     void compose_PlaceholdersInTheBodyAreListedEvenWhenTheModelForgotThem() {
         answer("""

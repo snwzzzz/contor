@@ -1,9 +1,12 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockApi, type MockResponse } from "@/test/api-mock";
+import { navigationState, resetNavigation, router } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { ProposalList } from "./ProposalList";
+
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
 function collection(id: number, slug: string, name: string) {
   return { id, slug, name, system: true, matchKeys: [], displayConfig: {}, schemaVersion: 1, createdBy: "USER", fields: [] };
@@ -19,6 +22,9 @@ const actions = [
     payload: { collectionId: 3, title: "Interview at Acme", values: { starts_at: "2026-10-09T07:30:00Z", location: "Acme HQ" } },
     confidence: 0.95,
     reasoning: "Invitation to an interview on Friday",
+    importance: "URGENT",
+    importanceScore: 85,
+    importanceReason: "an appointment; due within 2 days; from one of your contacts",
     createdAt: "2026-10-08T12:00:00Z",
   },
   {
@@ -45,6 +51,106 @@ function actionsPage(items: unknown[]): (request: { url: URL }) => MockResponse 
 }
 
 describe("ProposalList", () => {
+  afterEach(() => resetNavigation());
+
+  it("looks for insights on request", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      "GET /api/proposals": actionsPage(actions),
+      "GET /api/collections": { body: collections },
+      "POST /api/ai/insights": { status: 202, body: { running: true } },
+    });
+    renderWithProviders(<ProposalList />);
+    await screen.findByRole("article", { name: "Interview at Acme" });
+
+    await user.click(screen.getByRole("button", { name: "Look for insights" }));
+
+    await waitFor(() => expect(calls.some((call) => call.method === "POST" && call.path === "/api/ai/insights")).toBe(true));
+    expect(await screen.findByRole("button", { name: /Looking for insights/ })).toBeDisabled();
+  });
+
+  it("marks important proposals and says why", async () => {
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+
+    renderWithProviders(<ProposalList />);
+
+    const urgent = await screen.findByRole("article", { name: "Interview at Acme" });
+    const badge = within(urgent).getByText("Urgent");
+    expect(badge).toHaveAttribute("title", "an appointment; due within 2 days; from one of your contacts");
+    expect(within(screen.getByRole("article", { name: "Send certificates" })).queryByText(/Urgent|High/)).not.toBeInTheDocument();
+  });
+
+  it("explains the importance in the detail sidebar", async () => {
+    const user = userEvent.setup();
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+    renderWithProviders(<ProposalList />);
+
+    await user.click(await screen.findByRole("button", { name: "Show details for Interview at Acme" }));
+
+    const sheet = await screen.findByRole("dialog", { name: "Interview at Acme" });
+    const section = within(sheet).getByRole("region", { name: "Importance" });
+    expect(section).toHaveTextContent("Urgent");
+    expect(section).toHaveTextContent("an appointment; due within 2 days; from one of your contacts");
+  });
+
+  it("filters to important proposals, sorts by importance and keeps both in the URL", async () => {
+    const user = userEvent.setup();
+    navigationState.pathname = "/proposals";
+    const requested: URLSearchParams[] = [];
+    mockApi({
+      "GET /api/proposals": ({ url }) => {
+        requested.push(url.searchParams);
+        return actionsPage(actions)({ url });
+      },
+      "GET /api/collections": { body: collections },
+    });
+    renderWithProviders(<ProposalList />);
+    await screen.findByRole("article", { name: "Interview at Acme" });
+
+    await user.click(screen.getByRole("button", { name: "High and up" }));
+    await user.click(screen.getByRole("button", { name: "Most important first" }));
+
+    await waitFor(() => {
+      const last = requested.at(-1);
+      expect(last?.get("minImportance")).toBe("HIGH");
+      expect(last?.get("sort")).toBe("IMPORTANCE");
+    });
+    expect(router.replace).toHaveBeenLastCalledWith("/proposals?importance=high&sort=importance", { scroll: false });
+    expect(screen.getByRole("button", { name: "High and up" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("starts with the importance filter from the URL", async () => {
+    navigationState.search = "?importance=urgent";
+    const requested: URLSearchParams[] = [];
+    mockApi({
+      "GET /api/proposals": ({ url }) => {
+        requested.push(url.searchParams);
+        return actionsPage(actions)({ url });
+      },
+      "GET /api/collections": { body: collections },
+    });
+
+    renderWithProviders(<ProposalList />);
+
+    await waitFor(() => expect(requested[0]?.get("minImportance")).toBe("URGENT"));
+    expect(await screen.findByRole("button", { name: "Urgent" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("says when nothing important is waiting and offers to show everything", async () => {
+    const user = userEvent.setup();
+    navigationState.search = "?importance=high";
+    mockApi({
+      "GET /api/proposals": ({ url }) => actionsPage(url.searchParams.get("minImportance") ? [] : actions)({ url }),
+      "GET /api/collections": { body: collections },
+    });
+    renderWithProviders(<ProposalList />);
+
+    expect(await screen.findByText("Nothing this important is waiting")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show all proposals" }));
+
+    expect(await screen.findByRole("article", { name: "Interview at Acme" })).toBeInTheDocument();
+  });
+
   it("stretches the cards of a row to the same height, buttons at the bottom", async () => {
     mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
 

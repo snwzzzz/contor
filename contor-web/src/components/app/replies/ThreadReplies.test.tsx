@@ -6,7 +6,7 @@ import { mockApi } from "@/test/api-mock";
 import { renderWithProviders } from "@/test/render";
 import { ThreadReplies } from "./ThreadReplies";
 
-const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST", replies: "SUGGEST" };
+const settings = { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST", tasks: "SUGGEST", replies: "SUGGEST", courtesyReplies: false };
 
 const message = {
   id: 8, accountId: 1, folder: "inbox", fromAddress: "anna@acme.com", fromName: "Anna Berger", subject: "Workshop",
@@ -28,6 +28,7 @@ describe("ThreadReplies", () => {
     mockApi({ "GET /api/ai/settings": { body: settings } });
     const pending = {
       id: 21, kind: "DRAFT_REPLY" as const, status: "PENDING" as const, createdAt: "2026-10-07T08:00:00Z",
+      importance: "NORMAL" as const, importanceScore: 55,
       payload: { emailId: 8, to: [{ address: "anna@acme.com" }], cc: [], subject: "Re: Workshop", body: "Am [Tag] gerne." },
     };
 

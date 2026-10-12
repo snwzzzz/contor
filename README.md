@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
 
-> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent).
+> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent), `docs/ai-v2-plan.md` (smarter replies, multi-mail context, proposal importance, insights, speed).
 
 ## Repository layout
 
@@ -156,7 +156,9 @@ bar (or Settings → AI Models). The wizard walks through:
    each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
 
 - *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
-  actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject, filterable by kind; the cards of a row have the same height; a click opens the **detail sidebar** with every value, a before/after view for updates, the full reasoning, model/prompt version and the email it came from, and approve/reject there; record proposals can be edited there before approving (*Edit*: inputs of the collection's fields, sent as the edited payload → `EDITED_AND_APPROVED`)). Findings open the same sidebar (Keep/Dismiss, editable too). Proposal, finding and to-do cards share one hover (primary border, shadow; `lib/card-hover.ts`). *Automatic* applies
+  actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject, filterable by kind and by
+  importance — *High and up* / *Urgent*, with *Newest first* / *Most important first*, kept in the URL as
+  `?importance=high&sort=importance`; important cards carry an *Urgent* / *High* badge whose tooltip says why; the cards of a row have the same height; a click opens the **detail sidebar** with every value, a before/after view for updates, the full reasoning, model/prompt version and the email it came from, and approve/reject there; record proposals can be edited there before approving (*Edit*: inputs of the collection's fields, sent as the edited payload → `EDITED_AND_APPROVED`)). Findings open the same sidebar (Keep/Dismiss, editable too). Proposal, finding and to-do cards share one hover (primary border, shadow; `lib/card-hover.ts`). *Automatic* applies
   them directly (audited; if applying fails the proposal waits for review instead).
 - **Relations**: besides records, the assistant proposes relations between them ("Anna works at Acme", using the existing relation types such as *works at*). They appear as findings nested under the record they start from (relations between records that already exist are listed on their own, grouped by relation type with *Keep all* / *Dismiss all*, and filterable as *Connections*) and can only be kept once the records they connect are decided; dismissing a record dismisses its pending relations. With *Automatic* for records they are created as soon as their records exist. The record's Connections tab describes each one in a sentence with its attributes, period and whether it was found in an email; AI-created relations carry a small bot badge there. Relations follow the *contacts & records* permission.
 - The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: click a day for its agenda and to add an event, click an event to open it) and **Tasks**
@@ -166,14 +168,36 @@ bar (or Settings → AI Models). The wizard walks through:
   dropped (old mail in the first analysis), past calendar events are kept as history.
 - Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
   for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
-- **Search index:** every inbox email gets a vector (`nomic-embed-text`) for semantic search, made from subject, sender and the cleaned body (no quoted history or signature; ADR 0008). New mail is embedded right after its analysis; mail that already exists, and all mail after a change of `AI_MODEL_EMBEDDING`, is embedded in the background shortly after start and then every processing interval. Progress shows under Settings → AI Models and in `GET /api/ai/status` (`embeddings`). The old model's vectors are removed once the new ones are complete.
+- **Insights:** once a day (and on *Look for insights* on `/proposals`) the assistant looks for what only shows across
+  several emails and proposes it as an **Insight** card: what it noticed, why it matters, links to the source emails and
+  follow-ups (to-dos, appointments) you can untick before *Keep*; *Dismiss* makes sure the same insight never comes back.
+  Rules find unanswered questions you sent (no answer for 4+ days) and overlapping appointments; one model pass over
+  the last two weeks (one line per email, plus your open to-dos and upcoming appointments) finds price changes,
+  promised answers that never came, trips without accommodation and the like. Its answer is checked: the source emails
+  must be in the digest, novelty ≥ 0.5, confidence ≥ 0.6, at most 5 per run. Needs mail access and to-dos or calendar
+  allowed; never during an analysis run. `POST /api/ai/insights` (202) starts a pass, `GET /api/ai/insights` says
+  whether it still runs. `AiInsightEvalTest` (`ai-eval/insights`, report only) checks the model pass on three scenarios.
+- **Multi-mail context:** the assistant reads each email together with what your other mail says about it (ADR 0009): the earlier messages of the conversation (your replies included), up to 5 earlier emails from the same sender, up to 5 related emails found through the search index, and the records already created from them — only mail received before the email. So a "can we move the interview to Monday, same place?" updates the existing interview with the right place, and a payment reminder without invoice number finds its invoice. `AiContextEvalTest` (part of `-Pai-eval`) runs the cases in `ai-eval/context` with and without that context and prints both scores.
+- **Search index:** every inbox email gets a vector (`nomic-embed-text`) for semantic search, made from subject, sender and the cleaned body (no quoted history or signature; ADR 0008). New mail is embedded right before its analysis (so related mail can be found for it); mail that already exists, and all mail after a change of `AI_MODEL_EMBEDDING`, is embedded in the background (16 emails per model call, about twice as fast as one call each) shortly after start and then every processing interval. Progress shows under Settings → AI Models and in `GET /api/ai/status` (`embeddings`). The old model's vectors are removed once the new ones are complete.
 - **Reply drafts** (`replies = SUGGEST`, `docs/replies-plan.md`): after an inbox email was analyzed, cheap rules skip mail
   that needs no answer from you (your own mail, no-reply/notification senders, automated texts, mail where you are only
   in Cc, conversations you already answered or that have a newer email, mail older than 14 days); a short triage call
   then decides whether it needs a reply, and the model writes a draft in the language and tone of the thread, grounded
   in the thread (your own sent messages marked as yours) and your records (the sender's contact and organization,
   upcoming appointments and open to-dos that mention them). It never invents facts: what you must decide is a
-  `[placeholder]`. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
+  `[placeholder]`. Since `reply-v2` the triage also names what the reply has to do (schedule, answer questions,
+  confirm, decline, provide information), the questions it must answer and, for meeting requests, the days and time of
+  day asked for: the draft answers every question (or leaves a placeholder for it — a question reported open without
+  one drops the draft), and for meeting requests it offers up to three free times from your **Calendar** collection
+  inside your working hours (`AI_WORK_*`, evenings 18:00–22:00 for e.g. a dinner; one slot per day; the Outlook
+  calendar is not read). It also reads your earlier mail with the sender and related mail (ADR 0009). The card shows
+  the questions with *answered* / *still open* and the offered times. Bills, payment and appointment reminders and
+  requests to *do* something (pay, attend, take a test) count as not needing an answer. With *Also suggest polite
+  replies* (Settings → Autonomy and the setup wizard, under *Reply drafts*; off by default, `courtesyReplies`) the
+  assistant also drafts an **optional reply** to personal mail that needs no answer but usually gets one — a job
+  rejection (thank them, stay in touch), an offer you decline, thanks for help, good news to congratulate on; never to
+  automated senders, never while a real reply waits in the conversation, always LOW importance, labelled *Optional
+  reply*. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
   **Edit & keep** opens the editor (*Keep* waits until every placeholder is filled in, *Keep anyway* does not), *Dismiss*
   rejects it. A kept draft shows in the thread as *Draft — not sent* with **Copy** and **Open in mail app** (`mailto:`,
   only when short enough) — **nothing is ever sent or written to your mailbox**. A pending draft is rejected
@@ -191,6 +215,25 @@ bar (or Settings → AI Models). The wizard walks through:
 | `POST /api/emails/{id}/reply-suggestion` | ask for a reply draft for one of your emails now (202; runs on the AI thread, the thread's `replySuggestion` shows RUNNING/FAILED; 409 when reply drafts are off) |
 | `PATCH /api/reply-drafts/{id}`, `POST /api/reply-drafts/{id}/discard` | edit or discard a kept draft (your mailboxes only; 404 otherwise) |
 
+### AI timings
+
+The backend logs one line per analyzed email (`AiAnalysisWorker`, INFO) with where the time went: each stage
+(`extract`, `embed`, `reply`) with its duration and every model call in it as Ollama reports it — prompt → answer
+tokens, model load, prompt reading and answer writing time. Numbers and the email id only, never mail text:
+
+```
+AI timings email 812: extract 9.41s [qwen3.5:9b 2140→310 tok, load 0.00s, prompt 1.12s, answer 7.90s; qwen3.5:9b 900→20 tok, …], embed 0.12s [nomic-embed-text 512→0 tok, …], reply 3.02s [...], total 12.60s
+```
+
+A high `load` means Ollama reloaded the model (raise `OLLAMA_KEEP_ALIVE`, avoid model swaps); `prompt` grows with the
+prompt length, `answer` with the answer tokens. On-demand reply suggestions are not timed. Measured on an RTX 3060
+(`qwen3.5:9b`): writing the answer is about 90 % of a call (≈ 20–30 tokens/s), reading a 1 200-token prompt under a
+second — shorter answers are what makes processing faster, a shorter prompt barely matters.
+
+The inbox read path has a baseline test, `MailReadPathIntegrationTest` (part of `./mvnw test`): an inbox page and a
+thread over 300 emails with realistic bodies must stay at a fixed number of SQL statements (no N+1), and their median
+time is logged as `Read path baseline …`; the list query must not read `body_text`/`body_html`.
+
 ### AI evaluation
 
 Every change to the prompts, the model or the extraction is judged with a repeatable score instead of a feeling.
@@ -207,16 +250,26 @@ Ollama over a labelled corpus with a fixed schema (the seeded system collections
 cd contor-api && ./mvnw verify -Pai-eval
 ```
 
+`AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
+`reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
+name an offered day, and runs the `ai-eval/courtesy` cases (rejection by a person, thanks, good news must get a polite
+draft; a rejection from a no-reply address must get none) — all report only.
+
 Needs Ollama with the extraction model running; about 6 minutes for 49 mails on an RTX 3060. Relations are extracted in a second, short call (only for mails with two or more extracted records): listing relation types in the extraction prompt itself made the model invent organizations and events just to relate them (measured with this eval: 31 instead of 12 organizations). Each case is analyzed as if
 processed when it was received, so "Friday" resolves from the mail date. The report goes to
 `contor-api/target/ai-eval/report-<model>-<promptVersion>.json` and `.md`. The run is compared with the committed
 `ai-eval/baseline.json` and **fails when a quality metric drops by more than the threshold** (default 0.05, absolute;
-latency never fails a run).
+latency never fails a run). The run also prints `[ai-eval] where the time goes – …`: per call the prompt → answer
+tokens and the seconds for loading, reading and answering, separately for the extraction and the relations call.
+Results vary between identical runs (a single record more or less moves a small collection like *tasks* by ~0.08):
+the gate therefore tolerates one record per metric (`ai.eval.tolerance`); for a prompt change, also compare against two runs of the old prompt.
 
 | Option | Meaning |
 |---|---|
 | `-Dai.eval.model=<name>` | model to evaluate (default `qwen3.5:9b`) |
 | `-Dai.eval.threshold=0.1` | allowed drop per metric |
+| `-Dai.eval.tolerance=0` | records per metric given the benefit of the doubt (default 1): a metric only regresses when it is still worse with that many records better — one record moves a small collection by more than the threshold between identical runs |
 | `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
 | `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
 
@@ -245,9 +298,9 @@ by hand). It prints the score and the wrongly decided cases; `-Dai.eval.reply.mi
 | Labels | `/api/labels` | CRUD; deleting a label removes it from all emails |
 | Rules | `/api/rules` | CRUD; stored only (rule engine comes later) |
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
-| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, CREATE_COLLECTION (OWNER) and DRAFT_REPLY (keeps a reply draft, never sends) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`) |
+| Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, CREATE_COLLECTION (OWNER) and DRAFT_REPLY (keeps a reply draft, never sends) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`). Every proposal has an `importance` (LOW/NORMAL/HIGH/URGENT), an `importanceScore` (0–100) and an `importanceReason`, scored by rules when it is created (`ImportanceScorer`: the kind, a deadline or date in the payload, the reply triage's urgency, whether the sender is one of your contacts, someone you wrote to, or a bulk sender); `?minImportance=HIGH` filters (list and count), `?sort=IMPORTANCE` puts the highest score first. Pending proposals from before importance existed are scored once at startup |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync |
+| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
@@ -318,6 +371,14 @@ All variables are listed in `.env.example`.
 | `AI_PROCESSING_ENABLED` | backend | `true` | analyze new mail in the background after the AI setup |
 | `AI_PROCESSING_INTERVAL` | backend | `2m` | pause between background passes |
 | `AI_PROCESSING_BATCH_SIZE` | backend | `20` | emails per user and pass |
+| `AI_INSIGHTS_INTERVAL`, `AI_INSIGHTS_INITIAL_DELAY` | backend | `24h`, `15m` | how often insights are looked for, and the first time after start |
+| `AI_WORK_DAYS` | backend | `MONDAY,…,FRIDAY` | days a reply may offer meeting times on |
+| `AI_WORK_START`, `AI_WORK_END` | backend | `09:00`, `18:00` | working hours for offered times (local time in `AI_TIMEZONE`) |
+| `AI_SLOT_MINUTES`, `AI_SLOT_SEARCH_DAYS` | backend | `60`, `10` | length of an offered slot; how many days ahead when the email names no dates |
+| `AI_CONTEXT_ENABLED` | backend | `true` | read each email together with your earlier mail about it (ADR 0009) |
+| `AI_CONTEXT_BUDGET_CHARS` | backend | `6000` | upper bound of that context in the prompt |
+| `AI_CONTEXT_SENDER_EMAILS`, `AI_CONTEXT_RELATED_EMAILS` | backend | `5`, `5` | earlier emails from the same sender / related emails (embeddings) in the context |
+| `AI_CONTEXT_RELATED_MAX_DISTANCE`, `AI_CONTEXT_RELATED_WITHIN` | backend | `0.25`, `180d` | how close (cosine distance) and how recent a related email must be |
 | `MSGRAPH_CLIENT_ID` | backend | – | Azure app registration client ID |
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |

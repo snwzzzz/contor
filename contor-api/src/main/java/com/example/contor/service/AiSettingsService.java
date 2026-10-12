@@ -54,6 +54,7 @@ public class AiSettingsService {
             }
             settings.setReplies(replies);
         }
+        if (command.getCourtesyReplies() != null) settings.setCourtesyReplies(command.getCourtesyReplies());
         if (Boolean.TRUE.equals(command.getCompleteOnboarding()) && settings.getOnboardedAt() == null) {
             settings.setOnboardedAt(clock.instant());
         }
@@ -90,6 +91,7 @@ public class AiSettingsService {
         snapshot.put("calendar", settings.getCalendar().name());
         snapshot.put("tasks", settings.getTasks().name());
         snapshot.put("replies", settings.getReplies().name());
+        snapshot.put("courtesyReplies", settings.isCourtesyReplies());
         snapshot.put("onboarded", settings.getOnboardedAt() != null);
         return snapshot;
     }

@@ -1,6 +1,8 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.ai.AiTimings;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.ExtractionService;
 import com.example.contor.ai.OllamaException;
@@ -25,7 +27,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -48,8 +52,11 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -89,7 +96,18 @@ class AiAnalysisWorkerTest {
     private ReplySuggestionService replySuggestionService;
 
     @Mock
+    private MailContextService mailContextService;
+
+    @Mock
+    private ImportanceSignalService importanceSignalService;
+
+    @Mock
     private PlatformTransactionManager transactionManager;
+
+    @Spy
+    private AiTimings timings = new AiTimings();
+
+    private final List<AiTimings.Report> reports = new ArrayList<>();
 
     private AiAnalysisWorker worker;
     private AiAnalysisRun run;
@@ -101,8 +119,8 @@ class AiAnalysisWorkerTest {
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         worker = new AiAnalysisWorker(aiAnalysisRunRepository, emailMessageRepository, aiSettingsService, collectionSchemaService,
-                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, replySuggestionService, properties,
-                new AiExecutors(Runnable::run, Runnable::run),
+                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, replySuggestionService, mailContextService, importanceSignalService, properties,
+                new AiExecutors(Runnable::run, Runnable::run), timings,
                 transactionManager, Clock.fixed(NOW, ZoneOffset.UTC));
 
         run = AiAnalysisRun.builder().id(new AiAnalysisRun.AiAnalysisRunId(10L)).user(AppUser.builder().id(OWNER).build())
@@ -112,6 +130,12 @@ class AiAnalysisWorkerTest {
         lenient().when(collectionSchemaService.findAll()).thenReturn(List.of(collection(1L, "people"), collection(3L, "events"),
                 collection(4L, "tasks"), collection(5L, "job_applications")));
         lenient().when(emailMessageRepository.saveAndFlush(any(EmailMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            Optional<AiTimings.Report> report = (Optional<AiTimings.Report>) inv.callRealMethod();
+            report.ifPresent(reports::add);
+            return report;
+        }).when(timings).finish();
     }
 
     private static CollectionDto collection(long id, String slug) {
@@ -380,6 +404,34 @@ class AiAnalysisWorkerTest {
     }
 
     @Test
+    void run_TimesExtractionEmbeddingAndReplyOfEachEmail() {
+        when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
+                .categories(AiPermissionLevel.OFF).records(AiPermissionLevel.SUGGEST).replies(AiPermissionLevel.SUGGEST).build());
+        email(100L);
+        email(101L);
+        emailsToProcess(100L, 101L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+
+        worker.run(10L);
+
+        assertThat(reports).extracting(AiTimings.Report::emailId).containsExactly(100L, 101L);
+        assertThat(reports.getFirst().stages()).extracting(AiTimings.Stage::name).containsExactly("embed", "context", "extract", "reply");
+    }
+
+    @Test
+    void run_AFailedEmailIsTimedUpToItsFailure() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model crashed"));
+
+        worker.run(10L);
+
+        assertThat(reports).singleElement().satisfies(report ->
+                assertThat(report.stages()).extracting(AiTimings.Stage::name).containsExactly("embed", "context", "extract"));
+    }
+
+    @Test
     void run_AFailingReplyDraftDoesNotFailTheEmail() {
         when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
                 .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
@@ -513,15 +565,64 @@ class AiAnalysisWorkerTest {
     // ---- embeddings -------------------------------------------------------------------------------------------
 
     @Test
-    void run_EmbedsTheEmailAfterItWasExtracted() {
+    void run_EveryDraftOfAnEmailCarriesTheSendersSignals() {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         email(100L);
         emailsToProcess(100L);
+        ImportanceSignals signals = new ImportanceSignals(null, true, true, false);
+        when(importanceSignalService.signalsFor(100L)).thenReturn(signals);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
+        when(proposalService.submitDraft(any(), eq(100L), any(), any(), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(1L, ProposalService.Outcome.SUGGESTED));
+
+        worker.run(10L);
+
+        verify(proposalService, times(2)).submitDraft(argThat(draft -> signals.equals(draft.signals())), eq(100L), any(), any(), any(),
+                anyCollection());
+    }
+
+    @Test
+    void run_EmbedsTheEmailThenReadsItWithItsContext() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        email(100L);
+        emailsToProcess(100L);
+        when(mailContextService.contextTextFor(100L)).thenReturn("Earlier emails: the interview invitation");
         when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
 
         worker.run(10L);
 
-        verify(emailEmbeddingService).embedEmail(100L);
+        // the vector first: related mail is found through it
+        InOrder order = inOrder(emailEmbeddingService, mailContextService, extractionService);
+        order.verify(emailEmbeddingService).embedEmail(100L);
+        order.verify(mailContextService).contextTextFor(100L);
+        ArgumentCaptor<EmailContent> content = ArgumentCaptor.forClass(EmailContent.class);
+        order.verify(extractionService).analyze(content.capture(), anyList());
+        assertThat(content.getValue().context()).isEqualTo("Earlier emails: the interview invitation");
+    }
+
+    @Test
+    void run_AFailingContextLookupReadsTheEmailOnItsOwn() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        EmailMessage email = email(100L);
+        emailsToProcess(100L);
+        when(mailContextService.contextTextFor(100L)).thenThrow(new IllegalStateException("database hiccup"));
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+
+        worker.run(10L);
+
+        verify(extractionService).analyze(argThat(content -> !content.hasContext()), anyList());
+        assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
+    }
+
+    @Test
+    void run_NoContextIsLoadedWhenNothingMayBeExtracted() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.OFF, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
+        email(100L);
+        emailsToProcess(100L);
+
+        worker.run(10L);
+
+        verify(mailContextService, never()).contextTextFor(any());
     }
 
     @Test
@@ -539,7 +640,7 @@ class AiAnalysisWorkerTest {
     }
 
     @Test
-    void run_NoEmbeddingForAnEmailWhoseExtractionFailed() {
+    void run_AnEmailWhoseExtractionFailedIsStillEmbedded() {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         email(100L);
         emailsToProcess(100L);
@@ -547,6 +648,7 @@ class AiAnalysisWorkerTest {
 
         worker.run(10L);
 
-        verify(emailEmbeddingService, never()).embedEmail(any());
+        // embedding comes first now; semantic search still finds the email
+        verify(emailEmbeddingService).embedEmail(100L);
     }
 }

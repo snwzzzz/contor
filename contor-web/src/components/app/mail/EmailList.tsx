@@ -11,6 +11,9 @@ interface EmailListProps {
   emails: readonly EmailSummaryDto[];
   selectedId: number | null;
   onSelect: (emailId: number) => void;
+  /** Pointer or focus rests on a row / left it (prefetching). */
+  onPreviewStart?: (emailId: number) => void;
+  onPreviewEnd?: () => void;
   /** Sender picture URL for an address (contact photo or domain logo). */
   picture: (address: string | undefined) => string | undefined;
   /** The mailbox to show on a row (unified view of several accounts), if any. */
@@ -18,7 +21,7 @@ interface EmailListProps {
 }
 
 /** Email boxes under sticky period headings (Today, Yesterday, This week, …), like Outlook's message list. */
-export function EmailList({ emails, selectedId, onSelect, picture, accountOf }: EmailListProps) {
+export function EmailList({ emails, selectedId, onSelect, onPreviewStart, onPreviewEnd, picture, accountOf }: EmailListProps) {
   const now = new Date();
   return (
     <div className="grid gap-3">
@@ -36,6 +39,8 @@ export function EmailList({ emails, selectedId, onSelect, picture, accountOf }: 
               picture={picture(counterpartAddress(email))}
               now={now}
               onSelect={onSelect}
+              onPreviewStart={onPreviewStart}
+              onPreviewEnd={onPreviewEnd}
             />
           ))}
         </div>

@@ -9,6 +9,8 @@ import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
+import com.example.contor.api.model.ProposalPriority;
+import com.example.contor.api.model.ProposalSort;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
 import com.example.contor.exception.ProposalNotApplicableException;
@@ -47,12 +49,13 @@ public class ProposalControllerTest {
     private ProposalService proposalService;
 
     private static ProposalDto dto(ProposalState state) {
-        return new ProposalDto(5L, ProposalAction.CREATE_RECORD, state, Map.of("collectionId", 1), OffsetDateTime.parse("2026-01-01T00:00:00Z"));
+        return new ProposalDto(5L, ProposalAction.CREATE_RECORD, state, Map.of("collectionId", 1), ProposalPriority.HIGH, 70,
+                OffsetDateTime.parse("2026-01-01T00:00:00Z"));
     }
 
     @Test
     void list_proposals_by_status() throws Exception {
-        when(proposalService.listProposals(ProposalState.PENDING, null, 0, 25)).thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
+        when(proposalService.listProposals(ProposalState.PENDING, null, null, null, 0, 25)).thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
 
         mockMvc.perform(get("/api/proposals").param("status", "PENDING").with(TestAuth.user()))
                 .andExpect(status().isOk())
@@ -60,8 +63,29 @@ public class ProposalControllerTest {
     }
 
     @Test
+    void list_and_count_by_minimum_importance_most_important_first() throws Exception {
+        when(proposalService.listProposals(null, null, ProposalPriority.HIGH, ProposalSort.IMPORTANCE, 0, 25))
+                .thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
+        when(proposalService.countProposals(null, null, ProposalPriority.URGENT)).thenReturn(new ProposalCountDto(2L));
+
+        mockMvc.perform(get("/api/proposals").param("minImportance", "HIGH").param("sort", "IMPORTANCE").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].importance").value("HIGH"))
+                .andExpect(jsonPath("$.items[0].importanceScore").value(70));
+        mockMvc.perform(get("/api/proposals/count").param("minImportance", "URGENT").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(2));
+    }
+
+    @Test
+    void an_unknown_importance_is_a_bad_request() throws Exception {
+        mockMvc.perform(get("/api/proposals").param("minImportance", "CRITICAL").with(TestAuth.user()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void count_pending_proposals() throws Exception {
-        when(proposalService.countProposals(null, null)).thenReturn(new ProposalCountDto(3L));
+        when(proposalService.countProposals(null, null, null)).thenReturn(new ProposalCountDto(3L));
 
         mockMvc.perform(get("/api/proposals/count").with(TestAuth.user()))
                 .andExpect(status().isOk())
@@ -70,9 +94,9 @@ public class ProposalControllerTest {
 
     @Test
     void list_and_count_proposals_by_group() throws Exception {
-        when(proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, 0, 25))
+        when(proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, null, null, 0, 25))
                 .thenReturn(new ProposalPageDto(List.of(dto(ProposalState.PENDING)), 0, 25, 1L, 1));
-        when(proposalService.countProposals(null, ProposalGroup.ACTIONS)).thenReturn(new ProposalCountDto(4L));
+        when(proposalService.countProposals(null, ProposalGroup.ACTIONS, null)).thenReturn(new ProposalCountDto(4L));
 
         mockMvc.perform(get("/api/proposals").param("status", "PENDING").param("group", "FINDINGS").with(TestAuth.user()))
                 .andExpect(status().isOk())

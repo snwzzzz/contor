@@ -6,17 +6,19 @@ import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { useDecideProposal } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
+import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { tintClass } from "@/lib/collection-tint";
 import { placeholdersIn, recipientLabel, type ReplyDraftPayload, type ReplyText } from "@/lib/reply-draft";
 import { cn } from "@/lib/utils";
 import { ReplyBody } from "./ReplyBody";
 import { ReplyDraftDialog } from "./ReplyDraftDialog";
+import { ReplyQuestions } from "./ReplyQuestions";
 
 interface ReplySuggestionCardProps {
   /** A pending DRAFT_REPLY proposal. */
   proposal: ProposalDto;
-  /** Small heading above the subject. */
+  /** Small heading above the subject; by default "Draft reply", or "Optional reply" for a polite one. */
   label?: string;
   /** Show the whole text instead of its first lines (thread view). */
   full?: boolean;
@@ -28,12 +30,13 @@ interface ReplySuggestionCardProps {
  * A reply the assistant suggests: recipients, subject and text with the placeholders highlighted. "Edit & keep" opens
  * the editor and approves the proposal with the edited text (kept as a draft, never sent); "Dismiss" rejects it.
  */
-export function ReplySuggestionCard({ proposal, label = "Draft reply", full = false, onOpen }: ReplySuggestionCardProps) {
+export function ReplySuggestionCard({ proposal, label, full = false, onOpen }: ReplySuggestionCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   // Keeping or dismissing changes the proposals, the thread and the inbox markers: refresh them all.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
   const payload = proposal.payload as unknown as ReplyDraftPayload;
+  const heading = label ?? (payload.intent === "COURTESY" ? "Optional reply" : "Draft reply");
   const text: ReplyText = { to: payload.to ?? [], cc: payload.cc ?? [], subject: payload.subject ?? "", body: payload.body ?? "" };
   const subject = text.subject || "(No subject)";
   const left = placeholdersIn(text.body).length;
@@ -55,7 +58,10 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
             <Reply className="size-4" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {heading}
+              <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
+            </span>
             <h2 className="line-clamp-2 leading-snug font-medium">
               {onOpen ? (
                 <button type="button" aria-label={`Show details for ${subject}`} onClick={onOpen} className={STRETCHED_BUTTON}>
@@ -78,6 +84,7 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
           ) : null}
         </dl>
         <ReplyBody body={text.body} className={cn("rounded-lg bg-muted/40 px-3 py-2", !full && "line-clamp-5")} />
+        <ReplyQuestions questions={payload.questions ?? []} slots={payload.proposedSlots ?? []} />
         {left > 0 ? (
           <p className="text-xs text-muted-foreground">
             {left === 1 ? "1 placeholder" : `${left} placeholders`} to fill in before sending.

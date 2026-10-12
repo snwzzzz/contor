@@ -97,6 +97,28 @@ app:
       enabled: ${AI_PROCESSING_ENABLED:true}
       interval: ${AI_PROCESSING_INTERVAL:2m}
       batch-size: ${AI_PROCESSING_BATCH_SIZE:20}
+    # What the model reads of your other mail with each email (ADR 0009): the conversation, the sender's earlier
+    # emails, related emails (embeddings) and records already created from them. Only mail received before the email.
+    context:
+      enabled: ${AI_CONTEXT_ENABLED:true}
+      budget-chars: ${AI_CONTEXT_BUDGET_CHARS:6000}
+      sender-emails: ${AI_CONTEXT_SENDER_EMAILS:5}
+      related-emails: ${AI_CONTEXT_RELATED_EMAILS:5}
+      related-max-distance: ${AI_CONTEXT_RELATED_MAX_DISTANCE:0.25}
+      related-within: ${AI_CONTEXT_RELATED_WITHIN:180d}
+    # When you can meet: reply drafts for meeting requests offer free times inside these hours (local time in
+    # AI_TIMEZONE), around the appointments of your Calendar collection. The Outlook calendar is not read.
+    # Insights: what only shows across several emails, proposed once a day (and on "Look for insights").
+    insights:
+      interval: ${AI_INSIGHTS_INTERVAL:24h}
+      initial-delay: ${AI_INSIGHTS_INITIAL_DELAY:15m}
+    availability:
+      work-days: ${AI_WORK_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
+      work-start: ${AI_WORK_START:09:00}
+      work-end: ${AI_WORK_END:18:00}
+      slot-minutes: ${AI_SLOT_MINUTES:60}
+      search-days: ${AI_SLOT_SEARCH_DAYS:10}
+      max-slots: 3
   security:
     secure-cookies: ${APP_SECURE_COOKIES:false}
     session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}

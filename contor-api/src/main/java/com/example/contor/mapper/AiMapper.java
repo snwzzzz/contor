@@ -22,6 +22,7 @@ public class AiMapper {
                 .calendar(toAccess(settings.getCalendar()))
                 .tasks(toAccess(settings.getTasks()))
                 .replies(toAccess(settings.getReplies()))
+                .courtesyReplies(settings.isCourtesyReplies())
                 .onboardedAt(MapperSupport.toOffset(settings.getOnboardedAt()));
     }
 

@@ -27,29 +27,46 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
 
     Page<Proposal> findByStatus(ProposalStatus status, Pageable pageable);
 
+    Page<Proposal> findByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus status, int minScore, Pageable pageable);
+
+    Page<Proposal> findByImportanceScoreGreaterThanEqual(int minScore, Pageable pageable);
+
+    long countByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus status, int minScore);
+
+    /** Pending proposals that were never scored (they existed before importance did). */
+    List<Proposal> findByStatusAndImportanceReasonIsNull(ProposalStatus status);
+
     /**
      * Findings = data the AI extracted: record proposals outside the action collections (calendar, to-dos), and the
      * relations between them.
      * Actions = everything else. {@code actionCollectionIds} must not be empty (pass -1 when none exist).
+     * {@code minScore} keeps proposals with at least that importance score; {@code byImportance} sorts by it (else newest first).
      */
     String FINDING = "(kind = 'CREATE_RELATION' or (kind in ('CREATE_RECORD', 'UPDATE_RECORD') "
             + "and coalesce((payload ->> 'collectionId')::bigint, -1) not in (:actionCollectionIds)))";
 
-    @Query(value = "select * from proposal where status = :status and " + FINDING + " order by created_at desc",
-            countQuery = "select count(*) from proposal where status = :status and " + FINDING,
+    String MIN_SCORE = " and importance_score >= :minScore";
+    String ORDER = " order by (case when :byImportance then importance_score else 0 end) desc, created_at desc, id desc";
+
+    @Query(value = "select * from proposal where status = :status and " + FINDING + MIN_SCORE + ORDER,
+            countQuery = "select count(*) from proposal where status = :status and " + FINDING + MIN_SCORE,
             nativeQuery = true)
-    Page<Proposal> findFindings(String status, Collection<Long> actionCollectionIds, Pageable pageable);
+    Page<Proposal> findFindings(String status, Collection<Long> actionCollectionIds, int minScore, boolean byImportance, Pageable pageable);
 
-    @Query(value = "select count(*) from proposal where status = :status and " + FINDING, nativeQuery = true)
-    long countFindings(String status, Collection<Long> actionCollectionIds);
+    @Query(value = "select count(*) from proposal where status = :status and " + FINDING + MIN_SCORE, nativeQuery = true)
+    long countFindings(String status, Collection<Long> actionCollectionIds, int minScore);
 
-    @Query(value = "select * from proposal where status = :status and not (" + FINDING + ") order by created_at desc",
-            countQuery = "select count(*) from proposal where status = :status and not (" + FINDING + ")",
+    @Query(value = "select * from proposal where status = :status and not (" + FINDING + ")" + MIN_SCORE + ORDER,
+            countQuery = "select count(*) from proposal where status = :status and not (" + FINDING + ")" + MIN_SCORE,
             nativeQuery = true)
-    Page<Proposal> findActions(String status, Collection<Long> actionCollectionIds, Pageable pageable);
+    Page<Proposal> findActions(String status, Collection<Long> actionCollectionIds, int minScore, boolean byImportance, Pageable pageable);
 
-    @Query(value = "select count(*) from proposal where status = :status and not (" + FINDING + ")", nativeQuery = true)
-    long countActions(String status, Collection<Long> actionCollectionIds);
+    @Query(value = "select count(*) from proposal where status = :status and not (" + FINDING + ")" + MIN_SCORE, nativeQuery = true)
+    long countActions(String status, Collection<Long> actionCollectionIds, int minScore);
+
+    /** Whether an INSIGHT with this key was ever proposed (pending, approved or dismissed): each insight is proposed once. */
+    @Query(value = "select exists (select 1 from proposal where kind = 'INSIGHT' and payload ->> 'insightKey' = :key)", nativeQuery = true)
+    boolean existsInsightKey(String key);
 
     /** Id of a pending CREATE_RECORD proposal for the collection with this title (case-insensitive), if there is one. */
     @Query(value = "select id from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "

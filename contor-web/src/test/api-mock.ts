@@ -6,7 +6,8 @@ export interface MockResponse {
   headers?: Record<string, string>;
 }
 
-type Handler = MockResponse | ((request: { url: URL; init: RequestInit }) => MockResponse);
+/** A function handler may answer later (a promise that never settles keeps the request pending). */
+type Handler = MockResponse | ((request: { url: URL; init: RequestInit }) => MockResponse | Promise<MockResponse>);
 
 export interface RecordedCall {
   method: string;
@@ -29,7 +30,7 @@ export function mockApi(handlers: Record<string, Handler>): RecordedCall[] {
 
     const handler = handlers[`${method} ${url.pathname}`];
     const response: MockResponse = handler
-      ? typeof handler === "function" ? handler({ url, init }) : handler
+      ? typeof handler === "function" ? await handler({ url, init }) : handler
       : { status: 404, body: { message: "Not found", status: 404 } };
     const status = response.status ?? 200;
     const hasBody = response.body !== undefined && status !== 204;

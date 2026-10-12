@@ -1,0 +1,55 @@
+{
+  "id": "context-de-invoice-reminder",
+  "needsReply": false,
+  "context": {
+    "fromSender": [
+      {
+        "mailbox": "me@example.com",
+        "fromName": "Müller & Partner Steuerberatung",
+        "fromAddress": "buchhaltung@mueller-partner.de",
+        "to": ["me@example.com"],
+        "subject": "Ihre Rechnung R-2026-077",
+        "receivedAt": "2026-09-15T08:00:00Z",
+        "body": "Sehr geehrter Herr Morgan,\nanbei erhalten Sie unsere Rechnung R-2026-077 über 680,00 EUR für die Beratung zum Jahresabschluss, zahlbar bis 30.09.2026.\nMit freundlichen Grüßen\nMüller & Partner Steuerberatung"
+      }
+    ],
+    "records": ["invoices: Müller & Partner Rechnung R-2026-077"]
+  },
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Müller & Partner Steuerberatung",
+    "fromAddress": "buchhaltung@mueller-partner.de",
+    "to": ["me@example.com"],
+    "subject": "Zahlungserinnerung",
+    "receivedAt": "2026-10-08T08:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\nunsere Rechnung vom 15. September ist leider noch offen. Bitte überweisen Sie den Betrag bis spätestens 16.10.2026.\nMit freundlichen Grüßen\nMüller & Partner Steuerberatung"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Müller & Partner Rechnung R-2026-077",
+          "values": {
+            "invoice_number": "R-2026-077",
+            "amount": {
+              "amount": 680.0,
+              "currency": "EUR"
+            },
+            "due_date": "2026-10-16",
+            "state": "open"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung R-2026-077 bezahlen",
+          "values": {
+            "due_date": "2026-10-16"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { recordHref } from "@/components/app/collections/CollectionTable";
 import { RecordFieldInput } from "@/components/app/collections/RecordFieldInput";
 import { DetailSheet } from "@/components/app/DetailSheet";
 import { EmailBody } from "@/components/app/mail/EmailReader";
+import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
 import { ReplySuggestionCard } from "@/components/app/replies/ReplySuggestionCard";
 import { useGetEmail } from "@/lib/api/generated/endpoints/mail/mail";
 import { useGetRecord } from "@/lib/api/generated/endpoints/records/records";
@@ -98,6 +99,15 @@ export function ProposalDetail({
           </Section>
         ) : null}
 
+        {proposal.importanceReason ? (
+          <Section heading="Importance">
+            <p className="flex flex-wrap items-center gap-2 text-sm leading-relaxed text-muted-foreground">
+              <ImportanceBadge importance={proposal.importance} />
+              {proposal.importanceReason}
+            </p>
+          </Section>
+        ) : null}
+
         {proposal.sourceEmailId != null ? <SourceEmail emailId={proposal.sourceEmailId} /> : null}
 
         <p className="text-xs text-muted-foreground">
@@ -110,10 +120,12 @@ export function ProposalDetail({
   );
 }
 
+/** A titled part of the sidebar; a region named by its heading. */
 function Section({ heading, children }: { heading: string; children: ReactNode }) {
+  const headingId = useId();
   return (
-    <section className="grid gap-2">
-      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{heading}</h3>
+    <section aria-labelledby={headingId} className="grid gap-2">
+      <h3 id={headingId} className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{heading}</h3>
       {children}
     </section>
   );

@@ -62,6 +62,11 @@ public class AiSettings extends AuditableEntity {
     @Column(nullable = false)
     private AiPermissionLevel replies = AiPermissionLevel.OFF;
 
+    /** Also suggest optional polite replies (rejections, thank-yous); only with {@link #replies} SUGGEST. */
+    @Builder.Default
+    @Column(name = "courtesy_replies", nullable = false)
+    private boolean courtesyReplies = false;
+
     @Column(name = "onboarded_at")
     private Instant onboardedAt;
 

@@ -2,9 +2,11 @@ package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
 import com.example.contor.ai.EmailTextCleaner;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.ai.ReplyCandidateFilter;
 import com.example.contor.ai.ReplyThread;
+import com.example.contor.ai.SlotFinder;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.ReplySuggestionState;
@@ -29,6 +31,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -54,6 +57,7 @@ public class ReplySuggestionService {
 
     private static final int BODY_CHARS = 4000;
     private static final int MAX_GROUNDING_RECORDS = 5;
+    private static final String COURTESY = "COURTESY";
 
     private final EmailMessageRepository emailMessageRepository;
     private final MailAccountRepository mailAccountRepository;
@@ -65,6 +69,9 @@ public class ReplySuggestionService {
     private final CollectionSchemaService collectionSchemaService;
     private final RecordService recordService;
     private final AiSettingsService aiSettingsService;
+    private final ImportanceSignalService importanceSignalService;
+    private final AvailabilityService availabilityService;
+    private final MailContextService mailContextService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactionTemplate;
@@ -76,7 +83,9 @@ public class ReplySuggestionService {
                                   ProposalRepository proposalRepository, ProposalService proposalService,
                                   ReplyLifecycleService replyLifecycleService, ReplyTriageService replyTriageService,
                                   ReplyComposerService replyComposerService, CollectionSchemaService collectionSchemaService,
-                                  RecordService recordService, AiSettingsService aiSettingsService, AiProperties properties,
+                                  RecordService recordService, AiSettingsService aiSettingsService,
+                                  ImportanceSignalService importanceSignalService, AvailabilityService availabilityService,
+                                  MailContextService mailContextService, AiProperties properties,
                                   AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
         this.emailMessageRepository = emailMessageRepository;
         this.mailAccountRepository = mailAccountRepository;
@@ -88,6 +97,9 @@ public class ReplySuggestionService {
         this.collectionSchemaService = collectionSchemaService;
         this.recordService = recordService;
         this.aiSettingsService = aiSettingsService;
+        this.importanceSignalService = importanceSignalService;
+        this.availabilityService = availabilityService;
+        this.mailContextService = mailContextService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -95,9 +107,14 @@ public class ReplySuggestionService {
     }
 
     /** Everything about one email the reply steps need, read in one short transaction. */
-    private record Context(Long emailId, MailAccount.MailAccountId accountId, String conversationId, ReplyThread thread,
-                           ReplyCandidateFilter.Candidate candidate, List<EmailRecipient> to, List<EmailRecipient> cc,
-                           String senderName, String senderAddress, String subject, boolean pending) {
+    /**
+     * @param pending         a pending draft exists for this very email
+     * @param replyInProgress a pending draft that is not an optional polite one exists in the conversation
+     */
+    private record Context(Long emailId, AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, String conversationId,
+                           ReplyThread thread, ReplyCandidateFilter.Candidate candidate, List<EmailRecipient> to,
+                           List<EmailRecipient> cc, String senderName, String senderAddress, String subject, boolean pending,
+                           boolean replyInProgress) {
     }
 
     /**
@@ -115,10 +132,16 @@ public class ReplySuggestionService {
             return false;
         }
         ReplyTriageService.Triage triage = replyTriageService.triage(context.thread());
-        if (!triage.needsReply()) {
-            return false;
+        if (triage.needsReply()) {
+            return composeAndSubmit(context, triage);
         }
-        return composeAndSubmit(context, triage.reason());
+        // No answer needed, but a polite one is customary (a rejection, a thank-you): only when the user wants those,
+        // and never instead of a real reply that waits in the conversation.
+        if (COURTESY.equals(triage.intent()) && !context.replyInProgress()
+                && aiSettingsService.settingsFor(context.ownerId()).isCourtesyReplies()) {
+            return composeAndSubmit(context, triage);
+        }
+        return false;
     }
 
     /**
@@ -160,7 +183,8 @@ public class ReplySuggestionService {
     private void runOnDemand(Long emailId) {
         try {
             Context context = transactionTemplate.execute(status -> load(emailId).orElse(null));
-            if (context != null && composeAndSubmit(context, null)) {
+            // The user asked: draft even when the triage sees no need; it still names the questions and the intent.
+            if (context != null && composeAndSubmit(context, triageOnDemand(context))) {
                 onDemand.remove(emailId);
             } else {
                 onDemand.put(emailId, ReplySuggestionState.FAILED);
@@ -171,8 +195,21 @@ public class ReplySuggestionService {
         }
     }
 
-    private boolean composeAndSubmit(Context context, String triageReason) {
-        Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context));
+    /** @param urgency the triage's low/normal/high, {@code null} on demand (no triage) */
+    private ReplyTriageService.Triage triageOnDemand(Context context) {
+        try {
+            return replyTriageService.triage(context.thread());
+        } catch (RuntimeException e) {
+            log.info("Triage for an on-demand reply to email {} failed: {}", context.emailId(), e.getMessage());
+            return ReplyTriageService.Triage.none(null);
+        }
+    }
+
+    private boolean composeAndSubmit(Context context, ReplyTriageService.Triage triage) {
+        List<SlotFinder.Slot> slots = triage.asksForTimes() ? freeSlots(triage) : List.of();
+        ReplyComposerService.Brief brief = new ReplyComposerService.Brief(triage.intent(), triage.questions(),
+                slots.stream().map(SlotFinder.Slot::describe).toList(), replyContext(context.emailId()), triage.courtesyKind());
+        Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context), brief);
         if (composed.isEmpty()) {
             return false;
         }
@@ -187,14 +224,65 @@ public class ReplySuggestionService {
         payload.put("body", reply.body());
         payload.put("language", reply.language());
         payload.put("placeholders", reply.placeholders());
-        String reasoning = !reply.summary().isBlank() ? reply.summary() : triageReason;
-        ProposalDraft draft = new ProposalDraft(ProposalKind.DRAFT_REPLY, payload, null, reasoning);
+        if (triage.intent() != null && !"NONE".equals(triage.intent())) {
+            payload.put("intent", triage.intent());
+        }
+        if (triage.courtesyKind() != null) {
+            payload.put("courtesyKind", triage.courtesyKind());
+        }
+        if (!reply.answers().isEmpty()) {
+            payload.put("questions", reply.answers().stream().map(answer -> {
+                Map<String, Object> question = new LinkedHashMap<>();
+                question.put("question", answer.question());
+                question.put("answered", answer.answered());
+                return question;
+            }).toList());
+        }
+        if (!slots.isEmpty()) {
+            payload.put("proposedSlots", slots.stream().map(slot -> Map.<String, Object>of(
+                    "start", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(slot.start()),
+                    "end", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(slot.end()))).toList());
+        }
+        String reasoning = !reply.summary().isBlank() ? reply.summary() : triage.reason();
+        ProposalDraft draft = new ProposalDraft(ProposalKind.DRAFT_REPLY, payload, null, reasoning)
+                .withSignals(signals(context.emailId()).withUrgency(triage.urgency()));
         transactionTemplate.executeWithoutResult(status -> {
             replyLifecycleService.supersedeConversation(context.accountId(), context.conversationId(), ReplyLifecycleService.REPLACED);
             proposalService.submitDraft(draft, context.emailId(), AiPermissionLevel.SUGGEST, properties.models().extraction(),
                     ReplyComposerService.PROMPT_VERSION, List.of());
         });
         return true;
+    }
+
+    /** Free times in the days the email asks about; when those are fully booked, in the next working days. */
+    private List<SlotFinder.Slot> freeSlots(ReplyTriageService.Triage triage) {
+        try {
+            List<SlotFinder.Slot> slots = availabilityService.freeSlots(triage.scheduleFrom(), triage.scheduleTo(), triage.timeOfDay());
+            return slots.isEmpty() && triage.scheduleFrom() != null ? availabilityService.freeSlots(null, null, triage.timeOfDay()) : slots;
+        } catch (RuntimeException e) {
+            log.info("No free times for a reply: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** The sender's earlier mail, related mail and their records; "" when unavailable (the thread is there anyway). */
+    private String replyContext(Long emailId) {
+        try {
+            return mailContextService.contextTextWithoutThread(emailId);
+        } catch (RuntimeException e) {
+            log.info("Reply to email {} is written without context: {}", emailId, e.getMessage());
+            return "";
+        }
+    }
+
+    /** What is known about the sender; nothing when the lookup fails (the draft is kept either way). */
+    private ImportanceSignals signals(Long emailId) {
+        try {
+            return importanceSignalService.signalsFor(emailId);
+        } catch (RuntimeException e) {
+            log.debug("No importance signals for email {}: {}", emailId, e.getMessage());
+            return ImportanceSignals.NONE;
+        }
     }
 
     private Optional<Context> load(Long emailId) {
@@ -238,10 +326,14 @@ public class ReplySuggestionService {
                 .toList();
         boolean pending = !proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING,
                 List.of(email.getId())).isEmpty();
+        boolean replyInProgress = email.getConversationId() != null && proposalRepository.findForConversation(ProposalKind.DRAFT_REPLY,
+                        ProposalStatus.PENDING, account.getId(), email.getConversationId()).stream()
+                .anyMatch(proposal -> !COURTESY.equals(proposal.getPayload().get("intent")));
         ReplyThread thread = new ReplyThread(account.getDisplayName(),
                 account.getEmailAddress() != null ? account.getEmailAddress().value() : null, messages);
-        return new Context(email.getId().id(), account.getId(), email.getConversationId(), thread, candidate,
-                List.of(new EmailRecipient(email.getFromName(), sender)), cc, email.getFromName(), sender, email.getSubject(), pending);
+        return new Context(email.getId().id(), account.getOwner().getId(), account.getId(), email.getConversationId(), thread,
+                candidate, List.of(new EmailRecipient(email.getFromName(), sender)), cc, email.getFromName(), sender, email.getSubject(),
+                pending, replyInProgress);
     }
 
     private static boolean isSent(EmailMessage message) {
@@ -249,9 +341,7 @@ public class ReplySuggestionService {
     }
 
     private static ReplyThread.Message threadMessage(EmailMessage message) {
-        List<String> to = Optional.ofNullable(message.getToRecipients()).orElse(List.of()).stream().map(EmailRecipient::address).toList();
-        return new ReplyThread.Message(isSent(message), message.getFromName(), message.getFromAddress(), to, message.getSubject(),
-                message.getReceivedAt(), EmailTextCleaner.clean(AiAnalysisWorker.plainText(message), BODY_CHARS));
+        return ThreadMessages.of(message);
     }
 
     private static List<Map<String, Object>> recipients(List<EmailRecipient> recipients) {

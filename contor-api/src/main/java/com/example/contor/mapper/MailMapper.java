@@ -15,6 +15,7 @@ import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.EmailRecipient;
 import com.example.contor.domain.Label;
 import com.example.contor.domain.MailAccount;
+import com.example.contor.persistence.EmailSummary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +48,7 @@ public class MailMapper {
                 .confidence(MapperSupport.normalize(emailLabel.getConfidence()));
     }
 
-    public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels) {
+    public static EmailSummaryDto toSummaryDto(EmailSummary email, List<EmailLabelDto> labels) {
         return toSummaryDto(email, labels, 1, false, null);
     }
 
@@ -56,24 +57,24 @@ public class MailMapper {
      * @param answered   the user replied after it
      * @param replyState the assistant's reply for it (pending suggestion or kept draft), {@code null} when none
      */
-    public static EmailSummaryDto toSummaryDto(EmailMessage email, List<EmailLabelDto> labels, int threadSize, boolean answered,
+    public static EmailSummaryDto toSummaryDto(EmailSummary email, List<EmailLabelDto> labels, int threadSize, boolean answered,
                                                ReplyMarker replyState) {
         if (email == null) return null;
 
         return new EmailSummaryDto()
-                .id(email.getId() != null ? email.getId().id() : null)
-                .accountId(accountId(email))
-                .conversationId(email.getConversationId())
-                .folder(email.getFolder())
-                .fromAddress(email.getFromAddress())
-                .fromName(email.getFromName())
-                .toRecipients(recipients(email.getToRecipients()))
-                .subject(email.getSubject())
-                .snippet(email.getSnippet())
-                .receivedAt(MapperSupport.toOffset(email.getReceivedAt()))
-                .read(email.isRead())
-                .hasAttachments(email.isHasAttachments())
-                .processingState(email.getProcessingState() != null ? EmailProcessingState.valueOf(email.getProcessingState().name()) : null)
+                .id(email.id())
+                .accountId(email.accountId())
+                .conversationId(email.conversationId())
+                .folder(email.folder())
+                .fromAddress(email.fromAddress())
+                .fromName(email.fromName())
+                .toRecipients(recipients(email.toRecipients()))
+                .subject(email.subject())
+                .snippet(email.snippet())
+                .receivedAt(MapperSupport.toOffset(email.receivedAt()))
+                .read(email.read())
+                .hasAttachments(email.hasAttachments())
+                .processingState(email.processingState() != null ? EmailProcessingState.valueOf(email.processingState().name()) : null)
                 .labels(new ArrayList<>(labels))
                 .threadSize(threadSize)
                 .answered(answered)

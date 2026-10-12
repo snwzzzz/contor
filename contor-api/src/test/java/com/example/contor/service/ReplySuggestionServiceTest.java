@@ -1,6 +1,8 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.ai.ImportanceSignals;
+import com.example.contor.ai.SlotFinder;
 import com.example.contor.ai.LlmClient;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
@@ -41,6 +43,8 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -103,6 +107,15 @@ class ReplySuggestionServiceTest {
     @Mock
     private PlatformTransactionManager transactionManager;
 
+    @Mock
+    private ImportanceSignalService importanceSignalService;
+
+    @Mock
+    private AvailabilityService availabilityService;
+
+    @Mock
+    private MailContextService mailContextService;
+
     private ReplySuggestionService service;
     private MailAccount account;
     private final List<EmailMessage> conversation = new ArrayList<>();
@@ -118,7 +131,9 @@ class ReplySuggestionServiceTest {
         service = new ReplySuggestionService(emailMessageRepository, mailAccountRepository, proposalRepository, proposalService,
                 replyLifecycleService, new ReplyTriageService(llmClient, properties, mapper),
                 new ReplyComposerService(llmClient, properties, mapper, clock), collectionSchemaService, recordService,
-                aiSettingsService, properties, new AiExecutors(Runnable::run, Runnable::run), transactionManager, clock);
+                aiSettingsService, importanceSignalService, availabilityService, mailContextService, properties,
+                new AiExecutors(Runnable::run, Runnable::run), transactionManager, clock);
+        lenient().when(importanceSignalService.signalsFor(any())).thenReturn(new ImportanceSignals(null, true, false, false));
 
         AppUser owner = AppUser.builder().id(new AppUser.AppUserId(1L)).build();
         account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(owner).displayName("Max Muster")
@@ -171,6 +186,123 @@ class ReplySuggestionServiceTest {
         verify(proposalService).submitDraft(draft.capture(), eq(8L), eq(AiPermissionLevel.SUGGEST), eq("extractor"),
                 eq(ReplyComposerService.PROMPT_VERSION), anyCollection());
         return draft.getValue();
+    }
+
+    @Test
+    void suggestIfNeeded_TheDraftCarriesTheSendersSignalsAndTheTriageUrgency() {
+        question();
+        llm("{\"needsReply\": true, \"reason\": \"Anna asks for a date\", \"urgency\": \"high\"}", DRAFT);
+
+        service.suggestIfNeeded(8L);
+
+        assertThat(submitted().signals()).isEqualTo(new ImportanceSignals("high", true, false, false));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void suggestIfNeeded_AMeetingRequestOffersFreeTimesAndListsTheQuestions() {
+        question();
+        llm("""
+                {"needsReply": true, "reason": "Anna asks for a day", "urgency": "normal", "intent": "SCHEDULE",
+                 "questions": ["An welchem Tag kannst du kommen?"], "scheduleFrom": "2026-10-12", "scheduleTo": "2026-10-16"}""", """
+                {"subject": "Re: Workshop", "body": "Hallo Anna, Dienstag um 11 Uhr passt. Max", "language": "de", "placeholders": [],
+                 "summary": "Offers Tuesday", "answers": [{"question": "An welchem Tag kannst du kommen?", "answered": true}]}""");
+        ZoneId zone = ZoneId.of("Europe/Vienna");
+        when(availabilityService.freeSlots(LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 16), SlotFinder.TimeOfDay.ANY)).thenReturn(List.of(
+                new SlotFinder.Slot(ZonedDateTime.of(2026, 10, 13, 11, 0, 0, 0, zone), ZonedDateTime.of(2026, 10, 13, 12, 0, 0, 0, zone))));
+        when(mailContextService.contextTextWithoutThread(8L)).thenReturn("Earlier emails, for context only: CONTEXT-MARKER");
+
+        service.suggestIfNeeded(8L);
+
+        Map<String, Object> payload = submitted().payload();
+        assertThat(payload.get("intent")).isEqualTo("SCHEDULE");
+        assertThat((List<Map<String, Object>>) payload.get("questions"))
+                .containsExactly(Map.of("question", "An welchem Tag kannst du kommen?", "answered", true));
+        assertThat((List<Map<String, Object>>) payload.get("proposedSlots"))
+                .containsExactly(Map.of("start", "2026-10-13T11:00:00+02:00", "end", "2026-10-13T12:00:00+02:00"));
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), anyString(), prompt.capture(), any());
+        assertThat(prompt.getValue()).contains("Tuesday, 13 October 2026, 11:00–12:00").contains("CONTEXT-MARKER");
+    }
+
+    @Test
+    void suggestIfNeeded_AFullyBookedWeekFallsBackToTheNextFreeDays() {
+        question();
+        llm("""
+                {"needsReply": true, "reason": "r", "urgency": "normal", "intent": "SCHEDULE", "questions": [],
+                 "scheduleFrom": "2026-10-12", "scheduleTo": "2026-10-16"}""", DRAFT);
+        when(availabilityService.freeSlots(LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 16), SlotFinder.TimeOfDay.ANY)).thenReturn(List.of());
+
+        service.suggestIfNeeded(8L);
+
+        verify(availabilityService).freeSlots(null, null, SlotFinder.TimeOfDay.ANY);
+    }
+
+    @Test
+    void suggestIfNeeded_AQuestionAboutDatesGetsFreeTimesWhateverTheIntent() {
+        question();
+        llm("{\"needsReply\": true, \"reason\": \"r\", \"urgency\": \"normal\", \"intent\": \"PROVIDE_INFO\", "
+                + "\"scheduleFrom\": \"2026-11-02\", \"scheduleTo\": \"2026-11-30\", \"timeOfDay\": \"EVENING\"}", DRAFT);
+
+        service.suggestIfNeeded(8L);
+
+        verify(availabilityService).freeSlots(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 30), SlotFinder.TimeOfDay.EVENING);
+    }
+
+    private static final String TRIAGE_COURTESY = """
+            {"needsReply": false, "reason": "A rejection", "urgency": "low", "intent": "COURTESY", "courtesyKind": "REJECTION_THANKS"}""";
+
+    private void courtesyReplies(boolean on) {
+        lenient().when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
+                .replies(AiPermissionLevel.SUGGEST).courtesyReplies(on).build());
+    }
+
+    @Test
+    void suggestIfNeeded_AnOptionalPoliteReplyWhenCourtesyRepliesAreOn() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(true);
+
+        assertThat(service.suggestIfNeeded(8L)).isTrue();
+
+        Map<String, Object> payload = submitted().payload();
+        assertThat(payload.get("intent")).isEqualTo("COURTESY");
+        assertThat(payload.get("courtesyKind")).isEqualTo("REJECTION_THANKS");
+    }
+
+    @Test
+    void suggestIfNeeded_NoPoliteReplyWhenCourtesyRepliesAreOff() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(false);
+
+        assertThat(service.suggestIfNeeded(8L)).isFalse();
+
+        verify(proposalService, never()).submitDraft(any(), any(), any(), any(), any(), anyCollection());
+    }
+
+    @Test
+    void suggestIfNeeded_NoPoliteReplyWhileARealReplyWaitsInTheConversation() {
+        question();
+        llm(TRIAGE_COURTESY, DRAFT);
+        courtesyReplies(true);
+        when(proposalRepository.findForConversation(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId(), "conv"))
+                .thenReturn(List.of(Proposal.builder().kind(ProposalKind.DRAFT_REPLY).payload(Map.of("intent", "SCHEDULE")).build()));
+
+        assertThat(service.suggestIfNeeded(8L)).isFalse();
+
+        verify(proposalService, never()).submitDraft(any(), any(), any(), any(), any(), anyCollection());
+    }
+
+    @Test
+    void suggestIfNeeded_NoFreeTimesUnlessTheReplyIsAboutScheduling() {
+        question();
+        llm(TRIAGE_YES, DRAFT);
+
+        service.suggestIfNeeded(8L);
+
+        verifyNoInteractions(availabilityService);
+        assertThat(submitted().payload()).doesNotContainKey("proposedSlots");
     }
 
     @Test
@@ -276,14 +408,13 @@ class ReplySuggestionServiceTest {
     }
 
     @Test
-    void requestSuggestion_DraftsWithoutTriage() {
+    void requestSuggestion_DraftsEvenWhenTheTriageSeesNoNeedToReply() {
         login(1L);
         question();
-        llm(TRIAGE_YES, DRAFT);
+        llm("{\"needsReply\": false, \"reason\": \"FYI\", \"urgency\": \"low\", \"intent\": \"NONE\"}", DRAFT);
 
         service.requestSuggestion(8L);
 
-        verify(llmClient, never()).completeJson(eq("router"), anyString(), anyString(), any());
         assertThat(submitted().kind()).isEqualTo(ProposalKind.DRAFT_REPLY);
         assertThat(service.state(8L)).isEqualTo(ReplySuggestionState.IDLE);
     }
@@ -312,7 +443,7 @@ class ReplySuggestionServiceTest {
     void requestSuggestion_RepliesOff_Conflict() {
         login(1L);
         question();
-        when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
+        lenient().when(aiSettingsService.settingsFor(new AppUser.AppUserId(1L))).thenReturn(AiSettings.builder().mailAccess(true)
                 .replies(AiPermissionLevel.OFF).build());
 
         assertThatThrownBy(() -> service.requestSuggestion(8L)).isInstanceOf(ReplySuggestionUnavailableException.class);

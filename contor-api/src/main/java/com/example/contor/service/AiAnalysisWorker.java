@@ -1,9 +1,11 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.ai.AiTimings;
 import com.example.contor.ai.DiscoveryEmail;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.ExtractionService;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.config.AiProperties;
@@ -47,7 +49,9 @@ import java.util.function.Consumer;
  * {@code QUEUED → DISCOVERING → (AWAITING_REVIEW) → EXTRACTING → COMPLETED}. Model calls run outside transactions;
  * every database step is its own short transaction, so progress is visible while a run is active and a cancel (from
  * the API) is noticed before the next email. Also processes new mail of onboarded users on a schedule and resumes
- * runs interrupted by a restart.
+ * runs interrupted by a restart. Per email: embed (so related mail is found through the email's own vector), load its
+ * context from the user's other mail ({@link MailContextService}), extract, suggest a reply; each stage is timed with
+ * {@link AiTimings} and logged as one line of numbers.
  */
 @Slf4j
 @Component
@@ -70,8 +74,11 @@ public class AiAnalysisWorker {
     private final ProposalService proposalService;
     private final EmailEmbeddingService emailEmbeddingService;
     private final ReplySuggestionService replySuggestionService;
+    private final MailContextService mailContextService;
+    private final ImportanceSignalService importanceSignalService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
+    private final AiTimings timings;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final AtomicBoolean processingNewMail = new AtomicBoolean(false);
@@ -84,8 +91,9 @@ public class AiAnalysisWorker {
                             AiSettingsService aiSettingsService, CollectionSchemaService collectionSchemaService,
                             InboxDiscoveryService inboxDiscoveryService, ExtractionService extractionService,
                             ProposalService proposalService, EmailEmbeddingService emailEmbeddingService,
-                            ReplySuggestionService replySuggestionService, AiProperties properties, AiExecutors aiExecutors,
-                            PlatformTransactionManager transactionManager, Clock clock) {
+                            ReplySuggestionService replySuggestionService, MailContextService mailContextService,
+                            ImportanceSignalService importanceSignalService, AiProperties properties, AiExecutors aiExecutors,
+                            AiTimings timings, PlatformTransactionManager transactionManager, Clock clock) {
         this.aiAnalysisRunRepository = aiAnalysisRunRepository;
         this.emailMessageRepository = emailMessageRepository;
         this.aiSettingsService = aiSettingsService;
@@ -95,8 +103,11 @@ public class AiAnalysisWorker {
         this.proposalService = proposalService;
         this.emailEmbeddingService = emailEmbeddingService;
         this.replySuggestionService = replySuggestionService;
+        this.mailContextService = mailContextService;
+        this.importanceSignalService = importanceSignalService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
+        this.timings = timings;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
@@ -226,6 +237,15 @@ public class AiAnalysisWorker {
 
     /** Analyzes one email and submits its drafts; never throws (a failure marks the email FAILED). */
     private EmailResult processEmail(Long emailId, AiSettings settings, List<CollectionDto> targets) {
+        timings.begin(emailId);
+        try {
+            return analyzeEmail(emailId, settings, targets);
+        } finally {
+            timings.finish().ifPresent(report -> log.info("AI timings {}", report.format()));
+        }
+    }
+
+    private EmailResult analyzeEmail(Long emailId, AiSettings settings, List<CollectionDto> targets) {
         EmailContent content = transactionTemplate.execute(status -> emailMessageRepository.findById(new EmailMessage.EmailMessageId(emailId))
                 .map(email -> {
                     email.setProcessingState(ProcessingState.PROCESSING);
@@ -242,7 +262,11 @@ public class AiAnalysisWorker {
             Map<Long, String> slugs = new HashMap<>();
             targets.forEach(target -> slugs.put(target.getId(), target.getSlug()));
             Map<String, Long> proposalIds = new HashMap<>();
-            for (ProposalDraft draft : extractionService.analyze(content, targets)) {
+            timings.stage("embed", () -> embed(emailId));
+            EmailContent read = targets.isEmpty() ? content : content.withContext(timings.stage("context", () -> context(emailId)));
+            List<ProposalDraft> drafts = timings.stage("extract", () -> extractionService.analyze(read, targets));
+            ImportanceSignals signals = drafts.isEmpty() ? ImportanceSignals.NONE : signals(emailId);
+            for (ProposalDraft draft : drafts) {
                 // relations follow the records permission; a draft pointing at something that was not stored is dropped
                 AiPermissionLevel level = draft.kind() == ProposalKind.CREATE_RELATION
                         ? settings.getRecords()
@@ -254,7 +278,8 @@ public class AiAnalysisWorker {
                 if (resolved.isEmpty()) {
                     continue;
                 }
-                ProposalService.Submission submission = submitDraft(resolved.get().draft(), emailId, level, resolved.get().dependsOn());
+                ProposalService.Submission submission = submitDraft(resolved.get().draft().withSignals(signals), emailId, level,
+                        resolved.get().dependsOn());
                 if (draft.ref() != null && submission.proposalId() != null) {
                     proposalIds.put(draft.ref(), submission.proposalId());
                 }
@@ -262,8 +287,8 @@ public class AiAnalysisWorker {
                 else suggested++;
             }
             markEmail(emailId, ProcessingState.DONE, null);
-            embed(emailId);
-            if (settings.isMailAccess() && settings.getReplies() == AiPermissionLevel.SUGGEST && suggestReply(emailId)) {
+            if (settings.isMailAccess() && settings.getReplies() == AiPermissionLevel.SUGGEST
+                    && timings.stage("reply", () -> suggestReply(emailId))) {
                 suggested++;
             }
             return new EmailResult(suggested, autoApplied, false);
@@ -271,6 +296,26 @@ public class AiAnalysisWorker {
             log.warn("AI processing of email {} failed: {}", emailId, e.getMessage());
             markEmail(emailId, ProcessingState.FAILED, truncate(e.getMessage()));
             return new EmailResult(0, 0, true);
+        }
+    }
+
+    /** What is known about the sender, for the importance of the email's proposals; nothing when the lookup fails. */
+    private ImportanceSignals signals(Long emailId) {
+        try {
+            return importanceSignalService.signalsFor(emailId);
+        } catch (RuntimeException e) {
+            log.info("No importance signals for email {}: {}", emailId, e.getMessage());
+            return ImportanceSignals.NONE;
+        }
+    }
+
+    /** The user's other mail about the email; without it (any failure) the email is read on its own. */
+    private String context(Long emailId) {
+        try {
+            return mailContextService.contextTextFor(emailId);
+        } catch (RuntimeException e) {
+            log.info("Email {} is read without context: {}", emailId, e.getMessage());
+            return "";
         }
     }
 

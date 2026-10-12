@@ -28,6 +28,14 @@ class ReplyCandidateFilterTest {
     }
 
     @Test
+    void no_reply_and_notification_senders_are_automated() {
+        assertThat(ReplyCandidateFilter.isAutomatedSender("no-reply@shop.example")).isTrue();
+        assertThat(ReplyCandidateFilter.isAutomatedSender("Notifications@github.com")).isTrue();
+        assertThat(ReplyCandidateFilter.isAutomatedSender("anna@acme.com")).isFalse();
+        assertThat(ReplyCandidateFilter.isAutomatedSender(null)).isFalse();
+    }
+
+    @Test
     void a_personal_question_to_me_is_a_candidate() {
         assertThat(ReplyCandidateFilter.skip(personal(), NOW)).isEmpty();
     }

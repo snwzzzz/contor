@@ -2,10 +2,12 @@ package com.example.contor.mapper;
 
 import com.example.contor.api.model.ProposalAction;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalPriority;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Proposal;
+import com.example.contor.domain.ProposalImportance;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
 import org.junit.jupiter.api.DisplayNameGeneration;
@@ -29,6 +31,7 @@ public class ProposalMapperTest {
                 .sourceEmail(EmailMessage.builder().id(new EmailMessage.EmailMessageId(8L)).build())
                 .confidence(new BigDecimal("0.8100")).reasoning("Shipping notice").model("qwen3").promptVersion("extract-v1")
                 .schemaVersion(3).decidedAt(Instant.parse("2026-01-02T00:00:00Z"))
+                .importance(ProposalImportance.HIGH).importanceScore(72).importanceReason("a to-do; due this week")
                 .decidedBy(AppUser.builder().id(new AppUser.AppUserId(1L)).build()).build();
         proposal.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
 
@@ -47,6 +50,9 @@ public class ProposalMapperTest {
         assertEquals(3, dto.getSchemaVersion());
         assertEquals(Instant.parse("2026-01-02T00:00:00Z").atOffset(ZoneOffset.UTC), dto.getDecidedAt());
         assertEquals(1L, dto.getDecidedById());
+        assertEquals(ProposalPriority.HIGH, dto.getImportance());
+        assertEquals(72, dto.getImportanceScore());
+        assertEquals("a to-do; due this week", dto.getImportanceReason());
         assertEquals(Instant.parse("2026-01-01T00:00:00Z").atOffset(ZoneOffset.UTC), dto.getCreatedAt());
     }
 

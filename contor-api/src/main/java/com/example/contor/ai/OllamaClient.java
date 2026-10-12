@@ -18,6 +18,7 @@ import java.io.InputStreamReader;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,7 +31,8 @@ import java.util.function.IntConsumer;
  * Ollama's HTTP API ({@code /api/chat}, {@code /api/embed}, {@code /api/version}, {@code /api/tags}, {@code /api/pull})
  * over {@link RestClient}. Chat calls are non-streaming, deterministic (temperature 0), with thinking switched off and
  * the answer constrained to a JSON schema via {@code format}. The base URL is guaranteed to be loopback by
- * {@link AiProperties.Ollama}.
+ * {@link AiProperties.Ollama}. Every chat and embedding call is reported to {@link AiTimings} with the token counts and
+ * durations Ollama returns.
  */
 @Slf4j
 @Component
@@ -44,16 +46,23 @@ public class OllamaClient implements LlmClient, EmbeddingClient {
     private final AiProperties properties;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+    private final AiTimings timings;
 
     @Autowired
-    public OllamaClient(AiProperties properties, ObjectMapper objectMapper) {
-        this(properties, restClient(properties), objectMapper);
+    public OllamaClient(AiProperties properties, ObjectMapper objectMapper, AiTimings timings) {
+        this(properties, restClient(properties), objectMapper, timings);
     }
 
-    OllamaClient(AiProperties properties, RestClient restClient, ObjectMapper objectMapper) {
+    /** Without timings (evaluation tests). */
+    public OllamaClient(AiProperties properties, ObjectMapper objectMapper) {
+        this(properties, objectMapper, new AiTimings());
+    }
+
+    OllamaClient(AiProperties properties, RestClient restClient, ObjectMapper objectMapper, AiTimings timings) {
         this.properties = properties;
         this.restClient = restClient;
         this.objectMapper = objectMapper;
+        this.timings = timings;
     }
 
     private static RestClient restClient(AiProperties properties) {
@@ -80,6 +89,8 @@ public class OllamaClient implements LlmClient, EmbeddingClient {
                 Map.of("role", "user", "content", userPrompt)));
 
         JsonNode response = chat(body);
+        timings.recordCall(new AiTimings.Call(model, response.path("prompt_eval_count").asInt(0), response.path("eval_count").asInt(0),
+                nanos(response, "load_duration"), nanos(response, "prompt_eval_duration"), nanos(response, "eval_duration")));
         JsonNode content = response.path("message").path("content");
         if (!content.isString()) {
             throw new OllamaException("Ollama returned no message content");
@@ -102,16 +113,39 @@ public class OllamaClient implements LlmClient, EmbeddingClient {
 
     @Override
     public float[] embed(String text) {
-        JsonNode response = post("/api/embed", Map.of("model", properties.models().embedding(), "input", text));
-        JsonNode vector = response.path("embeddings").path(0);
-        if (!vector.isArray()) {
-            throw new OllamaException("Ollama returned no embedding");
+        return embeddings(text, 1).getFirst();
+    }
+
+    /** All texts in one {@code /api/embed} call (about twice as fast per text as one call each on an RTX 3060). */
+    @Override
+    public List<float[]> embedAll(List<String> texts) {
+        return texts.isEmpty() ? List.of() : embeddings(texts, texts.size());
+    }
+
+    /** @param input one text or a list of {@code count} texts */
+    private List<float[]> embeddings(Object input, int count) {
+        JsonNode response = post("/api/embed", Map.of("model", properties.models().embedding(), "input", input));
+        // /api/embed reports no prompt duration: it is the total minus loading the model
+        Duration load = nanos(response, "load_duration");
+        timings.recordCall(new AiTimings.Call(properties.models().embedding(), response.path("prompt_eval_count").asInt(0), 0,
+                load, nanos(response, "total_duration").minus(load), Duration.ZERO));
+        List<float[]> embeddings = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            JsonNode vector = response.path("embeddings").path(index);
+            if (!vector.isArray()) {
+                throw new OllamaException("Ollama returned no embedding");
+            }
+            float[] embedding = new float[vector.size()];
+            for (int i = 0; i < embedding.length; i++) {
+                embedding[i] = (float) vector.get(i).asDouble();
+            }
+            embeddings.add(embedding);
         }
-        float[] embedding = new float[vector.size()];
-        for (int i = 0; i < embedding.length; i++) {
-            embedding[i] = (float) vector.get(i).asDouble();
-        }
-        return embedding;
+        return embeddings;
+    }
+
+    private static Duration nanos(JsonNode response, String field) {
+        return Duration.ofNanos(Math.max(0, response.path(field).asLong(0)));
     }
 
     /** Ollama's version, or empty when it cannot be reached. */

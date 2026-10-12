@@ -1,0 +1,60 @@
+{
+  "id": "context-en-interview-moved",
+  "needsReply": true,
+  "context": {
+    "thread": [
+      {
+        "mailbox": "me@example.com",
+        "fromName": "Anna Berger",
+        "fromAddress": "anna.berger@acme-corp.com",
+        "to": [
+          "me@example.com"
+        ],
+        "subject": "Interview for Backend Engineer",
+        "receivedAt": "2026-10-05T08:00:00Z",
+        "body": "Dear Alex,\nthank you for your application. We would like to invite you to an interview for the Backend Engineer position on Friday, 9 October at 9:00 at our office, Hauptstrasse 5, Vienna.\nBest regards\nAnna Berger\nTalent Acquisition, Acme Corp"
+      },
+      {
+        "mailbox": "me@example.com",
+        "fromName": "Alex Morgan",
+        "fromAddress": "me@example.com",
+        "to": [
+          "anna.berger@acme-corp.com"
+        ],
+        "subject": "Re: Interview for Backend Engineer",
+        "receivedAt": "2026-10-05T10:00:00Z",
+        "body": "Dear Anna,\nFriday at 9:00 works for me. See you then.\nBest\nAlex"
+      }
+    ],
+    "records": [
+      "events: Interview at Acme Corp",
+      "people: Anna Berger"
+    ]
+  },
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Anna Berger",
+    "fromAddress": "anna.berger@acme-corp.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Re: Interview for Backend Engineer",
+    "receivedAt": "2026-10-07T07:30:00Z",
+    "body": "Hi Alex,\nunfortunately our CTO is travelling on Friday. Could we move the interview to Monday at 14:00 instead? Same place.\nBest\nAnna"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Interview at Acme Corp",
+          "values": {
+            "starts_at": "2026-10-12T14:00:00+02:00",
+            "location": "Hauptstrasse 5, Vienna"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -238,6 +238,33 @@ class EmailExtractionServiceTest {
     }
 
     @Test
+    void analyze_EarlierEmailsComeBetweenTheCollectionsAndTheEmailOnlyInTheExtractionCall() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+        EmailContent withContext = EMAIL.withContext("Earlier emails, for context only: CONTEXT-MARKER");
+
+        service.analyze(withContext, List.of(people(), organizations()));
+
+        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
+        verify(llmClient, times(2)).completeJson(eq("extractor"), anyString(), user.capture(), any());
+        String extraction = user.getAllValues().get(0);
+        assertThat(extraction.indexOf("Collections:")).isLessThan(extraction.indexOf("CONTEXT-MARKER"));
+        assertThat(extraction.indexOf("CONTEXT-MARKER")).isLessThan(extraction.indexOf("Email:\nFrom:"));
+        assertThat(user.getAllValues().get(1)).doesNotContain("CONTEXT-MARKER");
+    }
+
+    @Test
+    void analyze_WithoutContextThePromptHasNoEarlierEmails() {
+        answer("{\"items\": []}");
+
+        service.analyze(EMAIL, List.of(people()));
+
+        ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), anyString(), user.capture(), any());
+        assertThat(user.getValue()).doesNotContain("Earlier emails");
+    }
+
+    @Test
     void analyze_ToldToResolveRelativeDatesFromTheEmailDate() {
         answer("{\"items\": []}");
 
@@ -457,6 +484,21 @@ class EmailExtractionServiceTest {
                 .contains("Interview on Friday");
         assertThat(system.getAllValues().get(1)).contains("relations");
         assertThat(schema.getAllValues().get(1).toString()).contains("relations").contains("works_at");
+    }
+
+    @Test
+    void analyze_TheRelationsCallAsksForShortReasonsAndEachRelationOnce() {
+        when(relationTypeService.findAll()).thenReturn(List.of(worksAt()));
+        answerWith(PERSON + "," + ORGANIZATION, WORKS_AT);
+
+        service.analyze(EMAIL, List.of(people(), organizations()));
+
+        // Writing the answer is ~90 % of a call's time. Short reasons cut the relations answer by 60 %; in the extraction
+        // call they saved only ~6 % and compact one-line JSON cost far more quality (see docs/ai-v2-plan.md, step 3).
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        verify(llmClient, times(2)).completeJson(eq("extractor"), system.capture(), anyString(), any());
+        assertThat(system.getAllValues()).allSatisfy(prompt -> assertThat(prompt).doesNotContain("compact JSON"));
+        assertThat(system.getAllValues().get(1)).contains("at most 12 words").contains("each relation once");
     }
 
     @Test

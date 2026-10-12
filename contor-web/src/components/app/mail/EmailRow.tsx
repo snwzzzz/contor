@@ -20,6 +20,10 @@ export interface EmailRowProps {
   /** Reference time for the short time label ("12:46", "Tue 21:05", "7 Sept"). */
   now: Date;
   onSelect: (emailId: number) => void;
+  /** The pointer or focus came to rest on the row (the list prefetches its conversation). */
+  onPreviewStart?: (emailId: number) => void;
+  /** The pointer or focus left the row. */
+  onPreviewEnd?: () => void;
 }
 
 /**
@@ -27,7 +31,7 @@ export interface EmailRowProps {
  * reply-draft/thread/answered/attachment marks, one line of preview, labels. Unread mail has a bar on the left and a bold subject in
  * the primary color.
  */
-export function EmailRow({ email, selected, account, picture, now, onSelect }: EmailRowProps) {
+export function EmailRow({ email, selected, account, picture, now, onSelect, onPreviewStart, onPreviewEnd }: EmailRowProps) {
   // Sent mail shows who it went to instead of the sender (always you).
   const sender = email.folder === "sent" ? `To: ${recipientsLabel(email.toRecipients)}` : email.fromName || email.fromAddress || "";
   const unread = !email.read;
@@ -35,6 +39,10 @@ export function EmailRow({ email, selected, account, picture, now, onSelect }: E
     <button
       type="button"
       onClick={() => onSelect(email.id)}
+      onMouseEnter={onPreviewStart ? () => onPreviewStart(email.id) : undefined}
+      onMouseLeave={onPreviewEnd}
+      onFocus={onPreviewStart ? () => onPreviewStart(email.id) : undefined}
+      onBlur={onPreviewEnd}
       aria-current={selected ? "true" : undefined}
       data-unread={unread ? "true" : undefined}
       className={cn(

@@ -176,7 +176,7 @@ class ProposalAndRelationIntegrationTest {
         assertThat(decided.getStatus()).isEqualTo(ProposalState.REJECTED);
         assertThat(proposalRepository.findById(proposal.getId()).orElseThrow().getStatus()).isEqualTo(ProposalStatus.REJECTED);
         assertThat(jdbcTemplate.queryForObject("select count(*) from c_people", Long.class)).isZero();
-        assertThat(proposalService.countProposals(ProposalState.REJECTED, null).getCount()).isEqualTo(1);
+        assertThat(proposalService.countProposals(ProposalState.REJECTED, null, null).getCount()).isEqualTo(1);
     }
 
     @Test

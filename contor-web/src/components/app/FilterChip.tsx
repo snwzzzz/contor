@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils";
 
 interface FilterChipProps {
   label: string;
-  count: number;
+  /** Shown after the label; left out when unknown. */
+  count?: number;
   /** Background class of a small dot before the label (collection tint). */
   tint?: string;
   active: boolean;
@@ -22,8 +23,13 @@ export function FilterChip({ label, count, tint, active, onClick }: FilterChipPr
       )}
     >
       {tint ? <span className={cn("size-2 rounded-full", tint)} aria-hidden="true" /> : null}
-      {label}{" "}
-      <span className="tabular-nums opacity-60">{count}</span>
+      {label}
+      {count !== undefined ? (
+        <>
+          {" "}
+          <span className="tabular-nums opacity-60">{count}</span>
+        </>
+      ) : null}
     </button>
   );
 }

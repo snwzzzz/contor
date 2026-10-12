@@ -1,0 +1,14 @@
+{
+  "id": "insight-trip-without-hotel",
+  "today": "2026-10-12T08:00:00Z",
+  "emails": [
+    {"id": 34, "fromName": "ShopNow", "fromAddress": "orders@shopnow.com", "subject": "Your order #SN-48213 is confirmed", "snippet": "Thanks for your order: noise-cancelling headphones, 89.90 EUR.", "receivedAt": "2026-10-07T12:00:00Z", "folder": "inbox"},
+    {"id": 33, "fromName": "Julia Hartmann", "fromAddress": "j.hartmann@lernwerk.de", "subject": "Workshop im November", "snippet": "Kannst du mir bis Freitag dein Angebot schicken?", "receivedAt": "2026-10-07T09:30:00Z", "folder": "inbox"},
+    {"id": 32, "fromName": "Me", "fromAddress": "me@example.com", "subject": "Re: Workshop im November", "snippet": "Hallo Julia, das Angebot kommt bis Freitag.", "receivedAt": "2026-10-07T11:00:00Z", "folder": "sent"},
+    {"id": 31, "fromName": "Web Summit Lisbon", "fromAddress": "tickets@websummit-lisbon.com", "subject": "Your ticket: Web Summit Lisbon, 21–23 October", "snippet": "Your registration is confirmed. Venue: MEO Arena, Lisbon. Doors open 9:00 on 21 October.", "receivedAt": "2026-09-28T10:00:00Z", "folder": "inbox"},
+    {"id": 30, "fromName": "TAP Air Portugal", "fromAddress": "booking@flytap.com", "subject": "Booking confirmation BER–LIS", "snippet": "Flight TP 529 Berlin → Lisbon on 20 October, return TP 530 on 24 October. Booking reference QX7P2L.", "receivedAt": "2026-10-01T15:00:00Z", "folder": "inbox"}
+  ],
+  "openTasks": ["Send the workshop offer to Julia (due 2026-10-16)"],
+  "appointments": ["Flight Berlin → Lisbon – 2026-10-20T07:10:00+02:00", "Web Summit Lisbon – 2026-10-21T09:00:00+01:00"],
+  "expected": [[30, 31]]
+}

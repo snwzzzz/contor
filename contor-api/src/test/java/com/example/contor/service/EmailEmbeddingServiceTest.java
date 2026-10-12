@@ -31,10 +31,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -91,6 +93,10 @@ class EmailEmbeddingServiceTest {
         float[] vector = new float[EmailEmbedding.DIMENSIONS];
         vector[0] = 1f;
         return vector;
+    }
+
+    private static List<float[]> vectors(int count) {
+        return IntStream.range(0, count).mapToObj(i -> vector()).toList();
     }
 
     private void emailExists(long id) {
@@ -155,12 +161,18 @@ class EmailEmbeddingServiceTest {
         when(emailMessageRepository.findIdsWithoutEmbedding(eq(OWNER), eq("embedder"), any(Pageable.class)))
                 .thenReturn(List.of(5L, 4L)).thenReturn(List.of(3L)).thenReturn(List.of());
         for (long id : new long[] {5, 4, 3}) emailExists(id);
-        when(embeddingClient.embed(anyString())).thenReturn(vector());
+        when(embeddingClient.embedAll(anyList())).thenAnswer(inv -> vectors(inv.<List<String>>getArgument(0).size()));
 
         assertThat(service.startBackfill()).isTrue();
         queued.forEach(Runnable::run);
 
-        verify(emailEmbeddingRepository, times(3)).saveAndFlush(any());
+        // one model call per batch, not per email
+        verify(embeddingClient, times(2)).embedAll(anyList());
+        verify(embeddingClient, never()).embed(anyString());
+        ArgumentCaptor<List<EmailEmbedding>> stored = ArgumentCaptor.captor();
+        verify(emailEmbeddingRepository, times(2)).saveAllAndFlush(stored.capture());
+        assertThat(stored.getAllValues()).flatMap(batch -> batch).extracting(embedding -> embedding.getId().emailId())
+                .containsExactly(5L, 4L, 3L);
         verify(emailEmbeddingRepository).deleteById_ModelNot("embedder");
     }
 
@@ -169,13 +181,13 @@ class EmailEmbeddingServiceTest {
         when(aiSettingsService.onboardedUsers()).thenReturn(List.of(OWNER));
         when(emailMessageRepository.findIdsWithoutEmbedding(eq(OWNER), eq("embedder"), any(Pageable.class))).thenReturn(List.of(5L, 4L));
         emailExists(5L);
-        when(embeddingClient.embed(anyString())).thenThrow(new OllamaException("model not found"));
+        when(embeddingClient.embedAll(anyList())).thenThrow(new OllamaException("model not found"));
 
         service.startBackfill();
         queued.forEach(Runnable::run);
 
         verify(emailEmbeddingRepository, never()).deleteById_ModelNot(anyString());
-        verify(embeddingClient, times(1)).embed(anyString());
+        verify(embeddingClient, times(1)).embedAll(anyList());
         // finished (with an error): a later start is possible again
         assertThat(service.startBackfill()).isTrue();
     }
@@ -191,6 +203,23 @@ class EmailEmbeddingServiceTest {
 
         verify(emailMessageRepository, times(1)).findIdsWithoutEmbedding(any(), anyString(), any());
         verify(emailEmbeddingRepository, never()).deleteById_ModelNot(anyString());
+    }
+
+    @Test
+    void backfill_AVectorOfTheWrongSizeSkipsOnlyThatEmail() {
+        when(aiSettingsService.onboardedUsers()).thenReturn(List.of(OWNER));
+        when(emailMessageRepository.findIdsWithoutEmbedding(eq(OWNER), eq("embedder"), any(Pageable.class)))
+                .thenReturn(List.of(5L, 4L)).thenReturn(List.of());
+        emailExists(5L);
+        emailExists(4L);
+        when(embeddingClient.embedAll(anyList())).thenReturn(List.of(new float[3], vector()));
+
+        service.startBackfill();
+        queued.forEach(Runnable::run);
+
+        ArgumentCaptor<List<EmailEmbedding>> stored = ArgumentCaptor.captor();
+        verify(emailEmbeddingRepository).saveAllAndFlush(stored.capture());
+        assertThat(stored.getValue()).extracting(embedding -> embedding.getId().emailId()).containsExactly(4L);
     }
 
     @Test

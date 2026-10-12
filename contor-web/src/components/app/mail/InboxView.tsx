@@ -1,13 +1,14 @@
 "use client";
 
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
+import { getGetEmailThreadQueryOptions, useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import type { EmailFolder } from "@/lib/api/generated/model/emailFolder";
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
@@ -22,6 +23,8 @@ import { FolderSwitch } from "./FolderSwitch";
 import { counterpartAddress, domainOf } from "./mail-format";
 
 const PAGE_SIZE = 50;
+/** How long the pointer (or focus) has to rest on a row before its conversation is prefetched. */
+const PREVIEW_DELAY_MS = 120;
 
 /**
  * Unified inbox over all connected mailboxes, structured like Outlook: the message list (compact search and filter on
@@ -40,6 +43,9 @@ export function InboxView() {
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedEmailId, setSelectedEmailId] = useState<number | null>(Number.isInteger(linked) && linked > 0 ? linked : null);
   const listScroll = useRef<HTMLDivElement>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const queryClient = useQueryClient();
+  useEffect(() => () => clearTimeout(previewTimer.current), []);
 
   const { data: accounts } = useListMailAccounts();
   const query = search.trim();
@@ -50,6 +56,9 @@ export function InboxView() {
     ...(folder === "SENT" ? { folder } : {}),
     page: pageIndex,
     size: PAGE_SIZE,
+  }, {
+    // Paging and filtering keep the current list on screen until the next one arrived.
+    query: { placeholderData: keepPreviousData },
   });
 
   const emails = page?.items ?? [];
@@ -62,6 +71,29 @@ export function InboxView() {
   const totalPages = page?.totalPages ?? 0;
   const accountById = new Map((accounts ?? []).map((account) => [account.id, account]));
   const showAccountOnRows = accountId === null && accountById.size > 1;
+
+  function prefetchThread(emailId: number) {
+    void queryClient.prefetchQuery(getGetEmailThreadQueryOptions(emailId));
+  }
+
+  /** Hover intent: rows the pointer only passes over are not fetched. */
+  function startPreview(emailId: number) {
+    clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => prefetchThread(emailId), PREVIEW_DELAY_MS);
+  }
+
+  function endPreview() {
+    clearTimeout(previewTimer.current);
+  }
+
+  /** Opens an email and prefetches its neighbours, which are usually read next. */
+  function openEmail(emailId: number) {
+    setSelectedEmailId(emailId);
+    const index = emails.findIndex((email) => email.id === emailId);
+    for (const neighbour of [emails[index - 1], emails[index + 1]]) {
+      if (index >= 0 && neighbour) prefetchThread(neighbour.id);
+    }
+  }
 
   /** The pager sits at the end of the list: start the next page at its top. */
   function goToPage(index: number) {
@@ -143,7 +175,9 @@ export function InboxView() {
               <EmailList
                 emails={emails}
                 selectedId={selectedEmailId}
-                onSelect={setSelectedEmailId}
+                onSelect={openEmail}
+                onPreviewStart={startPreview}
+                onPreviewEnd={endPreview}
                 picture={senderPicture}
                 accountOf={showAccountOnRows ? (email) => accountById.get(email.accountId) : undefined}
               />
@@ -159,7 +193,12 @@ export function InboxView() {
         {selectedEmailId === null ? (
           <ReadingPanePlaceholder />
         ) : (
-          <EmailThread key={selectedEmailId} emailId={selectedEmailId} picture={senderPicture} />
+          <EmailThread
+            key={selectedEmailId}
+            emailId={selectedEmailId}
+            preview={emails.find((email) => email.id === selectedEmailId)}
+            picture={senderPicture}
+          />
         )}
       </section>
     </div>

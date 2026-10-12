@@ -36,6 +36,7 @@ class OllamaClientTest {
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
     private MockRestServiceServer server;
+    private final AiTimings timings = new AiTimings();
     private OllamaClient client;
 
     @BeforeEach
@@ -46,7 +47,7 @@ class OllamaClientTest {
                 new AiProperties.Ollama(URI.create(BASE), Duration.ofMinutes(1), 8192, "10m"),
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
-        client = new OllamaClient(properties, builder.build(), jsonMapper);
+        client = new OllamaClient(properties, builder.build(), jsonMapper, timings);
     }
 
     @Test
@@ -72,6 +73,35 @@ class OllamaClientTest {
 
         assertThat(answer).isEqualTo("{\"ok\":true}");
         server.verify();
+    }
+
+    @Test
+    void records_the_token_counts_and_durations_ollama_reports_for_a_chat() {
+        server.expect(requestTo(BASE + "/api/chat"))
+                .andRespond(withSuccess("""
+                        {"model":"extractor","message":{"role":"assistant","content":"{}"},"done":true,
+                         "total_duration":1300000000,"load_duration":10000000,"prompt_eval_count":2140,
+                         "prompt_eval_duration":200000000,"eval_count":310,"eval_duration":900000000}""",
+                        MediaType.APPLICATION_JSON));
+
+        timings.begin(1L);
+        timings.stage("extract", () -> client.completeJson("extractor", "s", "u", jsonMapper.createObjectNode()));
+
+        assertThat(timings.finish().orElseThrow().stages().getFirst().calls()).containsExactly(new AiTimings.Call("extractor",
+                2140, 310, Duration.ofMillis(10), Duration.ofMillis(200), Duration.ofMillis(900)));
+    }
+
+    @Test
+    void records_an_embedding_call_without_answer_tokens() {
+        server.expect(requestTo(BASE + "/api/embed"))
+                .andRespond(withSuccess("{\"embeddings\":[[0.5]],\"load_duration\":5000000,\"prompt_eval_count\":12,\"total_duration\":40000000}",
+                        MediaType.APPLICATION_JSON));
+
+        timings.begin(1L);
+        timings.stage("embed", () -> client.embed("hello"));
+
+        assertThat(timings.finish().orElseThrow().stages().getFirst().calls()).containsExactly(new AiTimings.Call("embedder",
+                12, 0, Duration.ofMillis(5), Duration.ofMillis(35), Duration.ZERO));
     }
 
     @Test
@@ -120,6 +150,31 @@ class OllamaClientTest {
                 .andRespond(withSuccess("{\"embeddings\":[[0.5,-1.25,2.0]]}", MediaType.APPLICATION_JSON));
 
         assertThat(client.embed("hello")).containsExactly(0.5f, -1.25f, 2.0f);
+    }
+
+    @Test
+    void embeds_several_texts_with_one_call() {
+        server.expect(requestTo(BASE + "/api/embed"))
+                .andExpect(jsonPath("$.model").value("embedder"))
+                .andExpect(jsonPath("$.input[0]").value("first"))
+                .andExpect(jsonPath("$.input[1]").value("second"))
+                .andRespond(withSuccess("{\"embeddings\":[[1.0],[2.0]],\"prompt_eval_count\":7}", MediaType.APPLICATION_JSON));
+
+        timings.begin(1L);
+        List<float[]> vectors = timings.stage("embed", () -> client.embedAll(List.of("first", "second")));
+
+        assertThat(vectors).hasSize(2);
+        assertThat(vectors.get(1)).containsExactly(2.0f);
+        assertThat(timings.finish().orElseThrow().stages().getFirst().calls()).singleElement()
+                .satisfies(call -> assertThat(call.promptTokens()).isEqualTo(7));
+    }
+
+    @Test
+    void an_embedding_answer_with_a_missing_vector_fails() {
+        server.expect(requestTo(BASE + "/api/embed"))
+                .andRespond(withSuccess("{\"embeddings\":[[1.0]]}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.embedAll(List.of("first", "second"))).isInstanceOf(OllamaException.class);
     }
 
     @Test

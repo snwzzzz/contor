@@ -68,16 +68,29 @@ AiAnalysisWorker
   DISCOVERING   InboxDiscoveryService: email headers (≤400 sampled) ─map(batches of 40)─▶ candidate kinds ─reduce─▶
                 validated NewCollectionCommands → AUTO: CollectionSchemaService.createAiCollection
                                                   SUGGEST: CREATE_COLLECTION proposals → AWAITING_REVIEW (user continues)
-  EXTRACTING    per NEW email: EmailExtractionService (one schema-constrained call over the allowed collections,
-                values checked by FieldTypeHandlers, duplicates → UPDATE_RECORD with missing values or skipped)
-                → ProposalService.submitDraft (SUGGEST: PENDING · AUTO: applier, AUTO_APPLIED, fallback PENDING)
+  EXTRACTING    per NEW email (each stage timed by AiTimings, one log line per email):
+                embed     EmailEmbeddingService (vector first, so related mail can be found for this email)
+                context   MailContextService: conversation, sender history, related mail (pgvector), their records —
+                          only mail received before the email (ADR 0009) → MailContextPrompt (character budget)
+                extract   EmailExtractionService (one schema-constrained call over the allowed collections, values
+                          checked by FieldTypeHandlers, duplicates → UPDATE_RECORD or skipped; relations in a 2nd call)
+                → ImportanceSignalService (contact? written to? bulk?) → ProposalService.submitDraft
+                  (ImportanceScorer sets importance; SUGGEST: PENDING · AUTO: applier, fallback PENDING)
+                reply     ReplySuggestionService: ReplyCandidateFilter rules → ReplyTriageService (needs reply? intent,
+                          questions, asked days, courtesy kind) → AvailabilityService/SlotFinder (free times) →
+                          ReplyComposerService (reply-v2) → DRAFT_REPLY (courtesy only with courtesyReplies)
                 → email DONE/FAILED, run counters updated
   COMPLETED     older NEW emails outside the window → SKIPPED
   scheduled     new mail of onboarded users, in batches, never during a run; restart resumes interrupted runs
+
+InsightService (daily + POST /api/ai/insights, AI thread, never during a run)
+  InsightDetectors (unanswered questions, overlapping appointments) + InsightModelService (14-day digest, open to-dos,
+  upcoming appointments; evidence/novelty/confidence guardrails) → INSIGHT proposals, each key once
 ```
 
 Permissions map to collections: `events` → calendar, `tasks` → to-dos, every other collection → records,
-new collections → categories. Model calls never run inside a transaction.
+new collections → categories. Model calls never run inside a transaction. Every proposal carries an importance
+(LOW…URGENT, 0–100 score, reason) from rules; the proposals page filters and sorts by it.
 
 ## Proposals
 
@@ -88,6 +101,8 @@ ProposalController ──▶ ProposalService.decideProposal
                          └─ APPROVE → ProposalApplierRegistry → ProposalApplier(kind).apply(finalPayload)
                                         CreateRecordApplier / UpdateRecordApplier → RecordService (+ record_source)
                                         CreateCollectionApplier (OWNER) → CollectionSchemaService.createAiCollection
+                                        DraftReplyApplier → reply_draft (never sent)
+                                        InsightApplier → the kept follow-ups as records (+ record_source to the evidence)
                          → decided_at/by, audit PROPOSAL_APPROVED/REJECTED   (one transaction; failure keeps PENDING)
 ```
 

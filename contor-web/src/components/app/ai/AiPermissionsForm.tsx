@@ -9,8 +9,8 @@ type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies";
 
 /** The editable part of the settings (everything except the onboarding timestamp). */
 export function permissionsOf(settings: AiSettingsDto): AiPermissions {
-  const { mailAccess, historyDays, categories, records, calendar, tasks, replies } = settings;
-  return { mailAccess, historyDays, categories, records, calendar, tasks, replies };
+  const { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies } = settings;
+  return { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies };
 }
 
 export const ACCESS_LABEL: Record<AiAccess, string> = { OFF: "Off", SUGGEST: "Ask me", AUTO: "Automatic" };
@@ -98,6 +98,21 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
             onChange={(level) => onChange({ ...value, [area.key]: level })}
           />
         ))}
+        <label className="flex items-start gap-3 text-sm has-disabled:opacity-50">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-primary"
+            checked={value.courtesyReplies}
+            disabled={!value.mailAccess || value.replies === "OFF"}
+            onChange={(event) => onChange({ ...value, courtesyReplies: event.target.checked })}
+          />
+          <span className="grid gap-0.5">
+            <span>Also suggest polite replies to emails that need no answer</span>
+            <span className="text-muted-foreground">
+              A thank-you after a job rejection, after help, or congratulations: marked optional and never urgent.
+            </span>
+          </span>
+        </label>
       </div>
     </div>
   );

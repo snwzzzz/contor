@@ -198,7 +198,7 @@ public class MailService {
                 folder == EmailFolder.SENT);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
-        Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(criteria), pageable);
+        Page<EmailSummary> result = emailMessageRepository.findSummaries(EmailSpecifications.matching(criteria), pageable);
 
         return toPage(result);
     }
@@ -258,33 +258,33 @@ public class MailService {
 
         var owner = new EmailSpecifications.Criteria(currentUser(), null, null, null, null);
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "receivedAt"));
-        Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(owner)
+        Page<EmailSummary> result = emailMessageRepository.findSummaries(EmailSpecifications.matching(owner)
                 .and(EmailSpecifications.involving(sourceEmailIds, contacts.addresses(), contacts.domains())), pageable);
 
         return toPage(result);
     }
 
     /** One page of summaries with labels, thread info and reply markers, each from a single query for the whole page. */
-    private EmailPageDto toPage(Page<EmailMessage> result) {
-        List<EmailMessage> emails = result.getContent();
-        Map<Long, List<EmailLabelDto>> labels = labelsOf(emails.stream().map(email -> email.getId().id()).toList());
+    private EmailPageDto toPage(Page<EmailSummary> result) {
+        List<EmailSummary> emails = result.getContent();
+        Map<Long, List<EmailLabelDto>> labels = labelsOf(emails.stream().map(EmailSummary::id).toList());
         Map<String, ThreadStat> threads = threadStatsOf(emails);
         Map<Long, ReplyMarker> replies = replyMarkersOf(emails);
         return new EmailPageDto(
                 new ArrayList<>(emails.stream().map(email -> {
-                    ThreadStat thread = email.getConversationId() != null
-                            ? threads.get(threadKey(email.getAccount().getId().id(), email.getConversationId())) : null;
+                    ThreadStat thread = email.conversationId() != null
+                            ? threads.get(threadKey(email.accountId(), email.conversationId())) : null;
                     // Sent mail is not "answered"; only received mail can be.
-                    boolean answered = !EmailMessage.FOLDER_SENT.equals(email.getFolder())
-                            && thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.getReceivedAt());
-                    return MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of()),
-                            thread != null ? thread.messages().intValue() : 1, answered, replies.get(email.getId().id()));
+                    boolean answered = !EmailMessage.FOLDER_SENT.equals(email.folder())
+                            && thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.receivedAt());
+                    return MailMapper.toSummaryDto(email, labels.getOrDefault(email.id(), List.of()),
+                            thread != null ? thread.messages().intValue() : 1, answered, replies.get(email.id()));
                 }).toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
-    private Map<String, ThreadStat> threadStatsOf(List<EmailMessage> emails) {
-        List<String> conversationIds = emails.stream().map(EmailMessage::getConversationId).filter(Objects::nonNull).distinct().toList();
+    private Map<String, ThreadStat> threadStatsOf(List<EmailSummary> emails) {
+        List<String> conversationIds = emails.stream().map(EmailSummary::conversationId).filter(Objects::nonNull).distinct().toList();
         if (conversationIds.isEmpty()) {
             return Map.of();
         }
@@ -293,15 +293,15 @@ public class MailService {
     }
 
     /** A kept draft wins over a pending suggestion (it is what the user chose). */
-    private Map<Long, ReplyMarker> replyMarkersOf(List<EmailMessage> emails) {
+    private Map<Long, ReplyMarker> replyMarkersOf(List<EmailSummary> emails) {
         if (emails.isEmpty()) {
             return Map.of();
         }
         Map<Long, ReplyMarker> markers = new HashMap<>();
         proposalRepository.findByKindAndStatusAndSourceEmail_IdIn(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING,
-                        emails.stream().map(EmailMessage::getId).toList())
+                        emails.stream().map(email -> new EmailMessage.EmailMessageId(email.id())).toList())
                 .forEach(proposal -> markers.put(proposal.getSourceEmail().getId().id(), ReplyMarker.SUGGESTED));
-        replyDraftRepository.findEmailIdsWithStatus(emails.stream().map(email -> email.getId().id()).toList(), ReplyDraftStatus.READY)
+        replyDraftRepository.findEmailIdsWithStatus(emails.stream().map(EmailSummary::id).toList(), ReplyDraftStatus.READY)
                 .forEach(emailId -> markers.put(emailId, ReplyMarker.DRAFT_READY));
         return markers;
     }

@@ -15,6 +15,26 @@ export interface ReplyDraftPayload {
   body: string;
   language?: string | null;
   placeholders?: string[];
+  /** What the reply does (SCHEDULE, ANSWER_QUESTIONS, …), since reply-v2. */
+  intent?: string;
+  /** The questions of the email and whether the draft answers them. */
+  questions?: ReplyQuestion[];
+  /** For an optional polite reply (intent COURTESY): REJECTION_THANKS, THANK_YOU, … */
+  courtesyKind?: string;
+  /** Free times from the calendar the draft offers. */
+  proposedSlots?: ReplySlot[];
+}
+
+/** A question of the email: answered by the draft, left as a placeholder (false), or not reported (null). */
+export interface ReplyQuestion {
+  question: string;
+  answered?: boolean | null;
+}
+
+/** An offered meeting time, ISO-8601 with offset. */
+export interface ReplySlot {
+  start: string;
+  end: string;
 }
 
 /** The text of a draft the user edits (proposal payload or kept draft). */

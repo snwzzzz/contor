@@ -172,6 +172,20 @@ class AiSettingsServiceTest {
     }
 
     @Test
+    void updateSettings_CourtesyRepliesRoundTripAndAreAudited() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().courtesyReplies(true));
+
+        assertThat(dto.getCourtesyReplies()).isTrue();
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("courtesyReplies", false);
+        assertThat(captor.getValue().after()).containsEntry("courtesyReplies", true);
+    }
+
+    @Test
     void updateSettings_RepliesAutoRejected() {
         when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
 
