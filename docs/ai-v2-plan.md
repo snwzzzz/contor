@@ -3,7 +3,7 @@
 > Living plan. Each step is done test-first (CLAUDE.md §0), follows the React best-practices skill for frontend work, and
 > updates the README in the same change. Builds on `ai-plan.md` (extraction, runs) and `replies-plan.md` (threads, reply
 > drafts). Nothing is ever sent; everything stays on the local Ollama.
-> **Status:** steps 1–7 implemented (step 3 with mostly negative results, see notes); steps 8–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
+> **Status:** steps 1–8 implemented (step 3 with mostly negative results, see notes); step 9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - Step 1: `ai/AiTimings` (per-thread session, no Micrometer) is fed by `OllamaClient` and opened per email by
@@ -94,6 +94,18 @@
 >   COURTESY, COURTESY never needs a reply, a kind without COURTESY is dropped. No `KEEP_IN_TOUCH` eval case yet.
 >   Eval (`ai-eval/courtesy`, 4 cases): 3 of 3 personal mails recognized and drafted, the no-reply rejection gets none;
 >   triage precision 0.69, recall 1.00 on 58 cases.
+> - Step 8: kind `INSIGHT` (`V1_0_26`: kind check + index on `payload ->> 'insightKey'`; "proposed once" is a lookup on
+>   the proposal table, no `insight_dismissal` table), `InsightDetectors` (unanswered question ≥ 4 days, overlapping
+>   appointments; the plan's "changed amounts" detector is left to the model, which found it), `InsightModelService`
+>   (`insight-v1`, digest of 14 days, ≤ 200 emails / 18 000 chars), `InsightService` (daily + `POST /api/ai/insights`,
+>   rules first, ≤ 5 per run), `InsightApplier` (creates the kept follow-ups directly as AI records linked to the
+>   evidence — not as further proposals: approving the insight with its ticked follow-ups already is the decision).
+>   No digest clustering by embeddings (the 14-day digest fits the context). Eval (`AiInsightEvalTest`, 3 scenarios):
+>   first version 2/3 with a wrong trip insight; a checklist prompt made the model too timid (0/3); the raw answers showed
+>   it *had* found "promised answer missing" and "no hotel" but the guardrail demanded two evidence emails — absences
+>   rest on one; with one allowed and a confidence floor (made-up insight 0.4, good ones ≥ 0.9): 3/3 found, plus 3 extra
+>   (two plausible: a Munich train without accommodation, a workshop offer past its date; one dubious). Dismissing one
+>   makes sure it never returns.
 > - Consequence for step 4: extra context in the prompt is cheap (reading ≈ 1 s per 1 200 tokens), so the budget can
 >   be generous; asking for more output is what costs time.
 

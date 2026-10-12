@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -9,8 +9,10 @@ import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
 import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
+import { InsightCard } from "@/components/app/proposals/InsightCard";
 import { ProposalDetail } from "@/components/app/proposals/ProposalDetail";
 import { ReplySuggestionCard } from "@/components/app/replies/ReplySuggestionCard";
+import { getInsightRun, requestInsights } from "@/lib/api/generated/endpoints/ai/ai";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
@@ -62,6 +64,7 @@ export function ProposalList() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // A decision can create records, collections or both: refresh everything that may show them.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
+  const insights = useInsightSearch();
 
   function changeView(next: View) {
     setView(next);
@@ -101,6 +104,7 @@ export function ProposalList() {
         icon={Sparkles}
         title="Nothing to review"
         description="When the assistant wants to add something to your calendar or to-dos and you chose “Ask me”, it waits here."
+        action={<LookForInsights search={insights} />}
       />
     );
   }
@@ -118,7 +122,10 @@ export function ProposalList() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{data.totalElements} waiting for your decision</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted-foreground">{data.totalElements} waiting for your decision</p>
+          <LookForInsights search={insights} />
+        </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by kind">
           <FilterChip label="All" count={described.length} active={filter === null} onClick={() => setFilter(null)} />
           {GROUPS.filter((group) => counts.has(group)).map((group) => (
@@ -147,6 +154,8 @@ export function ProposalList() {
         {visible.map(({ proposal, description }) =>
           proposal.kind === "DRAFT_REPLY" ? (
             <ReplySuggestionCard key={proposal.id} proposal={proposal} onOpen={() => setSelectedId(proposal.id)} />
+          ) : proposal.kind === "INSIGHT" ? (
+            <InsightCard key={proposal.id} proposal={proposal} />
           ) : (
             <ActionCard
               key={proposal.id}
@@ -175,6 +184,37 @@ export function ProposalList() {
         />
       ) : null}
     </div>
+  );
+}
+
+interface InsightSearch {
+  looking: boolean;
+  start: () => void;
+}
+
+const INSIGHT_POLL_MS = 3000;
+
+/** Starts an insight pass and resolves once the backend says it is done (the pass runs on the AI thread). */
+async function searchInsights(): Promise<void> {
+  let run = await requestInsights();
+  while (run.running) {
+    await new Promise((resolve) => setTimeout(resolve, INSIGHT_POLL_MS));
+    run = await getInsightRun();
+  }
+}
+
+/** "Look for insights": one mutation that starts the pass, waits for it and then refreshes the proposals. */
+function useInsightSearch(): InsightSearch {
+  const queryClient = useQueryClient();
+  const search = useMutation({ mutationFn: searchInsights, onSuccess: () => queryClient.invalidateQueries() });
+  return { looking: search.isPending, start: () => search.mutate() };
+}
+
+function LookForInsights({ search }: { search: InsightSearch }) {
+  return (
+    <AppButton size="sm" variant="outline" disabled={search.looking} onClick={search.start}>
+      {search.looking ? "Looking for insights…" : "Look for insights"}
+    </AppButton>
   );
 }
 

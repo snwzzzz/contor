@@ -101,6 +101,16 @@ public class ProposalRepositoryTest {
     }
 
     @Test
+    void knows_whether_an_insight_was_proposed_before_whatever_became_of_it() {
+        proposalRepository.saveAndFlush(of(ProposalKind.INSIGHT, ProposalStatus.REJECTED, Map.of("insightKey", "unanswered:42")));
+        proposalRepository.saveAndFlush(of(ProposalKind.CREATE_RECORD, ProposalStatus.PENDING, Map.of("insightKey", "other")));
+
+        assertThat(proposalRepository.existsInsightKey("unanswered:42")).isTrue();
+        assertThat(proposalRepository.existsInsightKey("other")).isFalse();
+        assertThat(proposalRepository.existsInsightKey("unanswered:43")).isFalse();
+    }
+
+    @Test
     void pages_proposals_by_status() {
         for (int i = 0; i < 3; i++) proposalRepository.save(proposal(ProposalStatus.PENDING));
         proposalRepository.save(proposal(ProposalStatus.APPROVED));

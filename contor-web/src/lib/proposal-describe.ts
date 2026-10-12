@@ -1,9 +1,9 @@
-import { Archive, CalendarPlus, FolderPlus, Link2, ListPlus, PencilLine, Reply, Sparkles, Tag, type LucideIcon } from "lucide-react";
+import { Archive, CalendarPlus, FolderPlus, Lightbulb, Link2, ListPlus, PencilLine, Reply, Sparkles, Tag, type LucideIcon } from "lucide-react";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { Tint } from "@/lib/collection-tint";
 
 /** Filter groups of the proposals page, in the order of the chips. */
-export const GROUPS = ["Calendar", "To-dos", "Categories", "Replies", "Labels", "Email", "Records", "Other"] as const;
+export const GROUPS = ["Insights", "Calendar", "To-dos", "Categories", "Replies", "Labels", "Email", "Records", "Other"] as const;
 export type Group = (typeof GROUPS)[number];
 
 export interface Description {
@@ -28,6 +28,8 @@ export function describeProposal(proposal: ProposalDto, slug: string | undefined
       return { label: "New category", icon: FolderPlus, group: "Categories", tint: 6 };
     case "DRAFT_REPLY":
       return { label: "Draft reply", icon: Reply, group: "Replies", tint: 5 };
+    case "INSIGHT":
+      return { label: "Insight", icon: Lightbulb, group: "Insights", tint: 4 };
     case "SET_LABEL":
     case "CREATE_LABEL":
       return { label: proposal.kind === "SET_LABEL" ? "Label email" : "New label", icon: Tag, group: "Labels", tint: 2 };

@@ -5,11 +5,13 @@ import com.example.contor.api.model.AiSettingsDto;
 import com.example.contor.api.model.AiStatusDto;
 import com.example.contor.api.model.AnalysisRunDto;
 import com.example.contor.api.model.EvalCaseExportDto;
+import com.example.contor.api.model.InsightRunDto;
 import com.example.contor.api.model.UpdateAiSettingsCommand;
 import com.example.contor.service.AiAnalysisService;
 import com.example.contor.service.AiEvalExportService;
 import com.example.contor.service.AiModelService;
 import com.example.contor.service.AiSettingsService;
+import com.example.contor.service.InsightService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,7 @@ public class AiController implements AiApi {
     private final AiSettingsService aiSettingsService;
     private final AiAnalysisService aiAnalysisService;
     private final AiEvalExportService aiEvalExportService;
+    private final InsightService insightService;
 
     @Override
     public ResponseEntity<AiStatusDto> getAiStatus() {
@@ -53,6 +56,16 @@ public class AiController implements AiApi {
     @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<AnalysisRunDto> startAnalysis() {
         return ResponseEntity.status(HttpStatus.CREATED).body(aiAnalysisService.startAnalysis());
+    }
+
+    @Override
+    public ResponseEntity<InsightRunDto> getInsightRun() {
+        return ResponseEntity.ok(insightService.getInsightRun());
+    }
+
+    @Override
+    public ResponseEntity<InsightRunDto> requestInsights() {
+        return ResponseEntity.accepted().body(insightService.requestInsights());
     }
 
     @Override

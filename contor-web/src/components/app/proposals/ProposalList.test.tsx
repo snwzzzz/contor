@@ -53,6 +53,22 @@ function actionsPage(items: unknown[]): (request: { url: URL }) => MockResponse 
 describe("ProposalList", () => {
   afterEach(() => resetNavigation());
 
+  it("looks for insights on request", async () => {
+    const user = userEvent.setup();
+    const calls = mockApi({
+      "GET /api/proposals": actionsPage(actions),
+      "GET /api/collections": { body: collections },
+      "POST /api/ai/insights": { status: 202, body: { running: true } },
+    });
+    renderWithProviders(<ProposalList />);
+    await screen.findByRole("article", { name: "Interview at Acme" });
+
+    await user.click(screen.getByRole("button", { name: "Look for insights" }));
+
+    await waitFor(() => expect(calls.some((call) => call.method === "POST" && call.path === "/api/ai/insights")).toBe(true));
+    expect(await screen.findByRole("button", { name: /Looking for insights/ })).toBeDisabled();
+  });
+
   it("marks important proposals and says why", async () => {
     mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
 

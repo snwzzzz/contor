@@ -1749,6 +1749,36 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/ai/insights:
+    get:
+      tags: [AI]
+      operationId: getInsightRun
+      summary: Whether a requested insight pass of the current user is still running
+      responses:
+        '200':
+          description: The state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [AI]
+      operationId: requestInsights
+      summary: Look for insights now (in the background, on the AI thread)
+      description: |
+        Insights are what only shows across several emails (an unanswered question, overlapping appointments, what the
+        model notices in the last two weeks). They also run daily. New ones arrive as INSIGHT proposals.
+      responses:
+        '202':
+          description: Queued (or already queued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/ai/analysis/latest:
     get:
       tags: [AI]
@@ -2605,8 +2635,13 @@ components:
         Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
         CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
         a proposal the system rejected carries `{"reason"}`.
+        INSIGHT `{"insightKey": "unanswered:42", "title": "..", "observation": "..", "whyItMatters": "..",
+        "evidenceEmailIds": [42], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
+        "source": "rule:unanswered-question" | "rule:clash" | "model"}`: something that only shows across several emails.
+        Approving creates the follow-ups left in the (edited) payload as records linked to the evidence emails (result
+        `{"records": [{"collectionId", "recordId"}]}`); an insight is proposed once per key, also after it was dismissed.
         Other kinds are stored but cannot be applied yet.
-      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL]
+      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT]
     ProposalState:
       type: string
       enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
@@ -3319,6 +3354,13 @@ components:
         title:
           type: string
           nullable: true
+    InsightRunDto:
+      type: object
+      required: [running]
+      properties:
+        running:
+          type: boolean
+          description: A pass requested by the user is queued or running
     AnalysisRunDto:
       type: object
       required: [id, status, discoverySteps, discoveryStepsDone, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]

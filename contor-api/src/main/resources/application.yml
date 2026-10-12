@@ -108,6 +108,10 @@ app:
       related-within: ${AI_CONTEXT_RELATED_WITHIN:180d}
     # When you can meet: reply drafts for meeting requests offer free times inside these hours (local time in
     # AI_TIMEZONE), around the appointments of your Calendar collection. The Outlook calendar is not read.
+    # Insights: what only shows across several emails, proposed once a day (and on "Look for insights").
+    insights:
+      interval: ${AI_INSIGHTS_INTERVAL:24h}
+      initial-delay: ${AI_INSIGHTS_INITIAL_DELAY:15m}
     availability:
       work-days: ${AI_WORK_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
       work-start: ${AI_WORK_START:09:00}

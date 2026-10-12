@@ -45,7 +45,7 @@ public final class ImportanceScorer {
         boolean courtesy = kind == ProposalKind.DRAFT_REPLY && COURTESY.equals(payload.get("intent"));
         int score = courtesy ? reason(reasons, "an optional polite reply", 20) : base(kind, collectionSlug, reasons);
 
-        Long days = daysUntil(payload, now, zone);
+        Long days = daysUntil(kind == ProposalKind.INSIGHT ? firstFollowUp(payload) : payload, now, zone);
         if (days != null) {
             if (days < 0) {
                 score -= 20;
@@ -91,6 +91,7 @@ public final class ImportanceScorer {
             }
             case CREATE_COLLECTION, ADD_FIELD -> reason(reasons, "a new category", 40);
             case CREATE_RELATION -> reason(reasons, "a connection between records", 15);
+            case INSIGHT -> reason(reasons, "a pattern across your mail", 45);
             default -> reason(reasons, "housekeeping", 25);
         };
     }
@@ -98,6 +99,14 @@ public final class ImportanceScorer {
     private static int reason(List<String> reasons, String reason, int score) {
         reasons.add(reason);
         return score;
+    }
+
+    /** An insight's dates are those of its first follow-up (a to-do or an appointment). */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> firstFollowUp(Map<String, Object> payload) {
+        return payload.get("followUps") instanceof List<?> followUps && !followUps.isEmpty() && followUps.getFirst() instanceof Map<?, ?> first
+                ? (Map<String, Object>) first
+                : Map.of();
     }
 
     /** Days from today to the payload's {@code due_date} or {@code starts_at} (negative: past); {@code null} without one. */

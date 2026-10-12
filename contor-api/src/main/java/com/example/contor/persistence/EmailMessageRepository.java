@@ -1,5 +1,6 @@
 package com.example.contor.persistence;
 
+import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.DiscoveryEmail;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.EmailMessage;
@@ -79,6 +80,26 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
     @Query("select e from EmailMessage e where e.account.owner.id = :ownerId and lower(e.fromAddress) = lower(:address) "
             + "and (e.folder is null or e.folder <> 'sent') and e.receivedAt < :before order by e.receivedAt desc")
     List<EmailMessage> findFromSenderBefore(AppUser.AppUserId ownerId, String address, Instant before, Pageable pageable);
+
+    /**
+     * Ids of an owner's sent mail from [{@code from}, {@code to}) that has no later received message in its conversation
+     * (nobody answered yet), newest first. Mail without a conversation id counts as unanswered.
+     */
+    @Query(value = "select s.id from \"email_message\" s join \"mail_account\" a on a.id = s.account_id "
+            + "where a.owner_user_id = :ownerId and s.folder = 'sent' and s.received_at >= :from and s.received_at < :to "
+            + "and not exists (select 1 from \"email_message\" r where r.account_id = s.account_id "
+            + "and r.conversation_id = s.conversation_id and (r.folder is null or r.folder <> 'sent') and r.received_at > s.received_at) "
+            + "order by s.received_at desc limit :limit", nativeQuery = true)
+    List<Long> findUnansweredSentIds(Long ownerId, Instant from, Instant to, int limit);
+
+    default List<Long> findUnansweredSent(AppUser.AppUserId ownerId, Instant from, Instant to, int limit) {
+        return findUnansweredSentIds(ownerId.id(), from, to, limit);
+    }
+
+    /** An owner's mail (inbox and sent) received since {@code since}, newest first, as digest lines (insight pass). */
+    @Query("select new com.example.contor.ai.DigestEmail(e.id.id, e.fromName, e.fromAddress, e.subject, e.snippet, e.receivedAt, e.folder) "
+            + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since order by e.receivedAt desc")
+    List<DigestEmail> findDigest(AppUser.AppUserId ownerId, Instant since, Pageable pageable);
 
     /** Whether an owner ever sent mail to {@code address} (any case, To recipients of Sent Items). */
     @Query(value = "select exists (select 1 from \"email_message\" e join \"mail_account\" a on a.id = e.account_id "

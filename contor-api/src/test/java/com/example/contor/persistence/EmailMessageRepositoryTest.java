@@ -1,6 +1,7 @@
 package com.example.contor.persistence;
 
 import com.example.contor.RepositoryTest;
+import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.DiscoveryEmail;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
@@ -169,6 +170,44 @@ public class EmailMessageRepositoryTest {
         assertThat(emailMessageRepository.existsSentTo(owner.getId(), "anna@ACME.com")).isTrue();
         assertThat(emailMessageRepository.existsSentTo(owner.getId(), "bob@acme.com")).isFalse();
         assertThat(emailMessageRepository.existsSentTo(owner.getId(), "carl@acme.com")).isFalse();
+    }
+
+    @Test
+    void finds_sent_mail_nobody_answered_in_its_conversation() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var unanswered = message(mine, "1", "conv-a", "sent", "2026-10-01T10:00:00Z");
+        message(mine, "2", "conv-b", "sent", "2026-10-01T10:00:00Z");
+        message(mine, "3", "conv-b", "inbox", "2026-10-02T10:00:00Z");
+        message(mine, "4", "conv-c", "inbox", "2026-09-30T10:00:00Z");
+        var answeredBefore = message(mine, "5", "conv-c", "sent", "2026-10-01T11:00:00Z");
+        message(mine, "6", "conv-d", "sent", "2026-10-11T10:00:00Z");
+        message(foreign, "7", "conv-e", "sent", "2026-10-01T10:00:00Z");
+
+        var found = emailMessageRepository.findUnansweredSent(owner.getId(), Instant.parse("2026-09-20T00:00:00Z"),
+                Instant.parse("2026-10-08T00:00:00Z"), 10);
+
+        assertThat(found).containsExactlyInAnyOrder(unanswered.getId().id(), answeredBefore.getId().id());
+    }
+
+    @Test
+    void lists_the_digest_of_one_owners_mail_since_a_date_newest_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        message(mine, "1", "conv-a", "inbox", "2026-09-01T10:00:00Z");
+        var older = message(mine, "2", "conv-b", "inbox", "2026-10-02T10:00:00Z");
+        var newer = message(mine, "3", "conv-c", "sent", "2026-10-03T10:00:00Z");
+        message(foreign, "4", "conv-d", "inbox", "2026-10-04T10:00:00Z");
+
+        var digest = emailMessageRepository.findDigest(owner.getId(), Instant.parse("2026-10-01T00:00:00Z"), PageRequest.of(0, 10));
+
+        assertThat(digest).extracting(DigestEmail::id).containsExactly(newer.getId().id(), older.getId().id());
+        assertThat(digest.getFirst().folder()).isEqualTo("sent");
+        assertThat(digest.getFirst().subject()).isEqualTo("Your order has shipped");
     }
 
     private EmailMessage from(MailAccount account, String id, String address, String receivedAt) {

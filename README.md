@@ -168,6 +168,15 @@ bar (or Settings → AI Models). The wizard walks through:
   dropped (old mail in the first analysis), past calendar events are kept as history.
 - Expect ~12 s per email on a 3060 (the first call after a cold start ~20–50 s): the first analysis of a busy inbox runs
   for hours in the background and can be stopped at any time. Afterwards new mail is processed every 2 minutes.
+- **Insights:** once a day (and on *Look for insights* on `/proposals`) the assistant looks for what only shows across
+  several emails and proposes it as an **Insight** card: what it noticed, why it matters, links to the source emails and
+  follow-ups (to-dos, appointments) you can untick before *Keep*; *Dismiss* makes sure the same insight never comes back.
+  Rules find unanswered questions you sent (no answer for 4+ days) and overlapping appointments; one model pass over
+  the last two weeks (one line per email, plus your open to-dos and upcoming appointments) finds price changes,
+  promised answers that never came, trips without accommodation and the like. Its answer is checked: the source emails
+  must be in the digest, novelty ≥ 0.5, confidence ≥ 0.6, at most 5 per run. Needs mail access and to-dos or calendar
+  allowed; never during an analysis run. `POST /api/ai/insights` (202) starts a pass, `GET /api/ai/insights` says
+  whether it still runs. `AiInsightEvalTest` (`ai-eval/insights`, report only) checks the model pass on three scenarios.
 - **Multi-mail context:** the assistant reads each email together with what your other mail says about it (ADR 0009): the earlier messages of the conversation (your replies included), up to 5 earlier emails from the same sender, up to 5 related emails found through the search index, and the records already created from them — only mail received before the email. So a "can we move the interview to Monday, same place?" updates the existing interview with the right place, and a payment reminder without invoice number finds its invoice. `AiContextEvalTest` (part of `-Pai-eval`) runs the cases in `ai-eval/context` with and without that context and prints both scores.
 - **Search index:** every inbox email gets a vector (`nomic-embed-text`) for semantic search, made from subject, sender and the cleaned body (no quoted history or signature; ADR 0008). New mail is embedded right before its analysis (so related mail can be found for it); mail that already exists, and all mail after a change of `AI_MODEL_EMBEDDING`, is embedded in the background (16 emails per model call, about twice as fast as one call each) shortly after start and then every processing interval. Progress shows under Settings → AI Models and in `GET /api/ai/status` (`embeddings`). The old model's vectors are removed once the new ones are complete.
 - **Reply drafts** (`replies = SUGGEST`, `docs/replies-plan.md`): after an inbox email was analyzed, cheap rules skip mail
@@ -362,6 +371,7 @@ All variables are listed in `.env.example`.
 | `AI_PROCESSING_ENABLED` | backend | `true` | analyze new mail in the background after the AI setup |
 | `AI_PROCESSING_INTERVAL` | backend | `2m` | pause between background passes |
 | `AI_PROCESSING_BATCH_SIZE` | backend | `20` | emails per user and pass |
+| `AI_INSIGHTS_INTERVAL`, `AI_INSIGHTS_INITIAL_DELAY` | backend | `24h`, `15m` | how often insights are looked for, and the first time after start |
 | `AI_WORK_DAYS` | backend | `MONDAY,…,FRIDAY` | days a reply may offer meeting times on |
 | `AI_WORK_START`, `AI_WORK_END` | backend | `09:00`, `18:00` | working hours for offered times (local time in `AI_TIMEZONE`) |
 | `AI_SLOT_MINUTES`, `AI_SLOT_SEARCH_DAYS` | backend | `60`, `10` | length of an offered slot; how many days ahead when the email names no dates |

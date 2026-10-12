@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +97,18 @@ class ImportanceScorerTest {
                 .isLessThan(plain);
         assertThat(score(ProposalKind.DRAFT_REPLY, null, Map.of(), new ImportanceSignals("low", false, false, false)).score())
                 .isLessThan(score(ProposalKind.DRAFT_REPLY, null, Map.of(), ImportanceSignals.NONE).score());
+    }
+
+    @Test
+    void an_insight_is_a_pattern_and_its_first_follow_up_sets_the_date() {
+        ImportanceScorer.Importance plain = score(ProposalKind.INSIGHT, null, Map.of("followUps", List.of()), ImportanceSignals.NONE);
+        ImportanceScorer.Importance soon = score(ProposalKind.INSIGHT, null, Map.of("followUps",
+                List.of(Map.of("collectionId", 4, "title", "Follow up", "values", Map.of("due_date", "2026-10-13")))), ImportanceSignals.NONE);
+
+        assertThat(plain.reason()).startsWith("a pattern across your mail");
+        assertThat(plain.level()).isEqualTo(ProposalImportance.NORMAL);
+        assertThat(soon.score()).isGreaterThan(plain.score());
+        assertThat(soon.level()).isEqualTo(ProposalImportance.HIGH);
     }
 
     @Test

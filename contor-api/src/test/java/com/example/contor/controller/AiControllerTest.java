@@ -7,6 +7,7 @@ import com.example.contor.api.model.AiModelDto;
 import com.example.contor.api.model.AiModelRole;
 import com.example.contor.api.model.AiPullState;
 import com.example.contor.api.model.AiSettingsDto;
+import com.example.contor.api.model.InsightRunDto;
 import com.example.contor.api.model.AiStatusDto;
 import com.example.contor.api.model.AnalysisRunDto;
 import com.example.contor.api.model.AnalysisState;
@@ -17,6 +18,7 @@ import com.example.contor.service.AiAnalysisService;
 import com.example.contor.service.AiEvalExportService;
 import com.example.contor.service.AiModelService;
 import com.example.contor.service.AiSettingsService;
+import com.example.contor.service.InsightService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -55,6 +57,9 @@ class AiControllerTest {
 
     @MockitoBean
     private AiEvalExportService aiEvalExportService;
+
+    @MockitoBean
+    private InsightService insightService;
 
     private static AiStatusDto aiStatus() {
         return new AiStatusDto(true, false, List.of(new AiModelDto("qwen3.5:9b", List.of(AiModelRole.EXTRACTION), false, AiPullState.PULLING)
@@ -162,6 +167,21 @@ class AiControllerTest {
                 .andExpect(jsonPath("$.proposalsCreated").value(7));
         mockMvc.perform(post("/api/ai/analysis").with(TestAuth.user()).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void looks_for_insights_in_the_background_and_reports_whether_it_still_runs() throws Exception {
+        when(insightService.requestInsights()).thenReturn(new InsightRunDto(true));
+        when(insightService.getInsightRun()).thenReturn(new InsightRunDto(false));
+
+        mockMvc.perform(post("/api/ai/insights").with(TestAuth.user()).with(csrf()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.running").value(true));
+        mockMvc.perform(get("/api/ai/insights").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.running").value(false));
+        mockMvc.perform(post("/api/ai/insights").with(csrf()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

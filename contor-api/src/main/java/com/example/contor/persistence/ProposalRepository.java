@@ -64,6 +64,10 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
     @Query(value = "select count(*) from proposal where status = :status and not (" + FINDING + ")" + MIN_SCORE, nativeQuery = true)
     long countActions(String status, Collection<Long> actionCollectionIds, int minScore);
 
+    /** Whether an INSIGHT with this key was ever proposed (pending, approved or dismissed): each insight is proposed once. */
+    @Query(value = "select exists (select 1 from proposal where kind = 'INSIGHT' and payload ->> 'insightKey' = :key)", nativeQuery = true)
+    boolean existsInsightKey(String key);
+
     /** Id of a pending CREATE_RECORD proposal for the collection with this title (case-insensitive), if there is one. */
     @Query(value = "select id from proposal where status = 'PENDING' and kind = 'CREATE_RECORD' "
             + "and (payload ->> 'collectionId')::bigint = :collectionId and lower(payload ->> 'title') = lower(:title) "
