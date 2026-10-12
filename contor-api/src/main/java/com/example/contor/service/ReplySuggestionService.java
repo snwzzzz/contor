@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
 import com.example.contor.ai.EmailTextCleaner;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.ai.ReplyCandidateFilter;
 import com.example.contor.ai.ReplyThread;
@@ -65,6 +66,7 @@ public class ReplySuggestionService {
     private final CollectionSchemaService collectionSchemaService;
     private final RecordService recordService;
     private final AiSettingsService aiSettingsService;
+    private final ImportanceSignalService importanceSignalService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactionTemplate;
@@ -76,7 +78,8 @@ public class ReplySuggestionService {
                                   ProposalRepository proposalRepository, ProposalService proposalService,
                                   ReplyLifecycleService replyLifecycleService, ReplyTriageService replyTriageService,
                                   ReplyComposerService replyComposerService, CollectionSchemaService collectionSchemaService,
-                                  RecordService recordService, AiSettingsService aiSettingsService, AiProperties properties,
+                                  RecordService recordService, AiSettingsService aiSettingsService,
+                                  ImportanceSignalService importanceSignalService, AiProperties properties,
                                   AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
         this.emailMessageRepository = emailMessageRepository;
         this.mailAccountRepository = mailAccountRepository;
@@ -88,6 +91,7 @@ public class ReplySuggestionService {
         this.collectionSchemaService = collectionSchemaService;
         this.recordService = recordService;
         this.aiSettingsService = aiSettingsService;
+        this.importanceSignalService = importanceSignalService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -118,7 +122,7 @@ public class ReplySuggestionService {
         if (!triage.needsReply()) {
             return false;
         }
-        return composeAndSubmit(context, triage.reason());
+        return composeAndSubmit(context, triage.reason(), triage.urgency());
     }
 
     /**
@@ -160,7 +164,7 @@ public class ReplySuggestionService {
     private void runOnDemand(Long emailId) {
         try {
             Context context = transactionTemplate.execute(status -> load(emailId).orElse(null));
-            if (context != null && composeAndSubmit(context, null)) {
+            if (context != null && composeAndSubmit(context, null, null)) {
                 onDemand.remove(emailId);
             } else {
                 onDemand.put(emailId, ReplySuggestionState.FAILED);
@@ -171,7 +175,8 @@ public class ReplySuggestionService {
         }
     }
 
-    private boolean composeAndSubmit(Context context, String triageReason) {
+    /** @param urgency the triage's low/normal/high, {@code null} on demand (no triage) */
+    private boolean composeAndSubmit(Context context, String triageReason, String urgency) {
         Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context));
         if (composed.isEmpty()) {
             return false;
@@ -188,13 +193,24 @@ public class ReplySuggestionService {
         payload.put("language", reply.language());
         payload.put("placeholders", reply.placeholders());
         String reasoning = !reply.summary().isBlank() ? reply.summary() : triageReason;
-        ProposalDraft draft = new ProposalDraft(ProposalKind.DRAFT_REPLY, payload, null, reasoning);
+        ProposalDraft draft = new ProposalDraft(ProposalKind.DRAFT_REPLY, payload, null, reasoning)
+                .withSignals(signals(context.emailId()).withUrgency(urgency));
         transactionTemplate.executeWithoutResult(status -> {
             replyLifecycleService.supersedeConversation(context.accountId(), context.conversationId(), ReplyLifecycleService.REPLACED);
             proposalService.submitDraft(draft, context.emailId(), AiPermissionLevel.SUGGEST, properties.models().extraction(),
                     ReplyComposerService.PROMPT_VERSION, List.of());
         });
         return true;
+    }
+
+    /** What is known about the sender; nothing when the lookup fails (the draft is kept either way). */
+    private ImportanceSignals signals(Long emailId) {
+        try {
+            return importanceSignalService.signalsFor(emailId);
+        } catch (RuntimeException e) {
+            log.debug("No importance signals for email {}: {}", emailId, e.getMessage());
+            return ImportanceSignals.NONE;
+        }
     }
 
     private Optional<Context> load(Long emailId) {

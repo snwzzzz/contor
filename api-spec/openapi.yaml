@@ -976,7 +976,7 @@ paths:
     get:
       tags: [Proposals]
       operationId: listProposals
-      summary: Proposals, newest first, optionally filtered by state
+      summary: Proposals, newest or most important first, optionally filtered by state, group and importance
       parameters:
         - name: status
           in: query
@@ -988,6 +988,18 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalGroup'
+        - name: minImportance
+          in: query
+          required: false
+          description: Only proposals of at least this importance (default LOW = all)
+          schema:
+            $ref: '#/components/schemas/ProposalPriority'
+        - name: sort
+          in: query
+          required: false
+          description: NEWEST (default) or IMPORTANCE (highest score first, then newest)
+          schema:
+            $ref: '#/components/schemas/ProposalSort'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1017,6 +1029,12 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/ProposalGroup'
+        - name: minImportance
+          in: query
+          required: false
+          description: Only proposals of at least this importance (default LOW = all)
+          schema:
+            $ref: '#/components/schemas/ProposalPriority'
       responses:
         '200':
           description: The count
@@ -2593,12 +2611,24 @@ components:
         calendar `events` and to-dos `tasks`). ACTIONS: everything else – things the AI proposes to do (calendar
         entries, to-dos, new categories, reply drafts, later labels).
       enum: [ACTIONS, FINDINGS]
+    ProposalPriority:
+      type: string
+      description: |
+        How much a proposal deserves attention, derived from importanceScore: LOW < 35 <= NORMAL < 60 <= HIGH < 80 <= URGENT.
+        The score comes from rules (no model call): the kind (a reply someone waits for > a to-do > an appointment > a new
+        category > a finding > a relation), a deadline or date in the payload (within 2 days +25, within 7 days +10, past -20),
+        the reply triage's urgency (high +20, low -10), a sender among your contacts (+10) or someone you wrote to (+10), a
+        bulk sender (-30).
+      enum: [LOW, NORMAL, HIGH, URGENT]
+    ProposalSort:
+      type: string
+      enum: [NEWEST, IMPORTANCE]
     ProposalDecision:
       type: string
       enum: [APPROVE, REJECT]
     ProposalDto:
       type: object
-      required: [id, kind, status, payload, createdAt]
+      required: [id, kind, status, payload, importance, importanceScore, createdAt]
       properties:
         id:
           type: integer
@@ -2622,6 +2652,16 @@ components:
           type: number
         reasoning:
           type: string
+        importance:
+          $ref: '#/components/schemas/ProposalPriority'
+        importanceScore:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        importanceReason:
+          type: string
+          description: Why it got its importance, e.g. "a to-do; due within 2 days" (absent for proposals never scored)
         model:
           type: string
         promptVersion:

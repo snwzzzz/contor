@@ -80,6 +80,16 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "and (e.folder is null or e.folder <> 'sent') and e.receivedAt < :before order by e.receivedAt desc")
     List<EmailMessage> findFromSenderBefore(AppUser.AppUserId ownerId, String address, Instant before, Pageable pageable);
 
+    /** Whether an owner ever sent mail to {@code address} (any case, To recipients of Sent Items). */
+    @Query(value = "select exists (select 1 from \"email_message\" e join \"mail_account\" a on a.id = e.account_id "
+            + "cross join lateral jsonb_array_elements(e.to_recipients) r "
+            + "where a.owner_user_id = :ownerId and e.folder = 'sent' and lower(r ->> 'address') = lower(:address))", nativeQuery = true)
+    boolean existsSentToRow(Long ownerId, String address);
+
+    default boolean existsSentTo(AppUser.AppUserId ownerId, String address) {
+        return existsSentToRow(ownerId.id(), address);
+    }
+
     /** All messages of one conversation in a mailbox (sent mail included), oldest first. */
     @Query("select e from EmailMessage e where e.account.id = :accountId and e.conversationId = :conversationId "
             + "order by e.receivedAt asc, e.id.id asc")

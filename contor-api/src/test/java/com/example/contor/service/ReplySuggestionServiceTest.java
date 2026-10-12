@@ -1,6 +1,7 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.LlmClient;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
@@ -103,6 +104,9 @@ class ReplySuggestionServiceTest {
     @Mock
     private PlatformTransactionManager transactionManager;
 
+    @Mock
+    private ImportanceSignalService importanceSignalService;
+
     private ReplySuggestionService service;
     private MailAccount account;
     private final List<EmailMessage> conversation = new ArrayList<>();
@@ -118,7 +122,9 @@ class ReplySuggestionServiceTest {
         service = new ReplySuggestionService(emailMessageRepository, mailAccountRepository, proposalRepository, proposalService,
                 replyLifecycleService, new ReplyTriageService(llmClient, properties, mapper),
                 new ReplyComposerService(llmClient, properties, mapper, clock), collectionSchemaService, recordService,
-                aiSettingsService, properties, new AiExecutors(Runnable::run, Runnable::run), transactionManager, clock);
+                aiSettingsService, importanceSignalService, properties, new AiExecutors(Runnable::run, Runnable::run),
+                transactionManager, clock);
+        lenient().when(importanceSignalService.signalsFor(any())).thenReturn(new ImportanceSignals(null, true, false, false));
 
         AppUser owner = AppUser.builder().id(new AppUser.AppUserId(1L)).build();
         account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(owner).displayName("Max Muster")
@@ -171,6 +177,16 @@ class ReplySuggestionServiceTest {
         verify(proposalService).submitDraft(draft.capture(), eq(8L), eq(AiPermissionLevel.SUGGEST), eq("extractor"),
                 eq(ReplyComposerService.PROMPT_VERSION), anyCollection());
         return draft.getValue();
+    }
+
+    @Test
+    void suggestIfNeeded_TheDraftCarriesTheSendersSignalsAndTheTriageUrgency() {
+        question();
+        llm("{\"needsReply\": true, \"reason\": \"Anna asks for a date\", \"urgency\": \"high\"}", DRAFT);
+
+        service.suggestIfNeeded(8L);
+
+        assertThat(submitted().signals()).isEqualTo(new ImportanceSignals("high", true, false, false));
     }
 
     @Test

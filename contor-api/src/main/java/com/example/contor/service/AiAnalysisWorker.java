@@ -5,6 +5,7 @@ import com.example.contor.ai.AiTimings;
 import com.example.contor.ai.DiscoveryEmail;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.ExtractionService;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.config.AiProperties;
@@ -74,6 +75,7 @@ public class AiAnalysisWorker {
     private final EmailEmbeddingService emailEmbeddingService;
     private final ReplySuggestionService replySuggestionService;
     private final MailContextService mailContextService;
+    private final ImportanceSignalService importanceSignalService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final AiTimings timings;
@@ -90,7 +92,7 @@ public class AiAnalysisWorker {
                             InboxDiscoveryService inboxDiscoveryService, ExtractionService extractionService,
                             ProposalService proposalService, EmailEmbeddingService emailEmbeddingService,
                             ReplySuggestionService replySuggestionService, MailContextService mailContextService,
-                            AiProperties properties, AiExecutors aiExecutors,
+                            ImportanceSignalService importanceSignalService, AiProperties properties, AiExecutors aiExecutors,
                             AiTimings timings, PlatformTransactionManager transactionManager, Clock clock) {
         this.aiAnalysisRunRepository = aiAnalysisRunRepository;
         this.emailMessageRepository = emailMessageRepository;
@@ -102,6 +104,7 @@ public class AiAnalysisWorker {
         this.emailEmbeddingService = emailEmbeddingService;
         this.replySuggestionService = replySuggestionService;
         this.mailContextService = mailContextService;
+        this.importanceSignalService = importanceSignalService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.timings = timings;
@@ -262,6 +265,7 @@ public class AiAnalysisWorker {
             timings.stage("embed", () -> embed(emailId));
             EmailContent read = targets.isEmpty() ? content : content.withContext(timings.stage("context", () -> context(emailId)));
             List<ProposalDraft> drafts = timings.stage("extract", () -> extractionService.analyze(read, targets));
+            ImportanceSignals signals = drafts.isEmpty() ? ImportanceSignals.NONE : signals(emailId);
             for (ProposalDraft draft : drafts) {
                 // relations follow the records permission; a draft pointing at something that was not stored is dropped
                 AiPermissionLevel level = draft.kind() == ProposalKind.CREATE_RELATION
@@ -274,7 +278,8 @@ public class AiAnalysisWorker {
                 if (resolved.isEmpty()) {
                     continue;
                 }
-                ProposalService.Submission submission = submitDraft(resolved.get().draft(), emailId, level, resolved.get().dependsOn());
+                ProposalService.Submission submission = submitDraft(resolved.get().draft().withSignals(signals), emailId, level,
+                        resolved.get().dependsOn());
                 if (draft.ref() != null && submission.proposalId() != null) {
                     proposalIds.put(draft.ref(), submission.proposalId());
                 }
@@ -291,6 +296,16 @@ public class AiAnalysisWorker {
             log.warn("AI processing of email {} failed: {}", emailId, e.getMessage());
             markEmail(emailId, ProcessingState.FAILED, truncate(e.getMessage()));
             return new EmailResult(0, 0, true);
+        }
+    }
+
+    /** What is known about the sender, for the importance of the email's proposals; nothing when the lookup fails. */
+    private ImportanceSignals signals(Long emailId) {
+        try {
+            return importanceSignalService.signalsFor(emailId);
+        } catch (RuntimeException e) {
+            log.info("No importance signals for email {}: {}", emailId, e.getMessage());
+            return ImportanceSignals.NONE;
         }
     }
 

@@ -71,6 +71,11 @@ public final class ReplyCandidateFilter {
         return Optional.empty();
     }
 
+    /** A no-reply, notification or bounce address (also used to score proposals from bulk senders lower). */
+    public static boolean isAutomatedSender(String address) {
+        return address != null && AUTOMATED_SENDER.matcher(normalize(address)).matches();
+    }
+
     private static String normalize(String address) {
         return address != null ? address.strip().toLowerCase(Locale.ROOT) : "";
     }

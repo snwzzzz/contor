@@ -1,5 +1,7 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.ImportanceScorer;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.DecideProposalCommand;
 import com.example.contor.api.model.ProposalCountDto;
@@ -7,13 +9,17 @@ import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
+import com.example.contor.api.model.ProposalPriority;
+import com.example.contor.api.model.ProposalSort;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.domain.AiPermissionLevel;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
+import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalDependency;
+import com.example.contor.domain.ProposalImportance;
 import com.example.contor.domain.ProposalStatus;
 import com.example.contor.domain.Slug;
 import com.example.contor.exception.ProposalAlreadyDecidedException;
@@ -34,6 +40,8 @@ import com.example.contor.security.CurrentActor;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +49,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -80,38 +89,80 @@ public class ProposalService {
     private final CollectionRepository collectionRepository;
     private final AuditService auditService;
     private final ProposalApplierRegistry proposalApplierRegistry;
+    private final Clock clock;
 
+    /**
+     * @param minImportance only proposals of at least this importance ({@code null} = all)
+     * @param sort          NEWEST (default) or IMPORTANCE (highest score first, then newest)
+     */
     @Transactional
-    public ProposalPageDto listProposals(ProposalState status, ProposalGroup group, Integer page, Integer size) {
+    public ProposalPageDto listProposals(ProposalState status, ProposalGroup group, ProposalPriority minImportance, ProposalSort sort,
+                                         Integer page, Integer size) {
         int pageNumber = page != null ? page : 0;
         int pageSize = size != null ? size : DEFAULT_PAGE_SIZE;
+        int minScore = minScore(minImportance);
+        boolean byImportance = sort == ProposalSort.IMPORTANCE;
         Page<Proposal> result;
         if (group != null) {
-            // Grouped queries are native SQL ordered by created_at themselves, so the page carries no sort.
+            // Grouped queries are native SQL with their own order, so the page carries no sort.
             String state = status != null ? status.name() : ProposalStatus.PENDING.name();
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
             result = group == ProposalGroup.FINDINGS
-                    ? proposalRepository.findFindings(state, actionCollectionIds(), pageable)
-                    : proposalRepository.findActions(state, actionCollectionIds(), pageable);
+                    ? proposalRepository.findFindings(state, actionCollectionIds(), minScore, byImportance, pageable)
+                    : proposalRepository.findActions(state, actionCollectionIds(), minScore, byImportance, pageable);
         } else {
-            Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Sort order = byImportance
+                    ? Sort.by(Sort.Order.desc("importanceScore"), Sort.Order.desc("createdAt"))
+                    : Sort.by(Sort.Direction.DESC, "createdAt");
+            Pageable pageable = PageRequest.of(pageNumber, pageSize, order);
             result = status == null
-                    ? proposalRepository.findAll(pageable)
-                    : proposalRepository.findByStatus(ProposalStatus.valueOf(status.name()), pageable);
+                    ? proposalRepository.findByImportanceScoreGreaterThanEqual(minScore, pageable)
+                    : proposalRepository.findByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.valueOf(status.name()), minScore, pageable);
         }
         return new ProposalPageDto(new ArrayList<>(result.getContent().stream().map(ProposalMapper::toDto).toList()),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
     @Transactional
-    public ProposalCountDto countProposals(ProposalState status, ProposalGroup group) {
+    public ProposalCountDto countProposals(ProposalState status, ProposalGroup group, ProposalPriority minImportance) {
         ProposalStatus counted = status != null ? ProposalStatus.valueOf(status.name()) : ProposalStatus.PENDING;
+        int minScore = minScore(minImportance);
         if (group == null) {
-            return new ProposalCountDto(proposalRepository.countByStatus(counted));
+            return new ProposalCountDto(proposalRepository.countByStatusAndImportanceScoreGreaterThanEqual(counted, minScore));
         }
         return new ProposalCountDto(group == ProposalGroup.FINDINGS
-                ? proposalRepository.countFindings(counted.name(), actionCollectionIds())
-                : proposalRepository.countActions(counted.name(), actionCollectionIds()));
+                ? proposalRepository.countFindings(counted.name(), actionCollectionIds(), minScore)
+                : proposalRepository.countActions(counted.name(), actionCollectionIds(), minScore));
+    }
+
+    private static int minScore(ProposalPriority minImportance) {
+        return minImportance != null ? ProposalImportance.valueOf(minImportance.name()).minScore() : 0;
+    }
+
+    /**
+     * Gives pending proposals that existed before importance did (no reason yet) their score, once, after startup. They
+     * are scored from their kind and payload only: the signals of their source email were never stored.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void scoreUnscoredProposals() {
+        for (Proposal proposal : proposalRepository.findByStatusAndImportanceReasonIsNull(ProposalStatus.PENDING)) {
+            applyImportance(proposal, ImportanceSignals.NONE);
+            proposalRepository.saveAndFlush(proposal);
+        }
+    }
+
+    /** Scores {@code proposal} from its kind, its collection, its payload and what is known about its source email. */
+    private void applyImportance(Proposal proposal, ImportanceSignals signals) {
+        String slug = proposal.getPayload().get("collectionId") instanceof Number id
+                ? collectionRepository.findById(new Collection.CollectionId(id.longValue()))
+                        .map(collection -> collection.getSlug().value()).orElse(null)
+                : null;
+        ImportanceScorer.Importance importance = ImportanceScorer.score(proposal.getKind(), slug, proposal.getPayload(),
+                signals != null ? signals : ImportanceSignals.NONE, clock.instant(), clock.getZone());
+        proposal.setImportanceScore(importance.score());
+        proposal.setImportance(importance.level());
+        proposal.setImportanceReason(importance.reason());
     }
 
     /** The assistant's calendar and to-do collections: records there are actions, not findings. Never empty. */
@@ -224,6 +275,7 @@ public class ProposalService {
                         ? emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(sourceEmailId))
                         : null)
                 .build();
+        applyImportance(proposal, draft.signals());
         if (level != AiPermissionLevel.AUTO || !ready) {
             proposal.setAutoApplyWhenReady(level == AiPermissionLevel.AUTO);
             Proposal saved = proposalRepository.saveAndFlush(proposal);

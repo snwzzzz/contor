@@ -3,7 +3,7 @@
 > Living plan. Each step is done test-first (CLAUDE.md §0), follows the React best-practices skill for frontend work, and
 > updates the README in the same change. Builds on `ai-plan.md` (extraction, runs) and `replies-plan.md` (threads, reply
 > drafts). Nothing is ever sent; everything stays on the local Ollama.
-> **Status:** steps 1–4 implemented (step 3 with mostly negative results, see notes); steps 5–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
+> **Status:** steps 1–5 implemented (step 3 with mostly negative results, see notes); steps 6–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - Step 1: `ai/AiTimings` (per-thread session, no Micrometer) is fed by `OllamaClient` and opened per email by
@@ -61,6 +61,15 @@
 >   ("… (moved)"), which would break deduplication — the prompt now asks for exactly the same title. To-dos ("pay the
 >   invoice", "comment before the meeting") are missed with and without context: extraction's to-do recall is weak in
 >   general (31 % in the main eval) — worth its own look before step 8 relies on to-dos.
+> - Step 5: as planned, with these details: the migration is `V1_0_24` (importance_score `integer` — Hibernate maps `int`
+>   to it); signals come from `ImportanceSignalService` (People record with the sender's address, `existsSentTo` over Sent
+>   Items, `ReplyCandidateFilter.isAutomatedSender`) and the reply triage's urgency (until now discarded);
+>   `ProposalDraft.signals` carries them to `ProposalService.submitDraft`, which scores every new proposal (no signals =
+>   kind and payload only, e.g. discovered categories). Pending proposals from before are scored once at startup
+>   (`scoreUnscoredProposals`). UI: importance chips *High and up* / *Urgent*, order *Newest first* / *Most important
+>   first*, both in the URL; badge only for HIGH/URGENT (most proposals are NORMAL/LOW — a badge on every card is noise);
+>   the reason in the sidebar's *Importance* section. Not done: a separate urgent count in the sidebar badge (optional in
+>   the plan). The thresholds and weights are a first guess; tune them once real proposals show how they spread.
 > - Consequence for step 4: extra context in the prompt is cheap (reading ≈ 1 s per 1 200 tokens), so the budget can
 >   be generous; asking for more output is what costs time.
 

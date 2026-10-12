@@ -6,6 +6,8 @@ import com.example.contor.api.model.ProposalCountDto;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
+import com.example.contor.api.model.ProposalPriority;
+import com.example.contor.api.model.ProposalSort;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.service.ProposalService;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +21,14 @@ public class ProposalController implements ProposalsApi {
     private final ProposalService proposalService;
 
     @Override
-    public ResponseEntity<ProposalPageDto> listProposals(ProposalState status, ProposalGroup group, Integer page, Integer size) {
-        return ResponseEntity.ok(proposalService.listProposals(status, group, page, size));
+    public ResponseEntity<ProposalPageDto> listProposals(ProposalState status, ProposalGroup group, ProposalPriority minImportance,
+                                                         ProposalSort sort, Integer page, Integer size) {
+        return ResponseEntity.ok(proposalService.listProposals(status, group, minImportance, sort, page, size));
     }
 
     @Override
-    public ResponseEntity<ProposalCountDto> countProposals(ProposalState status, ProposalGroup group) {
-        return ResponseEntity.ok(proposalService.countProposals(status, group));
+    public ResponseEntity<ProposalCountDto> countProposals(ProposalState status, ProposalGroup group, ProposalPriority minImportance) {
+        return ResponseEntity.ok(proposalService.countProposals(status, group, minImportance));
     }
 
     @Override

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { useDecideProposal } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
+import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { tintClass } from "@/lib/collection-tint";
 import { placeholdersIn, recipientLabel, type ReplyDraftPayload, type ReplyText } from "@/lib/reply-draft";
@@ -55,7 +56,10 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
             <Reply className="size-4" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {label}
+              <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
+            </span>
             <h2 className="line-clamp-2 leading-snug font-medium">
               {onOpen ? (
                 <button type="button" aria-label={`Show details for ${subject}`} onClick={onOpen} className={STRETCHED_BUTTON}>

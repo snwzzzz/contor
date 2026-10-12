@@ -28,6 +28,7 @@ describe("ThreadReplies", () => {
     mockApi({ "GET /api/ai/settings": { body: settings } });
     const pending = {
       id: 21, kind: "DRAFT_REPLY" as const, status: "PENDING" as const, createdAt: "2026-10-07T08:00:00Z",
+      importance: "NORMAL" as const, importanceScore: 55,
       payload: { emailId: 8, to: [{ address: "anna@acme.com" }], cc: [], subject: "Re: Workshop", body: "Am [Tag] gerne." },
     };
 

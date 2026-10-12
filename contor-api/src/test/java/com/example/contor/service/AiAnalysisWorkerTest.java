@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
 import com.example.contor.ai.AiTimings;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.ExtractionService;
 import com.example.contor.ai.OllamaException;
@@ -55,6 +56,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -97,6 +99,9 @@ class AiAnalysisWorkerTest {
     private MailContextService mailContextService;
 
     @Mock
+    private ImportanceSignalService importanceSignalService;
+
+    @Mock
     private PlatformTransactionManager transactionManager;
 
     @Spy
@@ -114,7 +119,7 @@ class AiAnalysisWorkerTest {
                 new AiProperties.Models("router", "extractor", "embedder"),
                 new AiProperties.Processing(true, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Vienna"));
         worker = new AiAnalysisWorker(aiAnalysisRunRepository, emailMessageRepository, aiSettingsService, collectionSchemaService,
-                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, replySuggestionService, mailContextService, properties,
+                inboxDiscoveryService, extractionService, proposalService, emailEmbeddingService, replySuggestionService, mailContextService, importanceSignalService, properties,
                 new AiExecutors(Runnable::run, Runnable::run), timings,
                 transactionManager, Clock.fixed(NOW, ZoneOffset.UTC));
 
@@ -558,6 +563,23 @@ class AiAnalysisWorkerTest {
     }
 
     // ---- embeddings -------------------------------------------------------------------------------------------
+
+    @Test
+    void run_EveryDraftOfAnEmailCarriesTheSendersSignals() {
+        settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
+        email(100L);
+        emailsToProcess(100L);
+        ImportanceSignals signals = new ImportanceSignals(null, true, true, false);
+        when(importanceSignalService.signalsFor(100L)).thenReturn(signals);
+        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
+        when(proposalService.submitDraft(any(), eq(100L), any(), any(), any(), anyCollection()))
+                .thenReturn(new ProposalService.Submission(1L, ProposalService.Outcome.SUGGESTED));
+
+        worker.run(10L);
+
+        verify(proposalService, times(2)).submitDraft(argThat(draft -> signals.equals(draft.signals())), eq(100L), any(), any(), any(),
+                anyCollection());
+    }
 
     @Test
     void run_EmbedsTheEmailThenReadsItWithItsContext() {

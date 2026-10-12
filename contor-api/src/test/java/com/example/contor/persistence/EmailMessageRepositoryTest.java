@@ -154,6 +154,23 @@ public class EmailMessageRepositoryTest {
         assertThat(history).extracting(EmailMessage::getId).containsExactly(newer.getId(), older.getId());
     }
 
+    @Test
+    void knows_whether_an_owner_ever_wrote_to_an_address() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        sentTo(mine, "1", new EmailRecipient("Anna", "Anna@Acme.com"));
+        sentTo(foreign, "2", new EmailRecipient("Bob", "bob@acme.com"));
+        var received = Fixtures.email(mine, "3");
+        received.setToRecipients(List.of(new EmailRecipient("Carl", "carl@acme.com")));
+        emailMessageRepository.saveAndFlush(received);
+
+        assertThat(emailMessageRepository.existsSentTo(owner.getId(), "anna@ACME.com")).isTrue();
+        assertThat(emailMessageRepository.existsSentTo(owner.getId(), "bob@acme.com")).isFalse();
+        assertThat(emailMessageRepository.existsSentTo(owner.getId(), "carl@acme.com")).isFalse();
+    }
+
     private EmailMessage from(MailAccount account, String id, String address, String receivedAt) {
         var email = Fixtures.email(account, id);
         email.setFromAddress(address);

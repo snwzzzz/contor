@@ -5,7 +5,10 @@ import com.example.contor.api.model.ProposalDecision;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalGroup;
 import com.example.contor.api.model.ProposalPageDto;
+import com.example.contor.api.model.ProposalPriority;
+import com.example.contor.api.model.ProposalSort;
 import com.example.contor.api.model.ProposalState;
+import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.domain.ActorType;
 import com.example.contor.domain.AiPermissionLevel;
@@ -15,6 +18,7 @@ import com.example.contor.domain.Slug;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Proposal;
+import com.example.contor.domain.ProposalImportance;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.ProposalStatus;
 import com.example.contor.domain.UserRole;
@@ -47,6 +51,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -82,11 +89,13 @@ class ProposalServiceTest {
 
     private ProposalService proposalService;
 
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-12T08:00:00Z"), ZoneOffset.UTC);
+
     @BeforeEach
     void setup() {
         lenient().when(createRecordApplier.kind()).thenReturn(ProposalKind.CREATE_RECORD);
         proposalService = new ProposalService(proposalRepository, dependencyRepository, appUserRepository, emailMessageRepository, collectionRepository, auditService,
-                new ProposalApplierRegistry(List.of(createRecordApplier)));
+                new ProposalApplierRegistry(List.of(createRecordApplier)), CLOCK);
         lenient().when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(invocation -> invocation.getArgument(0));
         loggedInAs(UserRole.OWNER);
     }
@@ -202,10 +211,10 @@ class ProposalServiceTest {
     @Test
     void listProposals_FilteredByStatusNewestFirst() {
         Pageable expected = PageRequest.of(1, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
-        when(proposalRepository.findByStatus(ProposalStatus.PENDING, expected))
+        when(proposalRepository.findByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 0, expected))
                 .thenReturn(new PageImpl<>(List.of(Proposal.builder().kind(ProposalKind.SET_LABEL).payload(Map.of()).build()), expected, 11));
 
-        ProposalPageDto page = proposalService.listProposals(ProposalState.PENDING, null, 1, 10);
+        ProposalPageDto page = proposalService.listProposals(ProposalState.PENDING, null, null, null, 1, 10);
 
         assertEquals(1, page.getItems().size());
         assertEquals(11L, page.getTotalElements());
@@ -215,9 +224,9 @@ class ProposalServiceTest {
     @Test
     void listProposals_Unfiltered() {
         Pageable expected = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "createdAt"));
-        when(proposalRepository.findAll(expected)).thenReturn(new PageImpl<>(List.of(), expected, 0));
+        when(proposalRepository.findByImportanceScoreGreaterThanEqual(0, expected)).thenReturn(new PageImpl<>(List.of(), expected, 0));
 
-        assertEquals(0, proposalService.listProposals(null, null, null, null).getTotalElements());
+        assertEquals(0, proposalService.listProposals(null, null, null, null, null, null).getTotalElements());
     }
 
     private void actionCollections() {
@@ -231,47 +240,112 @@ class ProposalServiceTest {
     void listProposals_FindingsExcludeTheCalendarAndToDos() {
         actionCollections();
         Pageable expected = PageRequest.of(0, 25);
-        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L), expected))
+        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L), 0, false, expected))
                 .thenReturn(new PageImpl<>(List.of(Proposal.builder().kind(ProposalKind.CREATE_RECORD).payload(Map.of()).build()), expected, 1));
 
-        assertEquals(1, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, null, null).getItems().size());
+        assertEquals(1, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.FINDINGS, null, null, null, null).getItems().size());
     }
 
     @Test
     void listProposals_Actions() {
         actionCollections();
         Pageable expected = PageRequest.of(2, 10);
-        when(proposalRepository.findActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), expected))
+        when(proposalRepository.findActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), 0, false, expected))
                 .thenReturn(new PageImpl<>(List.of(), expected, 20));
 
-        assertEquals(20L, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.ACTIONS, 2, 10).getTotalElements());
+        assertEquals(20L, proposalService.listProposals(ProposalState.PENDING, ProposalGroup.ACTIONS, null, null, 2, 10).getTotalElements());
     }
 
     @Test
     void countProposals_ByGroupDefaultsToPending() {
         actionCollections();
-        when(proposalRepository.countActions(ProposalStatus.PENDING.name(), List.of(3L, 4L))).thenReturn(5L);
-        when(proposalRepository.countFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L))).thenReturn(7L);
+        when(proposalRepository.countActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), 0)).thenReturn(5L);
+        when(proposalRepository.countFindings(ProposalStatus.PENDING.name(), List.of(3L, 4L), 0)).thenReturn(7L);
 
-        assertEquals(5L, proposalService.countProposals(null, ProposalGroup.ACTIONS).getCount());
-        assertEquals(7L, proposalService.countProposals(null, ProposalGroup.FINDINGS).getCount());
+        assertEquals(5L, proposalService.countProposals(null, ProposalGroup.ACTIONS, null).getCount());
+        assertEquals(7L, proposalService.countProposals(null, ProposalGroup.FINDINGS, null).getCount());
     }
 
     @Test
     void listProposals_GroupWithoutActionCollectionsStillWorks() {
         when(collectionRepository.findBySlug(any())).thenReturn(Optional.empty());
         Pageable expected = PageRequest.of(0, 25);
-        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(-1L), expected))
+        when(proposalRepository.findFindings(ProposalStatus.PENDING.name(), List.of(-1L), 0, false, expected))
                 .thenReturn(new PageImpl<>(List.of(), expected, 0));
 
-        assertEquals(0L, proposalService.listProposals(null, ProposalGroup.FINDINGS, null, null).getTotalElements());
+        assertEquals(0L, proposalService.listProposals(null, ProposalGroup.FINDINGS, null, null, null, null).getTotalElements());
+    }
+
+    @Test
+    void listProposals_AtLeastHighMostImportantFirst() {
+        Pageable expected = PageRequest.of(0, 25, Sort.by(Sort.Order.desc("importanceScore"), Sort.Order.desc("createdAt")));
+        when(proposalRepository.findByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 60, expected))
+                .thenReturn(new PageImpl<>(List.of(), expected, 4));
+
+        assertEquals(4L, proposalService.listProposals(ProposalState.PENDING, null, ProposalPriority.HIGH, ProposalSort.IMPORTANCE, null, null)
+                .getTotalElements());
+    }
+
+    @Test
+    void listProposals_GroupFilteredAndSortedByImportance() {
+        actionCollections();
+        Pageable expected = PageRequest.of(0, 25);
+        when(proposalRepository.findActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), 80, true, expected))
+                .thenReturn(new PageImpl<>(List.of(), expected, 2));
+
+        assertEquals(2L, proposalService.listProposals(null, ProposalGroup.ACTIONS, ProposalPriority.URGENT, ProposalSort.IMPORTANCE, null, null)
+                .getTotalElements());
+    }
+
+    @Test
+    void countProposals_WithAMinimumImportance() {
+        actionCollections();
+        when(proposalRepository.countByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 35)).thenReturn(6L);
+        when(proposalRepository.countActions(ProposalStatus.PENDING.name(), List.of(3L, 4L), 60)).thenReturn(2L);
+
+        assertEquals(6L, proposalService.countProposals(null, null, ProposalPriority.NORMAL).getCount());
+        assertEquals(2L, proposalService.countProposals(null, ProposalGroup.ACTIONS, ProposalPriority.HIGH).getCount());
+    }
+
+    @Test
+    void submitDraft_ScoresTheProposalFromItsCollectionPayloadAndSignals() {
+        when(collectionRepository.findById(new Collection.CollectionId(4L)))
+                .thenReturn(Optional.of(Collection.builder().id(new Collection.CollectionId(4L)).slug(new Slug("tasks")).build()));
+        ProposalDraft task = new ProposalDraft(ProposalKind.CREATE_RECORD,
+                Map.of("collectionId", 4, "title", "Pay invoice", "values", Map.of("due_date", "2026-10-13")), new BigDecimal("0.9"), "r")
+                .withSignals(new ImportanceSignals(null, true, false, false));
+
+        proposalService.submitDraft(task, null, AiPermissionLevel.SUGGEST, "m", "v");
+
+        // a to-do (50), due tomorrow (+25), from a contact (+10)
+        verify(proposalRepository).saveAndFlush(argThat(p -> p.getImportanceScore() == 85 && p.getImportance() == ProposalImportance.URGENT
+                && p.getImportanceReason().contains("due within 2 days")));
+    }
+
+    @Test
+    void submitDraft_WithoutSignalsScoresByKind() {
+        proposalService.submitDraft(new ProposalDraft(ProposalKind.DRAFT_REPLY, Map.of(), null, "r"), null, AiPermissionLevel.SUGGEST, "m", "v");
+
+        verify(proposalRepository).saveAndFlush(argThat(p -> p.getImportanceScore() == 55 && p.getImportance() == ProposalImportance.NORMAL));
+    }
+
+    @Test
+    void scoreUnscoredProposals_ScoresPendingProposalsThatHaveNoReasonYet() {
+        Proposal old = Proposal.builder().id(new Proposal.ProposalId(5L)).kind(ProposalKind.DRAFT_REPLY).payload(Map.of()).build();
+        when(proposalRepository.findByStatusAndImportanceReasonIsNull(ProposalStatus.PENDING)).thenReturn(List.of(old));
+
+        proposalService.scoreUnscoredProposals();
+
+        assertEquals(55, old.getImportanceScore());
+        assertNotNull(old.getImportanceReason());
+        verify(proposalRepository).saveAndFlush(old);
     }
 
     @Test
     void countProposals_DefaultsToPending() {
-        when(proposalRepository.countByStatus(ProposalStatus.PENDING)).thenReturn(3L);
+        when(proposalRepository.countByStatusAndImportanceScoreGreaterThanEqual(ProposalStatus.PENDING, 0)).thenReturn(3L);
 
-        assertEquals(3L, proposalService.countProposals(null, null).getCount());
+        assertEquals(3L, proposalService.countProposals(null, null, null).getCount());
     }
 
     @Test

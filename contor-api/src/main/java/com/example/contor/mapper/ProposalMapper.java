@@ -2,6 +2,7 @@ package com.example.contor.mapper;
 
 import com.example.contor.api.model.ProposalAction;
 import com.example.contor.api.model.ProposalDto;
+import com.example.contor.api.model.ProposalPriority;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.domain.Proposal;
 
@@ -22,6 +23,9 @@ public class ProposalMapper {
                         ? proposal.getSourceEmail().getId().id() : null)
                 .confidence(MapperSupport.normalize(proposal.getConfidence()))
                 .reasoning(proposal.getReasoning())
+                .importance(proposal.getImportance() != null ? ProposalPriority.valueOf(proposal.getImportance().name()) : null)
+                .importanceScore(proposal.getImportanceScore())
+                .importanceReason(proposal.getImportanceReason())
                 .model(proposal.getModel())
                 .promptVersion(proposal.getPromptVersion())
                 .schemaVersion(proposal.getSchemaVersion())
