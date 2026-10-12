@@ -106,6 +106,15 @@ app:
       related-emails: ${AI_CONTEXT_RELATED_EMAILS:5}
       related-max-distance: ${AI_CONTEXT_RELATED_MAX_DISTANCE:0.25}
       related-within: ${AI_CONTEXT_RELATED_WITHIN:180d}
+    # When you can meet: reply drafts for meeting requests offer free times inside these hours (local time in
+    # AI_TIMEZONE), around the appointments of your Calendar collection. The Outlook calendar is not read.
+    availability:
+      work-days: ${AI_WORK_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
+      work-start: ${AI_WORK_START:09:00}
+      work-end: ${AI_WORK_END:18:00}
+      slot-minutes: ${AI_SLOT_MINUTES:60}
+      search-days: ${AI_SLOT_SEARCH_DAYS:10}
+      max-slots: 3
   security:
     secure-cookies: ${APP_SECURE_COOKIES:false}
     session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}

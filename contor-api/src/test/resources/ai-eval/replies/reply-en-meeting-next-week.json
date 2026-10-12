@@ -1,0 +1,13 @@
+{
+  "id": "reply-en-meeting-next-week",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Daniel Wright",
+    "fromAddress": "daniel.wright@wrightlaw.com",
+    "to": ["me@example.com"],
+    "subject": "Contract review",
+    "receivedAt": "2026-10-09T14:00:00Z",
+    "body": "Hi Alex,\ncould we meet on Monday or Tuesday next week to go through the contract? An hour should be enough. Let me know what suits you.\nBest regards\nDaniel"
+  }
+}

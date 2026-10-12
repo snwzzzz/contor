@@ -176,7 +176,14 @@ bar (or Settings → AI Models). The wizard walks through:
   then decides whether it needs a reply, and the model writes a draft in the language and tone of the thread, grounded
   in the thread (your own sent messages marked as yours) and your records (the sender's contact and organization,
   upcoming appointments and open to-dos that mention them). It never invents facts: what you must decide is a
-  `[placeholder]`. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
+  `[placeholder]`. Since `reply-v2` the triage also names what the reply has to do (schedule, answer questions,
+  confirm, decline, provide information), the questions it must answer and, for meeting requests, the days and time of
+  day asked for: the draft answers every question (or leaves a placeholder for it — a question reported open without
+  one drops the draft), and for meeting requests it offers up to three free times from your **Calendar** collection
+  inside your working hours (`AI_WORK_*`, evenings 18:00–22:00 for e.g. a dinner; one slot per day; the Outlook
+  calendar is not read). It also reads your earlier mail with the sender and related mail (ADR 0009). The card shows
+  the questions with *answered* / *still open* and the offered times. Bills, payment and appointment reminders and
+  requests to *do* something (pay, attend, take a test) count as not needing an answer. The draft is a `DRAFT_REPLY` proposal (*Replies* on `/proposals`, and at the bottom of the thread):
   **Edit & keep** opens the editor (*Keep* waits until every placeholder is filled in, *Keep anyway* does not), *Dismiss*
   rejects it. A kept draft shows in the thread as *Draft — not sent* with **Copy** and **Open in mail app** (`mailto:`,
   only when short enough) — **nothing is ever sent or written to your mailbox**. A pending draft is rejected
@@ -228,6 +235,11 @@ Ollama over a labelled corpus with a fixed schema (the seeded system collections
 ```bash
 cd contor-api && ./mvnw verify -Pai-eval
 ```
+
+`AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
+`reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
+name an offered day (both report only).
 
 Needs Ollama with the extraction model running; about 6 minutes for 49 mails on an RTX 3060. Relations are extracted in a second, short call (only for mails with two or more extracted records): listing relation types in the extraction prompt itself made the model invent organizations and events just to relate them (measured with this eval: 31 instead of 12 organizations). Each case is analyzed as if
 processed when it was received, so "Friday" resolves from the mail date. The report goes to
@@ -344,6 +356,9 @@ All variables are listed in `.env.example`.
 | `AI_PROCESSING_ENABLED` | backend | `true` | analyze new mail in the background after the AI setup |
 | `AI_PROCESSING_INTERVAL` | backend | `2m` | pause between background passes |
 | `AI_PROCESSING_BATCH_SIZE` | backend | `20` | emails per user and pass |
+| `AI_WORK_DAYS` | backend | `MONDAY,…,FRIDAY` | days a reply may offer meeting times on |
+| `AI_WORK_START`, `AI_WORK_END` | backend | `09:00`, `18:00` | working hours for offered times (local time in `AI_TIMEZONE`) |
+| `AI_SLOT_MINUTES`, `AI_SLOT_SEARCH_DAYS` | backend | `60`, `10` | length of an offered slot; how many days ahead when the email names no dates |
 | `AI_CONTEXT_ENABLED` | backend | `true` | read each email together with your earlier mail about it (ADR 0009) |
 | `AI_CONTEXT_BUDGET_CHARS` | backend | `6000` | upper bound of that context in the prompt |
 | `AI_CONTEXT_SENDER_EMAILS`, `AI_CONTEXT_RELATED_EMAILS` | backend | `5`, `5` | earlier emails from the same sender / related emails (embeddings) in the context |

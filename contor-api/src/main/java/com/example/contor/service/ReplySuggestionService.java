@@ -6,6 +6,7 @@ import com.example.contor.ai.ImportanceSignals;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.ai.ReplyCandidateFilter;
 import com.example.contor.ai.ReplyThread;
+import com.example.contor.ai.SlotFinder;
 import com.example.contor.api.model.CollectionDto;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.ReplySuggestionState;
@@ -30,6 +31,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -67,6 +69,8 @@ public class ReplySuggestionService {
     private final RecordService recordService;
     private final AiSettingsService aiSettingsService;
     private final ImportanceSignalService importanceSignalService;
+    private final AvailabilityService availabilityService;
+    private final MailContextService mailContextService;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactionTemplate;
@@ -79,7 +83,8 @@ public class ReplySuggestionService {
                                   ReplyLifecycleService replyLifecycleService, ReplyTriageService replyTriageService,
                                   ReplyComposerService replyComposerService, CollectionSchemaService collectionSchemaService,
                                   RecordService recordService, AiSettingsService aiSettingsService,
-                                  ImportanceSignalService importanceSignalService, AiProperties properties,
+                                  ImportanceSignalService importanceSignalService, AvailabilityService availabilityService,
+                                  MailContextService mailContextService, AiProperties properties,
                                   AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
         this.emailMessageRepository = emailMessageRepository;
         this.mailAccountRepository = mailAccountRepository;
@@ -92,6 +97,8 @@ public class ReplySuggestionService {
         this.recordService = recordService;
         this.aiSettingsService = aiSettingsService;
         this.importanceSignalService = importanceSignalService;
+        this.availabilityService = availabilityService;
+        this.mailContextService = mailContextService;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -122,7 +129,7 @@ public class ReplySuggestionService {
         if (!triage.needsReply()) {
             return false;
         }
-        return composeAndSubmit(context, triage.reason(), triage.urgency());
+        return composeAndSubmit(context, triage);
     }
 
     /**
@@ -164,7 +171,8 @@ public class ReplySuggestionService {
     private void runOnDemand(Long emailId) {
         try {
             Context context = transactionTemplate.execute(status -> load(emailId).orElse(null));
-            if (context != null && composeAndSubmit(context, null, null)) {
+            // The user asked: draft even when the triage sees no need; it still names the questions and the intent.
+            if (context != null && composeAndSubmit(context, triageOnDemand(context))) {
                 onDemand.remove(emailId);
             } else {
                 onDemand.put(emailId, ReplySuggestionState.FAILED);
@@ -176,8 +184,20 @@ public class ReplySuggestionService {
     }
 
     /** @param urgency the triage's low/normal/high, {@code null} on demand (no triage) */
-    private boolean composeAndSubmit(Context context, String triageReason, String urgency) {
-        Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context));
+    private ReplyTriageService.Triage triageOnDemand(Context context) {
+        try {
+            return replyTriageService.triage(context.thread());
+        } catch (RuntimeException e) {
+            log.info("Triage for an on-demand reply to email {} failed: {}", context.emailId(), e.getMessage());
+            return ReplyTriageService.Triage.none(null);
+        }
+    }
+
+    private boolean composeAndSubmit(Context context, ReplyTriageService.Triage triage) {
+        List<SlotFinder.Slot> slots = triage.asksForTimes() ? freeSlots(triage) : List.of();
+        ReplyComposerService.Brief brief = new ReplyComposerService.Brief(triage.intent(), triage.questions(),
+                slots.stream().map(SlotFinder.Slot::describe).toList(), replyContext(context.emailId()));
+        Optional<ReplyComposerService.ComposedReply> composed = replyComposerService.compose(context.thread(), grounding(context), brief);
         if (composed.isEmpty()) {
             return false;
         }
@@ -192,15 +212,52 @@ public class ReplySuggestionService {
         payload.put("body", reply.body());
         payload.put("language", reply.language());
         payload.put("placeholders", reply.placeholders());
-        String reasoning = !reply.summary().isBlank() ? reply.summary() : triageReason;
+        if (triage.intent() != null && !"NONE".equals(triage.intent())) {
+            payload.put("intent", triage.intent());
+        }
+        if (!reply.answers().isEmpty()) {
+            payload.put("questions", reply.answers().stream().map(answer -> {
+                Map<String, Object> question = new LinkedHashMap<>();
+                question.put("question", answer.question());
+                question.put("answered", answer.answered());
+                return question;
+            }).toList());
+        }
+        if (!slots.isEmpty()) {
+            payload.put("proposedSlots", slots.stream().map(slot -> Map.<String, Object>of(
+                    "start", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(slot.start()),
+                    "end", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(slot.end()))).toList());
+        }
+        String reasoning = !reply.summary().isBlank() ? reply.summary() : triage.reason();
         ProposalDraft draft = new ProposalDraft(ProposalKind.DRAFT_REPLY, payload, null, reasoning)
-                .withSignals(signals(context.emailId()).withUrgency(urgency));
+                .withSignals(signals(context.emailId()).withUrgency(triage.urgency()));
         transactionTemplate.executeWithoutResult(status -> {
             replyLifecycleService.supersedeConversation(context.accountId(), context.conversationId(), ReplyLifecycleService.REPLACED);
             proposalService.submitDraft(draft, context.emailId(), AiPermissionLevel.SUGGEST, properties.models().extraction(),
                     ReplyComposerService.PROMPT_VERSION, List.of());
         });
         return true;
+    }
+
+    /** Free times in the days the email asks about; when those are fully booked, in the next working days. */
+    private List<SlotFinder.Slot> freeSlots(ReplyTriageService.Triage triage) {
+        try {
+            List<SlotFinder.Slot> slots = availabilityService.freeSlots(triage.scheduleFrom(), triage.scheduleTo(), triage.timeOfDay());
+            return slots.isEmpty() && triage.scheduleFrom() != null ? availabilityService.freeSlots(null, null, triage.timeOfDay()) : slots;
+        } catch (RuntimeException e) {
+            log.info("No free times for a reply: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** The sender's earlier mail, related mail and their records; "" when unavailable (the thread is there anyway). */
+    private String replyContext(Long emailId) {
+        try {
+            return mailContextService.contextTextWithoutThread(emailId);
+        } catch (RuntimeException e) {
+            log.info("Reply to email {} is written without context: {}", emailId, e.getMessage());
+            return "";
+        }
     }
 
     /** What is known about the sender; nothing when the lookup fails (the draft is kept either way). */

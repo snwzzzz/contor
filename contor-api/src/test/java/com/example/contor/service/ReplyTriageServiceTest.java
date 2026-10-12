@@ -1,6 +1,7 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.LlmClient;
+import com.example.contor.ai.SlotFinder;
 import com.example.contor.ai.ReplyThread;
 import com.example.contor.config.AiProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -85,6 +87,50 @@ class ReplyTriageServiceTest {
                 .contains("Tuesday, 2026-10-06 10:00 +02:00");
         assertThat(schema.getValue().path("properties").path("needsReply").path("type").asString()).isEqualTo("boolean");
         assertThat(schema.getValue().path("properties").path("urgency").path("enum").size()).isEqualTo(3);
+    }
+
+    @Test
+    void triage_ReadsTheIntentTheQuestionsAndTheDatesAMeetingIsAskedFor() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": true, "reason": "Anna wants to meet", "urgency": "normal", "intent": "SCHEDULE",
+                 "questions": ["When can you come next week?", " ", "Can you bring the slides?", "q3", "q4", "q5", "q6"],
+                 "scheduleFrom": "2026-10-12", "scheduleTo": "2026-10-16", "timeOfDay": "EVENING"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.intent()).isEqualTo("SCHEDULE");
+        assertThat(triage.timeOfDay()).isEqualTo(SlotFinder.TimeOfDay.EVENING);
+        assertThat(triage.questions()).hasSize(5).startsWith("When can you come next week?", "Can you bring the slides?");
+        assertThat(triage.scheduleFrom()).isEqualTo(LocalDate.of(2026, 10, 12));
+        assertThat(triage.scheduleTo()).isEqualTo(LocalDate.of(2026, 10, 16));
+    }
+
+    @Test
+    void triage_AnUnknownIntentOrUnreadableDatesFallBack() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("""
+                {"needsReply": true, "reason": "r", "urgency": "normal", "intent": "PANIC", "questions": ["Is Friday ok?"],
+                 "scheduleFrom": "next week", "scheduleTo": "2026-10-01"}""");
+
+        ReplyTriageService.Triage triage = service.triage(thread());
+
+        assertThat(triage.intent()).isEqualTo("ANSWER_QUESTIONS");
+        assertThat(triage.timeOfDay()).isEqualTo(SlotFinder.TimeOfDay.ANY);
+        assertThat(triage.scheduleFrom()).isNull();
+        assertThat(triage.scheduleTo()).isNull();
+    }
+
+    @Test
+    void triage_AsksForIntentAndQuestionsAndKnowsThatBillsAndRemindersNeedNoAnswer() {
+        when(llmClient.completeJson(eq("router"), anyString(), anyString(), any())).thenReturn("{\"needsReply\": false}");
+
+        service.triage(thread());
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<JsonNode> schema = ArgumentCaptor.forClass(JsonNode.class);
+        verify(llmClient).completeJson(eq("router"), system.capture(), anyString(), schema.capture());
+        assertThat(system.getValue()).contains("invoices").contains("payment reminders").contains("appointment reminders");
+        assertThat(schema.getValue().path("properties").path("intent").path("enum").toString()).contains("SCHEDULE");
+        assertThat(schema.getValue().path("properties").path("questions").path("type").asString()).isEqualTo("array");
     }
 
     @Test

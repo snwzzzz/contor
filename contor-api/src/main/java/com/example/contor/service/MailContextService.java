@@ -82,6 +82,17 @@ public class MailContextService {
                 related.stream().map(ThreadMessages::of).toList(), records(all));
     }
 
+    /**
+     * {@link #contextFor} without the conversation, as prompt text: for the reply composer, which reads the whole
+     * conversation itself.
+     */
+    @Transactional
+    public String contextTextWithoutThread(Long emailId) {
+        MailContext context = contextFor(emailId);
+        return MailContextPrompt.render(new MailContext(List.of(), context.fromSender(), context.related(), context.records()),
+                aiProperties.timezone(), properties.budgetChars());
+    }
+
     /** {@link #contextFor} as prompt text within the configured budget; "" when there is none. */
     @Transactional
     public String contextTextFor(Long emailId) {

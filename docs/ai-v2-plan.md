@@ -3,7 +3,7 @@
 > Living plan. Each step is done test-first (CLAUDE.md §0), follows the React best-practices skill for frontend work, and
 > updates the README in the same change. Builds on `ai-plan.md` (extraction, runs) and `replies-plan.md` (threads, reply
 > drafts). Nothing is ever sent; everything stays on the local Ollama.
-> **Status:** steps 1–5 implemented (step 3 with mostly negative results, see notes); steps 6–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
+> **Status:** steps 1–6 implemented (step 3 with mostly negative results, see notes); steps 7–9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - Step 1: `ai/AiTimings` (per-thread session, no Micrometer) is fed by `OllamaClient` and opened per email by
@@ -70,6 +70,22 @@
 >   first*, both in the URL; badge only for HIGH/URGENT (most proposals are NORMAL/LOW — a badge on every card is noise);
 >   the reason in the sidebar's *Importance* section. Not done: a separate urgent count in the sidebar badge (optional in
 >   the plan). The thresholds and weights are a first guess; tune them once real proposals show how they spread.
+> - Step 6: `SlotFinder` (pure; one slot per day, half-hour starts, local working hours across DST, all-day events block
+>   the day) + `AvailabilityService` (Calendar collection, `AI_WORK_*` env vars — no UI setting yet) + triage fields
+>   `intent`, `questions` (≤ 5), `scheduleFrom`/`scheduleTo`, `timeOfDay` + `reply-v2` composer (`Brief`: intent,
+>   questions, free times, multi-mail context without the thread; `answers` per question; open answer without a
+>   placeholder drops the draft). Differences from the plan: free times are offered whenever the email asks about days,
+>   not only for intent SCHEDULE (an offer request asking "which dates are you free?" was PROVIDE_INFO); a `timeOfDay`
+>   was added after the eval offered 09:00 for a dinner (EVENING = 18–22); the composer may decline offered times that do
+>   not fit and write a placeholder instead; on-demand suggestions now run the triage too (for questions and intent,
+>   its "no reply needed" is ignored); slots are shown on the card but cannot be removed one by one (edit the text);
+>   no "hold this slot" event proposal yet. The reply grounding (contacts, upcoming events/to-dos) stays in
+>   `ReplySuggestionService`.
+> - Step 6 eval: triage prompt ("is a written answer expected? a request to *do* something is not") — precision
+>   0.47 → 0.69, recall stays 1.00 (54 cases; remaining false positives are meeting invitations whose labels are
+>   debatable). `AiReplyDraftEvalTest` (5 reply cases, 2 new): 5 drafts, 10 questions found, 9 answered, 1 left open as a
+>   placeholder; the dinner gets 18:00 slots, the meeting request Monday/Tuesday 09:00, the quote request three November
+>   dates.
 > - Consequence for step 4: extra context in the prompt is cheap (reading ≈ 1 s per 1 200 tokens), so the budget can
 >   be generous; asking for more output is what costs time.
 

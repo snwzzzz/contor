@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** AI wiring: properties (Ollama must be on localhost) and the background executors. */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({AiProperties.class, MailContextProperties.class})
+@EnableConfigurationProperties({AiProperties.class, MailContextProperties.class, AvailabilityProperties.class})
 public class AiConfig {
 
     @Bean(destroyMethod = "close")

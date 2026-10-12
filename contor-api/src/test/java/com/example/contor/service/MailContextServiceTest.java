@@ -138,6 +138,19 @@ class MailContextServiceTest {
     }
 
     @Test
+    void contextTextWithoutThread_LeavesTheConversationOutForCallersThatHaveIt() {
+        EmailMessage target = email(10L, "c1", "inbox", RECEIVED);
+        EmailMessage earlier = email(8L, "c1", "inbox", RECEIVED.minusSeconds(7200));
+        EmailMessage fromAnna = email(5L, "c2", "inbox", RECEIVED.minus(Duration.ofDays(3)));
+        when(emailMessageRepository.findThread(account.getId(), "c1")).thenReturn(List.of(earlier, target));
+        when(emailMessageRepository.findFromSenderBefore(eq(OWNER), eq("anna@acme.com"), eq(RECEIVED), any())).thenReturn(List.of(fromAnna));
+
+        String text = service.contextTextWithoutThread(10L);
+
+        assertThat(text).contains("Subject 5").doesNotContain("Subject 8");
+    }
+
+    @Test
     void contextFor_ARecordThatCannotBeReadIsLeftOut() {
         EmailMessage target = email(10L, null, "inbox", RECEIVED);
         EmailMessage fromAnna = email(5L, "c2", "inbox", RECEIVED.minus(Duration.ofDays(3)));

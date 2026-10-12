@@ -13,6 +13,7 @@ import { placeholdersIn, recipientLabel, type ReplyDraftPayload, type ReplyText 
 import { cn } from "@/lib/utils";
 import { ReplyBody } from "./ReplyBody";
 import { ReplyDraftDialog } from "./ReplyDraftDialog";
+import { ReplyQuestions } from "./ReplyQuestions";
 
 interface ReplySuggestionCardProps {
   /** A pending DRAFT_REPLY proposal. */
@@ -82,6 +83,7 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
           ) : null}
         </dl>
         <ReplyBody body={text.body} className={cn("rounded-lg bg-muted/40 px-3 py-2", !full && "line-clamp-5")} />
+        <ReplyQuestions questions={payload.questions ?? []} slots={payload.proposedSlots ?? []} />
         {left > 0 ? (
           <p className="text-xs text-muted-foreground">
             {left === 1 ? "1 placeholder" : `${left} placeholders`} to fill in before sending.

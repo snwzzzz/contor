@@ -2593,7 +2593,11 @@ components:
         DRAFT_REPLY `{"emailId": 8, "accountId": 1, "conversationId": "..", "to": [{"name": "..", "address": ".."}],
         "cc": [..], "subject": "Re: ..", "body": "plain text", "language": "de", "placeholders": ["[available times]"]}`:
         a reply the assistant wrote for the source email (`to` = its sender, `cc` = its Cc without your own addresses;
-        `placeholders` are the `[...]` parts you still have to fill in). Approving keeps it as a reply draft (never
+        `placeholders` are the `[...]` parts you still have to fill in; optional since reply-v2: `intent` = what the reply
+        does (SCHEDULE, ANSWER_QUESTIONS, CONFIRM, DECLINE, PROVIDE_INFO), `questions` = `[{"question": "..", "answered":
+        true|false|null}]` the questions of the email and whether the draft answers them (false = left as a placeholder,
+        null = not reported), `proposedSlots` = `[{"start": "ISO-8601", "end": "ISO-8601"}]` the free times from your
+        calendar the draft offers). Approving keeps it as a reply draft (never
         sent, nothing is written to the mailbox); it needs `to` and `body`, and the email must be in your mailboxes.
         A pending draft is rejected automatically when you answer in Outlook or a newer email arrives in the conversation.
         Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
