@@ -50,6 +50,31 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "group by lower(e.fromAddress) order by count(e) desc, lower(e.fromAddress)")
     List<SenderCount> findSenders(AppUser.AppUserId ownerId, String pattern, Pageable pageable);
 
+    /** One recipient of an owner's sent mail (native query row, see {@link #findRecipients}). */
+    interface RecipientRow {
+        String getName();
+
+        String getAddress();
+
+        Long getEmails();
+    }
+
+    /** Recipients of an owner's sent mail matching the (lower-case LIKE) {@code pattern}: unnests the jsonb To list. */
+    @Query(value = "select max(r.name) as name, lower(r.address) as address, count(*) as emails "
+            + "from \"email_message\" e join \"mail_account\" a on a.id = e.account_id "
+            + "cross join lateral jsonb_to_recordset(e.to_recipients) as r(name text, address text) "
+            + "where a.owner_user_id = :ownerId and e.folder = 'sent' and r.address is not null "
+            + "and (lower(r.address) like :pattern escape '\\' or lower(r.name) like :pattern escape '\\') "
+            + "group by lower(r.address) order by count(*) desc, lower(r.address) limit :limit", nativeQuery = true)
+    List<RecipientRow> findRecipientRows(Long ownerId, String pattern, int limit);
+
+    /** The people an owner wrote to whose name or address matches {@code pattern}, most emails first (sent-mail suggestions). */
+    default List<SenderCount> findRecipients(AppUser.AppUserId ownerId, String pattern, int limit) {
+        return findRecipientRows(ownerId.id(), pattern, limit).stream()
+                .map(row -> new SenderCount(row.getName(), row.getAddress(), row.getEmails()))
+                .toList();
+    }
+
     /** All messages of one conversation in a mailbox (sent mail included), oldest first. */
     @Query("select e from EmailMessage e where e.account.id = :accountId and e.conversationId = :conversationId "
             + "order by e.receivedAt asc, e.id.id asc")

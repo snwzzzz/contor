@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSuggestEmailSenders } from "@/lib/api/generated/endpoints/mail/mail";
+import type { EmailFolder } from "@/lib/api/generated/model/emailFolder";
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import type { EmailSuggestionDto } from "@/lib/api/generated/model/emailSuggestionDto";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,8 @@ interface EmailSearchBarProps {
   onChange: (text: string, field: EmailSearchField) => void;
   /** Autocomplete senders and companies from the whole inbox (server); off for already loaded lists. */
   suggestions?: boolean;
+  /** SENT suggests the people you wrote to instead of senders. */
+  folder?: EmailFolder;
   placeholder?: string;
   className?: string;
 }
@@ -44,13 +47,13 @@ interface EmailSearchBarProps {
  * Compact search field: where to search (all, people, subject, content) is a small menu inside the field, next to the
  * clear button; optional sender/company autocomplete below it.
  */
-export function EmailSearchBar({ text, field, onChange, suggestions = false, placeholder, className }: EmailSearchBarProps) {
+export function EmailSearchBar({ text, field, onChange, suggestions = false, folder, placeholder, className }: EmailSearchBarProps) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const deferred = useDeferredValue(text.trim());
   const wanted = suggestions && open && deferred.length >= MIN_SUGGEST_LENGTH;
-  const { data } = useSuggestEmailSenders({ q: deferred }, { query: { enabled: wanted, staleTime: 60_000 } });
+  const { data } = useSuggestEmailSenders({ q: deferred, ...(folder === "SENT" ? { folder } : {}) }, { query: { enabled: wanted, staleTime: 60_000 } });
   const options = wanted ? (data ?? []) : [];
   const expanded = options.length > 0;
 

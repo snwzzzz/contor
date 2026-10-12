@@ -6,7 +6,14 @@ import { renderWithProviders } from "@/test/render";
 import { TaskList } from "./TaskList";
 
 const collections = [
-  { id: 4, slug: "tasks", name: "To-dos", system: true, matchKeys: [], displayConfig: {}, schemaVersion: 1, createdBy: "USER", fields: [] },
+  { id: 4, slug: "tasks", name: "To-dos", system: true, matchKeys: [], displayConfig: {}, schemaVersion: 1, createdBy: "USER",
+    fields: [
+      { id: 1, slug: "state", name: "State", type: "STATUS", options: { states: ["open", "in_progress", "done"] }, required: false, uniqueValue: false, position: 0 },
+      { id: 2, slug: "due_date", name: "Due", type: "DATE", options: {}, required: false, uniqueValue: false, position: 1 },
+      { id: 3, slug: "priority", name: "Priority", type: "ENUM", options: { values: ["low", "normal", "high"] }, required: false, uniqueValue: false, position: 2 },
+      { id: 4, slug: "notes", name: "Notes", type: "LONG_TEXT", options: {}, required: false, uniqueValue: false, position: 3 },
+    ],
+  },
 ];
 
 function task(id: number, title: string, values: Record<string, unknown>) {
@@ -81,19 +88,18 @@ describe("TaskList", () => {
     expect(within(todo).getByText(/Recruiting asked for the CV/)).toBeInTheDocument();
   });
 
-  it("expands a to-do with its details and actions", async () => {
+  it("opens a to-do in the sidebar with its details and actions", async () => {
     const calls = api({ "PUT /api/collections/4/records/1": { body: task(1, "Send CV to Acme", { state: "in_progress" }) } });
     renderWithProviders(<TaskList />);
 
-    const toggle = await screen.findByRole("button", { name: /Send CV to Acme/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(toggle);
+    const open = await screen.findByRole("button", { name: "Open Send CV to Acme" });
+    expect(open.closest(".rounded-lg")).toHaveClass("hover:shadow-md");
+    await userEvent.click(open);
 
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const details = screen.getByRole("region", { name: "Send CV to Acme" });
-    expect(within(details).getByRole("link", { name: "Open details" })).toHaveAttribute("href", "/collections/4/records/1");
-    expect(within(details).getByText(/^Added by the assistant on 1 Oct 2026/)).toBeInTheDocument();
-    await userEvent.click(within(details).getByRole("button", { name: "Start" }));
+    const sheet = await screen.findByRole("dialog", { name: "Send CV to Acme" });
+    expect(within(sheet).getByLabelText("Due")).toHaveValue("2026-10-08");
+    expect(within(sheet).getByRole("link", { name: "Open as page" })).toHaveAttribute("href", "/collections/4/records/1");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Start" }));
 
     // Moved to the top of "In progress"; its only card had no position yet, so the column is numbered once.
     await waitFor(() => expect(put(calls, 1)).toEqual({ values: { state: "in_progress" }, extra: { boardPosition: 0 } }));

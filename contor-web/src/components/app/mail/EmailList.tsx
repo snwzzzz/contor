@@ -4,6 +4,7 @@ import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto"
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
 import { EmailRow } from "./EmailRow";
 import { groupByDate } from "./mail-dates";
+import { counterpartAddress } from "./mail-format";
 
 interface EmailListProps {
   /** Newest first. */
@@ -32,7 +33,7 @@ export function EmailList({ emails, selectedId, onSelect, picture, accountOf }: 
               email={email}
               selected={email.id === selectedId}
               account={accountOf?.(email)}
-              picture={picture(email.fromAddress)}
+              picture={picture(counterpartAddress(email))}
               now={now}
               onSelect={onSelect}
             />

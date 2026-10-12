@@ -70,6 +70,33 @@ public class EmailMessageRepositoryTest {
         assertThat(senders).containsExactly(new SenderCount("Anna Acme", "anna@acme.com", 2L), new SenderCount("Bob", "bob@acme.com", 1L));
     }
 
+    @Test
+    void counts_matching_recipients_of_one_owners_sent_mail_most_frequent_first() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var foreign = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        sentTo(mine, "1", new EmailRecipient("Anna Acme", "Anna@acme.com"), new EmailRecipient(null, "bob@acme.com"));
+        sentTo(mine, "2", new EmailRecipient("Anna Acme", "anna@acme.com"));
+        sentTo(mine, "3", new EmailRecipient("Carl", "carl@other.example"));
+        sentTo(foreign, "4", new EmailRecipient("Zoe", "zoe@acme.com"));
+        var received = Fixtures.email(mine, "5");
+        received.setToRecipients(List.of(new EmailRecipient("Dora", "dora@acme.com")));
+        emailMessageRepository.saveAndFlush(received);
+
+        var recipients = emailMessageRepository.findRecipients(owner.getId(), "%acme%", 10);
+
+        assertThat(recipients).containsExactly(new SenderCount("Anna Acme", "anna@acme.com", 2L), new SenderCount(null, "bob@acme.com", 1L));
+        assertThat(emailMessageRepository.findRecipients(owner.getId(), "%\\%%", 10)).isEmpty();
+    }
+
+    private void sentTo(MailAccount account, String id, EmailRecipient... recipients) {
+        var email = Fixtures.email(account, id);
+        email.setFolder("sent");
+        email.setToRecipients(List.of(recipients));
+        emailMessageRepository.saveAndFlush(email);
+    }
+
     private EmailMessage sender(MailAccount account, String id, String address, String name) {
         var email = Fixtures.email(account, id);
         email.setFromAddress(address);

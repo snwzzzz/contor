@@ -1,7 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { AVATAR_TONES, avatarTone, domainOf, initialOf, matchesEmail, splitQuoted } from "./mail-format";
+import { AVATAR_TONES, avatarTone, counterpartAddress, domainOf, initialOf, matchesEmail, recipientsLabel, splitQuoted } from "./mail-format";
 
 describe("mail-format", () => {
+  it("lists the recipients of a sent mail by name, the rest as a count", () => {
+    const anna = { name: "Anna Berger", address: "anna@acme.com" };
+    const bob = { address: "bob@acme.com" };
+    const cleo = { name: "Cleo", address: "cleo@acme.com" };
+
+    expect(recipientsLabel([])).toBe("(No recipients)");
+    expect(recipientsLabel([anna])).toBe("Anna Berger");
+    expect(recipientsLabel([anna, bob])).toBe("Anna Berger, bob@acme.com");
+    expect(recipientsLabel([anna, bob, cleo])).toBe("Anna Berger, bob@acme.com +1");
+    expect(recipientsLabel(undefined)).toBe("(No recipients)");
+  });
+
+  it("takes the first recipient as the counterpart of sent mail and the sender of received mail", () => {
+    const toRecipients = [{ name: "Anna", address: "anna@acme.com" }];
+
+    expect(counterpartAddress({ folder: "sent", fromAddress: "me@x.com", toRecipients })).toBe("anna@acme.com");
+    expect(counterpartAddress({ folder: "inbox", fromAddress: "shop@x.com", toRecipients })).toBe("shop@x.com");
+    expect(counterpartAddress({ folder: "sent", fromAddress: "me@x.com" })).toBeUndefined();
+  });
+
   it("splits the quoted history off a plain-text reply", () => {
     const english = "Sounds good.\n\nOn Mon, 2 Mar 2026 at 10:00, Alice <a@x.com> wrote:\n> Here is our offer.\n> Regards";
     expect(splitQuoted(english)).toEqual({ fresh: "Sounds good.", quoted: "On Mon, 2 Mar 2026 at 10:00, Alice <a@x.com> wrote:\n> Here is our offer.\n> Regards" });

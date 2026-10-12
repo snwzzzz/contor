@@ -67,8 +67,9 @@ public class MailController implements MailApi {
 
     @Override
     public ResponseEntity<EmailPageDto> listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                                   EmailSearchField field, Boolean answered, Integer page, Integer size) {
-        return ResponseEntity.ok(mailService.listEmails(accountId, labelId, processingState, q, field, answered, page, size));
+                                                   EmailSearchField field, Boolean answered, EmailFolder folder,
+                                                   Integer page, Integer size) {
+        return ResponseEntity.ok(mailService.listEmails(accountId, labelId, processingState, q, field, answered, folder, page, size));
     }
 
     @Override
@@ -77,8 +78,8 @@ public class MailController implements MailApi {
     }
 
     @Override
-    public ResponseEntity<List<EmailSuggestionDto>> suggestEmailSenders(String q) {
-        return ResponseEntity.ok(mailService.suggestEmailSenders(q));
+    public ResponseEntity<List<EmailSuggestionDto>> suggestEmailSenders(String q, EmailFolder folder) {
+        return ResponseEntity.ok(mailService.suggestEmailSenders(q, folder));
     }
 
     @Override

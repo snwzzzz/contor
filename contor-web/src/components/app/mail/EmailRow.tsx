@@ -7,6 +7,7 @@ import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
 import { cn } from "@/lib/utils";
 import { AccountAvatar } from "./AccountAvatar";
 import { listTime } from "./mail-dates";
+import { recipientsLabel } from "./mail-format";
 import { PictureAvatar } from "./PictureAvatar";
 
 export interface EmailRowProps {
@@ -27,7 +28,8 @@ export interface EmailRowProps {
  * the primary color.
  */
 export function EmailRow({ email, selected, account, picture, now, onSelect }: EmailRowProps) {
-  const sender = email.fromName || email.fromAddress || "";
+  // Sent mail shows who it went to instead of the sender (always you).
+  const sender = email.folder === "sent" ? `To: ${recipientsLabel(email.toRecipients)}` : email.fromName || email.fromAddress || "";
   const unread = !email.read;
   return (
     <button

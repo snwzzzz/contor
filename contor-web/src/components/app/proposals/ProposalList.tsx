@@ -1,60 +1,25 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Archive, CalendarPlus, FolderPlus, Link2, ListPlus, PencilLine, Reply, Sparkles, Tag, type LucideIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
+import { ProposalDetail } from "@/components/app/proposals/ProposalDetail";
 import { ReplySuggestionCard } from "@/components/app/replies/ReplySuggestionCard";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
-import { tintClass, type Tint } from "@/lib/collection-tint";
+import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
+import { tintClass } from "@/lib/collection-tint";
+import { describeProposal, GROUPS, type Description, type Group } from "@/lib/proposal-describe";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 
 const PENDING_ACTIONS = { status: "PENDING", group: "ACTIONS", size: 50 } as const;
 const PREVIEW_VALUES = 4;
-
-/** Filter groups, in the order of the chips. */
-const GROUPS = ["Calendar", "To-dos", "Categories", "Replies", "Labels", "Email", "Records", "Other"] as const;
-type Group = (typeof GROUPS)[number];
-
-interface Description {
-  label: string;
-  icon: LucideIcon;
-  group: Group;
-  tint?: Tint;
-}
-
-/** What the action does, in words, with its icon. Record actions depend on the target collection. */
-function describe(proposal: ProposalDto, slug: string | undefined): Description {
-  switch (proposal.kind) {
-    case "CREATE_RECORD":
-      return slug === "events" ? { label: "Add to calendar", icon: CalendarPlus, group: "Calendar", tint: 1 }
-        : slug === "tasks" ? { label: "New to-do", icon: ListPlus, group: "To-dos", tint: 3 }
-          : { label: "New record", icon: ListPlus, group: "Records" };
-    case "UPDATE_RECORD":
-      return slug === "events" ? { label: "Change calendar entry", icon: PencilLine, group: "Calendar", tint: 1 }
-        : slug === "tasks" ? { label: "Update to-do", icon: PencilLine, group: "To-dos", tint: 3 }
-          : { label: "Update record", icon: PencilLine, group: "Records" };
-    case "CREATE_COLLECTION":
-      return { label: "New category", icon: FolderPlus, group: "Categories", tint: 6 };
-    case "DRAFT_REPLY":
-      return { label: "Draft reply", icon: Reply, group: "Replies", tint: 5 };
-    case "SET_LABEL":
-    case "CREATE_LABEL":
-      return { label: proposal.kind === "SET_LABEL" ? "Label email" : "New label", icon: Tag, group: "Labels", tint: 2 };
-    case "ARCHIVE_EMAIL":
-      return { label: "Archive email", icon: Archive, group: "Email" };
-    case "CREATE_RELATION":
-      return { label: "Link records", icon: Link2, group: "Records" };
-    default:
-      return { label: "Suggestion", icon: Sparkles, group: "Other" };
-  }
-}
 
 /** Things the assistant proposes to do (calendar entries, to-dos, categories, reply drafts): approve or reject. */
 export function ProposalList() {
@@ -62,6 +27,7 @@ export function ProposalList() {
   const { data, isLoading, error } = useListProposals(PENDING_ACTIONS);
   const { data: collections } = useListCollections();
   const [filter, setFilter] = useState<Group | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   // A decision can create records, collections or both: refresh everything that may show them.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
@@ -84,10 +50,11 @@ export function ProposalList() {
   const slugs = new Map(collections?.map((collection) => [collection.id, collection.slug]));
   const described = data.items.map((proposal) => ({
     proposal,
-    description: describe(proposal, slugs.get((proposal.payload as ProposalPayload).collectionId ?? -1)),
+    description: describeProposal(proposal, slugs.get((proposal.payload as ProposalPayload).collectionId ?? -1)),
   }));
   const counts = new Map<Group, number>();
   for (const { description } of described) counts.set(description.group, (counts.get(description.group) ?? 0) + 1);
+  const selected = described.find(({ proposal }) => proposal.id === selectedId);
   const visible = filter === null ? described : described.filter(({ description }) => description.group === filter);
 
   return (
@@ -101,22 +68,38 @@ export function ProposalList() {
           ))}
         </div>
       </div>
-      {/* As many columns as fit; each card only as tall as its content (no blank space under short cards). */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] items-start gap-4">
+      {/* As many columns as fit; the cards of a row stretch to the same height (long text is clamped). */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] gap-4">
         {visible.map(({ proposal, description }) =>
           proposal.kind === "DRAFT_REPLY" ? (
-            <ReplySuggestionCard key={proposal.id} proposal={proposal} />
+            <ReplySuggestionCard key={proposal.id} proposal={proposal} onOpen={() => setSelectedId(proposal.id)} />
           ) : (
             <ActionCard
               key={proposal.id}
               proposal={proposal}
               description={description}
+              onOpen={() => setSelectedId(proposal.id)}
               busy={decide.isPending && decide.variables?.proposalId === proposal.id}
               onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
             />
           ),
         )}
       </div>
+      {selected ? (
+        <ProposalDetail
+          proposal={selected.proposal}
+          description={selected.description}
+          collection={collections?.find((collection) => collection.id === (selected.proposal.payload as ProposalPayload).collectionId)}
+          busy={decide.isPending && decide.variables?.proposalId === selected.proposal.id}
+          onClose={() => setSelectedId(null)}
+          onDecide={(decision, payload) =>
+            decide.mutate(
+              { proposalId: selected.proposal.id, data: payload ? { decision, payload } : { decision } },
+              { onSuccess: () => setSelectedId(null) },
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -134,10 +117,11 @@ interface ActionCardProps {
   proposal: ProposalDto;
   description: Description;
   busy: boolean;
+  onOpen: () => void;
   onDecide: (decision: "APPROVE" | "REJECT") => void;
 }
 
-function ActionCard({ proposal, description, busy, onDecide }: ActionCardProps) {
+function ActionCard({ proposal, description, busy, onOpen, onDecide }: ActionCardProps) {
   const payload = proposal.payload as ProposalPayload;
   const title = proposalTitle(payload);
   const { label, icon: Icon, tint } = description;
@@ -147,16 +131,21 @@ function ActionCard({ proposal, description, busy, onDecide }: ActionCardProps) 
   return (
     <article
       aria-label={title}
-      className={cn("flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-sm", busy && "opacity-60")}
+      className={cn("relative flex h-full flex-col overflow-hidden rounded-xl border bg-card", CARD_HOVER, busy && "opacity-60")}
     >
-      <div className="pb-4">
+      <div className="flex-1 pb-4">
         <div className="flex items-start gap-3 p-4 pb-3">
           <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tint ? tintClass(tint) : "bg-muted")} aria-hidden="true">
             <Icon className="size-4" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
             <span className="text-xs font-medium text-muted-foreground">{label}</span>
-            <h2 className="line-clamp-2 leading-snug font-medium">{title}</h2>
+            <h2 className="line-clamp-2 leading-snug font-medium">
+              {/* Stretched over the whole card; the decision buttons sit above it. */}
+              <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>
+                {title}
+              </button>
+            </h2>
           </div>
           {confidence !== null ? (
             <span className="flex shrink-0 flex-col items-end gap-1" title="How sure the assistant is">
@@ -184,7 +173,7 @@ function ActionCard({ proposal, description, busy, onDecide }: ActionCardProps) 
         ) : null}
       </div>
 
-      <div className="flex justify-end gap-2 border-t px-3 py-2">
+      <div className="relative z-10 mt-auto flex justify-end gap-2 border-t px-3 py-2">
         <AppButton size="sm" variant="ghost" disabled={busy} aria-label={`Reject ${title}`} onClick={() => onDecide("REJECT")}>
           Reject
         </AppButton>

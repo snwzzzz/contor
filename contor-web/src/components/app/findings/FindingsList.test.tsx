@@ -72,6 +72,28 @@ describe("FindingsList", () => {
     expect(within(screen.getByRole("article", { name: "Record #4" })).getByText("Update")).toBeInTheDocument();
   });
 
+  it("lifts a card on hover and opens its details with every value", async () => {
+    const calls = mockApi({
+      "GET /api/proposals": findingsPage([{ ...findings[0], payload: { ...findings[0].payload, values: { ...findings[0].payload.values, phone: "+49 1", city: "Munich" } } }]),
+      "GET /api/collections": { body: collections },
+      "POST /api/proposals/21/decision": { body: { ...findings[0], status: "APPROVED" } },
+    });
+    renderWithProviders(<FindingsList />);
+
+    const anna = await screen.findByRole("article", { name: "Anna Berger" });
+    expect(anna).toHaveClass("hover:shadow-md");
+    expect(within(anna).queryByText("Munich")).not.toBeInTheDocument();
+    await userEvent.click(within(anna).getByRole("button", { name: "Show details for Anna Berger" }));
+
+    const sheet = await screen.findByRole("dialog", { name: "Anna Berger" });
+    expect(within(sheet).getByText("Munich")).toBeInTheDocument();
+    expect(within(sheet).getByText("Signature of the recruiter")).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole("button", { name: "Keep" }));
+
+    await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/21/decision")?.body).toEqual({ decision: "APPROVE" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("filters by collection", async () => {
     mockApi({ "GET /api/proposals": findingsPage(findings), "GET /api/collections": { body: collections } });
 

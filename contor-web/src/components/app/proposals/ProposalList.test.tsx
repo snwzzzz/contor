@@ -45,6 +45,18 @@ function actionsPage(items: unknown[]): (request: { url: URL }) => MockResponse 
 }
 
 describe("ProposalList", () => {
+  it("stretches the cards of a row to the same height, buttons at the bottom", async () => {
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "Interview at Acme" });
+    expect(card).toHaveClass("h-full");
+    expect(card).toHaveClass("hover:shadow-md");
+    expect(card.parentElement).not.toHaveClass("items-start");
+    expect(within(card).getByRole("button", { name: "Approve Interview at Acme" }).parentElement).toHaveClass("mt-auto");
+  });
+
   it("lists the proposed actions with what each would do", async () => {
     mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
 
@@ -157,6 +169,136 @@ describe("ProposalList", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Dismiss Re: Workshop" }));
 
     await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/21/decision")?.body).toEqual({ decision: "REJECT" }));
+  });
+
+  describe("detail sidebar", () => {
+    const detailed = {
+      id: 31,
+      kind: "CREATE_RECORD",
+      status: "PENDING",
+      payload: {
+        collectionId: 3,
+        title: "Workshop day",
+        values: { location: "Acme HQ", room: "Room 4", organizer: "Anna", dress_code: "Casual", notes: "Bring a laptop" },
+      },
+      confidence: 0.8,
+      reasoning: "The mail announces a workshop day with room and dress code.",
+      model: "qwen3:8b",
+      promptVersion: "extract-v3",
+      sourceEmailId: 5,
+      createdAt: "2026-10-08T12:00:00Z",
+    };
+    const email = {
+      id: 5,
+      accountId: 1,
+      fromName: "Anna Berger",
+      fromAddress: "anna@acme.com",
+      subject: "Workshop on Friday",
+      snippet: "Hi, see you on Friday",
+      bodyText: "Hi, see you on Friday at the office.",
+      receivedAt: "2026-10-07T09:00:00Z",
+      toRecipients: [],
+      ccRecipients: [],
+      labels: [],
+    };
+
+    it("opens from the card and shows every value, the reasoning and the source email", async () => {
+      mockApi({
+        "GET /api/proposals": actionsPage([detailed]),
+        "GET /api/collections": { body: collections },
+        "GET /api/emails/5": { body: email },
+      });
+      renderWithProviders(<ProposalList />);
+
+      await userEvent.click(await screen.findByRole("button", { name: "Show details for Workshop day" }));
+
+      const sheet = await screen.findByRole("dialog", { name: "Workshop day" });
+      expect(within(sheet).getByText("Bring a laptop")).toBeInTheDocument();
+      expect(within(sheet).getByText("Casual")).toBeInTheDocument();
+      expect(within(sheet).getByText("The mail announces a workshop day with room and dress code.")).toBeInTheDocument();
+      expect(within(sheet).getByText(/qwen3:8b/)).toBeInTheDocument();
+      expect(await within(sheet).findByText("Workshop on Friday")).toBeInTheDocument();
+      expect(within(sheet).getByText("Anna Berger")).toBeInTheDocument();
+      expect(within(sheet).queryByText("Hi, see you on Friday at the office.")).not.toBeInTheDocument();
+
+      await userEvent.click(within(sheet).getByRole("button", { name: "Show email" }));
+      expect(await within(sheet).findByText("Hi, see you on Friday at the office.")).toBeInTheDocument();
+      expect(within(sheet).getByRole("link", { name: "Open in inbox" })).toHaveAttribute("href", "/inbox?email=5");
+    });
+
+    it("shows before and after for an update and hides unchanged values", async () => {
+      const update = {
+        id: 32,
+        kind: "UPDATE_RECORD",
+        status: "PENDING",
+        payload: { collectionId: 3, recordId: 7, title: "Interview", values: { location: "New HQ", notes: "Same notes" } },
+        createdAt: "2026-10-08T12:00:00Z",
+      };
+      mockApi({
+        "GET /api/proposals": actionsPage([update]),
+        "GET /api/collections": { body: collections },
+        "GET /api/collections/3/records/7": {
+          body: { id: 7, collectionId: 3, title: "Interview", values: { location: "Old HQ", notes: "Same notes" }, extra: {}, createdBy: "AI", createdAt: "2026-10-01T00:00:00Z", lastModified: "2026-10-01T00:00:00Z" },
+        },
+      });
+      renderWithProviders(<ProposalList />);
+
+      await userEvent.click(await screen.findByRole("button", { name: "Show details for Interview" }));
+
+      const sheet = await screen.findByRole("dialog", { name: "Interview" });
+      expect(await within(sheet).findByText("Old HQ")).toBeInTheDocument();
+      expect(within(sheet).getByText("New HQ")).toBeInTheDocument();
+      expect(within(sheet).queryByText("Same notes")).not.toBeInTheDocument();
+    });
+
+    it("edits the values before approving and sends the edited payload", async () => {
+      const textField = (id: number, slug: string, name: string, type: string) => ({ id, slug, name, type, options: {}, required: false, uniqueValue: false, position: id });
+      const calendar = { ...collection(3, "events", "Calendar"), fields: [textField(1, "location", "Location", "TEXT"), textField(2, "notes", "Notes", "LONG_TEXT")] };
+      const calls = mockApi({
+        "GET /api/proposals": actionsPage([detailed]),
+        "GET /api/collections": { body: [calendar] },
+        "GET /api/emails/5": { body: email },
+        "POST /api/proposals/31/decision": { body: { ...detailed, status: "EDITED_AND_APPROVED" } },
+      });
+      renderWithProviders(<ProposalList />);
+      await userEvent.click(await screen.findByRole("button", { name: "Show details for Workshop day" }));
+      const sheet = await screen.findByRole("dialog", { name: "Workshop day" });
+
+      await userEvent.click(within(sheet).getByRole("button", { name: "Edit" }));
+      const location = within(sheet).getByRole("textbox", { name: "Location" });
+      await userEvent.clear(location);
+      await userEvent.type(location, "Acme Tower");
+      const title = within(sheet).getByRole("textbox", { name: "Title" });
+      await userEvent.clear(title);
+      await userEvent.type(title, "Workshop");
+      // Values without a field of the collection stay as they are, shown as text.
+      expect(within(sheet).getByText("Room 4")).toBeInTheDocument();
+      await userEvent.click(within(sheet).getByRole("button", { name: "Approve" }));
+
+      await waitFor(() =>
+        expect(calls.find((call) => call.path === "/api/proposals/31/decision")?.body).toEqual({
+          decision: "APPROVE",
+          payload: { ...detailed.payload, title: "Workshop", values: { ...detailed.payload.values, location: "Acme Tower" } },
+        }),
+      );
+    });
+
+    it("approves from the sidebar and closes it", async () => {
+      const calls = mockApi({
+        "GET /api/proposals": actionsPage([detailed]),
+        "GET /api/collections": { body: collections },
+        "GET /api/emails/5": { body: email },
+        "POST /api/proposals/31/decision": { body: { ...detailed, status: "APPROVED" } },
+      });
+      renderWithProviders(<ProposalList />);
+      await userEvent.click(await screen.findByRole("button", { name: "Show details for Workshop day" }));
+      const sheet = await screen.findByRole("dialog", { name: "Workshop day" });
+
+      await userEvent.click(within(sheet).getByRole("button", { name: "Approve" }));
+
+      await waitFor(() => expect(calls.find((call) => call.path === "/api/proposals/31/decision")?.body).toEqual({ decision: "APPROVE" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
   });
 
   it("says when there is nothing to do", async () => {

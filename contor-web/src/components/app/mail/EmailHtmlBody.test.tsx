@@ -49,4 +49,18 @@ describe("EmailHtmlBody", () => {
 
     expect(frame.style.height).toBe("520px");
   });
+
+  it("does not measure while the frame's document is still empty (between loads)", () => {
+    const resize = captureResizeObservers();
+    render(<EmailHtmlBody html="<p>Hi</p>" />);
+    const frame = screen.getByTitle("Email content") as HTMLIFrameElement;
+    setContentHeight(frame, 300);
+    fireEvent.load(frame);
+    const empty = document.implementation.createHTMLDocument("");
+    empty.removeChild(empty.documentElement);
+    Object.defineProperty(frame, "contentDocument", { configurable: true, get: () => empty });
+
+    expect(() => resize()).not.toThrow();
+    expect(frame.style.height).toBe("300px");
+  });
 });

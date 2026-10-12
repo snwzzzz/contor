@@ -31,6 +31,26 @@ export function domainOf(address: string | undefined): string | undefined {
   return address && at >= 0 ? address.slice(at + 1).toLowerCase() : undefined;
 }
 
+interface Recipient {
+  name?: string;
+  address?: string;
+}
+
+const RECIPIENTS_SHOWN = 2;
+
+/** "Anna Berger, bob@acme.com +1": the first recipients by name (address when unnamed), the rest as a count. */
+export function recipientsLabel(recipients: readonly Recipient[] | undefined): string {
+  if (!recipients || recipients.length === 0) return "(No recipients)";
+  const shown = recipients.slice(0, RECIPIENTS_SHOWN).map((recipient) => recipient.name || recipient.address || "?");
+  const more = recipients.length - shown.length;
+  return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
+}
+
+/** The other side of a message: the first recipient of sent mail, the sender of received mail (for the picture). */
+export function counterpartAddress(email: { folder?: string; fromAddress?: string; toRecipients?: readonly Recipient[] }): string | undefined {
+  return email.folder === "sent" ? email.toRecipients?.[0]?.address : email.fromAddress;
+}
+
 /** The searchable parts of an email summary. */
 interface SearchableEmail {
   subject?: string;

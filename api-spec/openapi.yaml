@@ -1466,9 +1466,15 @@ paths:
           required: false
           description: >
             true: only emails the user already answered (a newer sent message in the same conversation);
-            false: only emails not answered yet; omitted: all.
+            false: only emails not answered yet; omitted: all. Ignored for the SENT folder.
           schema:
             type: boolean
+        - name: folder
+          in: query
+          required: false
+          description: INBOX (default) or SENT (the user's own sent mail, Sent Items)
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -1495,6 +1501,13 @@ paths:
             type: string
             minLength: 1
             maxLength: 200
+        - name: folder
+          in: query
+          required: false
+          description: SENT suggests the people you wrote to (recipients of your sent mail) instead of senders
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
+
       responses:
         '200':
           description: Most frequent matching people first, then companies; at most a handful of each
@@ -2719,6 +2732,12 @@ components:
     EmailProcessingState:
       type: string
       enum: [NEW, QUEUED, PROCESSING, DONE, FAILED, SKIPPED]
+    EmailFolder:
+      type: string
+      description: >
+        INBOX: received mail; SENT: the user's own sent mail. Sent mail is shown and searched, never analyzed by the
+        assistant.
+      enum: [INBOX, SENT]
     EmailSearchField:
       type: string
       description: >
@@ -2852,6 +2871,11 @@ components:
           type: string
         fromName:
           type: string
+        toRecipients:
+          type: array
+          description: The To recipients (the list of a sent email shows them instead of the sender)
+          items:
+            $ref: '#/components/schemas/RecipientDto'
         subject:
           type: string
         snippet:

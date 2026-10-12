@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { InboxView } from "./InboxView";
 import { mockApi } from "@/test/api-mock";
+import { navigationState } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 
 vi.mock("next/navigation", () => import("@/test/next-navigation"));
@@ -13,6 +14,92 @@ const ACCOUNTS = [
 ];
 
 describe("InboxView", () => {
+  it("switches to the sent mail, which shows the recipients instead of the sender", async () => {
+    const user = userEvent.setup();
+    const requested: string[] = [];
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": ({ url }) => {
+        requested.push(url.search);
+        return url.searchParams.get("folder") === "SENT"
+          ? {
+              body: page([{
+                ...email(201, 1, "Re: Offer"),
+                folder: "sent",
+                fromAddress: "me@example.com",
+                fromName: "Me",
+                toRecipients: [{ name: "Anna Berger", address: "anna@acme.com" }],
+              }], 1),
+            }
+          : { body: page([email(101, 1, "Project Update")], 1) };
+      },
+    });
+    renderWithProviders(<InboxView />);
+    await screen.findByText("Project Update");
+
+    await user.click(screen.getByRole("radio", { name: "Sent" }));
+
+    expect(await screen.findByText("Re: Offer")).toBeInTheDocument();
+    expect(screen.getByText("To: Anna Berger")).toBeInTheDocument();
+    expect(screen.queryByText("Project Update")).not.toBeInTheDocument();
+    expect(requested.some((search) => search.includes("folder=SENT"))).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: /Filter/ }));
+    expect(screen.queryByRole("menuitemcheckbox", { name: "Not answered" })).not.toBeInTheDocument();
+  });
+
+  it("suggests the people you wrote to while searching the sent mail", async () => {
+    const user = userEvent.setup();
+    const suggested: string[] = [];
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": { body: page([email(101, 1, "Project Update")], 1) },
+      "GET /api/emails/suggestions": ({ url }) => {
+        suggested.push(url.search);
+        return { body: [{ kind: "PERSON", label: "Anna Berger", value: "anna@acme.com", emailCount: 2 }] };
+      },
+    });
+    renderWithProviders(<InboxView />);
+    await screen.findByText("Project Update");
+
+    await user.click(screen.getByRole("radio", { name: "Sent" }));
+    await user.type(screen.getByRole("combobox", { name: "Search emails" }), "ann");
+
+    expect(await screen.findByRole("option", { name: /Anna Berger/ })).toBeInTheDocument();
+    expect(suggested.some((search) => search.includes("folder=SENT"))).toBe(true);
+  });
+
+  it("says when no sent mail was synced yet", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/emails": ({ url }) => ({ body: url.searchParams.get("folder") === "SENT" ? page([], 0) : page([email(101, 1, "Project Update")], 1) }),
+    });
+    renderWithProviders(<InboxView />);
+    await screen.findByText("Project Update");
+
+    await user.click(screen.getByRole("radio", { name: "Sent" }));
+
+    expect(await screen.findByText("No sent mail yet")).toBeInTheDocument();
+  });
+
+  it("opens the email named by ?email= in the reading pane", async () => {
+    navigationState.search = "?email=101";
+    try {
+      const calls = mockApi({
+        "GET /api/mail/accounts": { body: [] },
+        "GET /api/emails": { body: page([email(101, 1, "Project Update")], 1) },
+        "GET /api/emails/101/thread": { body: { conversationId: "c", messages: [], replyDrafts: [], replySuggestion: "IDLE" } },
+      });
+
+      renderWithProviders(<InboxView />);
+
+      await waitFor(() => expect(calls.some((call) => call.path === "/api/emails/101/thread")).toBe(true));
+    } finally {
+      navigationState.search = "";
+    }
+  });
+
   it("renders empty state when no emails found, keeping the search to change it", async () => {
     mockApi({
       "GET /api/emails": { body: page([], 0) },

@@ -1,12 +1,9 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Bot, Check, ChevronDown, CircleDashed, CircleDot, CircleCheck, ListTodo, User } from "lucide-react";
-import Link from "next/link";
-import { useId, useState, type FormEvent } from "react";
-import { AppButton } from "@/components/app/AppButton";
+import { Check, CircleDashed, CircleDot, CircleCheck, ListTodo } from "lucide-react";
+import { useState, type FormEvent } from "react";
 import { KanbanBoard, type BoardColumn } from "@/components/app/board/KanbanBoard";
-import { recordHref } from "@/components/app/collections/CollectionTable";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Input } from "@/components/ui/input";
@@ -14,43 +11,20 @@ import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecor
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import type { RecordPageDto } from "@/lib/api/generated/model/recordPageDto";
 import { planPositions, sortForBoard } from "@/lib/board-order";
-import { describeDue, type DueTone } from "@/lib/due";
+import { CARD_HOVER } from "@/lib/card-hover";
+import { describeDue } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
 import { cn } from "@/lib/utils";
+import { TaskDetail } from "./TaskDetail";
+import { DUE_TONE, PRIORITY, stateOf, stringValue, type State } from "./task-model";
 
 const PARAMS = { sort: "due_date", size: 200 } as const;
-const ADDED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-type State = "open" | "in_progress" | "done";
 
 const COLUMNS: readonly BoardColumn<State>[] = [
   { key: "open", title: "To do", icon: CircleDashed, iconClass: "text-muted-foreground", empty: "Nothing to do." },
   { key: "in_progress", title: "In progress", icon: CircleDot, iconClass: "text-tint-8-vivid", empty: "Nothing started." },
   { key: "done", title: "Done", icon: CircleCheck, iconClass: "text-tint-5-vivid", empty: "Nothing done yet." },
 ];
-
-const DUE_TONE: Record<DueTone, string> = {
-  overdue: "text-destructive",
-  today: "text-tint-2-vivid",
-  soon: "text-foreground",
-  later: "text-muted-foreground",
-};
-
-const PRIORITY: Record<string, { label: string; className: string; rank: number }> = {
-  high: { label: "High", className: "bg-destructive/15 text-destructive", rank: 0 },
-  normal: { label: "Normal", className: "bg-muted text-muted-foreground", rank: 1 },
-  low: { label: "Low", className: "bg-info/15 text-info", rank: 2 },
-};
-
-function stateOf(task: RecordDto): State {
-  const state = task.values.state;
-  return state === "in_progress" || state === "done" ? state : "open";
-}
-
-function stringValue(task: RecordDto, key: string): string | null {
-  const value = task.values[key];
-  return typeof value === "string" && value ? value : null;
-}
 
 /** Fallback order of cards never moved by hand: earliest deadline first (overdue on top), none last, then by priority. */
 function byUrgency(a: RecordDto, b: RecordDto): number {
@@ -71,8 +45,8 @@ function columnsOf(tasks: readonly RecordDto[]): Record<State, RecordDto[]> {
 
 /**
  * The assistant's to-do list (system collection `tasks`) as a board: To do, In progress and Done side by side. Cards
- * are dragged within and between columns (the order is kept per to-do in `extra.boardPosition`); the checkbox and the
- * buttons in a card move it to the top of another column.
+ * are dragged within and between columns (the order is kept per to-do in `extra.boardPosition`); the checkbox moves a
+ * card to the top of another column, a click opens the detail sidebar (editable).
  */
 export function TaskList() {
   const queryClient = useQueryClient();
@@ -80,6 +54,7 @@ export function TaskList() {
   const collectionId = collection?.id ?? 0;
   const { data } = useListRecords(collectionId, PARAMS, { query: { enabled: collection !== undefined } });
   const [title, setTitle] = useState("");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: getListRecordsQueryKey(collectionId) });
   const update = useUpdateRecord();
   const create = useCreateRecord({
@@ -149,6 +124,7 @@ export function TaskList() {
 
   const columns = columnsOf(data?.items ?? []);
   const today = new Date();
+  const selected = data?.items.find((item) => item.id === selectedId);
 
   return (
     <div className="grid gap-6">
@@ -166,10 +142,24 @@ export function TaskList() {
         columns={COLUMNS}
         items={columns}
         getId={(task) => task.id}
-        renderCard={(task) => <TaskCard task={task} collectionId={collectionId} today={today} onMove={(state) => void move(task, state, 0)} />}
+        renderCard={(task) => (
+          <TaskCard task={task} today={today} onOpen={() => setSelectedId(task.id)} onMove={(state) => void move(task, state, 0)} />
+        )}
         renderPreview={(task, state) => <TaskPreview task={{ ...task, values: { ...task.values, state } }} today={today} />}
         onMove={(task, state, index) => void move(task, state, index)}
       />
+
+      {selected ? (
+        <TaskDetail
+          key={selected.id}
+          collection={collection}
+          task={selected}
+          today={today}
+          onMove={(state) => void move(selected, state, 0)}
+          onChanged={() => void refresh()}
+          onClose={() => setSelectedId(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -188,14 +178,14 @@ function TaskPreview({ task, today }: { task: RecordDto; today: Date }) {
         {done ? <Check className="size-3" strokeWidth={3} /> : null}
       </span>
       <span className="grid min-w-0 flex-1 gap-1">
-        <TaskSummary task={task} today={today} expanded={false} />
+        <TaskSummary task={task} today={today} />
       </span>
     </div>
   );
 }
 
-/** The collapsed face of a to-do: title, notes, deadline relative to today and priority. */
-function TaskSummary({ task, today, expanded }: { task: RecordDto; today: Date; expanded: boolean }) {
+/** The face of a to-do on the board: title, notes, deadline relative to today and priority. */
+function TaskSummary({ task, today }: { task: RecordDto; today: Date }) {
   const done = stateOf(task) === "done";
   const title = task.title ?? `To-do #${task.id}`;
   const due = describeDue(stringValue(task, "due_date"), today);
@@ -203,11 +193,8 @@ function TaskSummary({ task, today, expanded }: { task: RecordDto; today: Date; 
   const notes = stringValue(task, "notes");
   return (
     <>
-      <span className="flex items-start justify-between gap-2">
-        <span className={cn("text-sm font-medium", done && "text-muted-foreground line-through")}>{title}</span>
-        <ChevronDown className={cn("mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden="true" />
-      </span>
-      {notes && !expanded ? <span className="line-clamp-2 text-xs text-muted-foreground">{notes}</span> : null}
+      <span className={cn("text-sm font-medium", done && "text-muted-foreground line-through")}>{title}</span>
+      {notes ? <span className="line-clamp-2 text-xs text-muted-foreground">{notes}</span> : null}
       {due || (priority && priority.label !== "Normal") ? (
         <span className="flex flex-wrap items-center gap-2 text-xs">
           {due ? <span className={cn("font-medium", done ? "text-muted-foreground" : DUE_TONE[due.tone])}>{due.label}</span> : null}
@@ -220,24 +207,18 @@ function TaskSummary({ task, today, expanded }: { task: RecordDto; today: Date; 
 
 interface TaskCardProps {
   task: RecordDto;
-  collectionId: number;
   today: Date;
+  onOpen: () => void;
   onMove: (state: State) => void;
 }
 
-/** One to-do: checkbox, title, deadline, priority and notes; expands to all details and actions. */
-function TaskCard({ task, collectionId, today, onMove }: TaskCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const detailsId = useId();
-  const state = stateOf(task);
-  const done = state === "done";
+/** One to-do: checkbox, and title, deadline, priority and notes as one button that opens the detail sidebar. */
+function TaskCard({ task, today, onOpen, onMove }: TaskCardProps) {
+  const done = stateOf(task) === "done";
   const title = task.title ?? `To-do #${task.id}`;
-  const due = describeDue(stringValue(task, "due_date"), today);
-  const priority = PRIORITY[stringValue(task, "priority") ?? ""];
-  const notes = stringValue(task, "notes");
 
   return (
-    <div className={cn("rounded-lg border bg-card transition-shadow hover:shadow-sm", expanded && "shadow-sm")}>
+    <div className={cn("rounded-lg border bg-card", CARD_HOVER)}>
       <div className="flex items-start gap-3 p-3">
         <input
           type="checkbox"
@@ -246,50 +227,10 @@ function TaskCard({ task, collectionId, today, onMove }: TaskCardProps) {
           checked={done}
           onChange={(event) => onMove(event.target.checked ? "done" : "open")}
         />
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-controls={detailsId}
-          onClick={() => setExpanded((open) => !open)}
-          className="grid min-w-0 flex-1 gap-1 text-left"
-        >
-          <TaskSummary task={task} today={today} expanded={expanded} />
+        <button type="button" aria-haspopup="dialog" aria-label={`Open ${title}`} onClick={onOpen} className="grid min-w-0 flex-1 cursor-pointer gap-1 text-left">
+          <TaskSummary task={task} today={today} />
         </button>
       </div>
-
-      {expanded ? (
-        <div id={detailsId} role="region" aria-label={title} className="grid gap-3 border-t px-3 py-3 pl-10 text-sm animate-in fade-in duration-200">
-          {notes ? <p className="whitespace-pre-line text-muted-foreground">{notes}</p> : <p className="text-muted-foreground">No notes.</p>}
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-            <dt className="text-muted-foreground">Deadline</dt>
-            <dd>{stringValue(task, "due_date") ? `${due?.label} (${stringValue(task, "due_date")})` : "None"}</dd>
-            <dt className="text-muted-foreground">Priority</dt>
-            <dd>{priority?.label ?? "Normal"}</dd>
-            <dt className="text-muted-foreground">Origin</dt>
-            <dd className="flex items-center gap-1">
-              {task.createdBy === "AI" ? <Bot className="size-3" aria-hidden="true" /> : <User className="size-3" aria-hidden="true" />}
-              {task.createdBy === "AI" ? "Added by the assistant" : "Added by you"} on {ADDED_FORMAT.format(new Date(task.createdAt))}
-            </dd>
-          </dl>
-          <div className="flex flex-wrap gap-2">
-            {state !== "in_progress" && !done ? (
-              <AppButton size="sm" variant="outline" onClick={() => onMove("in_progress")}>Start</AppButton>
-            ) : null}
-            {state === "in_progress" ? (
-              <AppButton size="sm" variant="outline" onClick={() => onMove("open")}>Back to to do</AppButton>
-            ) : null}
-            {!done ? (
-              <AppButton size="sm" onClick={() => onMove("done")}>Mark done</AppButton>
-            ) : (
-              <AppButton size="sm" variant="outline" onClick={() => onMove("open")}>Reopen</AppButton>
-            )}
-            <Link href={recordHref(collectionId, task.id)} className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-              Open details
-              <ArrowUpRight className="size-3" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

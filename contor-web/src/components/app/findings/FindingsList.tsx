@@ -1,17 +1,19 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CheckCheck, ScanSearch, X } from "lucide-react";
+import { Check, CheckCheck, ListPlus, PencilLine, ScanSearch, X } from "lucide-react";
 import { Children, useState, type ReactNode } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
+import { ProposalDetail } from "@/components/app/proposals/ProposalDetail";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRelationTypes } from "@/lib/api/generated/endpoints/relations/relations";
 import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { RelationTypeDto } from "@/lib/api/generated/model/relationTypeDto";
+import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { collectionTint } from "@/lib/collection-tint";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,7 @@ export function FindingsList() {
   const { data: relationTypes } = useListRelationTypes();
   const [filter, setFilter] = useState<Filter>(null);
   const [bulkType, setBulkType] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   // Keeping a finding creates or changes a record: refresh everything that may show it.
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
@@ -86,6 +89,7 @@ export function FindingsList() {
   const groups = [...Map.groupBy(standalone, (relation) => (relation.payload as RelationPayload).relationTypeId ?? -1)]
     .toSorted(([, a], [, b]) => b.length - a.length);
   const busyId = decide.isPending ? decide.variables?.proposalId : undefined;
+  const selected = records.find((proposal) => proposal.id === selectedId);
 
   /** One decision after the other, so each refresh sees the previous one. */
   async function decideAll(typeId: number, relations: ProposalDto[], decision: "APPROVE" | "REJECT") {
@@ -136,6 +140,7 @@ export function FindingsList() {
               collectionName={names.get(collectionOf(proposal))}
               collectionSlug={slugs.get(collectionOf(proposal))}
               busy={busyId === proposal.id}
+              onOpen={() => setSelectedId(proposal.id)}
               onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
             >
               {(nested.get(proposal.id) ?? []).map(({ relation, anchor }) => (
@@ -168,6 +173,24 @@ export function FindingsList() {
             ))}
           </div>
         </section>
+      ) : null}
+      {selected ? (
+        <ProposalDetail
+          proposal={selected}
+          description={{
+            label: `${selected.kind === "UPDATE_RECORD" ? "Update in" : "New in"} ${names.get(collectionOf(selected)) ?? "a collection"}`,
+            icon: selected.kind === "UPDATE_RECORD" ? PencilLine : ListPlus,
+            group: "Records",
+          }}
+          collection={collections?.find((collection) => collection.id === collectionOf(selected))}
+          busy={busyId === selected.id}
+          approveLabel="Keep"
+          rejectLabel="Dismiss"
+          onClose={() => setSelectedId(null)}
+          onDecide={(decision, payload) =>
+            decide.mutate({ proposalId: selected.id, data: payload ? { decision, payload } : { decision } }, { onSuccess: () => setSelectedId(null) })
+          }
+        />
       ) : null}
     </div>
   );
@@ -222,12 +245,13 @@ interface FindingCardProps {
   collectionName: string | undefined;
   collectionSlug: string | undefined;
   busy: boolean;
+  onOpen: () => void;
   onDecide: (decision: "APPROVE" | "REJECT") => void;
   /** Relation lines (`<li>`) shown under the values. */
   children?: ReactNode;
 }
 
-function FindingCard({ proposal, collectionName, collectionSlug, busy, onDecide, children }: FindingCardProps) {
+function FindingCard({ proposal, collectionName, collectionSlug, busy, onOpen, onDecide, children }: FindingCardProps) {
   const payload = proposal.payload as ProposalPayload;
   const title = proposalTitle(payload);
   const collectionId = collectionOf(proposal);
@@ -239,14 +263,19 @@ function FindingCard({ proposal, collectionName, collectionSlug, busy, onDecide,
     <article
       aria-label={title}
       data-collection={collectionId}
-      className={cn("flex flex-col overflow-hidden rounded-lg border bg-card", busy && "opacity-60")}
+      className={cn("relative flex flex-col overflow-hidden rounded-lg border bg-card", CARD_HOVER, busy && "opacity-60")}
     >
       <div className={cn("flex items-center justify-between gap-2 px-4 py-1.5 text-xs font-medium", collectionTint(collectionId, collectionSlug))}>
         <span className="truncate">{collectionName ?? "Collection"}</span>
         <span className="opacity-80">{proposal.kind === "UPDATE_RECORD" ? "Update" : "New"}</span>
       </div>
       <div className="grid flex-1 content-start gap-2 p-4">
-        <h2 className="truncate font-medium">{title}</h2>
+        <h2 className="truncate font-medium">
+          {/* Stretched over the whole card; the buttons and connections sit above it. */}
+          <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>
+            {title}
+          </button>
+        </h2>
         {values.length > 0 ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
             {values.map(([key, value]) => (
@@ -259,10 +288,10 @@ function FindingCard({ proposal, collectionName, collectionSlug, busy, onDecide,
         ) : null}
         {proposal.reasoning ? <p className="line-clamp-2 text-xs text-muted-foreground">{proposal.reasoning}</p> : null}
         {Children.count(children) > 0 ? (
-          <ul aria-label="Connections" className="mt-1 grid gap-0.5 border-t pt-2">{children}</ul>
+          <ul aria-label="Connections" className="relative z-10 mt-1 grid gap-0.5 border-t pt-2">{children}</ul>
         ) : null}
       </div>
-      <div className="flex justify-end gap-1 border-t px-2 py-1.5">
+      <div className="relative z-10 flex justify-end gap-1 border-t px-2 py-1.5">
         <AppButton size="sm" variant="ghost" disabled={busy} aria-label={`Dismiss ${title}`} onClick={() => onDecide("REJECT")}>
           <X aria-hidden="true" data-icon="inline-start" />
           Dismiss

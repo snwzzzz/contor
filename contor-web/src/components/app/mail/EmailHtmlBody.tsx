@@ -27,11 +27,12 @@ function isBlocked(image: HTMLImageElement): boolean {
 
 /**
  * Height of the mail's content: the body (not the root, whose scroll height never drops below the frame's own height,
- * so short mails would keep a tall frame) plus the body's margins.
+ * so short mails would keep a tall frame) plus the body's margins. `undefined` while the frame's document is still empty
+ * (it is replaced on every load: a resize can come in between).
  */
-function contentHeight(document: Document): number {
+function contentHeight(document: Document): number | undefined {
   const body = document.body;
-  if (!body) return document.documentElement.scrollHeight;
+  if (!body) return document.documentElement?.scrollHeight;
   const style = document.defaultView?.getComputedStyle(body);
   const margins = style ? (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0) : 0;
   return Math.ceil(body.scrollHeight + margins);
@@ -67,8 +68,8 @@ export function EmailHtmlBody({ html, dark = false, paper = false }: EmailHtmlBo
     const element = frame.current;
     if (!element) return;
     const observer = new ResizeObserver(() => {
-      const document = element.contentDocument;
-      if (document) setHeight(contentHeight(document));
+      const measured = element.contentDocument ? contentHeight(element.contentDocument) : undefined;
+      if (measured !== undefined) setHeight(measured);
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -76,7 +77,7 @@ export function EmailHtmlBody({ html, dark = false, paper = false }: EmailHtmlBo
 
   function fitToContent(event: SyntheticEvent<HTMLIFrameElement>) {
     const document = event.currentTarget.contentDocument;
-    if (!document) return;
+    if (!document?.documentElement) return;
     for (const image of document.images) {
       if (isBlocked(image)) image.style.visibility = "hidden";
     }
@@ -84,7 +85,8 @@ export function EmailHtmlBody({ html, dark = false, paper = false }: EmailHtmlBo
     document.documentElement.classList.toggle("contor-paper", paper);
     // The frame is as tall as its content, so its own scrollbar would only appear from rounding.
     document.documentElement.style.overflow = "hidden";
-    setHeight(contentHeight(document));
+    const measured = contentHeight(document);
+    if (measured !== undefined) setHeight(measured);
   }
 
   return (

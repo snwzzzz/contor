@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { useDecideProposal } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
+import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { tintClass } from "@/lib/collection-tint";
 import { placeholdersIn, recipientLabel, type ReplyDraftPayload, type ReplyText } from "@/lib/reply-draft";
 import { cn } from "@/lib/utils";
@@ -19,13 +20,15 @@ interface ReplySuggestionCardProps {
   label?: string;
   /** Show the whole text instead of its first lines (thread view). */
   full?: boolean;
+  /** Makes the card open its detail sidebar when clicked. */
+  onOpen?: () => void;
 }
 
 /**
  * A reply the assistant suggests: recipients, subject and text with the placeholders highlighted. "Edit & keep" opens
  * the editor and approves the proposal with the edited text (kept as a draft, never sent); "Dismiss" rejects it.
  */
-export function ReplySuggestionCard({ proposal, label = "Draft reply", full = false }: ReplySuggestionCardProps) {
+export function ReplySuggestionCard({ proposal, label = "Draft reply", full = false, onOpen }: ReplySuggestionCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   // Keeping or dismissing changes the proposals, the thread and the inbox markers: refresh them all.
@@ -45,15 +48,23 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
     );
 
   return (
-    <article aria-label={subject} className={cn("flex flex-col overflow-hidden rounded-xl border bg-card", decide.isPending && "opacity-60")}>
-      <div className="grid gap-3 p-4">
+    <article aria-label={subject} className={cn("relative flex flex-col overflow-hidden rounded-xl border bg-card", !full && "h-full", onOpen && CARD_HOVER, decide.isPending && "opacity-60")}>
+      <div className="grid flex-1 content-start gap-3 p-4">
         <div className="flex items-start gap-3">
           <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tintClass(5))} aria-hidden="true">
             <Reply className="size-4" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
             <span className="text-xs font-medium text-muted-foreground">{label}</span>
-            <h2 className="line-clamp-2 leading-snug font-medium">{subject}</h2>
+            <h2 className="line-clamp-2 leading-snug font-medium">
+              {onOpen ? (
+                <button type="button" aria-label={`Show details for ${subject}`} onClick={onOpen} className={STRETCHED_BUTTON}>
+                  {subject}
+                </button>
+              ) : (
+                subject
+              )}
+            </h2>
           </div>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -74,7 +85,7 @@ export function ReplySuggestionCard({ proposal, label = "Draft reply", full = fa
         ) : null}
         {proposal.reasoning ? <p className="text-xs leading-relaxed text-muted-foreground">{proposal.reasoning}</p> : null}
       </div>
-      <div className="flex justify-end gap-2 border-t px-3 py-2">
+      <div className="relative z-10 mt-auto flex justify-end gap-2 border-t px-3 py-2">
         <AppButton
           size="sm"
           variant="ghost"

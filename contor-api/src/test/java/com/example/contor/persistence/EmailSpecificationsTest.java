@@ -154,6 +154,34 @@ public class EmailSpecificationsTest {
         assertThat(answered(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
     }
 
+    @Test
+    void sent_folder_lists_only_the_owners_sent_mail() {
+        var sent = save(work, "7", "Re: Invoice", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-05T09:00:00Z");
+        sent.setFolder("sent");
+        emailMessageRepository.save(sent);
+        var foreignSent = save(mailAccountRepository.findAll().stream().filter(a -> !a.getOwner().getId().equals(owner.getId())).findFirst().orElseThrow(),
+                "8", "Not mine", "other@example.com", "Other", ProcessingState.SKIPPED, "2026-01-06T09:00:00Z");
+        foreignSent.setFolder("sent");
+        emailMessageRepository.save(foreignSent);
+
+        var inbox = new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, null, false);
+        var sentCriteria = new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, null, true);
+
+        assertThat(subjects(sentCriteria)).containsExactly("Re: Invoice");
+        assertThat(subjects(inbox)).doesNotContain("Re: Invoice");
+    }
+
+    @Test
+    void sent_folder_ignores_the_answered_filter() {
+        var sent = save(work, "7", "Re: Invoice", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-05T09:00:00Z");
+        sent.setFolder("sent");
+        emailMessageRepository.save(sent);
+
+        var criteria = new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, true, true);
+
+        assertThat(subjects(criteria)).containsExactly("Re: Invoice");
+    }
+
     private List<String> involving(List<Long> emailIds, List<String> addresses, List<String> domains) {
         return emailMessageRepository.findAll(
                         EmailSpecifications.matching(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null))

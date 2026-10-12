@@ -186,7 +186,7 @@ public class MailService {
 
     @Transactional
     public EmailPageDto listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                   EmailSearchField field, Boolean answered, Integer page, Integer size) {
+                                   EmailSearchField field, Boolean answered, EmailFolder folder, Integer page, Integer size) {
         var criteria = new EmailSpecifications.Criteria(
                 currentUser(),
                 accountId != null ? new MailAccount.MailAccountId(accountId) : null,
@@ -194,7 +194,8 @@ public class MailService {
                 processingState != null ? ProcessingState.valueOf(processingState.name()) : null,
                 q,
                 field != null ? SearchField.valueOf(field.name()) : SearchField.ALL,
-                answered);
+                answered,
+                folder == EmailFolder.SENT);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailMessage> result = emailMessageRepository.findAll(EmailSpecifications.matching(criteria), pageable);
@@ -204,16 +205,19 @@ public class MailService {
 
     /**
      * Search-box suggestions: the most frequent matching senders (people), then the companies (sender domains) whose
-     * domain matches. Their {@code value} is what to search with field PEOPLE.
+     * domain matches; for the SENT folder the people you wrote to instead. Their {@code value} is what to search with
+     * field PEOPLE.
      */
     @Transactional
-    public List<EmailSuggestionDto> suggestEmailSenders(String q) {
+    public List<EmailSuggestionDto> suggestEmailSenders(String q, EmailFolder folder) {
         String text = q.trim().toLowerCase(Locale.ROOT);
         if (text.isEmpty()) {
             return List.of();
         }
         String pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        List<SenderCount> senders = emailMessageRepository.findSenders(currentUser(), pattern, PageRequest.of(0, SUGGESTION_SAMPLE));
+        List<SenderCount> senders = folder == EmailFolder.SENT
+                ? emailMessageRepository.findRecipients(currentUser(), pattern, SUGGESTION_SAMPLE)
+                : emailMessageRepository.findSenders(currentUser(), pattern, PageRequest.of(0, SUGGESTION_SAMPLE));
 
         List<EmailSuggestionDto> suggestions = new ArrayList<>(senders.stream()
                 .limit(SUGGESTED_PEOPLE)
@@ -270,7 +274,9 @@ public class MailService {
                 new ArrayList<>(emails.stream().map(email -> {
                     ThreadStat thread = email.getConversationId() != null
                             ? threads.get(threadKey(email.getAccount().getId().id(), email.getConversationId())) : null;
-                    boolean answered = thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.getReceivedAt());
+                    // Sent mail is not "answered"; only received mail can be.
+                    boolean answered = !EmailMessage.FOLDER_SENT.equals(email.getFolder())
+                            && thread != null && thread.lastSentAt() != null && thread.lastSentAt().isAfter(email.getReceivedAt());
                     return MailMapper.toSummaryDto(email, labels.getOrDefault(email.getId().id(), List.of()),
                             thread != null ? thread.messages().intValue() : 1, answered, replies.get(email.getId().id()));
                 }).toList()),

@@ -239,11 +239,42 @@ class MailServiceTest {
         when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(email(1L)), pageable, 1));
         labelled();
 
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, null);
 
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
         assertEquals("orders", page.getItems().get(0).getLabels().get(0).getSlug());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void listEmails_SentFolderNeverCountsAsAnswered() {
+        var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
+        var sent = email(1L);
+        sent.setFolder("sent");
+        sent.setConversationId("conv-1");
+        when(emailMessageRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(sent), pageable, 1));
+        when(emailMessageRepository.threadStats(new AppUser.AppUserId(1L), List.of("conv-1"))).thenReturn(List.of(
+                new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-09T10:00:00Z"))));
+        labelled();
+
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, EmailFolder.SENT, null, null).getItems().get(0);
+
+        assertEquals("sent", summary.getFolder());
+        assertEquals(3, summary.getThreadSize());
+        assertFalse(summary.getAnswered());
+    }
+
+    @Test
+    void suggestEmailSenders_SentFolderSuggestsRecipients() {
+        when(emailMessageRepository.findRecipients(new AppUser.AppUserId(1L), "%an%", 50)).thenReturn(List.of(
+                new SenderCount("Anna", "anna@acme.com", 4L),
+                new SenderCount(null, "dan@gmail.com", 1L)));
+
+        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders("an", EmailFolder.SENT);
+
+        assertEquals(List.of("Anna", "dan@gmail.com"), suggestions.stream().map(EmailSuggestionDto::getLabel).toList());
+        verify(emailMessageRepository, never()).findSenders(any(), any(), any());
     }
 
     @Test
@@ -254,7 +285,7 @@ class MailServiceTest {
                 new SenderCount("Anton", "anton@acme.com", 2L),
                 new SenderCount("Hans", "hans@hans-gmbh.at", 1L)));
 
-        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders(" A ");
+        List<EmailSuggestionDto> suggestions = mailService.suggestEmailSenders(" A ", null);
 
         assertEquals(List.of("Anna", "dan@gmail.com", "Anton", "Hans", "acme.com", "hans-gmbh.at"),
                 suggestions.stream().map(EmailSuggestionDto::getLabel).toList());
@@ -270,7 +301,7 @@ class MailServiceTest {
         when(emailMessageRepository.findSenders(any(), eq("%anna%"), any(Pageable.class)))
                 .thenReturn(List.of(new SenderCount("Anna", "anna@acme.com", 5L)));
 
-        assertEquals(List.of("Anna"), mailService.suggestEmailSenders("anna").stream().map(EmailSuggestionDto::getLabel).toList());
+        assertEquals(List.of("Anna"), mailService.suggestEmailSenders("anna", null).stream().map(EmailSuggestionDto::getLabel).toList());
     }
 
     @Test
@@ -380,7 +411,7 @@ class MailServiceTest {
                 .thenReturn(List.of(Proposal.builder().sourceEmail(suggested).build()));
         when(replyDraftRepository.findEmailIdsWithStatus(List.of(5L, 6L, 7L), ReplyDraftStatus.READY)).thenReturn(List.of(6L));
 
-        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null).getItems();
+        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems();
 
         assertEquals(ReplyMarker.SUGGESTED, items.get(0).getReplyState());
         assertEquals(ReplyMarker.DRAFT_READY, items.get(1).getReplyState());
@@ -416,7 +447,7 @@ class MailServiceTest {
                 new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-02T10:00:00Z"))));
         labelled();
 
-        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null).getItems().get(0);
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems().get(0);
 
         assertEquals(3, summary.getThreadSize());
         assertTrue(summary.getAnswered());

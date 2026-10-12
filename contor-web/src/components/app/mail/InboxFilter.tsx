@@ -24,10 +24,12 @@ interface InboxFilterProps {
   onAccountChange: (accountId: number | null) => void;
   unanswered: boolean;
   onUnansweredChange: (unanswered: boolean) => void;
+  /** Sent mail is never "answered": hides that filter. */
+  hideUnanswered?: boolean;
 }
 
 /** One small button with a menu for the inbox filters (mailbox, not answered); the count shows how many are active. */
-export function InboxFilter({ accounts, accountId, onAccountChange, unanswered, onUnansweredChange }: InboxFilterProps) {
+export function InboxFilter({ accounts, accountId, onAccountChange, unanswered, onUnansweredChange, hideUnanswered = false }: InboxFilterProps) {
   const active = (accountId !== null ? 1 : 0) + (unanswered ? 1 : 0);
   return (
     <DropdownMenu>
@@ -59,9 +61,11 @@ export function InboxFilter({ accounts, accountId, onAccountChange, unanswered, 
             <DropdownMenuSeparator />
           </>
         ) : null}
-        <DropdownMenuCheckboxItem checked={unanswered} onCheckedChange={(checked) => onUnansweredChange(checked === true)}>
-          Not answered
-        </DropdownMenuCheckboxItem>
+        {hideUnanswered ? null : (
+          <DropdownMenuCheckboxItem checked={unanswered} onCheckedChange={(checked) => onUnansweredChange(checked === true)}>
+            Not answered
+          </DropdownMenuCheckboxItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -67,6 +67,7 @@ public class MailMapper {
                 .folder(email.getFolder())
                 .fromAddress(email.getFromAddress())
                 .fromName(email.getFromName())
+                .toRecipients(recipients(email.getToRecipients()))
                 .subject(email.getSubject())
                 .snippet(email.getSnippet())
                 .receivedAt(MapperSupport.toOffset(email.getReceivedAt()))

@@ -2,13 +2,14 @@
 
 import { Inbox } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
+import type { EmailFolder } from "@/lib/api/generated/model/emailFolder";
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import { settingsHref } from "@/lib/navigation";
 import { EmailThread } from "./EmailThread";
@@ -17,7 +18,8 @@ import { EmailPager } from "./EmailPager";
 import { ReadingPanePlaceholder } from "./ReadingPanePlaceholder";
 import { EmailSearchBar } from "./EmailSearchBar";
 import { InboxFilter } from "./InboxFilter";
-import { domainOf } from "./mail-format";
+import { FolderSwitch } from "./FolderSwitch";
+import { counterpartAddress, domainOf } from "./mail-format";
 
 const PAGE_SIZE = 50;
 
@@ -28,12 +30,15 @@ const PAGE_SIZE = 50;
  */
 export function InboxView() {
   const pathname = usePathname();
+  // `/inbox?email=<id>` (links from proposals) opens that email.
+  const linked = Number(useSearchParams().get("email"));
   const [search, setSearch] = useState("");
   const [field, setField] = useState<EmailSearchField>("ALL");
   const [accountId, setAccountId] = useState<number | null>(null);
   const [unanswered, setUnanswered] = useState(false);
+  const [folder, setFolder] = useState<EmailFolder>("INBOX");
   const [pageIndex, setPageIndex] = useState(0);
-  const [selectedEmailId, setSelectedEmailId] = useState<number | null>(null);
+  const [selectedEmailId, setSelectedEmailId] = useState<number | null>(Number.isInteger(linked) && linked > 0 ? linked : null);
   const listScroll = useRef<HTMLDivElement>(null);
 
   const { data: accounts } = useListMailAccounts();
@@ -42,12 +47,13 @@ export function InboxView() {
     ...(query ? { q: query, field } : {}),
     ...(accountId !== null ? { accountId } : {}),
     ...(unanswered ? { answered: false } : {}),
+    ...(folder === "SENT" ? { folder } : {}),
     page: pageIndex,
     size: PAGE_SIZE,
   });
 
   const emails = page?.items ?? [];
-  const pictures = useSenderPictures(emails.map((email) => domainOf(email.fromAddress)).filter((domain) => domain !== undefined));
+  const pictures = useSenderPictures(emails.map((email) => domainOf(counterpartAddress(email))).filter((domain) => domain !== undefined));
 
   /** Contact photo first, then the sender domain's logo. */
   function senderPicture(address: string | undefined): string | undefined {
@@ -63,6 +69,13 @@ export function InboxView() {
     if (listScroll.current) listScroll.current.scrollTop = 0;
   }
 
+  function selectFolder(next: EmailFolder) {
+    setFolder(next);
+    setUnanswered(false);
+    setPageIndex(0);
+    setSelectedEmailId(null);
+  }
+
   function selectAccount(id: number | null) {
     setAccountId(id);
     setPageIndex(0);
@@ -73,9 +86,11 @@ export function InboxView() {
     <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
       {/* Message list: search and filter on top, the email boxes below in their own scroll area */}
       <section aria-label="Email list" className="flex min-h-0 flex-col gap-3 max-lg:max-h-[55svh] lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
+        <FolderSwitch folder={folder} onChange={selectFolder} />
         <div className="flex shrink-0 items-center gap-2">
           <EmailSearchBar
             suggestions
+            folder={folder}
             text={search}
             field={field}
             placeholder="Search mail…"
@@ -91,6 +106,7 @@ export function InboxView() {
             accountId={accountId}
             onAccountChange={selectAccount}
             unanswered={unanswered}
+            hideUnanswered={folder === "SENT"}
             onUnansweredChange={(next) => {
               setUnanswered(next);
               setPageIndex(0);
@@ -106,13 +122,15 @@ export function InboxView() {
           ) : emails.length === 0 ? (
             <EmptyState
               icon={Inbox}
-              title="No emails found"
+              title={folder === "SENT" && !query && accountId === null ? "No sent mail yet" : "No emails found"}
               description={
                 query
                   ? "No emails matched your search query."
-                  : accountId !== null || unanswered
-                    ? "No emails match these filters."
-                    : "No emails synced yet. Connect an account or trigger a sync."
+                  : folder === "SENT"
+                    ? "Your sent mail shows up here after the next sync."
+                    : accountId !== null || unanswered
+                      ? "No emails match these filters."
+                      : "No emails synced yet. Connect an account or trigger a sync."
               }
               action={
                 <Link href={settingsHref(pathname, "accounts")} scroll={false}>

@@ -28,19 +28,25 @@ public final class EmailSpecifications {
 
     /**
      * {@code null} filters are ignored; {@code ownerId} is mandatory; {@code text} is searched in {@code field}
-     * (default ALL); {@code answered} true/false keeps only emails with/without a newer sent message in their conversation.
+     * (default ALL); {@code answered} true/false keeps only emails with/without a newer sent message in their conversation
+     * (ignored for sent mail); {@code sent} lists the sent mail (Sent Items) instead of the inbox.
      */
     public record Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
-                           ProcessingState processingState, String text, SearchField field, Boolean answered) {
+                           ProcessingState processingState, String text, SearchField field, Boolean answered, boolean sent) {
+
+        public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
+                        ProcessingState processingState, String text, SearchField field, Boolean answered) {
+            this(ownerId, accountId, labelId, processingState, text, field, answered, false);
+        }
 
         public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
                         ProcessingState processingState, String text, SearchField field) {
-            this(ownerId, accountId, labelId, processingState, text, field, null);
+            this(ownerId, accountId, labelId, processingState, text, field, null, false);
         }
 
         public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
                         ProcessingState processingState, String text) {
-            this(ownerId, accountId, labelId, processingState, text, SearchField.ALL, null);
+            this(ownerId, accountId, labelId, processingState, text, SearchField.ALL, null, false);
         }
     }
 
@@ -49,7 +55,11 @@ public final class EmailSpecifications {
             List<Predicate> predicates = new ArrayList<>();
             Join<EmailMessage, MailAccount> account = root.join("account");
             predicates.add(cb.equal(account.get("owner").get("id").get("id"), criteria.ownerId().id()));
-            predicates.add(cb.or(cb.isNull(root.get("folder")), cb.notEqual(root.get("folder"), EmailMessage.FOLDER_SENT)));
+            if (criteria.sent()) {
+                predicates.add(cb.equal(root.get("folder"), EmailMessage.FOLDER_SENT));
+            } else {
+                predicates.add(cb.or(cb.isNull(root.get("folder")), cb.notEqual(root.get("folder"), EmailMessage.FOLDER_SENT)));
+            }
             if (criteria.accountId() != null) {
                 predicates.add(cb.equal(account.get("id").get("id"), criteria.accountId().id()));
             }
@@ -64,7 +74,7 @@ public final class EmailSpecifications {
             if (criteria.processingState() != null) {
                 predicates.add(cb.equal(root.get("processingState"), criteria.processingState()));
             }
-            if (criteria.answered() != null) {
+            if (criteria.answered() != null && !criteria.sent()) {
                 // Answered: a sent message of the same conversation in the same mailbox, newer than this email.
                 Subquery<Long> reply = query.subquery(Long.class);
                 Root<EmailMessage> sent = reply.from(EmailMessage.class);

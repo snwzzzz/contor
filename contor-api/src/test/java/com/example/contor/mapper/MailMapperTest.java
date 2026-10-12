@@ -103,6 +103,14 @@ public class MailMapperTest {
     }
 
     @Test
+    void maps_the_to_recipients_of_a_summary() {
+        EmailSummaryDto dto = MailMapper.toSummaryDto(email(), List.of());
+
+        assertEquals(1, dto.getToRecipients().size());
+        assertEquals("me@example.com", dto.getToRecipients().get(0).getAddress());
+    }
+
+    @Test
     void maps_thread_size_and_answered_of_a_summary() {
         EmailSummaryDto threaded = MailMapper.toSummaryDto(email(), List.of(), 3, true, ReplyMarker.DRAFT_READY);
         EmailSummaryDto alone = MailMapper.toSummaryDto(email(), List.of());
