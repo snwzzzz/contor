@@ -2,7 +2,7 @@
 
 Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
 
-> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent), `docs/ai-v2-plan.md` (smarter replies, multi-mail context, proposal importance, insights, speed; in progress).
+> **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent), `docs/ai-v2-plan.md` (smarter replies, multi-mail context, proposal importance, insights, speed).
 
 ## Repository layout
 

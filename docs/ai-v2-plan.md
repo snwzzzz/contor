@@ -3,7 +3,10 @@
 > Living plan. Each step is done test-first (CLAUDE.md §0), follows the React best-practices skill for frontend work, and
 > updates the README in the same change. Builds on `ai-plan.md` (extraction, runs) and `replies-plan.md` (threads, reply
 > drafts). Nothing is ever sent; everything stays on the local Ollama.
-> **Status:** steps 1–8 implemented (step 3 with mostly negative results, see notes); step 9 open. Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
+> **Status:** all steps implemented (step 3 with mostly negative results, see notes). Follow-ups worth doing next:
+> to-do recall of the extraction (31 %), working hours as a UI setting, a "hold this slot" event for offered times,
+> removing single offered times on the reply card, tuning importance weights on real proposals, and running the
+> Playwright suite on Windows (its web server is a shell script). Master prompt for implementation sessions: `ai-v2-master-prompt.md`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - Step 1: `ai/AiTimings` (per-thread session, no Micrometer) is fed by `OllamaClient` and opened per email by
@@ -106,6 +109,10 @@
 >   rest on one; with one allowed and a confidence floor (made-up insight 0.4, good ones ≥ 0.9): 3/3 found, plus 3 extra
 >   (two plausible: a Munich train without accommodation, a workshop offer past its date; one dubious). Dismissing one
 >   makes sure it never returns.
+> - Step 9: architecture.md (pipeline with embed → context → extract → importance → reply, insights, appliers),
+>   CLAUDE.md (new proposal kinds also need the kind check and an importance base; model output is untrusted; prompt
+>   changes are measured against two runs). `ai-eval/baseline.json` was not re-recorded: `extract-v6` changed only the
+>   relations call and its extraction results are identical to `extract-v5`.
 > - Consequence for step 4: extra context in the prompt is cheap (reading ≈ 1 s per 1 200 tokens), so the budget can
 >   be generous; asking for more output is what costs time.
 
