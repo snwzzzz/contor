@@ -207,25 +207,40 @@ Done:
   (`sales_orders: Kessler SO-26-0155 (order_number: SO-26-0155, state: shipped)`) and the prompt tells the model to
   return such a record with the changed values when a mail confirms, changes, cancels or reports its arrival.
 
-Per-mail eval, 164 business mails, v6 → v7 (before the sender rule was added):
+Per-mail eval, 164 business mails (owner profile set), v6 → v7 final. Precision / recall; to-dos and events are scored
+with the new lenient title matching (shared reference number or same date), so their v6 numbers are only indicative:
 
-| Collection | v6 precision / recall | v7 precision / recall |
+| Collection | v6 | v7 |
 |---|---|---|
-| sales_orders | 79 % / 35 % | 74 % / **54 %** |
-| shipments | 85 % / 65 % | 89 % / **94 %** |
-| purchase_orders | 43 % / 83 % | **57 %** / 67 % |
-| events | 7.5 % / 31 % | **32 %** / 38 % |
-| people | 95 % / 71 % | 94 % / **30 %** ✗ |
-| organizations | 84 % / 75 % | 93 % / **29 %** ✗ |
-| tasks | 5 % / 5 % | 0 % / 0 % ✗ |
+| sales_orders | 79 % / 35 % | **86 % / 67 %** |
+| purchase_orders | 43 % / 83 % | **62 % / 89 %** |
+| shipments | 85 % / 65 % | 79 % / **88 %** |
+| people | 95 % / 71 % | 95 % / **86 %** |
+| organizations | 84 % / 75 % | 92 % / 75 % |
+| events | 7.5 % / 31 % | **40 % / 50 %** |
+| tasks | 5 % / 5 % | **40 % / 21 %** |
+| complaints | 11 % / 12.5 % | **27 % / 37.5 %** |
+| dates of events and to-dos | 17 % | **37 %** |
 
-The v7 prompt stopped the model from recording the sender as a contact; the rule "a human sender is always a people
-item … its company an organization" was added afterwards and is **not measured yet**. Task matching needs a closer
-look (`-Dai.eval.verbose=true` prints expected and produced titles per mail).
+Committed as `ai-eval/business-baseline.json` (prompt `extract-v7+business`).
+
+How v7 got there (each change checked by replaying the dumped prompts against Ollama, `-Dai.eval.promptDir`):
+- A first-person profile ("I am …") made the 9B model return no items for plain orders; the profile is now introduced as
+  "About the user, in their own words (it describes the user, never a record)".
+- "Advertising, newsletters and notifications …: return no items" made it drop inquiries; now "Return no items only for
+  advertising, newsletters and automated notifications … An email a person writes … always yields at least its sender."
+- A shipping notice that names an order also returns that order with its new state (purchase orders were missed when
+  only the shipment was recorded).
+- **Two modes:** the business rules apply only when an owner profile is set; without one the prompt is the unchanged
+  v6 personal text. The general rules had cost the personal corpus (people precision 0.90 → 0.67, tasks 0.71 → 0.29);
+  with the split `AiExtractionEvalTest` is back within its baseline.
+
+Eval tooling added: `-Dai.eval.verbose` (expected vs produced titles per mail), `-Dai.eval.raw` (raw answers),
+`-Dai.eval.promptDir` (dump prompts for replays), `-Dai.eval.business.only=m-0125,…` (selected mails), lenient title
+matching for the business eval.
 
 Open before steps 3+:
-- Re-run the per-mail eval with the sender rule; accept v7 only when people/organizations are back at the v6 level, then
-  write `ai-eval/business-baseline.json`.
-- Run `AiMailboxReplayEvalTest` to completion once (it runs, ≈ 40 s per mail when sharing the GPU) for the replay
-  numbers of step 2 (state updates only show in the replay, not in the per-mail eval).
-- Look at the task titles/dates (per-mail 0/38).
+- Run `AiMailboxReplayEvalTest` to completion (≈ 10 s per mail alone on the GPU) for the replay numbers of step 2 —
+  state updates only show in the replay.
+- Seen in the per-mail runs, for step 3: invented complaint numbers ("RMA-26-041" from another story), a carrier
+  named as the supplier of a PO, "WE" (Wareneingang, goods receipt) in a subject taken as an organization.

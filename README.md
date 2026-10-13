@@ -165,8 +165,10 @@ bar (or Settings → AI Models). The wizard walks through:
    *Off / Ask me / Automatic* for new categories, contacts & records, calendar and to-dos, and *Off / Ask me* for
    **reply drafts** (default off; there is no *Automatic*: drafts are never sent), and optionally **About you and your
    business** (`ownerProfile`, also under Settings → Autonomy): a few sentences such as "Head of Operations at a
-   wholesaler; customers order from us, we buy from suppliers". The extraction prompt (`extract-v7`) reads it to know
-   whose side an email is on, e.g. that a customer's "PO" is an order you receive. The demo mailbox fills it in.
+   wholesaler; customers order from us, we buy from suppliers". With a profile the extraction uses its business rules
+   (`extract-v7`: whose side an email is on — a customer's "PO" is an order you receive —, deliveries belong to orders and
+   shipments, deadlines become to-dos, follow-ups update existing records); without one it keeps the personal rules.
+   The demo mailbox fills it in.
 4. **Start** – saves the permissions and starts the analysis.
 5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
    each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.

@@ -1,6 +1,7 @@
 package com.example.contor.ai.eval;
 
 import com.example.contor.ai.EmailContent;
+import com.example.contor.ai.LlmClient;
 import com.example.contor.ai.OllamaClient;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
@@ -23,6 +24,7 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,7 +82,28 @@ class AiBusinessExtractionEvalTest {
                 new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(5), 16384, "30m"),
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
-        OllamaClient client = new OllamaClient(properties, mapper);
+        OllamaClient ollama = new OllamaClient(properties, mapper);
+        // -Dai.eval.raw=true prints the model's raw answers, to see what the guardrails dropped
+        LlmClient client = (llmModel, system, user, schema) -> {
+            String dump = System.getProperty("ai.eval.promptDir");
+            if (dump != null) { // -Dai.eval.promptDir=<dir>: the prompts of every call, to replay variants against Ollama
+                try {
+                    Path dir = Files.createDirectories(Path.of(dump));
+                    long n;
+                    try (var existing = Files.list(dir)) {
+                        n = existing.count();
+                    }
+                    mapper.writeValue(dir.resolve("call-%04d.json".formatted(n)), Map.of("system", system, "user", user, "schema", schema));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+            String answer = ollama.completeJson(llmModel, system, user, schema);
+            if (Boolean.getBoolean("ai.eval.raw")) {
+                System.out.println("[ai-eval] raw answer: " + answer.replaceAll("\\s+", " "));
+            }
+            return answer;
+        };
         List<CollectionDto> collections = EvalCollections.business();
         Map<Long, String> slugById = new HashMap<>();
         collections.forEach(collection -> slugById.put(collection.getId(), collection.getSlug()));
@@ -97,7 +120,14 @@ class AiBusinessExtractionEvalTest {
 
         List<BusinessMessage> all = BusinessCorpus.messages();
         Map<String, BusinessMessage> byId = BusinessCorpus.byId(all);
-        List<BusinessMessage> messages = all.stream().filter(BusinessMessage::labelled).limit(limit).toList();
+        // -Dai.eval.business.only=m-0125,m-0179: just these mails (a quick check of a prompt change on the cases it targets)
+        Set<String> only = Set.of(System.getProperty("ai.eval.business.only", "").split(",")).stream().filter(id -> !id.isBlank())
+                .collect(Collectors.toSet());
+        List<BusinessMessage> messages = all.stream().filter(BusinessMessage::labelled)
+                .filter(message -> only.isEmpty() || only.contains(message.id())).limit(limit).toList();
+        if (!only.isEmpty()) {
+            limit = 0; // a selection is never compared with the baseline
+        }
         List<EvalCase> cases = messages.stream().map(message -> message.evalCaseWithContext(byId)).toList();
 
         List<CaseResult> results = new ArrayList<>();
@@ -125,7 +155,7 @@ class AiBusinessExtractionEvalTest {
             }
         }
 
-        EvalScorer scorer = new EvalScorer(collections, undirected);
+        EvalScorer scorer = new EvalScorer(collections, undirected, true);
         EvalReport report = scorer.score(model, EmailExtractionService.PROMPT_VERSION + "+business", cases, results);
         writeReport(report);
         printGroups("category", scorer, model, messages, cases, results, message -> List.of(message.category().substring(0, 1)));

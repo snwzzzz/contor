@@ -101,6 +101,22 @@ class EvalScorerTest {
     }
 
     @Test
+    void lenient_titles_also_match_a_shared_reference_number_or_the_same_date() {
+        EvalScorer lenient = new EvalScorer(List.of(PEOPLE, EVENTS, TASKS, ORGANIZATIONS), java.util.Set.of("knows"), true);
+        List<EvalCase> cases = List.of(expecting("a", Map.of("tasks", List.of(
+                expected("Anzahlung 5.328,00 EUR für PO-26-1088 an Anadolu überweisen", Map.of()),
+                expected("Gänge in der Lagerhalle freiräumen", Map.of("due_date", "2026-07-17")),
+                expected("Pay invoice 2024-118", Map.of())))));
+        List<CaseResult> results = List.of(result("a", 100,
+                produced("tasks", "Pay 30% advance for PO-26-1088", Map.of()),
+                produced("tasks", "Freiräumen der Gänge bis Freitag", Map.of("due_date", "2026-07-17")),
+                produced("tasks", "Book a hotel", Map.of())));
+
+        assertThat(lenient.score("m", "p", cases, results).collections().get("tasks").truePositives()).isEqualTo(2);
+        assertThat(scorer.score("m", "p", cases, results).collections().get("tasks").truePositives()).as("strict by default").isZero();
+    }
+
+    @Test
     void unrelated_titles_do_not_match() {
         EvalReport report = score(
                 List.of(expecting("a", Map.of("tasks", List.of(expected("Pay invoice 2024-118", Map.of()))))),

@@ -305,13 +305,15 @@ class EmailExtractionServiceTest {
         ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
         verify(llmClient).completeJson(eq("extractor"), system.capture(), anyString(), any());
         assertThat(system.getValue())
-                .contains("About the user: Head of Operations at a wholesaler; customers order from us.")
+                .contains("About the user, in their own words (it describes the user, never a record): Head of Operations at a wholesaler; customers order from us.")
+                .contains("Return no items only for advertising, newsletters and automated notifications")
                 .doesNotContain("personal management app")
                 .contains("Delivery dates, ETAs, dispatch and pickup dates are not events")
                 .contains("A deadline to do something is a task")
                 .contains("tracking number")
                 .contains("already recorded")
-                .contains("phone and role from the signature");
+                .contains("phone and role from the signature")
+                .contains("also returns that order with its new state");
     }
 
     @Test
@@ -322,7 +324,9 @@ class EmailExtractionServiceTest {
 
         ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
         verify(llmClient).completeJson(eq("extractor"), system.capture(), anyString(), any());
-        assertThat(system.getValue()).doesNotContain("About the user");
+        assertThat(system.getValue()).doesNotContain("About the user")
+                .as("without a profile the proven personal rules stay").contains("a personal management app")
+                .doesNotContain("A human sender is always a people item");
     }
 
     @Test

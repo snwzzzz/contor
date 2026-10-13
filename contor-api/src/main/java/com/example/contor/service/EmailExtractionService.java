@@ -73,7 +73,31 @@ public class EmailExtractionService implements ExtractionService {
             listed relation types, from the item that the type's first collection describes. List each relation once. \
             reason: at most 12 words. When unsure, return an empty list.""";
 
-    private static final String SYSTEM = """
+    /**
+     * Without an owner profile: the personal rules measured with the personal corpus (extract-v6). With a profile the
+     * business rules below apply (extract-v7: whose side an email is on, shipments and deadlines, updates of records).
+     */
+    private static final String SYSTEM_PERSONAL = """
+            You are the assistant inside contor, a personal management app. You read one email of the user and \
+            extract what is worth recording into the user's collections. Answer with JSON only.
+            Today is %s (%s). The user's time zone is %s. The user's own address is %s: never record the user.
+            Rules:
+            - Record only facts stated in the email. Leave a field out instead of guessing.
+            - people: individual humans the user deals with (a personal sender, people named with contact details). \
+            Never companies, newsletters, no-reply or system senders.
+            - organizations: companies, shops, employers, authorities, schools the user actually deals with.
+            - events: appointments, meetings, interviews, deadlines with a date, bookings, trips. starts_at is required.
+            - tasks: concrete things the user has to do (reply, pay, sign, upload, send, prepare), with due_date if stated.
+            - any other collection: only when the email is clearly about such a thing.
+            - title: short and specific, e.g. a person's full name, "Interview at Acme", "Pay invoice 2024-118".
+            - Resolve relative dates ("Friday", "tomorrow", "next week", "by Thursday") relative to the date the email \
+            was sent (its Date line, with weekday), never relative to today.
+            - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
+            another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
+            - confidence between 0 and 1; reason: one short sentence quoting the evidence.
+            - Advertising, newsletters and notifications without anything to record: return no items.""";
+
+    private static final String SYSTEM_BUSINESS = """
             You are the assistant inside contor, an app that keeps the user's records, calendar and to-dos from their \
             mail. You read one email of the user and extract what is worth recording into the user's collections. Answer \
             with JSON only.
@@ -95,7 +119,8 @@ public class EmailExtractionService implements ExtractionService {
             due_date if stated. A deadline to do something is a task with that due_date, not an event. Title in the \
             language of the email, starting with the action.
             - A notification about a shipment or delivery with a tracking or consignment number is a record of that \
-            shipment, not a notification without anything to record.
+            shipment, not a notification without anything to record. When it names an order (purchase or sales order \
+            number), it also returns that order with its new state (shipped, received, delivered).
             - An email that confirms, changes, cancels or reports the arrival of something already recorded (see "Already \
             recorded" with the earlier emails) returns that record again: same collection, its key value (order number, \
             tracking number, ...) and the values that changed, e.g. the new state or date.
@@ -106,7 +131,8 @@ public class EmailExtractionService implements ExtractionService {
             - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
             another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
             - confidence between 0 and 1; reason: one short sentence quoting the evidence.
-            - Advertising, newsletters and notifications without anything to record: return no items.""";
+            - Return no items only for advertising, newsletters and automated notifications with nothing to record. An \
+            email a person writes to the user (customer, supplier, colleague) always yields at least its sender.""";
 
     private final LlmClient llmClient;
     private final AiProperties properties;
@@ -127,9 +153,11 @@ public class EmailExtractionService implements ExtractionService {
         targets.forEach(collection -> bySlug.put(collection.getSlug(), collection));
 
         LocalDate today = LocalDate.now(clock.withZone(properties.timezone()));
-        String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH),
-                properties.timezone(), email.mailbox(),
-                ownerProfile != null && !ownerProfile.isBlank() ? "\nAbout the user: " + ownerProfile.strip() : "");
+        String weekday = today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        String system = ownerProfile == null || ownerProfile.isBlank()
+                ? SYSTEM_PERSONAL.formatted(today, weekday, properties.timezone(), email.mailbox())
+                : SYSTEM_BUSINESS.formatted(today, weekday, properties.timezone(), email.mailbox(),
+                "\nAbout the user, in their own words (it describes the user, never a record): " + ownerProfile.strip());
         Map<String, Object> schema = JsonSchemas.object(Map.of("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
                 "collection", JsonSchemas.oneOf(List.copyOf(bySlug.keySet())),
                 "title", JsonSchemas.string(),
