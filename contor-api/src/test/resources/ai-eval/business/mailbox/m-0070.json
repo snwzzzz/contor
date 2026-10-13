@@ -1,0 +1,82 @@
+{
+  "id": "m-0070",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-lindgren-repeat",
+  "cc": [],
+  "storyline": "A2-lindgren-repeat",
+  "beat": "order",
+  "category": "A2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Oskar Nyberg",
+    "fromAddress": "oskar.nyberg@lindgren-verktyg.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Repeat order LV-4471",
+    "receivedAt": "2026-07-09T11:20:00Z",
+    "body": "Hi Alex,\n\ncould you repeat our June order? Same quantities, same SEK prices. Our PO reference is LV-4471. No rush, delivery before the middle of August is fine - half of the team is on holiday anyway.\n\nCheers,\nOskar Nyberg\nBuyer\nLindgren Verktyg AB\n+46 31 5550 2601"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Lindgren Verktyg order LV-4471",
+          "entity": "so-0150",
+          "values": {
+            "customer": "Lindgren Verktyg",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Oskar Nyberg",
+          "values": {
+            "email": "oskar.nyberg@lindgren-verktyg.example",
+            "phone": "+46 31 5550 2601",
+            "role_title": "Buyer"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Lindgren Verktyg AB",
+          "values": {
+            "domain": "lindgren-verktyg.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Oskar Nyberg",
+        "to": "organizations:Lindgren Verktyg AB"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0074"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "terse-repeat-order",
+    "currency"
+  ],
+  "facts": [
+    "repeat the June order",
+    "same quantities and SEK prices",
+    "their PO ref LV-4471",
+    "delivery before mid-August is fine"
+  ]
+}

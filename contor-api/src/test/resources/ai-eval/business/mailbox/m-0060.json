@@ -1,0 +1,98 @@
+{
+  "id": "m-0060",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-glanzwerk-grundreinigung",
+  "cc": [],
+  "storyline": "G2-glanzwerk-cleaning",
+  "beat": "notice",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Serkan Yılmaz",
+    "fromAddress": "s.yilmaz@glanzwerk-service.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Grundreinigung Lagerhalle 18.07.",
+    "receivedAt": "2026-07-09T06:15:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nwie vereinbart führen wir die Grundreinigung der Lagerhalle am Samstag, 18.07., ab 7 Uhr durch. Bitte lassen Sie die Gänge bis Freitag, 17.07., freiräumen und stellen Sie uns bis Donnerstag, 16.07., einen Schlüssel bereit. Bitte bestätigen Sie den Termin kurz.\n\nMit freundlichen Grüßen\nSerkan Yılmaz\nObjektleitung\nGlanzwerk Gebäudeservice GmbH\nTel. +49 40 5550 7601"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Grundreinigung Lagerhalle durch Glanzwerk",
+          "values": {
+            "starts_at": "2026-07-18T07:00:00+02:00",
+            "location": "Lagerhalle"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Gänge in der Lagerhalle freiräumen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-17"
+          }
+        },
+        {
+          "title": "Schlüssel für Glanzwerk bereitstellen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Serkan Yılmaz",
+          "values": {
+            "email": "s.yilmaz@glanzwerk-service.example",
+            "phone": "+49 40 5550 7601",
+            "role_title": "Objektleitung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Glanzwerk Gebäudeservice GmbH",
+          "values": {
+            "domain": "glanzwerk-service.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Serkan Yılmaz",
+        "to": "organizations:Glanzwerk Gebäudeservice GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Bitte bestätigen Sie den Termin."
+    ],
+    "answeredBy": "m-0064"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "delegation"
+  ],
+  "facts": [
+    "Grundreinigung Lagerhalle Samstag 18.07. ab 7 Uhr",
+    "Gänge bis Freitag 17.07. freiräumen",
+    "Schlüssel bis Donnerstag 16.07. organisieren",
+    "bitte Termin bestätigen"
+  ]
+}

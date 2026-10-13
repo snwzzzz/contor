@@ -1,0 +1,100 @@
+{
+  "id": "m-0134",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-messe-standbestaetigung",
+  "cc": [],
+  "storyline": "F3-messe-exhibitor",
+  "beat": "booth",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Miriam Falk",
+    "fromAddress": "m.falk@messe-ruhrfeld.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Standbestätigung IndustrieTage Ruhrfeld 2026",
+    "receivedAt": "2026-07-15T08:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nwir freuen uns, Ihnen Ihren Stand für die IndustrieTage Ruhrfeld vom 15. bis 17.09.2026 zu bestätigen: Halle 3, Stand C14.\n\nBitte denken Sie an folgende Fristen:\n- Standbaupläne einreichen bis 31.07.2026\n- Ausstellerausweise bestellen bis 14.08.2026\n\nMit freundlichen Grüßen\nMiriam Falk\nAusstellerservice\nMesse Ruhrfeld GmbH\nTel. +49 201 5550 7401"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "IndustrieTage Ruhrfeld",
+          "values": {
+            "starts_at": "2026-09-15T00:00:00+02:00",
+            "ends_at": "2026-09-17T23:59:00+02:00",
+            "all_day": true,
+            "location": "Halle 3, Stand C14"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Standbaupläne für IndustrieTage Ruhrfeld einreichen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-31"
+          }
+        },
+        {
+          "title": "Ausstellerausweise für IndustrieTage Ruhrfeld bestellen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-08-14"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Miriam Falk",
+          "values": {
+            "email": "m.falk@messe-ruhrfeld.example",
+            "phone": "+49 201 5550 7401",
+            "role_title": "Ausstellerservice"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Messe Ruhrfeld GmbH",
+          "values": {
+            "domain": "messe-ruhrfeld.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Miriam Falk",
+        "to": "organizations:Messe Ruhrfeld GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "trade-fair"
+  ],
+  "storylineTags": [
+    "trade-fair"
+  ],
+  "facts": [
+    "Standbestätigung IndustrieTage Ruhrfeld 15.-17.09.2026",
+    "Halle 3, Stand C14",
+    "Standbaupläne bis 31.07.2026 einreichen",
+    "Ausstellerausweise bis 14.08.2026 bestellen"
+  ],
+  "derived": {
+    "events.starts_at": "15. bis 17.09.2026 -> 15.09.2026 all day",
+    "events.ends_at": "17.09.2026, end of day"
+  }
+}

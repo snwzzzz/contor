@@ -1,0 +1,72 @@
+{
+  "id": "m-0264",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-sophie-vossberg-besuch",
+  "cc": [],
+  "storyline": "F7-sophie-visit",
+  "beat": "ask",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sophie Brandt",
+    "fromAddress": "sophie.brandt@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Vossberg Donnerstag?",
+    "receivedAt": "2026-07-27T07:50:00Z",
+    "body": "Hi Alex,\n\nich fahre Donnerstag zu Vossberg nach Bremen, Termin um 10 Uhr, Thema Rahmenvertrag 2027. Kannst du mitkommen? Jens hat extra nach dir gefragt :)\n\nSophie"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Kundenbesuch Vossberg Rahmenvertrag 2027",
+          "values": {
+            "starts_at": "2026-07-30T10:00:00+02:00",
+            "location": "Bremen"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sophie Brandt",
+          "values": {
+            "email": "sophie.brandt@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Kannst du Donnerstag mit zu Vossberg kommen?"
+    ],
+    "answeredBy": "m-0266"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "relative-date",
+    "answered"
+  ],
+  "storylineTags": [
+    "answered"
+  ],
+  "facts": [
+    "Kundenbesuch bei Vossberg in Bremen",
+    "Donnerstag 10 Uhr",
+    "kannst du mitkommen?",
+    "Thema Rahmenvertrag 2027"
+  ],
+  "derived": {
+    "events.starts_at": "Donnerstag after Monday 27.07. = 30.07.2026"
+  }
+}

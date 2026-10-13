@@ -1,0 +1,82 @@
+{
+  "id": "m-0287",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-erp-nightly-18",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "erp-nightly-18",
+  "kind": "erp-notice",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Lagerwerk ERP",
+    "fromAddress": "noreply@lagerwerk-software.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "[Lagerwerk] Nachtlauf 29.07.2026 erfolgreich",
+    "receivedAt": "2026-07-29T03:02:00Z",
+    "body": "Nachtlauf vom 29.07.2026 erfolgreich beendet.\n\nBestandsabgleich: 1.241 Artikel geprüft, 0 Abweichungen\nDatensicherung: OK\nFIBU-Export: OK\n\nDiese Nachricht wurde automatisch von Lagerwerk ERP erzeugt."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "erp-notice"
+  ],
+  "facts": []
+}

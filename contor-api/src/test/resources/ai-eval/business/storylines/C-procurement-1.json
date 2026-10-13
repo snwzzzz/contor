@@ -1,0 +1,297 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "C1-anadolu-po",
+      "category": "C1",
+      "summary": "Forged flanges from Turkey: confirmation with advance payment, weekend loading, a 14-hour border queue, an unloading slot and the arrival with two rusty crates.",
+      "difficulty": "hard",
+      "editorNotes": "Times in TRT (UTC+3), weekend mail from the supplier, dd/mm/yyyy dates, a CMR number, an unloading slot asked for in CET.",
+      "tags": ["time-zone", "date-format", "slot-booking"],
+      "numbers": ["PO-26-1088", "CMR-BL-260718", "ADS-EXP-2026-114"],
+      "beats": [
+        {
+          "key": "po", "day": "2026-07-06", "time": "11:00", "direction": "sent", "to": ["p-arslan"], "conversation": "anadolu-po-1088",
+          "facts": ["PO-26-1088", "1,200 forged flanges DN100 PN16 at 14.80 EUR = 17,760.00 EUR", "FCA Bursa", "ready for loading 17 July"],
+          "style": { "lang": "en", "tone": "formal", "length": "short" },
+          "subject": "Purchase order PO-26-1088 - forged flanges DN100",
+          "body": "Dear Mr Arslan,\n\nplease find our purchase order PO-26-1088:\n1,200 pcs forged flange DN100 PN16 at 14.80 EUR = 17,760.00 EUR\nTerms: FCA Bursa, ready for loading on 17 July 2026, payment as agreed (30 % advance, 70 % against CMR copy).\n\nKind regards\nAlex Morgan\nHead of Operations\nNordhafen Industriebedarf GmbH"
+        },
+        {
+          "key": "confirm", "day": "2026-07-07", "time": "10:30", "from": "p-arslan", "inReplyTo": "#po",
+          "facts": ["order confirmation PO-26-1088", "1,200 pcs, EUR 17,760.00", "ready for loading 17/07/2026", "30 % advance EUR 5,328.00 by 10/07/2026"],
+          "style": { "lang": "en", "tone": "very polite", "length": "medium", "signature": "full" },
+          "subject": "RE: Purchase order PO-26-1088 - forged flanges DN100",
+          "body": "Dear Mr Morgan,\n\nThank you very much for your valuable order. We are pleased to confirm your purchase order PO-26-1088 for 1,200 pcs forged flange DN100 PN16, total amount EUR 17,760.00, FCA Bursa.\n\nThe goods will be ready for loading on 17/07/2026. To start production we kindly ask for the 30 % advance payment of EUR 5,328.00 until 10/07/2026.\n\nWe thank you for your trust and remain at your disposal.\n\nBest regards,\nMehmet Arslan\nExport Manager\nAnadolu Dövme Sanayi A.Ş.\nBursa / Türkiye\nTel: +90 224 5550 5501",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Anadolu Dövme PO-26-1088", "values": { "po_number": "PO-26-1088", "supplier": "Anadolu Dövme", "total": { "amount": 17760.00, "currency": "EUR" }, "state": "confirmed" } }],
+              "tasks": [{ "title": "Anzahlung 5.328,00 EUR für PO-26-1088 an Anadolu überweisen", "values": { "state": "open", "due_date": "2026-07-10" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["date-format"]
+          }
+        },
+        {
+          "key": "loaded", "day": "2026-07-18", "time": "15:20", "from": "p-kaya", "weekend": true, "inReplyTo": "#confirm",
+          "facts": ["loading completed today (Saturday)", "truck 34 BL 2207 of Bosporus Lojistik", "CMR-BL-260718", "Kapıkule border Monday 20/07", "arrival Hamburg approx. 23/07/2026"],
+          "style": { "lang": "en", "tone": "factual", "length": "short", "signature": "full" },
+          "subject": "RE: Purchase order PO-26-1088 - loading",
+          "body": "Dear Mr Morgan,\n\nloading of PO-26-1088 was completed today. Truck 34 BL 2207 (Bosporus Lojistik), CMR no. CMR-BL-260718, 1,200 pcs on 6 crates.\nThe truck will reach the Kapıkule border on Monday 20/07; estimated arrival in Hamburg 23/07/2026.\n\nBest regards,\nElif Kaya\nLogistics\nAnadolu Dövme Sanayi A.Ş.\nTel: +90 224 5550 5502",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Anadolu Dövme PO-26-1088", "values": { "po_number": "PO-26-1088", "state": "shipped", "expected_arrival": "2026-07-23" } }],
+              "shipments": [{ "title": "Bosporus Lojistik CMR-BL-260718", "values": { "tracking_number": "CMR-BL-260718", "carrier": "Bosporus Lojistik", "direction": "inbound", "order_ref": "PO-26-1088", "state": "in_transit", "eta": "2026-07-23" } }]
+            },
+            "relations": [{ "type": "delivers", "from": "shipments:Bosporus Lojistik CMR-BL-260718", "to": "purchase_orders:Anadolu Dövme PO-26-1088" }],
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["date-format", "weekend-mail"]
+          }
+        },
+        {
+          "key": "border", "day": "2026-07-20", "time": "16:40", "from": "p-demir", "conversation": "bosporus-260718",
+          "facts": ["truck 34 BL 2207 waiting at Kapıkule border", "queue approx. 14 hours", "new ETA Hamburg 24.07. afternoon", "CMR-BL-260718"],
+          "style": { "lang": "en", "tone": "status update, capitals", "length": "1-3 sentences", "signature": "short" },
+          "subject": "STATUS CMR-BL-260718 / BORDER WAITING",
+          "body": "DEAR SIR,\n\nTRUCK 34 BL 2207 (CMR-BL-260718) IS WAITING AT KAPIKULE BORDER, QUEUE APPROX. 14 HOURS. NEW ETA HAMBURG 24.07. AFTERNOON.\n\nBEST REGARDS\nBURAK DEMIR\nBOSPORUS LOJISTIK OPERATIONS",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Bosporus Lojistik CMR-BL-260718", "values": { "tracking_number": "CMR-BL-260718", "carrier": "Bosporus Lojistik", "state": "delayed", "eta": "2026-07-24" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["delay", "time-zone"]
+          }
+        },
+        {
+          "key": "slot", "day": "2026-07-22", "time": "09:15", "from": "p-demir", "inReplyTo": "#border",
+          "facts": ["please give unloading slot for Friday 24.07.", "truck can be at the warehouse from 13:00 CET"],
+          "style": { "lang": "en", "tone": "status update", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: STATUS CMR-BL-260718 / UNLOADING SLOT",
+          "body": "DEAR SIR,\n\nPLEASE GIVE US UNLOADING SLOT FOR FRIDAY 24.07. TRUCK CAN BE AT YOUR WAREHOUSE FROM 13:00 CET. WHICH TIME AND GATE?\n\nBR\nBURAK DEMIR",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Bosporus Lojistik CMR-BL-260718", "values": { "tracking_number": "CMR-BL-260718", "eta": "2026-07-24" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Which unloading time and gate on Friday 24.07.?"], "scheduleFrom": "2026-07-24", "scheduleTo": "2026-07-24", "timeOfDay": "AFTERNOON", "answeredBy": "#slot-ok" },
+            "importance": "NORMAL",
+            "tags": ["slot-booking", "time-zone"]
+          }
+        },
+        {
+          "key": "slot-ok", "day": "2026-07-22", "time": "10:00", "direction": "sent", "to": ["p-demir"], "inReplyTo": "#slot",
+          "facts": ["slot Friday 24.07., 14:00-15:00, gate 2"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences" },
+          "subject": "RE: STATUS CMR-BL-260718 / UNLOADING SLOT",
+          "body": "Dear Mr Demir,\n\nunloading slot for CMR-BL-260718: Friday 24.07., 14:00-15:00 CET, gate 2.\n\nBest regards\nAlex Morgan"
+        },
+        {
+          "key": "arrived", "day": "2026-07-24", "time": "15:40", "from": "p-jana", "conversation": "jana-anadolu-we",
+          "facts": ["Türke ist durch", "1.200 Flansche", "2 Kisten mit Rost, Fotos gemacht", "Wareneingang PO-26-1088 gebucht"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "typos": 1, "signature": "none" },
+          "subject": "WE Anadolu",
+          "body": "Hi Alex, der Türke ist durch, 1.200 Flansche zu PO-26-1088 gebucht. 2 Kisten haben aber Flugrost, hab Fotos gemacht und die Kisten erstmal gesperrt. Willst du das bei Anadolu reklamieren?\nJana",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Anadolu Dövme PO-26-1088", "values": { "po_number": "PO-26-1088", "state": "received" } }],
+              "shipments": [{ "title": "Bosporus Lojistik CMR-BL-260718", "values": { "order_ref": "PO-26-1088", "state": "delivered" } }],
+              "tasks": [{ "title": "Flugrost an 2 Kisten bei Anadolu reklamieren", "values": { "state": "open" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Willst du das bei Anadolu reklamieren?"] },
+            "importance": "NORMAL",
+            "dependsOn": ["#loaded"]
+          }
+        },
+        {
+          "key": "invoice", "day": "2026-07-24", "time": "17:05", "from": "p-arslan", "inReplyTo": "#confirm",
+          "facts": ["invoice ADS-EXP-2026-114", "70 % balance EUR 12,432.00", "due 23/08/2026", "against CMR copy"],
+          "style": { "lang": "en", "tone": "very polite", "length": "short", "signature": "full" },
+          "subject": "Invoice ADS-EXP-2026-114 / PO-26-1088",
+          "body": "Dear Mr Morgan,\n\nWe hope the goods have arrived safely. Please find attached our invoice ADS-EXP-2026-114 for the balance of 70 % of PO-26-1088, amount EUR 12,432.00, payable against CMR copy until 23/08/2026.\n\nThank you for your cooperation.\n\nBest regards,\nMehmet Arslan\nExport Manager\nAnadolu Dövme Sanayi A.Ş.\nTel: +90 224 5550 5501",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Anadolu Dövme ADS-EXP-2026-114", "values": { "invoice_number": "ADS-EXP-2026-114", "issuer": "Anadolu Dövme", "amount": { "amount": 12432.00, "currency": "EUR" }, "due_date": "2026-08-23", "state": "open", "direction": "incoming" } }],
+              "tasks": [{ "title": "Rechnung ADS-EXP-2026-114 bezahlen", "values": { "state": "open", "due_date": "2026-08-23" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["date-format"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C1-tornilleria-po",
+      "category": "C1",
+      "summary": "Fasteners from Spain by full truckload through France; separately, the supplier announces a price increase from August.",
+      "difficulty": "medium",
+      "editorNotes": "Dates as 14/07; the price increase is a separate thread and does not affect this PO (later invoices show the new price).",
+      "tags": ["date-format", "price-increase"],
+      "numbers": ["PO-26-1091", "TC-26-40713"],
+      "beats": [
+        {
+          "key": "po", "day": "2026-07-08", "time": "09:30", "direction": "sent", "to": ["p-navarro"], "conversation": "tornilleria-po-1091",
+          "facts": ["PO-26-1091", "600 cartons hex bolts M8x40 (200 pcs) at 11.20 EUR = 6,720.00 EUR", "arrival Hamburg 20 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "PO-26-1091 hex bolts M8x40",
+          "body": "Hi Lucía,\n\nplease find our order PO-26-1091:\n600 cartons hex bolt M8x40 8.8 zinc plated (200 pcs per carton) at 11.20 EUR = 6,720.00 EUR\nArrival in Hamburg by 20 July, please.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "confirm", "day": "2026-07-09", "time": "12:45", "from": "p-navarro", "inReplyTo": "#po",
+          "facts": ["PO-26-1091 confirmed", "6,720.00 EUR", "dispatch 14/07", "4 days via France", "arrival 20/07"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short", "signature": "full" },
+          "subject": "RE: PO-26-1091 hex bolts M8x40",
+          "body": "Hi Alex,\n\nPO-26-1091 is confirmed: 600 cartons M8x40, total 6,720.00 EUR. We dispatch on 14/07 with Transportes Cierzo, transit time 4 days via France, so arrival in Hamburg on 20/07.\n\nUn saludo,\nLucía Navarro\nExport Department\nTornillería del Ebro S.L.\nTel. +34 976 5550 5201",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Tornillería del Ebro PO-26-1091", "values": { "po_number": "PO-26-1091", "supplier": "Tornillería del Ebro", "total": { "amount": 6720.00, "currency": "EUR" }, "state": "confirmed", "expected_arrival": "2026-07-20" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["date-format"]
+          }
+        },
+        {
+          "key": "increase", "day": "2026-07-10", "time": "11:00", "from": "p-navarro", "conversation": "tornilleria-price-2026-08",
+          "facts": ["steel surcharge", "prices up 6.5 % for all orders from 1 August 2026", "PO-26-1091 not affected", "new price list follows"],
+          "style": { "lang": "en", "tone": "formal", "length": "medium", "signature": "full" },
+          "subject": "Price adjustment from 1 August 2026",
+          "body": "Dear customer,\n\ndue to the continued increase of steel prices and the new steel surcharge of our wire suppliers, we are forced to increase our prices by 6.5 % for all orders placed from 1 August 2026. Orders already confirmed, such as your PO-26-1091, are not affected.\n\nThe new price list will follow next week. We thank you for your understanding.\n\nUn saludo,\nLucía Navarro\nExport Department\nTornillería del Ebro S.L.\nTel. +34 976 5550 5201",
+          "labels": {
+            "records": {
+              "suppliers": [{ "title": "Tornillería del Ebro", "values": { "name": "Tornillería del Ebro", "notes": "prices +6.5 % from 1 August 2026 (steel surcharge)" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["price-increase"]
+          }
+        },
+        {
+          "key": "loaded", "day": "2026-07-14", "time": "18:20", "from": "p-ortega", "conversation": "cierzo-40713",
+          "facts": ["loaded today in Zaragoza for Nordhafen Hamburg", "TC-26-40713, 14 pallets", "PO-26-1091", "ETA Hamburg 20/07 morning", "driver calls 1 h before"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "TC-26-40713 loaded",
+          "body": "Hello,\n\nloaded today in Zaragoza for Nordhafen Hamburg: TC-26-40713, 14 pallets, ref PO-26-1091. ETA Hamburg 20/07 morning, the driver will call 1 h before.\n\nJavier Ortega\nTransportes Cierzo - Tráfico",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Transportes Cierzo TC-26-40713", "values": { "tracking_number": "TC-26-40713", "carrier": "Transportes Cierzo", "direction": "inbound", "order_ref": "PO-26-1091", "state": "in_transit", "eta": "2026-07-20" } }],
+              "purchase_orders": [{ "title": "Tornillería del Ebro PO-26-1091", "values": { "po_number": "PO-26-1091", "state": "shipped" } }]
+            },
+            "relations": [{ "type": "delivers", "from": "shipments:Transportes Cierzo TC-26-40713", "to": "purchase_orders:Tornillería del Ebro PO-26-1091" }],
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["date-format"]
+          }
+        },
+        {
+          "key": "arrival", "day": "2026-07-20", "time": "06:10", "from": "p-ortega", "inReplyTo": "#loaded",
+          "facts": ["TC-26-40713 arrives at 08:30 today", "please confirm unloading"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: TC-26-40713 loaded",
+          "body": "Good morning, TC-26-40713 will arrive at your warehouse at 08:30 today. Please confirm unloading.\nJavier Ortega",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Transportes Cierzo TC-26-40713", "values": { "tracking_number": "TC-26-40713", "state": "in_transit", "eta": "2026-07-20" } }]
+            },
+            "derived": { "shipments.eta": "today = 20.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#arrival-ok" },
+            "importance": "HIGH",
+            "tags": ["slot-booking"]
+          }
+        },
+        {
+          "key": "arrival-ok", "day": "2026-07-20", "time": "07:05", "direction": "sent", "to": ["p-ortega"], "inReplyTo": "#arrival",
+          "facts": ["ok, gate 1, 08:30"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences" },
+          "subject": "RE: TC-26-40713 loaded",
+          "body": "Hi Javier, ok - gate 1 at 08:30.\nAlex"
+        },
+        {
+          "key": "received", "day": "2026-07-20", "time": "10:05", "from": "p-jana", "conversation": "jana-cierzo-we",
+          "facts": ["Spanier da", "14 Paletten", "alles ok", "PO-26-1091 gebucht"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "WE Tornilleria",
+          "body": "Spanier da, 14 Paletten, alles ok. PO-26-1091 ist gebucht.\nJana",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Tornillería del Ebro PO-26-1091", "values": { "po_number": "PO-26-1091", "state": "received" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C1-bassano-express",
+      "category": "C1",
+      "summary": "End mills from Italy by express: confirmation with an Italian date format, arrival and the invoice with 60 days end of month.",
+      "difficulty": "medium",
+      "editorNotes": "Payment term '60 days end of month' resolves to 30/09/2026; dates written 17/07.",
+      "tags": ["date-format"],
+      "numbers": ["PO-26-1094", "2026/VEN/0812"],
+      "beats": [
+        {
+          "key": "po", "day": "2026-07-14", "time": "10:20", "direction": "sent", "to": ["p-ferraro"], "conversation": "bassano-po-1094",
+          "facts": ["PO-26-1094", "50 end mills 12 mm Z4 at 41.00 EUR = 2,050.00 EUR", "express"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "PO-26-1094 end mills",
+          "body": "Hi Marco,\n\nplease send 50 solid carbide end mills 12 mm Z4 at 41.00 EUR = 2,050.00 EUR (PO-26-1094) by express - our stock is low after a big order.\n\nThanks\nAlex"
+        },
+        {
+          "key": "confirm", "day": "2026-07-15", "time": "09:10", "from": "p-ferraro", "inReplyTo": "#po",
+          "facts": ["PO-26-1094 confirmed", "shipped tomorrow by express", "delivery 17/07"],
+          "style": { "lang": "en", "tone": "enthusiastic", "length": "1-3 sentences", "signature": "full" },
+          "subject": "RE: PO-26-1094 end mills",
+          "body": "Ciao Alex!\n\nPO-26-1094 confirmed, 50 pcs, 2,050.00 EUR. We ship tomorrow by express, delivery in Hamburg on 17/07. Always a pleasure!\n\nMarco Ferraro\nSales Manager Export\nUtensileria Bassano S.r.l.\nTel. +39 0424 5550 5301",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Utensileria Bassano PO-26-1094", "values": { "po_number": "PO-26-1094", "supplier": "Utensileria Bassano", "total": { "amount": 2050.00, "currency": "EUR" }, "state": "confirmed", "expected_arrival": "2026-07-17" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["date-format"]
+          }
+        },
+        {
+          "key": "invoice", "day": "2026-07-17", "time": "08:30", "from": "p-ferraro", "conversation": "bassano-invoice-0812",
+          "facts": ["invoice 2026/VEN/0812", "PO-26-1094", "2,050.00 EUR", "payment 60 days end of month: 30/09/2026"],
+          "style": { "lang": "en", "tone": "routine", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Invoice 2026/VEN/0812",
+          "body": "Dear Alex,\n\nattached our invoice 2026/VEN/0812 for PO-26-1094, amount 2,050.00 EUR, payment 60 days end of month (30/09/2026).\n\nMarco Ferraro\nUtensileria Bassano S.r.l.\nTel. +39 0424 5550 5301",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Utensileria Bassano 2026/VEN/0812", "values": { "invoice_number": "2026/VEN/0812", "issuer": "Utensileria Bassano", "amount": { "amount": 2050.00, "currency": "EUR" }, "due_date": "2026-09-30", "state": "open", "direction": "incoming" } }],
+              "tasks": [{ "title": "Rechnung 2026/VEN/0812 bezahlen", "values": { "state": "open", "due_date": "2026-09-30" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["date-format"]
+          }
+        },
+        {
+          "key": "received", "day": "2026-07-17", "time": "11:50", "from": "p-jana", "conversation": "jana-bassano-we",
+          "facts": ["Fräser aus Italien da", "50 Stück", "PO-26-1094 gebucht"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Fräser Bassano",
+          "body": "Fräser aus Italien sind da, 50 Stk., PO-26-1094 gebucht.\nJ.",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Utensileria Bassano PO-26-1094", "values": { "po_number": "PO-26-1094", "state": "received" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth", "very-short"]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "m-0132",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-ostrowski-cancel",
+  "cc": [
+    "marek.kowalczyk@ostrowski-serwis.example"
+  ],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "explain",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": "m-0128",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "pawel.zielinski@ostrowski-serwis.example"
+    ],
+    "subject": "RE: Cancel order 2026/OS/118",
+    "receivedAt": "2026-07-15T07:30:00Z",
+    "body": "Dear Mr Zieliński,\n\nthe goods already left our warehouse on 14 July with Wisła-Trans (consignment WTS-PL-260714) and will arrive tomorrow. We can take them back unopened with a 10 % restocking fee, or you keep them. Please let me know how you want to proceed.\n\nBest regards\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "goods left on 14 July with Wisła-Trans (WTS-PL-260714)",
+    "arrive tomorrow",
+    "return unopened with 10 % restocking fee, or keep"
+  ]
+}

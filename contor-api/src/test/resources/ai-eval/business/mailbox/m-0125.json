@@ -1,0 +1,96 @@
+{
+  "id": "m-0125",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-cierzo-40713",
+  "cc": [],
+  "storyline": "C1-tornilleria-po",
+  "beat": "loaded",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Javier Ortega",
+    "fromAddress": "trafico@transportes-cierzo.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "TC-26-40713 loaded",
+    "receivedAt": "2026-07-14T16:20:00Z",
+    "body": "Hello,\n\nloaded today in Zaragoza for Nordhafen Hamburg: TC-26-40713, 14 pallets, ref PO-26-1091. ETA Hamburg 20/07 morning, the driver will call 1 h before.\n\nJavier Ortega\nTransportes Cierzo - Tráfico"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Transportes Cierzo TC-26-40713",
+          "values": {
+            "tracking_number": "TC-26-40713",
+            "carrier": "Transportes Cierzo",
+            "direction": "inbound",
+            "order_ref": "PO-26-1091",
+            "state": "in_transit",
+            "eta": "2026-07-20"
+          }
+        }
+      ],
+      "purchase_orders": [
+        {
+          "title": "Tornillería del Ebro PO-26-1091",
+          "values": {
+            "po_number": "PO-26-1091",
+            "state": "shipped"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Javier Ortega",
+          "values": {
+            "email": "trafico@transportes-cierzo.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Transportes Cierzo S.L.",
+          "values": {
+            "domain": "transportes-cierzo.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Javier Ortega",
+        "to": "organizations:Transportes Cierzo S.L."
+      },
+      {
+        "type": "delivers",
+        "from": "shipments:Transportes Cierzo TC-26-40713",
+        "to": "purchase_orders:Tornillería del Ebro PO-26-1091"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "date-format"
+  ],
+  "storylineTags": [
+    "date-format",
+    "price-increase"
+  ],
+  "facts": [
+    "loaded today in Zaragoza for Nordhafen Hamburg",
+    "TC-26-40713, 14 pallets",
+    "PO-26-1091",
+    "ETA Hamburg 20/07 morning",
+    "driver calls 1 h before"
+  ]
+}

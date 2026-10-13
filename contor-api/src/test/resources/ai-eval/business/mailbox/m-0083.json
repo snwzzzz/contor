@@ -1,0 +1,60 @@
+{
+  "id": "m-0083",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kiebitz-KP402611870093",
+  "cc": [],
+  "storyline": "B1-kiebitz-notices",
+  "beat": "delivered-093",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kiebitz Paket",
+    "fromAddress": "noreply@kiebitz-paket.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Ihre Sendung KP402611870093 wurde zugestellt",
+    "receivedAt": "2026-07-10T08:52:00Z",
+    "body": "Guten Tag,\n\nIhre Sendung KP402611870093 wurde am 10.07.2026 um 10:48 Uhr zugestellt.\nEmpfang quittiert von: Kurz\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kiebitz Paket KP402611870093",
+          "values": {
+            "tracking_number": "KP402611870093",
+            "state": "delivered"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "automated"
+  ],
+  "facts": [
+    "Sendung KP402611870093 zugestellt",
+    "10.07.2026 10:48 Uhr",
+    "Empfang quittiert: Kurz"
+  ]
+}

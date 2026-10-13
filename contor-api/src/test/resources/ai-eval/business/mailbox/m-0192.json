@@ -1,0 +1,44 @@
+{
+  "id": "m-0192",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-falkenrath-4500012877",
+  "cc": [],
+  "storyline": "A6-falkenrath-orders",
+  "beat": "confirm",
+  "category": "A6",
+  "lang": "de",
+  "inReplyTo": "m-0186",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "melanie.kurz@falkenrath-antriebe.example"
+    ],
+    "subject": "AW: Bestellung 4500012877",
+    "receivedAt": "2026-07-20T09:15:00Z",
+    "body": "Guten Tag Frau Kurz,\n\nvielen Dank, Ihre Bestellung 4500012877 ist bei uns als SO-26-0168 erfasst:\n60 Stk. NH-52300 à 6,40 € = 384,00 €\n20 Stk. NH-52340 à 21,90 € = 438,00 €\nGesamt 822,00 € netto, Liefertermin Dienstag, 28.07.\n\nViele Grüße\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "duplicate-account",
+    "calendar-week"
+  ],
+  "facts": [
+    "SO-26-0168",
+    "60 × 6,40 € = 384,00 €",
+    "20 × 21,90 € = 438,00 €",
+    "822,00 € netto",
+    "Liefertermin Di 28.07."
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "m-0244",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kranhoeft-dijkstra",
+  "cc": [],
+  "storyline": "B1-dijkstra-split",
+  "beat": "partly",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": "m-0224",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Claudia Wendler",
+    "fromAddress": "c.wendler@kranhoeft-spedition.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Sendungsaufteilung Dijkstra Werktuigen / SO-26-0147",
+    "receivedAt": "2026-07-23T15:15:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nKHS-HH-26071 wurde heute zugestellt. KHS-HH-26072 wurde in unserem Hub leider falsch verladen und kommt erst am Freitag, 24.07., in Eindhoven an.\n\nMit freundlichen Grüßen\nClaudia Wendler"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kranhöft KHS-HH-26071",
+          "values": {
+            "tracking_number": "KHS-HH-26071",
+            "state": "delivered"
+          }
+        },
+        {
+          "title": "Kranhöft KHS-HH-26072",
+          "values": {
+            "tracking_number": "KHS-HH-26072",
+            "state": "delayed",
+            "eta": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Claudia Wendler",
+          "values": {
+            "email": "c.wendler@kranhoeft-spedition.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kranhöft Spedition GmbH",
+          "values": {
+            "domain": "kranhoeft-spedition.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Claudia Wendler",
+        "to": "organizations:Kranhöft Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "split-shipment",
+    "delay"
+  ],
+  "storylineTags": [
+    "split-shipment"
+  ],
+  "facts": [
+    "KHS-HH-26071 zugestellt",
+    "KHS-HH-26072 verspätet sich auf Fr 24.07.",
+    "Rangierfehler im Hub"
+  ]
+}

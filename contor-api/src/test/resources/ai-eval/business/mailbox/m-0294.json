@@ -1,0 +1,76 @@
+{
+  "id": "m-0294",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-delacroix-rfq",
+  "cc": [],
+  "storyline": "A1-delacroix-rfq",
+  "beat": "received",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": "m-0213",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Julien Marchand",
+    "fromAddress": "j.marchand@delacroix-usinage.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Request for quotation",
+    "receivedAt": "2026-07-29T14:45:00Z",
+    "body": "Dear Mr Morgan,\n\nWe confirm receipt of the goods for SO-26-0167 in good order.\n\nYours sincerely,\nJulien Marchand"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Delacroix Usinage SO-26-0167",
+          "entity": "so-0167",
+          "values": {
+            "order_number": "SO-26-0167",
+            "customer": "Delacroix Usinage",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Julien Marchand",
+          "values": {
+            "email": "j.marchand@delacroix-usinage.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Delacroix Usinage SAS",
+          "values": {
+            "domain": "delacroix-usinage.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Julien Marchand",
+        "to": "organizations:Delacroix Usinage SAS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "new-customer",
+    "context-needed"
+  ],
+  "facts": [
+    "goods for SO-26-0167 received in good order"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "id": "m-0109",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-anadolu-2027",
+  "cc": [],
+  "storyline": "F1-anadolu-video",
+  "beat": "link",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": "m-0099",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mehmet Arslan",
+    "fromAddress": "m.arslan@anadolu-dovme.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Video call - annual volume 2027",
+    "receivedAt": "2026-07-14T05:40:00Z",
+    "body": "Dear Mr Morgan,\n\nthank you, confirmed for Thursday, 16 July, 11:00 Istanbul time. Here is the link: https://meet.anadolu-dovme.example/ads-nordhafen\n\nBest regards,\nMehmet Arslan"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Video call with Mehmet Arslan about volume 2027",
+          "entity": "anadolu-call",
+          "values": {
+            "starts_at": "2026-07-16T11:00:00+03:00",
+            "location": "https://meet.anadolu-dovme.example/ads-nordhafen"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Mehmet Arslan",
+          "values": {
+            "email": "m.arslan@anadolu-dovme.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Anadolu Dövme Sanayi A.Ş.",
+          "values": {
+            "domain": "anadolu-dovme.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Mehmet Arslan",
+        "to": "organizations:Anadolu Dövme Sanayi A.Ş."
+      },
+      {
+        "type": "attends",
+        "from": "people:Mehmet Arslan",
+        "to": "events:Video call with Mehmet Arslan about volume 2027"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "time-zone"
+  ],
+  "storylineTags": [
+    "time-zone"
+  ],
+  "facts": [
+    "confirmed Thursday 16 July 11:00 Istanbul time",
+    "link https://meet.anadolu-dovme.example/ads-nordhafen"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "id": "m-0170",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bestand-kw29",
+  "cc": [],
+  "storyline": "G5-jana-stock-reports",
+  "beat": "kw29",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestand KW 29",
+    "receivedAt": "2026-07-17T11:15:00Z",
+    "body": "Bestandsliste KW 29 anbei. Kritisch: Schnittschutzhandschuhe Stufe C, nur noch 4 Pack. Bitte bis Dienstag bestellen.\nJana"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Schnittschutzhandschuhe Stufe C nachbestellen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-21"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "recurring",
+    "relative-date"
+  ],
+  "storylineTags": [
+    "recurring"
+  ],
+  "facts": [
+    "Bestandsliste KW 29",
+    "kritisch: Schnittschutzhandschuhe Stufe C (4 Pack)",
+    "Bestellung bis Dienstag"
+  ],
+  "derived": {
+    "tasks.due_date": "bis Dienstag after Friday 17.07. = 21.07.2026"
+  }
+}

@@ -314,4 +314,25 @@ class MailSyncServiceTest {
 
         assertThat(account.getSentDeltaLink()).isEqualTo("fresh");
     }
+
+    @Test
+    void syncAccount_DemoAccountNeverCallsMicrosoft() {
+        account.setProvider(MailProvider.DEMO);
+
+        var status = mailSyncService.syncAccount(account);
+
+        assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
+        assertThat(status.getMessagesSynced()).isZero();
+        verifyNoInteractions(msGraphAuthService, msGraphMailService, emailMessageRepository);
+    }
+
+    @Test
+    void syncAllActiveAccounts_SkipsDemoAccounts() {
+        account.setProvider(MailProvider.DEMO);
+        when(mailAccountRepository.findByStatus(MailAccountStatus.ACTIVE)).thenReturn(List.of(account));
+
+        mailSyncService.syncAllActiveAccounts();
+
+        verifyNoInteractions(msGraphAuthService, msGraphMailService, emailMessageRepository);
+    }
 }

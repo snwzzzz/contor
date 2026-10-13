@@ -1,0 +1,211 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "G1-daniel-hs-codes",
+      "category": "G",
+      "summary": "Export sales asks the owner for customs tariff numbers by Thursday; the owner sends them and the colleague confirms.",
+      "difficulty": "easy",
+      "editorNotes": "Relative deadline 'bis Donnerstag'; the follow-up 'hab alles' marks the to-do done.",
+      "tags": ["todo-done"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "ask", "day": "2026-07-14", "time": "13:20", "from": "p-daniel", "conversation": "daniel-hs-codes",
+          "facts": ["neues Exportdatenblatt", "bitte bis Donnerstag die Zolltarifnummern der Top-20-Artikel"],
+          "style": { "lang": "de", "tone": "quick, English terms", "length": "1-3 sentences", "signature": "none" },
+          "subject": "HS-Codes Top 20",
+          "body": "Hi Alex,\n\nfür das neue Export-Datasheet brauche ich bitte bis Donnerstag die Zolltarifnummern unserer Top-20-Artikel. Hast du die irgendwo als Liste?\n\nThanks\nDaniel",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Zolltarifnummern der Top-20-Artikel an Daniel schicken", "values": { "state": "open", "due_date": "2026-07-16" } }]
+            },
+            "derived": { "tasks.due_date": "bis Donnerstag after Tuesday 14.07. = 16.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": ["Hast du die Zolltarifnummern als Liste?"], "answeredBy": "#send" },
+            "importance": "NORMAL",
+            "tags": ["relative-date"]
+          }
+        },
+        {
+          "key": "send", "day": "2026-07-16", "time": "11:00", "direction": "sent", "to": ["p-daniel"], "inReplyTo": "#ask",
+          "facts": ["Liste der Top-20 mit Zolltarifnummern anbei"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: HS-Codes Top 20",
+          "body": "Hi Daniel,\n\nanbei die Liste der Top 20 mit Zolltarifnummern (Stand Juli).\n\nAlex"
+        },
+        {
+          "key": "done", "day": "2026-07-16", "time": "11:25", "from": "p-daniel", "inReplyTo": "#send",
+          "facts": ["danke, hab alles"],
+          "style": { "lang": "de", "tone": "quick", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: HS-Codes Top 20",
+          "body": "Danke, hab alles!\nD.",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Zolltarifnummern der Top-20-Artikel an Daniel schicken", "values": { "state": "done" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "dependsOn": ["#ask"],
+            "tags": ["todo-done", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "G2-glanzwerk-cleaning",
+      "category": "G",
+      "summary": "The facility service announces a Saturday deep clean with two preparation to-dos; the owner delegates them to the warehouse lead.",
+      "difficulty": "medium",
+      "editorNotes": "Two to-dos with different deadlines plus a weekend event; delegation by forward.",
+      "tags": ["delegation"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "notice", "day": "2026-07-09", "time": "08:15", "from": "p-yilmaz", "conversation": "glanzwerk-grundreinigung",
+          "facts": ["Grundreinigung Lagerhalle Samstag 18.07. ab 7 Uhr", "Gänge bis Freitag 17.07. freiräumen", "Schlüssel bis Donnerstag 16.07. organisieren", "bitte Termin bestätigen"],
+          "style": { "lang": "de", "tone": "short", "length": "short", "signature": "full" },
+          "subject": "Grundreinigung Lagerhalle 18.07.",
+          "body": "Guten Tag Herr Morgan,\n\nwie vereinbart führen wir die Grundreinigung der Lagerhalle am Samstag, 18.07., ab 7 Uhr durch. Bitte lassen Sie die Gänge bis Freitag, 17.07., freiräumen und stellen Sie uns bis Donnerstag, 16.07., einen Schlüssel bereit. Bitte bestätigen Sie den Termin kurz.\n\nMit freundlichen Grüßen\nSerkan Yılmaz\nObjektleitung\nGlanzwerk Gebäudeservice GmbH\nTel. +49 40 5550 7601",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Grundreinigung Lagerhalle durch Glanzwerk", "values": { "starts_at": "2026-07-18T07:00:00+02:00", "location": "Lagerhalle" } }],
+              "tasks": [
+                { "title": "Gänge in der Lagerhalle freiräumen", "values": { "state": "open", "due_date": "2026-07-17" } },
+                { "title": "Schlüssel für Glanzwerk bereitstellen", "values": { "state": "open", "due_date": "2026-07-16" } }
+              ]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Bitte bestätigen Sie den Termin."], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "delegate", "day": "2026-07-09", "time": "09:00", "direction": "sent", "to": ["p-jana"], "conversation": "glanzwerk-intern",
+          "facts": ["kannst du das übernehmen?", "Gänge bis Fr frei, Schlüssel bis Do"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "quoting": "forward" },
+          "subject": "WG: Grundreinigung Lagerhalle 18.07.",
+          "body": "Hi Jana,\n\nkannst du das übernehmen? Gänge bis Freitag frei, Schlüssel bis Donnerstag an Glanzwerk.\n\nDanke!\nAlex\n\nVon: Serkan Yılmaz <s.yilmaz@glanzwerk-service.example>\nGesendet: Donnerstag, 9. Juli 2026 08:15\nBetreff: Grundreinigung Lagerhalle 18.07.\n\nwie vereinbart führen wir die Grundreinigung der Lagerhalle am Samstag, 18.07., ab 7 Uhr durch."
+        },
+        {
+          "key": "confirm", "day": "2026-07-09", "time": "09:05", "direction": "sent", "to": ["p-yilmaz"], "inReplyTo": "#notice",
+          "facts": ["Termin bestätigt", "Ansprechpartnerin Jana Petersen"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Grundreinigung Lagerhalle 18.07.",
+          "body": "Guten Tag Herr Yılmaz,\n\nder Termin ist bestätigt. Ansprechpartnerin vor Ort ist unsere Lagerleiterin Jana Petersen.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "jana", "day": "2026-07-09", "time": "09:40", "from": "p-jana", "inReplyTo": "#delegate",
+          "facts": ["mach ich"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: WG: Grundreinigung Lagerhalle 18.07.",
+          "body": "Mach ich.\nJ.",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "G3-tobias-zahllauf",
+      "category": "G",
+      "summary": "Accounting asks on Friday afternoon for approved supplier invoices by Monday for Tuesday's payment run.",
+      "difficulty": "medium",
+      "editorNotes": "'bis Montag' crosses a weekend (27 July).",
+      "tags": ["relative-date"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "ask", "day": "2026-07-24", "time": "16:30", "from": "p-tobias", "conversation": "zahllauf-0728",
+          "facts": ["bis Montag die freigegebenen Eingangsrechnungen von Anadolu und Bassano", "Zahllauf Dienstag"],
+          "style": { "lang": "de", "tone": "precise", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Freigaben für Zahllauf",
+          "body": "Hi Alex,\n\nkannst du mir bis Montag die freigegebenen Eingangsrechnungen von Anadolu und Bassano geben? Ich mache Dienstag den Zahllauf.\n\nSchönes Wochenende\nTobias",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Eingangsrechnungen Anadolu und Bassano für den Zahllauf freigeben", "values": { "state": "open", "due_date": "2026-07-27" } }]
+            },
+            "derived": { "tasks.due_date": "bis Montag after Friday 24.07. = 27.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": ["Kannst du mir bis Montag die freigegebenen Eingangsrechnungen geben?"] },
+            "importance": "NORMAL",
+            "tags": ["relative-date"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "G4-sophie-catalogue",
+      "category": "G",
+      "summary": "A colleague forwards a customer's request for the new catalogue and asks the owner to send it.",
+      "difficulty": "medium",
+      "editorNotes": "The to-do is the colleague's request on top, not the customer's request in the forwarded mail.",
+      "tags": ["forwarded"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "forward", "day": "2026-07-22", "time": "13:05", "from": "p-sophie", "conversation": "sophie-katalog",
+          "facts": ["kannst du Oskar den neuen Katalog schicken?", "kein Zugriff auf die neue Version", "weitergeleitet: Oskar fragt nach aktuellem Katalog als PDF"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "quoting": "forward" },
+          "subject": "WG: Catalogue",
+          "body": "Hi Alex,\n\nkannst du Oskar den neuen Katalog als PDF schicken? Ich habe keinen Zugriff auf die neue Version. Danke dir!\n\nSophie\n\nVon: Oskar Nyberg <oskar.nyberg@lindgren-verktyg.example>\nGesendet: Mittwoch, 22. Juli 2026 11:40\nAn: Sophie Brandt <sophie.brandt@nordhafen.example>\nBetreff: Catalogue\n\nHi Sophie,\n\ncould you send us your updated catalogue as PDF? Our new apprentices are building a parts list.\n\nCheers,\nOskar",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Oskar Nyberg den neuen Katalog als PDF schicken", "values": { "state": "open" } }],
+              "people": [{ "title": "Oskar Nyberg", "values": { "email": "oskar.nyberg@lindgren-verktyg.example" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": ["Kannst du Oskar den neuen Katalog als PDF schicken?"] },
+            "importance": "NORMAL",
+            "tags": ["forwarded"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J-wrong-recipient",
+      "category": "J",
+      "summary": "A customer sends a request meant for another Alex and retracts it ten minutes later.",
+      "difficulty": "hard",
+      "editorNotes": "The first mail reads like a real request; the second retracts it, so nothing should remain.",
+      "tags": ["wrong-recipient"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "wrong", "day": "2026-07-22", "time": "16:02", "from": "p-rthiele", "conversation": "thiele-falscher-alex",
+          "facts": ["Standaufbau Messe Leipzig", "bitte die Leuchten bis Freitag liefern", "Rechnung an die Messe-GmbH"],
+          "style": { "lang": "de", "tone": "hurried", "length": "1-3 sentences", "signature": "short" },
+          "subject": "Leuchten Stand Halle 2",
+          "body": "Hallo Alex,\n\nfür den Standaufbau in Halle 2 bitte die Leuchten bis Freitag liefern, Rechnung wie besprochen an die Messe-GmbH.\n\nGruß\nRobert",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Leuchten für den Stand in Halle 2 bis Freitag liefern", "values": { "state": "open", "due_date": "2026-07-24" } }]
+            },
+            "derived": { "tasks.due_date": "bis Freitag after Wednesday 22.07. = 24.07.2026" },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["wrong-recipient"]
+          }
+        },
+        {
+          "key": "sorry", "day": "2026-07-22", "time": "16:12", "from": "p-rthiele", "inReplyTo": "#wrong",
+          "facts": ["sorry, die Mail war für einen anderen Alex", "bitte ignorieren"],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Leuchten Stand Halle 2",
+          "body": "Sorry, Herr Morgan – die Mail war für einen anderen Alex (unseren Elektriker). Bitte ignorieren!\n\nR. Thiele",
+          "labels": {
+            "retracts": ["tasks:Leuchten für den Stand in Halle 2 bis Freitag liefern"],
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["wrong-recipient"]
+          }
+        }
+      ]
+    }
+  ]
+}

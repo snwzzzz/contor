@@ -1,0 +1,84 @@
+{
+  "id": "m-0024",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-so-0149",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "ask",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Thomas Reuter",
+    "fromAddress": "thomas.reuter@hartmann-hydraulik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Liefertermin SO-26-0149",
+    "receivedAt": "2026-07-07T07:30:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nkönnen Sie mir bitte bestätigen, dass SO-26-0149 wie vereinbart am 10.07. bei uns ist? Wir planen unseren Wartungsstillstand danach.\n\nMit freundlichen Grüßen\nThomas Reuter\nLeiter Instandhaltung\nHartmann Hydraulik GmbH\nTel. +49 821 5550 3201"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Hartmann Hydraulik SO-26-0149",
+          "values": {
+            "order_number": "SO-26-0149",
+            "customer": "Hartmann Hydraulik",
+            "confirmed_delivery": "2026-07-10"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Thomas Reuter",
+          "values": {
+            "email": "thomas.reuter@hartmann-hydraulik.example",
+            "phone": "+49 821 5550 3201",
+            "role_title": "Leiter Instandhaltung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Hartmann Hydraulik GmbH",
+          "values": {
+            "domain": "hartmann-hydraulik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Thomas Reuter",
+        "to": "organizations:Hartmann Hydraulik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Kommt SO-26-0149 wie vereinbart am 10.07.?"
+    ],
+    "answeredBy": "m-0029"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "escalation"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "Bitte bestätigen: SO-26-0149 kommt wie vereinbart am 10.07.",
+    "Stillstand danach geplant"
+  ]
+}

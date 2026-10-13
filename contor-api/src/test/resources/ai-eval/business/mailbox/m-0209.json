@@ -1,0 +1,92 @@
+{
+  "id": "m-0209",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-fair",
+  "cc": [],
+  "storyline": "F2-ostrowski-fair",
+  "beat": "ask",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Kowalczyk",
+    "fromAddress": "marek.kowalczyk@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "IndustrieTage Ruhrfeld",
+    "receivedAt": "2026-07-21T09:30:00Z",
+    "body": "Hi Alex,\n\nwill you be at IndustrieTage Ruhrfeld in September? Could we meet at your booth on 16 September at 14:00?\n\nPozdrawiam\nMarek Kowalczyk\nPurchasing Manager\nOstrowski Serwis Sp. z o.o.\ntel. +48 61 5550 2801"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld",
+          "entity": "fair-ostrowski",
+          "values": {
+            "starts_at": "2026-09-16T14:00:00+02:00"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marek Kowalczyk",
+          "values": {
+            "email": "marek.kowalczyk@ostrowski-serwis.example",
+            "phone": "+48 61 5550 2801",
+            "role_title": "Purchasing Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marek Kowalczyk",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      },
+      {
+        "type": "attends",
+        "from": "people:Marek Kowalczyk",
+        "to": "events:Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Will you be at IndustrieTage Ruhrfeld in September?",
+      "Could we meet at your booth on 16 September at 14:00?"
+    ],
+    "scheduleFrom": "2026-09-16",
+    "scheduleTo": "2026-09-16",
+    "timeOfDay": "AFTERNOON",
+    "answeredBy": "m-0212"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "different-marek"
+  ],
+  "storylineTags": [
+    "trade-fair",
+    "different-marek"
+  ],
+  "facts": [
+    "will you be at IndustrieTage Ruhrfeld in September?",
+    "meet at your booth on 16 September at 14:00?"
+  ]
+}

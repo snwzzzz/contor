@@ -1,0 +1,93 @@
+{
+  "id": "m-0273",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-rhoenblick-ra-260731",
+  "cc": [],
+  "storyline": "J7-rechnung-subjects",
+  "beat": "rhoenblick",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Nina Becker",
+    "fromAddress": "nina.becker@rhoenblick-arbeitsschutz.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rechnung",
+    "receivedAt": "2026-07-28T06:05:00Z",
+    "body": "Guten Tag,\n\nanbei erhalten Sie unsere Rechnung RA-260731 über 412,30 €, fällig am 27.08.2026.\n\nMit freundlichen Grüßen\nNina Becker\nKundenservice\nRhönblick Arbeitsschutz GmbH\nTel. +49 661 5550 5801"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Rhönblick Arbeitsschutz RA-260731",
+          "values": {
+            "invoice_number": "RA-260731",
+            "issuer": "Rhönblick Arbeitsschutz",
+            "amount": {
+              "amount": 412.3,
+              "currency": "EUR"
+            },
+            "due_date": "2026-08-27",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung RA-260731 bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-08-27"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Nina Becker",
+          "values": {
+            "email": "nina.becker@rhoenblick-arbeitsschutz.example",
+            "phone": "+49 661 5550 5801",
+            "role_title": "Kundenservice"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Rhönblick Arbeitsschutz GmbH",
+          "values": {
+            "domain": "rhoenblick-arbeitsschutz.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Nina Becker",
+        "to": "organizations:Rhönblick Arbeitsschutz GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "same-subject"
+  ],
+  "storylineTags": [
+    "same-subject"
+  ],
+  "facts": [
+    "Rechnung RA-260731",
+    "412,30 €",
+    "fällig 27.08.2026"
+  ]
+}

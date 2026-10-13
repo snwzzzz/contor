@@ -1,0 +1,3203 @@
+{
+  "asOf": "2026-07-31T10:55:00Z",
+  "records": {
+    "events": [
+      {
+        "title": "Weekly Leitungsrunde",
+        "values": {
+          "starts_at": "2026-07-13T08:30:00+02:00",
+          "location": "Besprechungsraum 2"
+        },
+        "sources": [
+          "m-0005"
+        ]
+      },
+      {
+        "title": "Anlieferung Wisła-Trans PO-26-1083",
+        "values": {
+          "starts_at": "2026-07-10T14:30:00+02:00"
+        },
+        "sources": [
+          "m-0049",
+          "m-0081"
+        ]
+      },
+      {
+        "title": "Grundreinigung Lagerhalle durch Glanzwerk",
+        "values": {
+          "starts_at": "2026-07-18T07:00:00+02:00",
+          "location": "Lagerhalle"
+        },
+        "sources": [
+          "m-0060"
+        ]
+      },
+      {
+        "title": "Besprechung Halbjahresabschluss mit Herrn Behrens",
+        "values": {
+          "starts_at": "2026-07-23T14:00:00+02:00",
+          "location": "Speicherallee 7, 20457 Hamburg"
+        },
+        "sources": [
+          "m-0063"
+        ]
+      },
+      {
+        "title": "Video call with Mehmet Arslan about volume 2027",
+        "values": {
+          "starts_at": "2026-07-16T11:00:00+03:00",
+          "location": "https://meet.anadolu-dovme.example/ads-nordhafen"
+        },
+        "sources": [
+          "m-0094",
+          "m-0109"
+        ]
+      },
+      {
+        "title": "IndustrieTage Ruhrfeld",
+        "values": {
+          "starts_at": "2026-09-15T00:00:00+02:00",
+          "ends_at": "2026-09-17T23:59:00+02:00",
+          "all_day": true,
+          "location": "Halle 3, Stand C14"
+        },
+        "sources": [
+          "m-0134"
+        ]
+      },
+      {
+        "title": "Weekly Leitungsrunde 21.07.",
+        "values": {
+          "starts_at": "2026-07-21T09:00:00+02:00"
+        },
+        "sources": [
+          "m-0176"
+        ]
+      },
+      {
+        "title": "Dinner with Marco Ferraro",
+        "values": {
+          "starts_at": "2026-07-28T19:30:00+02:00",
+          "location": "Restaurant Kaimauer, Kaiufer 30"
+        },
+        "sources": [
+          "m-0194",
+          "m-0201"
+        ]
+      },
+      {
+        "title": "Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld",
+        "values": {
+          "starts_at": "2026-09-16T14:00:00+02:00",
+          "location": "hall 3, booth C14"
+        },
+        "sources": [
+          "m-0209",
+          "m-0218"
+        ]
+      },
+      {
+        "title": "Termin mit Klaus Kessler zu Konditionen",
+        "values": {
+          "starts_at": "2026-07-29T10:00:00+02:00",
+          "location": "Bielefeld"
+        },
+        "sources": [
+          "m-0246"
+        ]
+      },
+      {
+        "title": "Kundenbesuch Vossberg Rahmenvertrag 2027",
+        "values": {
+          "starts_at": "2026-07-30T10:00:00+02:00",
+          "location": "Bremen"
+        },
+        "sources": [
+          "m-0264"
+        ]
+      },
+      {
+        "title": "Anlieferung Wisła-Trans PO-26-1083 Rest",
+        "values": {
+          "starts_at": "2026-07-29T09:00:00+02:00"
+        },
+        "sources": [
+          "m-0265"
+        ]
+      }
+    ],
+    "people": [
+      {
+        "title": "Dr. Helga Sommerfeld",
+        "values": {
+          "email": "helga.sommerfeld@nordhafen.example"
+        },
+        "sources": [
+          "m-0005",
+          "m-0149",
+          "m-0174",
+          "m-0176"
+        ]
+      },
+      {
+        "title": "Jens Albers",
+        "values": {
+          "email": "jens.albers@vossberg-foerdertechnik.example"
+        },
+        "sources": [
+          "m-0007",
+          "m-0073",
+          "m-0121",
+          "m-0261",
+          "m-0289"
+        ]
+      },
+      {
+        "title": "Agnieszka Mazur",
+        "values": {
+          "email": "a.mazur@odlewnia-wislana.example",
+          "phone": "+48 32 5550 5101",
+          "role_title": "Export Sales"
+        },
+        "sources": [
+          "m-0009",
+          "m-0044",
+          "m-0137",
+          "m-0230"
+        ]
+      },
+      {
+        "title": "Robert Thiele",
+        "values": {
+          "email": "r.thiele@thiele-messebau.example",
+          "phone": "+49 341 5550 4001",
+          "role_title": "Inhaber"
+        },
+        "sources": [
+          "m-0010",
+          "m-0034",
+          "m-0142",
+          "m-0233",
+          "m-0234"
+        ]
+      },
+      {
+        "title": "Philipp Seidel",
+        "values": {
+          "email": "philipp.seidel@auerbach-medizintechnik.example",
+          "phone": "+49 7461 5550 3701",
+          "role_title": "Einkauf"
+        },
+        "sources": [
+          "m-0012",
+          "m-0071",
+          "m-0197"
+        ]
+      },
+      {
+        "title": "Kerstin Paulsen",
+        "values": {
+          "email": "k.paulsen@elbtal-lagertechnik.example",
+          "phone": "+49 351 5550 5701",
+          "role_title": "Auftragsbearbeitung"
+        },
+        "sources": [
+          "m-0015",
+          "m-0110",
+          "m-0152",
+          "m-0166"
+        ]
+      },
+      {
+        "title": "Ingrid Solberg",
+        "values": {
+          "email": "ingrid.solberg@halvorsen-verksted.example",
+          "phone": "+47 5550 2401",
+          "role_title": "Purchasing Manager"
+        },
+        "sources": [
+          "m-0016"
+        ]
+      },
+      {
+        "title": "Mehmet Arslan",
+        "values": {
+          "email": "m.arslan@anadolu-dovme.example",
+          "phone": "+90 224 5550 5501",
+          "role_title": "Export Manager"
+        },
+        "sources": [
+          "m-0023",
+          "m-0094",
+          "m-0109",
+          "m-0254"
+        ]
+      },
+      {
+        "title": "Thomas Reuter",
+        "values": {
+          "email": "thomas.reuter@hartmann-hydraulik.example",
+          "phone": "+49 821 5550 3201",
+          "role_title": "Leiter Instandhaltung"
+        },
+        "sources": [
+          "m-0024",
+          "m-0095",
+          "m-0146",
+          "m-0171"
+        ]
+      },
+      {
+        "title": "Tobias Krüger",
+        "values": {
+          "email": "tobias.krueger@nordhafen.example",
+          "phone": "+49 40 5550 1021",
+          "role_title": "Buchhaltung"
+        },
+        "sources": [
+          "m-0025",
+          "m-0037",
+          "m-0191",
+          "m-0204",
+          "m-0255",
+          "m-0282"
+        ]
+      },
+      {
+        "title": "Camille Rousseau",
+        "values": {
+          "email": "c.rousseau@delacroix-usinage.example",
+          "phone": "+33 4 5550 3902",
+          "role_title": "Purchasing Lead"
+        },
+        "sources": [
+          "m-0027",
+          "m-0082",
+          "m-0097",
+          "m-0173",
+          "m-0227",
+          "m-0300"
+        ]
+      },
+      {
+        "title": "Femke de Wit",
+        "values": {
+          "email": "f.dewit@dijkstra-werktuigen.example",
+          "phone": "+31 40 5550 2301",
+          "role_title": "Purchasing"
+        },
+        "sources": [
+          "m-0028",
+          "m-0065",
+          "m-0124",
+          "m-0162"
+        ]
+      },
+      {
+        "title": "Reto Baumann",
+        "values": {
+          "email": "reto.baumann@steiner-praezision.example",
+          "phone": "+41 52 5550 3001",
+          "role_title": "Leiter Einkauf"
+        },
+        "sources": [
+          "m-0035",
+          "m-0098",
+          "m-0303"
+        ]
+      },
+      {
+        "title": "Dirk Hollmann",
+        "values": {
+          "email": "d.hollmann@wupperthal-schleifmittel.example",
+          "phone": "+49 202 5550 5601",
+          "role_title": "Vertriebsinnendienst"
+        },
+        "sources": [
+          "m-0036",
+          "m-0088"
+        ]
+      },
+      {
+        "title": "Marek Kowalczyk",
+        "values": {
+          "email": "marek.kowalczyk@ostrowski-serwis.example",
+          "phone": "+48 61 5550 2801",
+          "role_title": "Purchasing Manager"
+        },
+        "sources": [
+          "m-0040",
+          "m-0141",
+          "m-0209",
+          "m-0218",
+          "m-0276"
+        ]
+      },
+      {
+        "title": "Sabine Wendt",
+        "values": {
+          "email": "s.wendt@kessler-maschinenbau.example",
+          "phone": "+49 521 5550 3101",
+          "role_title": "Einkauf"
+        },
+        "sources": [
+          "m-0041",
+          "m-0202"
+        ]
+      },
+      {
+        "title": "Ulrich Behrens",
+        "values": {
+          "email": "u.behrens@behrens-kolb.example",
+          "phone": "+49 40 5550 7501",
+          "role_title": "Steuerberater"
+        },
+        "sources": [
+          "m-0042",
+          "m-0063"
+        ]
+      },
+      {
+        "title": "Katarzyna Lewandowska",
+        "values": {
+          "email": "k.lewandowska@wislatrans.example",
+          "phone": "+48 71 5550 6101",
+          "role_title": "Dispatcher"
+        },
+        "sources": [
+          "m-0049",
+          "m-0119",
+          "m-0159",
+          "m-0167",
+          "m-0265"
+        ]
+      },
+      {
+        "title": "Marek Wiśniewski",
+        "values": {
+          "full_name": "Marek Wisniewski",
+          "phone": "+48 5550 4171",
+          "role_title": "Driver",
+          "email": "marek.w84@pocztamail.example"
+        },
+        "sources": [
+          "m-0049",
+          "m-0081",
+          "m-0214",
+          "m-0265"
+        ]
+      },
+      {
+        "title": "Holger Brandes",
+        "values": {
+          "email": "h.brandes@palettenring-nord.example",
+          "phone": "+49 40 5550 6501",
+          "role_title": "Disposition"
+        },
+        "sources": [
+          "m-0050",
+          "m-0214"
+        ]
+      },
+      {
+        "title": "Melanie Kurz",
+        "values": {
+          "email": "melanie.kurz@falkenrath-antriebe.example",
+          "phone": "+49 561 5550 2701",
+          "role_title": "Einkauf"
+        },
+        "sources": [
+          "m-0056",
+          "m-0085",
+          "m-0186"
+        ]
+      },
+      {
+        "title": "Jana Petersen",
+        "values": {
+          "email": "jana.petersen@nordhafen.example"
+        },
+        "sources": [
+          "m-0059",
+          "m-0066",
+          "m-0087",
+          "m-0089",
+          "m-0101",
+          "m-0169",
+          "m-0170",
+          "m-0189",
+          "m-0223",
+          "m-0251",
+          "m-0253",
+          "m-0292",
+          "m-0305"
+        ]
+      },
+      {
+        "title": "Serkan Yılmaz",
+        "values": {
+          "email": "s.yilmaz@glanzwerk-service.example",
+          "phone": "+49 40 5550 7601",
+          "role_title": "Objektleitung"
+        },
+        "sources": [
+          "m-0060",
+          "m-0280"
+        ]
+      },
+      {
+        "title": "Mads Kjær",
+        "values": {
+          "email": "mads.kjaer@jensen-maskinfabrik.example",
+          "phone": "+45 5550 3301",
+          "role_title": "Buyer"
+        },
+        "sources": [
+          "m-0067",
+          "m-0301"
+        ]
+      },
+      {
+        "title": "Lucía Navarro",
+        "values": {
+          "email": "lucia.navarro@tornilleria-ebro.example",
+          "phone": "+34 976 5550 5201",
+          "role_title": "Export Department"
+        },
+        "sources": [
+          "m-0069",
+          "m-0084",
+          "m-0210"
+        ]
+      },
+      {
+        "title": "Oskar Nyberg",
+        "values": {
+          "email": "oskar.nyberg@lindgren-verktyg.example",
+          "phone": "+46 31 5550 2601",
+          "role_title": "Buyer"
+        },
+        "sources": [
+          "m-0070",
+          "m-0079",
+          "m-0228",
+          "m-0238"
+        ]
+      },
+      {
+        "title": "Martina Hofer",
+        "values": {
+          "email": "m.hofer@brandauer-anlagentechnik.example",
+          "phone": "+43 732 5550 2101",
+          "role_title": "Einkauf"
+        },
+        "sources": [
+          "m-0096",
+          "m-0136",
+          "m-0248",
+          "m-0285"
+        ]
+      },
+      {
+        "title": "Andreas König",
+        "values": {
+          "email": "a.koenig@nordlicht-versicherung.example",
+          "phone": "+49 40 5550 7201",
+          "role_title": "Schadenregulierung"
+        },
+        "sources": [
+          "m-0100"
+        ]
+      },
+      {
+        "title": "Andrea Caduff",
+        "values": {
+          "email": "andrea.caduff@gruber-seilbahntechnik.example",
+          "phone": "+41 81 5550 4201",
+          "role_title": "Technischer Einkauf"
+        },
+        "sources": [
+          "m-0108",
+          "m-0118",
+          "m-0172"
+        ]
+      },
+      {
+        "title": "Julien Marchand",
+        "values": {
+          "email": "j.marchand@delacroix-usinage.example",
+          "phone": "+33 4 5550 3901",
+          "role_title": "Responsable achats"
+        },
+        "sources": [
+          "m-0112",
+          "m-0206",
+          "m-0294"
+        ]
+      },
+      {
+        "title": "Gerhard Pichler",
+        "values": {
+          "email": "g.pichler@pichler-metallbau.example",
+          "phone": "+43 316 5550 3401"
+        },
+        "sources": [
+          "m-0116",
+          "m-0147",
+          "m-0148",
+          "m-0219"
+        ]
+      },
+      {
+        "title": "Daniel Okafor",
+        "values": {
+          "email": "daniel.okafor@nordhafen.example"
+        },
+        "sources": [
+          "m-0120",
+          "m-0158",
+          "m-0168"
+        ]
+      },
+      {
+        "title": "Javier Ortega",
+        "values": {
+          "email": "trafico@transportes-cierzo.example"
+        },
+        "sources": [
+          "m-0125",
+          "m-0183"
+        ]
+      },
+      {
+        "title": "Paweł Zieliński",
+        "values": {
+          "email": "pawel.zielinski@ostrowski-serwis.example",
+          "role_title": "Logistics"
+        },
+        "sources": [
+          "m-0128"
+        ]
+      },
+      {
+        "title": "Marco Ferraro",
+        "values": {
+          "email": "m.ferraro@utensileria-bassano.example",
+          "phone": "+39 0424 5550 5301",
+          "role_title": "Sales Manager Export"
+        },
+        "sources": [
+          "m-0131",
+          "m-0165",
+          "m-0194",
+          "m-0201"
+        ]
+      },
+      {
+        "title": "Tereza Dvořáková",
+        "values": {
+          "email": "dvorakova@obaly-vltava.example",
+          "phone": "+420 5550 5401",
+          "role_title": "Sales"
+        },
+        "sources": [
+          "m-0133",
+          "m-0247"
+        ]
+      },
+      {
+        "title": "Miriam Falk",
+        "values": {
+          "email": "m.falk@messe-ruhrfeld.example",
+          "phone": "+49 201 5550 7401",
+          "role_title": "Ausstellerservice"
+        },
+        "sources": [
+          "m-0134"
+        ]
+      },
+      {
+        "title": "Claudia Wendler",
+        "values": {
+          "email": "c.wendler@kranhoeft-spedition.example",
+          "phone": "+49 40 5550 6701",
+          "role_title": "Kundenservice Export"
+        },
+        "sources": [
+          "m-0135",
+          "m-0196",
+          "m-0224",
+          "m-0244",
+          "m-0252",
+          "m-0302"
+        ]
+      },
+      {
+        "title": "Uwe Rademacher",
+        "values": {
+          "email": "u.rademacher@moellenhoff-stahlbau.example",
+          "phone": "+49 231 5550 2501",
+          "role_title": "Arbeitsvorbereitung"
+        },
+        "sources": [
+          "m-0153",
+          "m-0231",
+          "m-0269"
+        ]
+      },
+      {
+        "title": "Elif Kaya",
+        "values": {
+          "email": "e.kaya@anadolu-dovme.example",
+          "phone": "+90 224 5550 5502",
+          "role_title": "Logistics"
+        },
+        "sources": [
+          "m-0179"
+        ]
+      },
+      {
+        "title": "Sindre Haugen",
+        "values": {
+          "email": "sindre.haugen@nordkap-marine.example",
+          "phone": "+47 5550 3801",
+          "role_title": "Operations Manager"
+        },
+        "sources": [
+          "m-0190",
+          "m-0270"
+        ]
+      },
+      {
+        "title": "Nina Becker",
+        "values": {
+          "email": "nina.becker@rhoenblick-arbeitsschutz.example",
+          "phone": "+49 661 5550 5801",
+          "role_title": "Kundenservice"
+        },
+        "sources": [
+          "m-0193",
+          "m-0273"
+        ]
+      },
+      {
+        "title": "Burak Demir",
+        "values": {
+          "email": "operations@bosporus-lojistik.example",
+          "role_title": "Operations"
+        },
+        "sources": [
+          "m-0198",
+          "m-0217"
+        ]
+      },
+      {
+        "title": "Kristian Berg",
+        "values": {
+          "email": "kristian.berg@halvorsen-verksted.example",
+          "phone": "+47 5550 2402",
+          "role_title": "Warehouse"
+        },
+        "sources": [
+          "m-0211",
+          "m-0274"
+        ]
+      },
+      {
+        "title": "Line Sørensen",
+        "values": {
+          "email": "line@sorensen-agro.example",
+          "phone": "+45 5550 4101"
+        },
+        "sources": [
+          "m-0215",
+          "m-0275"
+        ]
+      },
+      {
+        "title": "Sophie Brandt",
+        "values": {
+          "email": "sophie.brandt@nordhafen.example"
+        },
+        "sources": [
+          "m-0228",
+          "m-0264"
+        ]
+      },
+      {
+        "title": "Stefan Moser",
+        "values": {
+          "email": "s.moser@alpen-sammelgut.example",
+          "phone": "+43 512 5550 6301",
+          "role_title": "Disposition"
+        },
+        "sources": [
+          "m-0229",
+          "m-0242",
+          "m-0262",
+          "m-0277",
+          "m-0291"
+        ]
+      },
+      {
+        "title": "Luka Kranjc",
+        "values": {
+          "email": "luka@kranjc-orodja.example",
+          "phone": "+386 3 5550 5901",
+          "role_title": "Sales"
+        },
+        "sources": [
+          "m-0240"
+        ]
+      },
+      {
+        "title": "Klaus Kessler",
+        "values": {
+          "email": "k.kessler@kessler-maschinenbau.example",
+          "phone": "+49 521 5550 3100",
+          "role_title": "Geschäftsführer"
+        },
+        "sources": [
+          "m-0241",
+          "m-0246"
+        ]
+      },
+      {
+        "title": "Katrin Vogt",
+        "values": {
+          "email": "katrin.vogt@roemer-fahrzeugtechnik.example",
+          "phone": "+49 731 5550 3501",
+          "role_title": "Strategischer Einkauf"
+        },
+        "sources": [
+          "m-0293"
+        ]
+      },
+      {
+        "title": "Lucas Bernard",
+        "values": {
+          "email": "l.bernard@ateliers-moreau.example"
+        },
+        "sources": [
+          "m-0300"
+        ]
+      }
+    ],
+    "sales_orders": [
+      {
+        "title": "Vossberg Fördertechnik Bestellung vom 06.07.",
+        "values": {
+          "customer": "Vossberg Fördertechnik",
+          "state": "received",
+          "requested_delivery": "2026-07-09"
+        },
+        "sources": [
+          "m-0007"
+        ]
+      },
+      {
+        "title": "Halvorsen Verkstedservice SO-26-0145",
+        "values": {
+          "customer": "Halvorsen Verkstedservice",
+          "state": "delivered",
+          "requested_delivery": "2026-07-20",
+          "order_number": "SO-26-0145"
+        },
+        "sources": [
+          "m-0016",
+          "m-0135",
+          "m-0211"
+        ]
+      },
+      {
+        "title": "Hartmann Hydraulik SO-26-0149",
+        "values": {
+          "order_number": "SO-26-0149",
+          "customer": "Hartmann Hydraulik",
+          "confirmed_delivery": "2026-07-15",
+          "state": "delivered"
+        },
+        "sources": [
+          "m-0024",
+          "m-0095",
+          "m-0171"
+        ]
+      },
+      {
+        "title": "Dijkstra Werktuigen SO-26-0147",
+        "values": {
+          "customer": "Dijkstra Werktuigen",
+          "state": "shipped",
+          "requested_delivery": "2026-07-23",
+          "order_number": "SO-26-0147"
+        },
+        "sources": [
+          "m-0028",
+          "m-0065",
+          "m-0124",
+          "m-0224"
+        ]
+      },
+      {
+        "title": "Thiele Messebau Bestellung zu Q-26-0311",
+        "values": {
+          "customer": "Thiele Messebau",
+          "total": {
+            "amount": 1231.4,
+            "currency": "EUR"
+          },
+          "state": "delivered",
+          "requested_delivery": "2026-07-15",
+          "order_number": "SO-26-0151"
+        },
+        "sources": [
+          "m-0034",
+          "m-0142"
+        ]
+      },
+      {
+        "title": "Ostrowski Serwis 2026/OS/118",
+        "values": {
+          "customer": "Ostrowski Serwis",
+          "state": "shipped",
+          "requested_delivery": "2026-07-17",
+          "order_number": "SO-26-0153"
+        },
+        "sources": [
+          "m-0040",
+          "m-0119",
+          "m-0128",
+          "m-0141"
+        ]
+      },
+      {
+        "title": "Kessler Maschinenbau KM-26-0712",
+        "values": {
+          "customer": "Kessler Maschinenbau",
+          "state": "delivered",
+          "requested_delivery": "2026-07-17",
+          "order_number": "SO-26-0155"
+        },
+        "sources": [
+          "m-0041",
+          "m-0202"
+        ]
+      },
+      {
+        "title": "Falkenrath Antriebe Eilbestellung Lager",
+        "values": {
+          "customer": "Falkenrath Antriebe",
+          "state": "shipped",
+          "requested_delivery": "2026-07-10",
+          "order_number": "SO-26-0152"
+        },
+        "sources": [
+          "m-0056",
+          "m-0085"
+        ]
+      },
+      {
+        "title": "Jensen Maskinfabrik July order",
+        "values": {
+          "customer": "Jensen Maskinfabrik",
+          "state": "received",
+          "requested_delivery": "2026-07-20"
+        },
+        "sources": [
+          "m-0067"
+        ]
+      },
+      {
+        "title": "Lindgren Verktyg order LV-4471",
+        "values": {
+          "customer": "Lindgren Verktyg",
+          "state": "confirmed",
+          "order_number": "SO-26-0150",
+          "total": {
+            "amount": 39850,
+            "currency": "SEK"
+          }
+        },
+        "sources": [
+          "m-0070",
+          "m-0079"
+        ]
+      },
+      {
+        "title": "Auerbach Medizintechnik SO-26-0157",
+        "values": {
+          "customer": "Auerbach Medizintechnik",
+          "state": "delivered",
+          "requested_delivery": "2026-07-20",
+          "order_number": "SO-26-0157"
+        },
+        "sources": [
+          "m-0071",
+          "m-0197"
+        ]
+      },
+      {
+        "title": "Ateliers Moreau order Q-26-0312",
+        "values": {
+          "customer": "Ateliers Moreau",
+          "state": "delivered",
+          "order_number": "SO-26-0156",
+          "total": {
+            "amount": 3264,
+            "currency": "EUR"
+          },
+          "confirmed_delivery": "2026-07-17"
+        },
+        "sources": [
+          "m-0082",
+          "m-0097",
+          "m-0173"
+        ]
+      },
+      {
+        "title": "Brandauer Anlagentechnik BA-2026-07",
+        "values": {
+          "customer": "Brandauer Anlagentechnik",
+          "state": "delivered",
+          "requested_delivery": "2026-07-24",
+          "order_number": "SO-26-0158"
+        },
+        "sources": [
+          "m-0096",
+          "m-0229",
+          "m-0248",
+          "m-0285"
+        ]
+      },
+      {
+        "title": "Steiner Präzisionsteile Bestellung BE-77810",
+        "values": {
+          "customer": "Steiner Präzisionsteile",
+          "total": {
+            "amount": 2668,
+            "currency": "CHF"
+          },
+          "state": "delivered",
+          "requested_delivery": "2026-07-27",
+          "order_number": "SO-26-0160"
+        },
+        "sources": [
+          "m-0098",
+          "m-0303"
+        ]
+      },
+      {
+        "title": "Gruber Seilbahntechnik Eilauftrag Revision",
+        "values": {
+          "customer": "Gruber Seilbahntechnik",
+          "state": "delivered",
+          "requested_delivery": "2026-07-17",
+          "order_number": "SO-26-0162"
+        },
+        "sources": [
+          "m-0108",
+          "m-0118",
+          "m-0172"
+        ]
+      },
+      {
+        "title": "Brandauer Anlagentechnik Nachbestellung Spiralbohrer",
+        "values": {
+          "customer": "Brandauer Anlagentechnik",
+          "state": "shipped",
+          "requested_delivery": "2026-07-24",
+          "order_number": "SO-26-0161"
+        },
+        "sources": [
+          "m-0136",
+          "m-0229"
+        ]
+      },
+      {
+        "title": "Pichler Metallbau Fächerschleifscheiben",
+        "values": {
+          "customer": "Pichler Metallbau",
+          "state": "received"
+        },
+        "sources": [
+          "m-0147",
+          "m-0148"
+        ]
+      },
+      {
+        "title": "Möllenhoff Stahlbau SO-26-0164",
+        "values": {
+          "customer": "Möllenhoff Stahlbau",
+          "state": "delivered",
+          "requested_delivery": "2026-07-22",
+          "order_number": "SO-26-0164"
+        },
+        "sources": [
+          "m-0153",
+          "m-0214",
+          "m-0231"
+        ]
+      },
+      {
+        "title": "Dijkstra Werktuigen DW-2310",
+        "values": {
+          "customer": "Dijkstra Werktuigen",
+          "state": "received",
+          "requested_delivery": "2026-07-30"
+        },
+        "sources": [
+          "m-0162"
+        ]
+      },
+      {
+        "title": "Falkenrath Antriebe 4500012877",
+        "values": {
+          "customer": "Falkenrath Antriebe",
+          "state": "received",
+          "requested_delivery": "2026-07-27"
+        },
+        "sources": [
+          "m-0186"
+        ]
+      },
+      {
+        "title": "Delacroix Usinage DU-26-0098",
+        "values": {
+          "customer": "Delacroix Usinage",
+          "total": {
+            "amount": 3300,
+            "currency": "EUR"
+          },
+          "state": "delivered",
+          "order_number": "SO-26-0167"
+        },
+        "sources": [
+          "m-0206",
+          "m-0294"
+        ]
+      },
+      {
+        "title": "Vossberg Fördertechnik Nachbestellung KW 32",
+        "values": {
+          "customer": "Vossberg Fördertechnik",
+          "state": "received",
+          "requested_delivery": "2026-08-03",
+          "order_number": "SO-26-0171",
+          "total": {
+            "amount": 885,
+            "currency": "EUR"
+          }
+        },
+        "sources": [
+          "m-0261",
+          "m-0289"
+        ]
+      },
+      {
+        "title": "Nordkap Marine Service first order",
+        "values": {
+          "customer": "Nordkap Marine Service",
+          "state": "received",
+          "requested_delivery": "2026-08-14"
+        },
+        "sources": [
+          "m-0270"
+        ]
+      },
+      {
+        "title": "Halvorsen Verkstedservice HV-6188",
+        "values": {
+          "customer": "Halvorsen Verkstedservice",
+          "state": "received"
+        },
+        "sources": [
+          "m-0274"
+        ]
+      },
+      {
+        "title": "Ostrowski Serwis 2026/OS/142",
+        "values": {
+          "customer": "Ostrowski Serwis",
+          "state": "received",
+          "requested_delivery": "2026-08-07"
+        },
+        "sources": [
+          "m-0276"
+        ]
+      }
+    ],
+    "organizations": [
+      {
+        "title": "Vossberg Fördertechnik GmbH",
+        "values": {
+          "domain": "vossberg-foerdertechnik.example"
+        },
+        "sources": [
+          "m-0007",
+          "m-0073",
+          "m-0121",
+          "m-0261",
+          "m-0289"
+        ]
+      },
+      {
+        "title": "Odlewnia Wiślana Sp. z o.o.",
+        "values": {
+          "domain": "odlewnia-wislana.example"
+        },
+        "sources": [
+          "m-0009",
+          "m-0044",
+          "m-0137",
+          "m-0230"
+        ]
+      },
+      {
+        "title": "Thiele Messebau GmbH",
+        "values": {
+          "domain": "thiele-messebau.example"
+        },
+        "sources": [
+          "m-0010",
+          "m-0034",
+          "m-0142",
+          "m-0233",
+          "m-0234"
+        ]
+      },
+      {
+        "title": "Auerbach Medizintechnik GmbH",
+        "values": {
+          "domain": "auerbach-medizintechnik.example"
+        },
+        "sources": [
+          "m-0012",
+          "m-0071",
+          "m-0197"
+        ]
+      },
+      {
+        "title": "Elbtal Lagertechnik GmbH",
+        "values": {
+          "domain": "elbtal-lagertechnik.example"
+        },
+        "sources": [
+          "m-0015",
+          "m-0110",
+          "m-0152",
+          "m-0166"
+        ]
+      },
+      {
+        "title": "Halvorsen Verkstedservice AS",
+        "values": {
+          "domain": "halvorsen-verksted.example"
+        },
+        "sources": [
+          "m-0016",
+          "m-0211",
+          "m-0274"
+        ]
+      },
+      {
+        "title": "Anadolu Dövme Sanayi A.Ş.",
+        "values": {
+          "domain": "anadolu-dovme.example"
+        },
+        "sources": [
+          "m-0023",
+          "m-0094",
+          "m-0109",
+          "m-0179",
+          "m-0254"
+        ]
+      },
+      {
+        "title": "Hartmann Hydraulik GmbH",
+        "values": {
+          "domain": "hartmann-hydraulik.example"
+        },
+        "sources": [
+          "m-0024",
+          "m-0095",
+          "m-0146",
+          "m-0171"
+        ]
+      },
+      {
+        "title": "Ateliers Moreau SARL",
+        "values": {
+          "domain": "ateliers-moreau.example",
+          "name": "Ateliers Moreau"
+        },
+        "sources": [
+          "m-0027",
+          "m-0082",
+          "m-0097",
+          "m-0173",
+          "m-0227",
+          "m-0300"
+        ]
+      },
+      {
+        "title": "Dijkstra Werktuigen B.V.",
+        "values": {
+          "domain": "dijkstra-werktuigen.example"
+        },
+        "sources": [
+          "m-0028",
+          "m-0065",
+          "m-0124",
+          "m-0162"
+        ]
+      },
+      {
+        "title": "Steiner Präzisionsteile AG",
+        "values": {
+          "domain": "steiner-praezision.example"
+        },
+        "sources": [
+          "m-0035",
+          "m-0098",
+          "m-0303"
+        ]
+      },
+      {
+        "title": "Wupperthal Schleifmittel GmbH",
+        "values": {
+          "domain": "wupperthal-schleifmittel.example"
+        },
+        "sources": [
+          "m-0036",
+          "m-0088"
+        ]
+      },
+      {
+        "title": "Ostrowski Serwis Sp. z o.o.",
+        "values": {
+          "domain": "ostrowski-serwis.example"
+        },
+        "sources": [
+          "m-0040",
+          "m-0128",
+          "m-0141",
+          "m-0209",
+          "m-0218",
+          "m-0276"
+        ]
+      },
+      {
+        "title": "Kessler Maschinenbau GmbH",
+        "values": {
+          "domain": "kessler-maschinenbau.example"
+        },
+        "sources": [
+          "m-0041",
+          "m-0202",
+          "m-0241",
+          "m-0246"
+        ]
+      },
+      {
+        "title": "Steuerkanzlei Behrens & Kolb",
+        "values": {
+          "domain": "behrens-kolb.example"
+        },
+        "sources": [
+          "m-0042",
+          "m-0063"
+        ]
+      },
+      {
+        "title": "Wisła-Trans Spedycja Sp. z o.o.",
+        "values": {
+          "domain": "wislatrans.example",
+          "name": "Wisła-Trans"
+        },
+        "sources": [
+          "m-0049",
+          "m-0081",
+          "m-0119",
+          "m-0159",
+          "m-0167",
+          "m-0265"
+        ]
+      },
+      {
+        "title": "Palettenring Nord GmbH",
+        "values": {
+          "domain": "palettenring-nord.example"
+        },
+        "sources": [
+          "m-0050",
+          "m-0214"
+        ]
+      },
+      {
+        "title": "Falkenrath Antriebe GmbH",
+        "values": {
+          "domain": "falkenrath-antriebe.example"
+        },
+        "sources": [
+          "m-0056",
+          "m-0085",
+          "m-0186"
+        ]
+      },
+      {
+        "title": "Glanzwerk Gebäudeservice GmbH",
+        "values": {
+          "domain": "glanzwerk-service.example"
+        },
+        "sources": [
+          "m-0060",
+          "m-0280"
+        ]
+      },
+      {
+        "title": "Jensen Maskinfabrik A/S",
+        "values": {
+          "domain": "jensen-maskinfabrik.example"
+        },
+        "sources": [
+          "m-0067",
+          "m-0301"
+        ]
+      },
+      {
+        "title": "Tornillería del Ebro S.L.",
+        "values": {
+          "domain": "tornilleria-ebro.example"
+        },
+        "sources": [
+          "m-0069",
+          "m-0084",
+          "m-0210"
+        ]
+      },
+      {
+        "title": "Lindgren Verktyg AB",
+        "values": {
+          "domain": "lindgren-verktyg.example"
+        },
+        "sources": [
+          "m-0070",
+          "m-0079",
+          "m-0238"
+        ]
+      },
+      {
+        "title": "Brandauer Anlagentechnik GmbH",
+        "values": {
+          "domain": "brandauer-anlagentechnik.example"
+        },
+        "sources": [
+          "m-0096",
+          "m-0136",
+          "m-0248",
+          "m-0285"
+        ]
+      },
+      {
+        "title": "Nordlicht Transportversicherung AG",
+        "values": {
+          "domain": "nordlicht-versicherung.example"
+        },
+        "sources": [
+          "m-0100"
+        ]
+      },
+      {
+        "title": "Gruber Seilbahntechnik AG",
+        "values": {
+          "domain": "gruber-seilbahntechnik.example"
+        },
+        "sources": [
+          "m-0108",
+          "m-0118",
+          "m-0172"
+        ]
+      },
+      {
+        "title": "Delacroix Usinage SAS",
+        "values": {
+          "domain": "delacroix-usinage.example",
+          "name": "Delacroix Usinage"
+        },
+        "sources": [
+          "m-0112",
+          "m-0206",
+          "m-0294",
+          "m-0300"
+        ]
+      },
+      {
+        "title": "Pichler Metallbau GmbH",
+        "values": {
+          "domain": "pichler-metallbau.example"
+        },
+        "sources": [
+          "m-0116",
+          "m-0147",
+          "m-0148",
+          "m-0219"
+        ]
+      },
+      {
+        "title": "Transportes Cierzo S.L.",
+        "values": {
+          "domain": "transportes-cierzo.example"
+        },
+        "sources": [
+          "m-0125",
+          "m-0183"
+        ]
+      },
+      {
+        "title": "Utensileria Bassano S.r.l.",
+        "values": {
+          "domain": "utensileria-bassano.example"
+        },
+        "sources": [
+          "m-0131",
+          "m-0165",
+          "m-0194",
+          "m-0201"
+        ]
+      },
+      {
+        "title": "Obaly Vltava s.r.o.",
+        "values": {
+          "domain": "obaly-vltava.example"
+        },
+        "sources": [
+          "m-0133",
+          "m-0247"
+        ]
+      },
+      {
+        "title": "Messe Ruhrfeld GmbH",
+        "values": {
+          "domain": "messe-ruhrfeld.example"
+        },
+        "sources": [
+          "m-0134"
+        ]
+      },
+      {
+        "title": "Kranhöft Spedition GmbH",
+        "values": {
+          "domain": "kranhoeft-spedition.example"
+        },
+        "sources": [
+          "m-0135",
+          "m-0196",
+          "m-0224",
+          "m-0244",
+          "m-0252",
+          "m-0302"
+        ]
+      },
+      {
+        "title": "Möllenhoff Stahlbau GmbH & Co. KG",
+        "values": {
+          "domain": "moellenhoff-stahlbau.example"
+        },
+        "sources": [
+          "m-0153",
+          "m-0231",
+          "m-0269"
+        ]
+      },
+      {
+        "title": "Nordkap Marine Service AS",
+        "values": {
+          "domain": "nordkap-marine.example"
+        },
+        "sources": [
+          "m-0190",
+          "m-0270"
+        ]
+      },
+      {
+        "title": "Rhönblick Arbeitsschutz GmbH",
+        "values": {
+          "domain": "rhoenblick-arbeitsschutz.example"
+        },
+        "sources": [
+          "m-0193",
+          "m-0273"
+        ]
+      },
+      {
+        "title": "Bosporus Lojistik A.Ş.",
+        "values": {
+          "domain": "bosporus-lojistik.example"
+        },
+        "sources": [
+          "m-0198",
+          "m-0217"
+        ]
+      },
+      {
+        "title": "Sørensen Agro ApS",
+        "values": {
+          "domain": "sorensen-agro.example"
+        },
+        "sources": [
+          "m-0215",
+          "m-0275"
+        ]
+      },
+      {
+        "title": "Alpen-Sammelgut Spedition GmbH",
+        "values": {
+          "domain": "alpen-sammelgut.example"
+        },
+        "sources": [
+          "m-0229",
+          "m-0242",
+          "m-0262",
+          "m-0277",
+          "m-0291"
+        ]
+      },
+      {
+        "title": "Kranjc Orodja d.o.o.",
+        "values": {
+          "domain": "kranjc-orodja.example"
+        },
+        "sources": [
+          "m-0240"
+        ]
+      },
+      {
+        "title": "Römer Fahrzeugtechnik GmbH",
+        "values": {
+          "domain": "roemer-fahrzeugtechnik.example"
+        },
+        "sources": [
+          "m-0293"
+        ]
+      }
+    ],
+    "purchase_orders": [
+      {
+        "title": "Odlewnia Wiślana PO-26-1083",
+        "values": {
+          "po_number": "PO-26-1083",
+          "supplier": "Odlewnia Wiślana",
+          "total": {
+            "amount": 31500,
+            "currency": "EUR"
+          },
+          "state": "received",
+          "expected_arrival": "2026-07-29"
+        },
+        "sources": [
+          "m-0009",
+          "m-0044",
+          "m-0265",
+          "m-0292"
+        ]
+      },
+      {
+        "title": "Elbtal Lagertechnik PO-26-1079",
+        "values": {
+          "po_number": "PO-26-1079",
+          "supplier": "Elbtal Lagertechnik",
+          "state": "shipped",
+          "expected_arrival": "2026-07-16"
+        },
+        "sources": [
+          "m-0015",
+          "m-0110",
+          "m-0152"
+        ]
+      },
+      {
+        "title": "Anadolu Dövme PO-26-1088",
+        "values": {
+          "po_number": "PO-26-1088",
+          "supplier": "Anadolu Dövme",
+          "total": {
+            "amount": 17760,
+            "currency": "EUR"
+          },
+          "state": "received",
+          "expected_arrival": "2026-07-23"
+        },
+        "sources": [
+          "m-0023",
+          "m-0179",
+          "m-0253"
+        ]
+      },
+      {
+        "title": "Wupperthal Schleifmittel PO-26-1090",
+        "values": {
+          "po_number": "PO-26-1090",
+          "supplier": "Wupperthal Schleifmittel",
+          "total": {
+            "amount": 1876.4,
+            "currency": "EUR"
+          },
+          "state": "confirmed",
+          "expected_arrival": "2026-07-10"
+        },
+        "sources": [
+          "m-0036"
+        ]
+      },
+      {
+        "title": "Tornillería del Ebro PO-26-1091",
+        "values": {
+          "po_number": "PO-26-1091",
+          "supplier": "Tornillería del Ebro",
+          "total": {
+            "amount": 6720,
+            "currency": "EUR"
+          },
+          "state": "received",
+          "expected_arrival": "2026-07-20"
+        },
+        "sources": [
+          "m-0069",
+          "m-0125",
+          "m-0189"
+        ]
+      },
+      {
+        "title": "Utensileria Bassano PO-26-1094",
+        "values": {
+          "po_number": "PO-26-1094",
+          "supplier": "Utensileria Bassano",
+          "total": {
+            "amount": 2050,
+            "currency": "EUR"
+          },
+          "state": "received",
+          "expected_arrival": "2026-07-17"
+        },
+        "sources": [
+          "m-0131",
+          "m-0169"
+        ]
+      },
+      {
+        "title": "Rhönblick Arbeitsschutz PO-26-1095",
+        "values": {
+          "po_number": "PO-26-1095",
+          "supplier": "Rhönblick Arbeitsschutz",
+          "total": {
+            "amount": 980,
+            "currency": "EUR"
+          },
+          "state": "received",
+          "expected_arrival": "2026-07-22"
+        },
+        "sources": [
+          "m-0193",
+          "m-0223"
+        ]
+      }
+    ],
+    "customers": [
+      {
+        "title": "Auerbach Medizintechnik",
+        "values": {
+          "name": "Auerbach Medizintechnik",
+          "segment": "new",
+          "customer_number": "K-10111",
+          "payment_terms": "30 Tage netto",
+          "notes": "Kreditlimit 15.000 €"
+        },
+        "sources": [
+          "m-0012",
+          "m-0037"
+        ]
+      },
+      {
+        "title": "Pichler Metallbau",
+        "values": {
+          "name": "Pichler Metallbau",
+          "segment": "at_risk"
+        },
+        "sources": [
+          "m-0116"
+        ]
+      },
+      {
+        "title": "Ostrowski Serwis",
+        "values": {
+          "name": "Ostrowski Serwis",
+          "notes": "Q3 2026: Lieferung frei Haus ab 1.000 € Bestellwert"
+        },
+        "sources": [
+          "m-0174"
+        ]
+      },
+      {
+        "title": "Nordkap Marine Service",
+        "values": {
+          "name": "Nordkap Marine Service",
+          "segment": "new"
+        },
+        "sources": [
+          "m-0190"
+        ]
+      },
+      {
+        "title": "Kessler Maschinenbau",
+        "values": {
+          "name": "Kessler Maschinenbau",
+          "segment": "at_risk"
+        },
+        "sources": [
+          "m-0241"
+        ]
+      },
+      {
+        "title": "Römer Fahrzeugtechnik",
+        "values": {
+          "name": "Römer Fahrzeugtechnik",
+          "segment": "lost"
+        },
+        "sources": [
+          "m-0293"
+        ]
+      },
+      {
+        "title": "Jensen Maskinfabrik",
+        "values": {
+          "name": "Jensen Maskinfabrik",
+          "segment": "at_risk"
+        },
+        "sources": [
+          "m-0301"
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "title": "Anzahlung 5.328,00 EUR für PO-26-1088 an Anadolu überweisen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-10"
+        },
+        "sources": [
+          "m-0023"
+        ]
+      },
+      {
+        "title": "OP-Liste für die Besprechung mit Herrn Behrens mitbringen",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0042"
+        ]
+      },
+      {
+        "title": "Gänge in der Lagerhalle freiräumen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-17"
+        },
+        "sources": [
+          "m-0060"
+        ]
+      },
+      {
+        "title": "Schlüssel für Glanzwerk bereitstellen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-16"
+        },
+        "sources": [
+          "m-0060"
+        ]
+      },
+      {
+        "title": "Ersatz für 6 Kartons Schrauben an Vossberg liefern",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-15"
+        },
+        "sources": [
+          "m-0073"
+        ]
+      },
+      {
+        "title": "Restliche 4 Rillenkugellager an Falkenrath liefern",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-13"
+        },
+        "sources": [
+          "m-0085"
+        ]
+      },
+      {
+        "title": "Rillenkugellager 6205-2RS nachbestellen",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0087"
+        ]
+      },
+      {
+        "title": "Rechnung WS-26-04417 mit Skonto bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-20"
+        },
+        "sources": [
+          "m-0088"
+        ]
+      },
+      {
+        "title": "Send the invoice for SO-26-0156 to comptabilite@ateliers-moreau.example",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0097"
+        ]
+      },
+      {
+        "title": "Fotos und Lieferschein zu Schaden NL-TS-26-0418 an Nordlicht senden",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-24"
+        },
+        "sources": [
+          "m-0100"
+        ]
+      },
+      {
+        "title": "38 Gussgehäuse mit Lunkern bei Odlewnia reklamieren",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0101"
+        ]
+      },
+      {
+        "title": "Proforma für Vorkasse an Gruber Seilbahntechnik senden",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-14"
+        },
+        "sources": [
+          "m-0118"
+        ]
+      },
+      {
+        "title": "Zolltarifnummern der Top-20-Artikel an Daniel schicken",
+        "values": {
+          "state": "done",
+          "due_date": "2026-07-16"
+        },
+        "sources": [
+          "m-0120",
+          "m-0158"
+        ]
+      },
+      {
+        "title": "Restbetrag 69,00 EUR zu FV20260412 an Obaly Vltava zahlen",
+        "values": {
+          "state": "done"
+        },
+        "sources": [
+          "m-0133",
+          "m-0247"
+        ]
+      },
+      {
+        "title": "Standbaupläne für IndustrieTage Ruhrfeld einreichen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-31"
+        },
+        "sources": [
+          "m-0134"
+        ]
+      },
+      {
+        "title": "Ausstellerausweise für IndustrieTage Ruhrfeld bestellen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-08-14"
+        },
+        "sources": [
+          "m-0134"
+        ]
+      },
+      {
+        "title": "Proforma-Rechnung in NOK und Ursprungserklärung für KHS-HH-26066 an Kranhöft senden",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-17"
+        },
+        "sources": [
+          "m-0135"
+        ]
+      },
+      {
+        "title": "Hartmann verbindlichen Liefertermin für SO-26-0149 zusagen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-16"
+        },
+        "sources": [
+          "m-0146"
+        ]
+      },
+      {
+        "title": "Herrn Reuter wegen SO-26-0149 anrufen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-16"
+        },
+        "sources": [
+          "m-0149"
+        ]
+      },
+      {
+        "title": "2 Kartons M8-Muttern für Dijkstra Werktuigen ersetzen",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0162"
+        ]
+      },
+      {
+        "title": "Rechnung 2026/VEN/0812 bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-09-30"
+        },
+        "sources": [
+          "m-0165"
+        ]
+      },
+      {
+        "title": "Rechnung ELT-2026-3381 mit Skonto bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-31"
+        },
+        "sources": [
+          "m-0166"
+        ]
+      },
+      {
+        "title": "Schnittschutzhandschuhe Stufe C nachbestellen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-21"
+        },
+        "sources": [
+          "m-0170"
+        ]
+      },
+      {
+        "title": "5 Pack Trennscheiben 125x1,0 bei Kessler austauschen",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0202"
+        ]
+      },
+      {
+        "title": "Rechnung RE-2026-0377 erneut an Pichler senden",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0219"
+        ]
+      },
+      {
+        "title": "Oskar Nyberg den neuen Katalog als PDF schicken",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0228"
+        ]
+      },
+      {
+        "title": "Flugrost an 2 Kisten bei Anadolu reklamieren",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0253"
+        ]
+      },
+      {
+        "title": "Rechnung ADS-EXP-2026-114 bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-08-23"
+        },
+        "sources": [
+          "m-0254"
+        ]
+      },
+      {
+        "title": "Eingangsrechnungen Anadolu und Bassano für den Zahllauf freigeben",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-27"
+        },
+        "sources": [
+          "m-0255"
+        ]
+      },
+      {
+        "title": "Rechnung RA-260731 bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-08-27"
+        },
+        "sources": [
+          "m-0273"
+        ]
+      },
+      {
+        "title": "Handelsrechnung, EORI-Nummer und Zolltarifnummern für ASG-2607270 an Alpen-Sammelgut senden",
+        "values": {
+          "state": "open",
+          "due_date": "2026-07-29"
+        },
+        "sources": [
+          "m-0277"
+        ]
+      },
+      {
+        "title": "Rechnung GW-2026-188 bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-08-11"
+        },
+        "sources": [
+          "m-0280"
+        ]
+      },
+      {
+        "title": "Lieferadresse für SO-26-0171 auf Halle 4 ändern",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0289"
+        ]
+      },
+      {
+        "title": "Rechnung KHS-R-26-3310 bezahlen",
+        "values": {
+          "state": "open",
+          "due_date": "2026-08-29"
+        },
+        "sources": [
+          "m-0302"
+        ]
+      },
+      {
+        "title": "Schaftfräser VHM 12 mm bei Bassano nachbestellen",
+        "values": {
+          "state": "open"
+        },
+        "sources": [
+          "m-0305"
+        ]
+      }
+    ],
+    "invoices": [
+      {
+        "title": "Nordhafen RE-2026-0377 Pichler",
+        "values": {
+          "invoice_number": "RE-2026-0377",
+          "issuer": "Nordhafen",
+          "amount": {
+            "amount": 2214.6,
+            "currency": "EUR"
+          },
+          "due_date": "2026-07-28",
+          "state": "paid",
+          "direction": "outgoing"
+        },
+        "sources": [
+          "m-0025",
+          "m-0204",
+          "m-0288"
+        ]
+      },
+      {
+        "title": "Wupperthal Schleifmittel WS-26-04417",
+        "values": {
+          "invoice_number": "WS-26-04417",
+          "issuer": "Wupperthal Schleifmittel",
+          "amount": {
+            "amount": 1876.4,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-09",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0088"
+        ]
+      },
+      {
+        "title": "Obaly Vltava FV20260412",
+        "values": {
+          "invoice_number": "FV20260412",
+          "issuer": "Obaly Vltava",
+          "amount": {
+            "amount": 3450,
+            "currency": "EUR"
+          },
+          "state": "paid",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0133",
+          "m-0247"
+        ]
+      },
+      {
+        "title": "Utensileria Bassano 2026/VEN/0812",
+        "values": {
+          "invoice_number": "2026/VEN/0812",
+          "issuer": "Utensileria Bassano",
+          "amount": {
+            "amount": 2050,
+            "currency": "EUR"
+          },
+          "due_date": "2026-09-30",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0165"
+        ]
+      },
+      {
+        "title": "Elbtal Lagertechnik ELT-2026-3381",
+        "values": {
+          "invoice_number": "ELT-2026-3381",
+          "issuer": "Elbtal Lagertechnik",
+          "amount": {
+            "amount": 1920,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-16",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0166"
+        ]
+      },
+      {
+        "title": "Nordhafen GS-2026-014 Gutschrift Hartmann",
+        "values": {
+          "invoice_number": "GS-2026-014",
+          "issuer": "Nordhafen",
+          "amount": {
+            "amount": 96.75,
+            "currency": "EUR"
+          },
+          "direction": "outgoing"
+        },
+        "sources": [
+          "m-0191"
+        ]
+      },
+      {
+        "title": "Anadolu Dövme ADS-EXP-2026-114",
+        "values": {
+          "invoice_number": "ADS-EXP-2026-114",
+          "issuer": "Anadolu Dövme",
+          "amount": {
+            "amount": 12432,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-23",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0254"
+        ]
+      },
+      {
+        "title": "Rhönblick Arbeitsschutz RA-260731",
+        "values": {
+          "invoice_number": "RA-260731",
+          "issuer": "Rhönblick Arbeitsschutz",
+          "amount": {
+            "amount": 412.3,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-27",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0273"
+        ]
+      },
+      {
+        "title": "Glanzwerk Gebäudeservice GW-2026-188",
+        "values": {
+          "invoice_number": "GW-2026-188",
+          "issuer": "Glanzwerk Gebäudeservice",
+          "amount": {
+            "amount": 1150,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-11",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0280"
+        ]
+      },
+      {
+        "title": "Nordhafen RE-2026-0438 Steiner",
+        "values": {
+          "invoice_number": "RE-2026-0438",
+          "direction": "outgoing"
+        },
+        "sources": [
+          "m-0282"
+        ]
+      },
+      {
+        "title": "Kranhöft Spedition KHS-R-26-3310",
+        "values": {
+          "invoice_number": "KHS-R-26-3310",
+          "issuer": "Kranhöft Spedition",
+          "amount": {
+            "amount": 2384,
+            "currency": "EUR"
+          },
+          "due_date": "2026-08-29",
+          "state": "open",
+          "direction": "incoming"
+        },
+        "sources": [
+          "m-0302"
+        ]
+      }
+    ],
+    "shipments": [
+      {
+        "title": "Wisła-Trans WTS-PL-260709",
+        "values": {
+          "tracking_number": "WTS-PL-260709",
+          "carrier": "Wisła-Trans",
+          "direction": "inbound",
+          "order_ref": "PO-26-1083",
+          "state": "delivered",
+          "eta": "2026-07-10",
+          "driver": "Marek W."
+        },
+        "sources": [
+          "m-0049",
+          "m-0089"
+        ]
+      },
+      {
+        "title": "Palettenring PRN-26070931",
+        "values": {
+          "tracking_number": "PRN-26070931",
+          "carrier": "Palettenring Nord",
+          "direction": "outbound",
+          "state": "damaged",
+          "eta": "2026-07-09"
+        },
+        "sources": [
+          "m-0050",
+          "m-0100"
+        ]
+      },
+      {
+        "title": "Kiebitz Paket KP402611870093",
+        "values": {
+          "tracking_number": "KP402611870093",
+          "carrier": "Kiebitz Paket",
+          "direction": "outbound",
+          "state": "delivered",
+          "eta": "2026-07-10"
+        },
+        "sources": [
+          "m-0077",
+          "m-0083"
+        ]
+      },
+      {
+        "title": "Kiebitz Paket KP402611870129",
+        "values": {
+          "tracking_number": "KP402611870129",
+          "carrier": "Kiebitz Paket",
+          "direction": "outbound",
+          "state": "delivered",
+          "eta": "2026-07-14"
+        },
+        "sources": [
+          "m-0106",
+          "m-0117"
+        ]
+      },
+      {
+        "title": "Wisła-Trans WTS-PL-260714",
+        "values": {
+          "tracking_number": "WTS-PL-260714",
+          "carrier": "Wisła-Trans",
+          "direction": "outbound",
+          "order_ref": "SO-26-0153",
+          "state": "delivered",
+          "eta": "2026-07-17"
+        },
+        "sources": [
+          "m-0119",
+          "m-0159",
+          "m-0167"
+        ]
+      },
+      {
+        "title": "Transportes Cierzo TC-26-40713",
+        "values": {
+          "tracking_number": "TC-26-40713",
+          "carrier": "Transportes Cierzo",
+          "direction": "inbound",
+          "order_ref": "PO-26-1091",
+          "state": "in_transit",
+          "eta": "2026-07-20"
+        },
+        "sources": [
+          "m-0125",
+          "m-0183"
+        ]
+      },
+      {
+        "title": "Kranhöft KHS-HH-26066",
+        "values": {
+          "tracking_number": "KHS-HH-26066",
+          "carrier": "Kranhöft Spedition",
+          "direction": "outbound",
+          "order_ref": "SO-26-0145",
+          "state": "in_transit",
+          "eta": "2026-07-21"
+        },
+        "sources": [
+          "m-0135",
+          "m-0196"
+        ]
+      },
+      {
+        "title": "Bosporus Lojistik CMR-BL-260718",
+        "values": {
+          "tracking_number": "CMR-BL-260718",
+          "carrier": "Bosporus Lojistik",
+          "direction": "inbound",
+          "order_ref": "PO-26-1088",
+          "state": "delivered",
+          "eta": "2026-07-24"
+        },
+        "sources": [
+          "m-0179",
+          "m-0198",
+          "m-0217",
+          "m-0253"
+        ]
+      },
+      {
+        "title": "Kiebitz Paket KP402611870411",
+        "values": {
+          "tracking_number": "KP402611870411",
+          "carrier": "Kiebitz Paket",
+          "direction": "outbound",
+          "state": "picked_up",
+          "eta": "2026-07-22"
+        },
+        "sources": [
+          "m-0199"
+        ]
+      },
+      {
+        "title": "Palettenring PRN-26072201",
+        "values": {
+          "tracking_number": "PRN-26072201",
+          "carrier": "Palettenring Nord",
+          "direction": "outbound",
+          "order_ref": "SO-26-0164",
+          "state": "booked",
+          "eta": "2026-07-22",
+          "driver": "Marek Wiśniewski"
+        },
+        "sources": [
+          "m-0214"
+        ]
+      },
+      {
+        "title": "Kranhöft KHS-HH-26071",
+        "values": {
+          "tracking_number": "KHS-HH-26071",
+          "carrier": "Kranhöft Spedition",
+          "direction": "outbound",
+          "order_ref": "SO-26-0147",
+          "state": "delivered",
+          "eta": "2026-07-23"
+        },
+        "sources": [
+          "m-0224",
+          "m-0244"
+        ]
+      },
+      {
+        "title": "Kranhöft KHS-HH-26072",
+        "values": {
+          "tracking_number": "KHS-HH-26072",
+          "carrier": "Kranhöft Spedition",
+          "direction": "outbound",
+          "order_ref": "SO-26-0147",
+          "state": "delivered",
+          "eta": "2026-07-24"
+        },
+        "sources": [
+          "m-0224",
+          "m-0244",
+          "m-0252"
+        ]
+      },
+      {
+        "title": "Alpen-Sammelgut ASG-2607221",
+        "values": {
+          "tracking_number": "ASG-2607221",
+          "carrier": "Alpen-Sammelgut",
+          "direction": "outbound",
+          "order_ref": "SO-26-0158, SO-26-0161",
+          "state": "delivered",
+          "eta": "2026-07-28"
+        },
+        "sources": [
+          "m-0229",
+          "m-0242",
+          "m-0262",
+          "m-0285"
+        ]
+      },
+      {
+        "title": "Wisła-Trans WTS-PL-260728",
+        "values": {
+          "tracking_number": "WTS-PL-260728",
+          "carrier": "Wisła-Trans",
+          "direction": "inbound",
+          "order_ref": "PO-26-1083",
+          "state": "delivered",
+          "eta": "2026-07-29",
+          "driver": "Marek Wisniewski"
+        },
+        "sources": [
+          "m-0265",
+          "m-0292"
+        ]
+      },
+      {
+        "title": "Alpen-Sammelgut ASG-2607270",
+        "values": {
+          "tracking_number": "ASG-2607270",
+          "carrier": "Alpen-Sammelgut",
+          "direction": "outbound",
+          "state": "in_transit",
+          "eta": "2026-07-30"
+        },
+        "sources": [
+          "m-0277",
+          "m-0291"
+        ]
+      }
+    ],
+    "complaints": [
+      {
+        "title": "Vossberg Fördertechnik Transportschaden",
+        "values": {
+          "customer": "Vossberg Fördertechnik",
+          "topic": "damage",
+          "severity": "medium",
+          "state": "resolved",
+          "opened_on": "2026-07-09"
+        },
+        "sources": [
+          "m-0073",
+          "m-0121"
+        ]
+      },
+      {
+        "title": "Hartmann Hydraulik delay SO-26-0149",
+        "values": {
+          "customer": "Hartmann Hydraulik",
+          "topic": "delay",
+          "severity": "high",
+          "state": "resolved",
+          "opened_on": "2026-07-16",
+          "reference": "RMA-26-043"
+        },
+        "sources": [
+          "m-0146",
+          "m-0171"
+        ]
+      },
+      {
+        "title": "Dijkstra Werktuigen wrong item hex nuts",
+        "values": {
+          "customer": "Dijkstra Werktuigen",
+          "topic": "wrong_item",
+          "severity": "low",
+          "state": "open",
+          "opened_on": "2026-07-16"
+        },
+        "sources": [
+          "m-0162"
+        ]
+      },
+      {
+        "title": "Ateliers Moreau damage SO-26-0156",
+        "values": {
+          "customer": "Ateliers Moreau",
+          "topic": "damage",
+          "severity": "medium",
+          "state": "resolved",
+          "opened_on": "2026-07-17",
+          "reference": "RMA-26-041"
+        },
+        "sources": [
+          "m-0173",
+          "m-0227"
+        ]
+      },
+      {
+        "title": "Kessler Maschinenbau wrong item SO-26-0155",
+        "values": {
+          "customer": "Kessler Maschinenbau",
+          "topic": "wrong_item",
+          "severity": "low",
+          "state": "open",
+          "opened_on": "2026-07-21"
+        },
+        "sources": [
+          "m-0202"
+        ]
+      }
+    ],
+    "suppliers": [
+      {
+        "title": "Tornillería del Ebro",
+        "values": {
+          "name": "Tornillería del Ebro",
+          "notes": "prices +6.5 % from 1 August 2026 (steel surcharge)"
+        },
+        "sources": [
+          "m-0084"
+        ]
+      }
+    ]
+  },
+  "relations": [
+    {
+      "type": "works_at",
+      "from": "people:Jens Albers",
+      "to": "organizations:Vossberg Fördertechnik GmbH",
+      "sources": [
+        "m-0007",
+        "m-0073",
+        "m-0121",
+        "m-0261",
+        "m-0289"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Agnieszka Mazur",
+      "to": "organizations:Odlewnia Wiślana Sp. z o.o.",
+      "sources": [
+        "m-0009",
+        "m-0044",
+        "m-0137",
+        "m-0230"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Robert Thiele",
+      "to": "organizations:Thiele Messebau GmbH",
+      "sources": [
+        "m-0010",
+        "m-0034",
+        "m-0142",
+        "m-0233",
+        "m-0234"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Philipp Seidel",
+      "to": "organizations:Auerbach Medizintechnik GmbH",
+      "sources": [
+        "m-0012",
+        "m-0071",
+        "m-0197"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Kerstin Paulsen",
+      "to": "organizations:Elbtal Lagertechnik GmbH",
+      "sources": [
+        "m-0015",
+        "m-0110",
+        "m-0152",
+        "m-0166"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Ingrid Solberg",
+      "to": "organizations:Halvorsen Verkstedservice AS",
+      "sources": [
+        "m-0016"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Mehmet Arslan",
+      "to": "organizations:Anadolu Dövme Sanayi A.Ş.",
+      "sources": [
+        "m-0023",
+        "m-0094",
+        "m-0109",
+        "m-0254"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Thomas Reuter",
+      "to": "organizations:Hartmann Hydraulik GmbH",
+      "sources": [
+        "m-0024",
+        "m-0095",
+        "m-0146",
+        "m-0171"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Camille Rousseau",
+      "to": "organizations:Ateliers Moreau SARL",
+      "sources": [
+        "m-0027",
+        "m-0082",
+        "m-0097",
+        "m-0173",
+        "m-0227"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Femke de Wit",
+      "to": "organizations:Dijkstra Werktuigen B.V.",
+      "sources": [
+        "m-0028",
+        "m-0065",
+        "m-0124",
+        "m-0162"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Reto Baumann",
+      "to": "organizations:Steiner Präzisionsteile AG",
+      "sources": [
+        "m-0035",
+        "m-0098",
+        "m-0303"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Dirk Hollmann",
+      "to": "organizations:Wupperthal Schleifmittel GmbH",
+      "sources": [
+        "m-0036",
+        "m-0088"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Marek Kowalczyk",
+      "to": "organizations:Ostrowski Serwis Sp. z o.o.",
+      "sources": [
+        "m-0040",
+        "m-0141",
+        "m-0209",
+        "m-0218",
+        "m-0276"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Sabine Wendt",
+      "to": "organizations:Kessler Maschinenbau GmbH",
+      "sources": [
+        "m-0041",
+        "m-0202"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Ulrich Behrens",
+      "to": "organizations:Steuerkanzlei Behrens & Kolb",
+      "sources": [
+        "m-0042",
+        "m-0063"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Katarzyna Lewandowska",
+      "to": "organizations:Wisła-Trans Spedycja Sp. z o.o.",
+      "sources": [
+        "m-0049",
+        "m-0119",
+        "m-0159",
+        "m-0167",
+        "m-0265"
+      ]
+    },
+    {
+      "type": "drives_for",
+      "from": "people:Marek Wiśniewski",
+      "to": "organizations:Wisła-Trans Spedycja Sp. z o.o.",
+      "sources": [
+        "m-0049",
+        "m-0081",
+        "m-0265"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Holger Brandes",
+      "to": "organizations:Palettenring Nord GmbH",
+      "sources": [
+        "m-0050",
+        "m-0214"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Melanie Kurz",
+      "to": "organizations:Falkenrath Antriebe GmbH",
+      "sources": [
+        "m-0056",
+        "m-0085",
+        "m-0186"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Serkan Yılmaz",
+      "to": "organizations:Glanzwerk Gebäudeservice GmbH",
+      "sources": [
+        "m-0060",
+        "m-0280"
+      ]
+    },
+    {
+      "type": "attends",
+      "from": "people:Ulrich Behrens",
+      "to": "events:Besprechung Halbjahresabschluss mit Herrn Behrens",
+      "sources": [
+        "m-0063"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Mads Kjær",
+      "to": "organizations:Jensen Maskinfabrik A/S",
+      "sources": [
+        "m-0067",
+        "m-0301"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Lucía Navarro",
+      "to": "organizations:Tornillería del Ebro S.L.",
+      "sources": [
+        "m-0069",
+        "m-0084",
+        "m-0210"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Oskar Nyberg",
+      "to": "organizations:Lindgren Verktyg AB",
+      "sources": [
+        "m-0070",
+        "m-0079",
+        "m-0238"
+      ]
+    },
+    {
+      "type": "attends",
+      "from": "people:Mehmet Arslan",
+      "to": "events:Video call with Mehmet Arslan about volume 2027",
+      "sources": [
+        "m-0094",
+        "m-0109"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Martina Hofer",
+      "to": "organizations:Brandauer Anlagentechnik GmbH",
+      "sources": [
+        "m-0096",
+        "m-0136",
+        "m-0248",
+        "m-0285"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Andreas König",
+      "to": "organizations:Nordlicht Transportversicherung AG",
+      "sources": [
+        "m-0100"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Andrea Caduff",
+      "to": "organizations:Gruber Seilbahntechnik AG",
+      "sources": [
+        "m-0108",
+        "m-0118",
+        "m-0172"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Julien Marchand",
+      "to": "organizations:Delacroix Usinage SAS",
+      "sources": [
+        "m-0112",
+        "m-0206",
+        "m-0294"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Gerhard Pichler",
+      "to": "organizations:Pichler Metallbau GmbH",
+      "sources": [
+        "m-0116",
+        "m-0147",
+        "m-0148",
+        "m-0219"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Wisła-Trans WTS-PL-260714",
+      "to": "sales_orders:Ostrowski Serwis 2026/OS/118",
+      "sources": [
+        "m-0119"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Javier Ortega",
+      "to": "organizations:Transportes Cierzo S.L.",
+      "sources": [
+        "m-0125",
+        "m-0183"
+      ]
+    },
+    {
+      "type": "delivers",
+      "from": "shipments:Transportes Cierzo TC-26-40713",
+      "to": "purchase_orders:Tornillería del Ebro PO-26-1091",
+      "sources": [
+        "m-0125"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Paweł Zieliński",
+      "to": "organizations:Ostrowski Serwis Sp. z o.o.",
+      "sources": [
+        "m-0128"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Marco Ferraro",
+      "to": "organizations:Utensileria Bassano S.r.l.",
+      "sources": [
+        "m-0131",
+        "m-0165",
+        "m-0194",
+        "m-0201"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Tereza Dvořáková",
+      "to": "organizations:Obaly Vltava s.r.o.",
+      "sources": [
+        "m-0133",
+        "m-0247"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Miriam Falk",
+      "to": "organizations:Messe Ruhrfeld GmbH",
+      "sources": [
+        "m-0134"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Claudia Wendler",
+      "to": "organizations:Kranhöft Spedition GmbH",
+      "sources": [
+        "m-0135",
+        "m-0196",
+        "m-0224",
+        "m-0244",
+        "m-0252",
+        "m-0302"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Uwe Rademacher",
+      "to": "organizations:Möllenhoff Stahlbau GmbH & Co. KG",
+      "sources": [
+        "m-0153",
+        "m-0231",
+        "m-0269"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Elif Kaya",
+      "to": "organizations:Anadolu Dövme Sanayi A.Ş.",
+      "sources": [
+        "m-0179"
+      ]
+    },
+    {
+      "type": "delivers",
+      "from": "shipments:Bosporus Lojistik CMR-BL-260718",
+      "to": "purchase_orders:Anadolu Dövme PO-26-1088",
+      "sources": [
+        "m-0179"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Sindre Haugen",
+      "to": "organizations:Nordkap Marine Service AS",
+      "sources": [
+        "m-0190",
+        "m-0270"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Nina Becker",
+      "to": "organizations:Rhönblick Arbeitsschutz GmbH",
+      "sources": [
+        "m-0193",
+        "m-0273"
+      ]
+    },
+    {
+      "type": "attends",
+      "from": "people:Marco Ferraro",
+      "to": "events:Dinner with Marco Ferraro",
+      "sources": [
+        "m-0194",
+        "m-0201"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Burak Demir",
+      "to": "organizations:Bosporus Lojistik A.Ş.",
+      "sources": [
+        "m-0198",
+        "m-0217"
+      ]
+    },
+    {
+      "type": "attends",
+      "from": "people:Marek Kowalczyk",
+      "to": "events:Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld",
+      "sources": [
+        "m-0209",
+        "m-0218"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Kristian Berg",
+      "to": "organizations:Halvorsen Verkstedservice AS",
+      "sources": [
+        "m-0211",
+        "m-0274"
+      ]
+    },
+    {
+      "type": "drives_for",
+      "from": "people:Marek Wiśniewski",
+      "to": "organizations:Palettenring Nord GmbH",
+      "sources": [
+        "m-0214"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Palettenring PRN-26072201",
+      "to": "sales_orders:Möllenhoff Stahlbau SO-26-0164",
+      "sources": [
+        "m-0214"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Line Sørensen",
+      "to": "organizations:Sørensen Agro ApS",
+      "sources": [
+        "m-0215",
+        "m-0275"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Kranhöft KHS-HH-26071",
+      "to": "sales_orders:Dijkstra Werktuigen SO-26-0147",
+      "sources": [
+        "m-0224"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Kranhöft KHS-HH-26072",
+      "to": "sales_orders:Dijkstra Werktuigen SO-26-0147",
+      "sources": [
+        "m-0224"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Stefan Moser",
+      "to": "organizations:Alpen-Sammelgut Spedition GmbH",
+      "sources": [
+        "m-0229",
+        "m-0242",
+        "m-0262",
+        "m-0277",
+        "m-0291"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Alpen-Sammelgut ASG-2607221",
+      "to": "sales_orders:Brandauer Anlagentechnik BA-2026-07",
+      "sources": [
+        "m-0229"
+      ]
+    },
+    {
+      "type": "ships",
+      "from": "shipments:Alpen-Sammelgut ASG-2607221",
+      "to": "sales_orders:Brandauer Anlagentechnik Nachbestellung Spiralbohrer",
+      "sources": [
+        "m-0229"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Luka Kranjc",
+      "to": "organizations:Kranjc Orodja d.o.o.",
+      "sources": [
+        "m-0240"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Klaus Kessler",
+      "to": "organizations:Kessler Maschinenbau GmbH",
+      "sources": [
+        "m-0241",
+        "m-0246"
+      ]
+    },
+    {
+      "type": "attends",
+      "from": "people:Klaus Kessler",
+      "to": "events:Termin mit Klaus Kessler zu Konditionen",
+      "sources": [
+        "m-0246"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Katrin Vogt",
+      "to": "organizations:Römer Fahrzeugtechnik GmbH",
+      "sources": [
+        "m-0293"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Camille Rousseau",
+      "to": "organizations:Delacroix Usinage SAS",
+      "sources": [
+        "m-0300"
+      ]
+    },
+    {
+      "type": "works_at",
+      "from": "people:Lucas Bernard",
+      "to": "organizations:Ateliers Moreau SARL",
+      "sources": [
+        "m-0300"
+      ]
+    }
+  ],
+  "retracted": [
+    {
+      "record": "tasks:Leuchten für den Stand in Halle 2 bis Freitag liefern",
+      "by": "m-0234"
+    }
+  ]
+}

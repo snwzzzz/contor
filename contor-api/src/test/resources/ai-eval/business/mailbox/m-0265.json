@@ -1,0 +1,127 @@
+{
+  "id": "m-0265",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wislatrans-260728",
+  "cc": [],
+  "storyline": "D-wislatrans-rest",
+  "beat": "announce",
+  "category": "D",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katarzyna Lewandowska",
+    "fromAddress": "k.lewandowska@wislatrans.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Delivery WTS-PL-260728 / PO-26-1083 rest",
+    "receivedAt": "2026-07-27T08:00:00Z",
+    "body": "Hello,\n\nremaining delivery for PO-26-1083: 438 pcs incl. replacement parts, 2 pallets, consignment WTS-PL-260728.\nArrival Wednesday 29.07. 09:00.\nDriver: Marek Wisniewski (same as last time), mobile +48 5550 4171\n\nPlease confirm the slot.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260728",
+          "values": {
+            "tracking_number": "WTS-PL-260728",
+            "carrier": "Wisła-Trans",
+            "direction": "inbound",
+            "order_ref": "PO-26-1083",
+            "state": "booked",
+            "eta": "2026-07-29",
+            "driver": "Marek Wisniewski"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katarzyna Lewandowska",
+          "values": {
+            "email": "k.lewandowska@wislatrans.example",
+            "phone": "+48 71 5550 6101",
+            "role_title": "Dispatcher"
+          }
+        },
+        {
+          "title": "Marek Wisniewski",
+          "values": {
+            "full_name": "Marek Wisniewski",
+            "phone": "+48 5550 4171",
+            "role_title": "Driver"
+          }
+        }
+      ],
+      "purchase_orders": [
+        {
+          "title": "Odlewnia Wiślana PO-26-1083",
+          "values": {
+            "po_number": "PO-26-1083",
+            "state": "shipped",
+            "expected_arrival": "2026-07-29"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Anlieferung Wisła-Trans PO-26-1083 Rest",
+          "values": {
+            "starts_at": "2026-07-29T09:00:00+02:00"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "domain": "wislatrans.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katarzyna Lewandowska",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      },
+      {
+        "type": "drives_for",
+        "from": "people:Marek Wisniewski",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Can you confirm the slot Wednesday 29.07. 09:00?"
+    ],
+    "answeredBy": "m-0267"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "shared-driver",
+    "name-typo",
+    "slot-booking"
+  ],
+  "storylineTags": [
+    "shared-driver",
+    "name-typo"
+  ],
+  "facts": [
+    "remaining delivery PO-26-1083: 438 pcs incl. replacement",
+    "consignment WTS-PL-260728",
+    "Wednesday 29.07. 09:00",
+    "driver Marek Wisniewski (same as last time), mobile +48 5550 4171",
+    "please confirm slot"
+  ],
+  "derived": {
+    "people.role_title": "'Driver:' label in the mail"
+  }
+}

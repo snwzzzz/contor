@@ -1,0 +1,82 @@
+{
+  "id": "m-0126",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-scam-1",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "scam-1",
+  "kind": "phishing",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kiebitz Paket Zustellung",
+    "fromAddress": "service@kiebitz-zustellung-info.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Ihre Sendung konnte nicht zugestellt werden – Handlung erforderlich",
+    "receivedAt": "2026-07-15T01:47:00Z",
+    "body": "Sehr geehrter Kunde,\n\nIhre Sendung konnte heute nicht zugestellt werden, da eine Zollgebühr von 1,99 EUR offen ist. Bitte begleichen Sie die Gebühr innerhalb von 24 Stunden, sonst wird die Sendung an den Absender zurückgeschickt:\n\nhttp://kiebitz-zustellung-info.example/zahlung\n\nIhr Kiebitz Paket Zustellteam"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "phishing"
+  ],
+  "facts": []
+}

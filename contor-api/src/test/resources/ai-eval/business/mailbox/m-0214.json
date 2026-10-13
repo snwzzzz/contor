@@ -1,0 +1,113 @@
+{
+  "id": "m-0214",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-prn-26072201",
+  "cc": [],
+  "storyline": "D-palettenring-marek",
+  "beat": "announce",
+  "category": "D",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Holger Brandes",
+    "fromAddress": "h.brandes@palettenring-nord.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Avis PRN-26072201 Möllenhoff",
+    "receivedAt": "2026-07-21T12:30:00Z",
+    "body": "Moin,\n\nmorgen Zustellung bei Möllenhoff in Dortmund, Sendung PRN-26072201, 3 Paletten (Ihr Auftrag SO-26-0164). Fahrer: Marek Wiśniewski, Tel. +48 5550 4171, Ankunft ca. 8 Uhr (Zeitfenster 7–12 Uhr, Tor 3).\n\nGruß\nHolger Brandes\nDisposition\nPalettenring Nord GmbH\nTel. +49 40 5550 6501"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Palettenring PRN-26072201",
+          "values": {
+            "tracking_number": "PRN-26072201",
+            "carrier": "Palettenring Nord",
+            "direction": "outbound",
+            "order_ref": "SO-26-0164",
+            "state": "booked",
+            "eta": "2026-07-22",
+            "driver": "Marek Wiśniewski"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Holger Brandes",
+          "values": {
+            "email": "h.brandes@palettenring-nord.example",
+            "phone": "+49 40 5550 6501",
+            "role_title": "Disposition"
+          }
+        },
+        {
+          "title": "Marek Wiśniewski",
+          "values": {
+            "full_name": "Marek Wiśniewski",
+            "phone": "+48 5550 4171"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Möllenhoff Stahlbau SO-26-0164",
+          "entity": "so-0164",
+          "values": {
+            "order_number": "SO-26-0164",
+            "state": "shipped"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Palettenring Nord GmbH",
+          "values": {
+            "domain": "palettenring-nord.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Holger Brandes",
+        "to": "organizations:Palettenring Nord GmbH"
+      },
+      {
+        "type": "drives_for",
+        "from": "people:Marek Wiśniewski",
+        "to": "organizations:Palettenring Nord GmbH"
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Palettenring PRN-26072201",
+        "to": "sales_orders:Möllenhoff Stahlbau SO-26-0164"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "shared-driver"
+  ],
+  "storylineTags": [
+    "shared-driver"
+  ],
+  "facts": [
+    "morgen Zustellung Möllenhoff Dortmund",
+    "Sendung PRN-26072201, 3 Paletten, SO-26-0164",
+    "Fahrer Marek Wiśniewski, Tel. +48 5550 4171",
+    "Ankunft ca. 8 Uhr, Zeitfenster 7-12, Tor 3"
+  ],
+  "derived": {
+    "shipments.eta": "morgen = 22.07.2026"
+  }
+}

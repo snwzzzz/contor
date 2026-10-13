@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
+  FlaskConical,
   Mail,
   RefreshCw,
   RotateCcw,
@@ -165,6 +166,8 @@ export function AccountsList({
         {accounts.map((account) => {
           const isActive = account.status === "ACTIVE";
           const isDisabled = account.status === "DISABLED";
+          // the dev-only demo mailbox is imported once and never synced
+          const isDemo = account.provider === "DEMO";
           const isSyncing =
             syncMutation.isPending &&
             syncMutation.variables?.accountId === account.id;
@@ -187,24 +190,31 @@ export function AccountsList({
                     {account.displayName ? (
                       <CardDescription>{account.displayName}</CardDescription>
                     ) : null}
+                    {isDemo ? (
+                      <CardDescription>
+                        Fictional demo mailbox (dev only), never synced
+                      </CardDescription>
+                    ) : null}
                   </div>
                 </div>
                 <Badge
                   variant={
-                    isActive
-                      ? "default"
-                      : isDisabled
-                        ? "secondary"
+                    isDemo || isDisabled
+                      ? "secondary"
+                      : isActive
+                        ? "default"
                         : "destructive"
                   }
                   className="gap-1"
                 >
-                  {isActive ? (
+                  {isDemo ? (
+                    <FlaskConical className="size-3" />
+                  ) : isActive ? (
                     <CheckCircle2 className="size-3" />
                   ) : (
                     <AlertCircle className="size-3" />
                   )}
-                  {STATUS_LABEL[account.status]}
+                  {isDemo && isActive ? "Demo" : STATUS_LABEL[account.status]}
                 </Badge>
               </CardHeader>
               <CardContent className="flex items-center justify-between pt-4">
@@ -214,7 +224,7 @@ export function AccountsList({
                     : "Not synced yet"}
                 </div>
                 <div className="flex gap-2">
-                  {isActive ? (
+                  {isDemo ? null : isActive ? (
                     <AppButton
                       size="sm"
                       variant="outline"

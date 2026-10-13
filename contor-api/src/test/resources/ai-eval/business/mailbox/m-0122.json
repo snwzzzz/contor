@@ -1,0 +1,42 @@
+{
+  "id": "m-0122",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-gruber-revision",
+  "cc": [],
+  "storyline": "A3-gruber-rush",
+  "beat": "proforma",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": "m-0118",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "andrea.caduff@gruber-seilbahntechnik.example"
+    ],
+    "subject": "Proforma SO-26-0162",
+    "receivedAt": "2026-07-14T13:00:00Z",
+    "body": "Guten Tag Frau Caduff\n\nanbei die Proforma zu SO-26-0162 über CHF 1'536.50 inkl. Kurier und Verzollung. Sobald die Zahlung da ist, geht die Ware raus.\n\nFreundliche Grüsse\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "rush-order",
+    "currency"
+  ],
+  "facts": [
+    "Proforma zu SO-26-0162",
+    "CHF 1'536.50 inkl. Kurier",
+    "Versand nach Zahlungseingang"
+  ]
+}

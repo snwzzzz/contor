@@ -1,0 +1,41 @@
+{
+  "id": "m-0057",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-falkenrath-rush-intern",
+  "cc": [],
+  "storyline": "A3-falkenrath-rush",
+  "beat": "ask-jana",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "jana.petersen@nordhafen.example"
+    ],
+    "subject": "Eilt: Falkenrath",
+    "receivedAt": "2026-07-09T05:40:00Z",
+    "body": "Hi Jana,\n\nkannst du für Falkenrath 12 × NH-52300 und 4 × NH-52340 heute bis 14 Uhr fertig machen? Geht per Kiebitz Express raus.\n\nDanke dir\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "rush-order"
+  ],
+  "facts": [
+    "12 × NH-52300 und 4 × NH-52340 für Falkenrath",
+    "heute bis 14 Uhr fertig",
+    "Kiebitz Express"
+  ]
+}

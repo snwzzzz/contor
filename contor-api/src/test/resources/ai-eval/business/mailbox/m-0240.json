@@ -1,0 +1,72 @@
+{
+  "id": "m-0240",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kranjc-offer",
+  "cc": [],
+  "storyline": "J6-kranjc-attached",
+  "beat": "attached",
+  "category": "J",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Luka Kranjc",
+    "fromAddress": "luka@kranjc-orodja.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Offer hand tools",
+    "receivedAt": "2026-07-23T11:55:00Z",
+    "body": "see attached\n\nLuka Kranjc\nSales\nKranjc Orodja d.o.o.\nCelje, Slovenia\n+386 3 5550 5901"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Luka Kranjc",
+          "values": {
+            "email": "luka@kranjc-orodja.example",
+            "phone": "+386 3 5550 5901",
+            "role_title": "Sales"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kranjc Orodja d.o.o.",
+          "values": {
+            "domain": "kranjc-orodja.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Luka Kranjc",
+        "to": "organizations:Kranjc Orodja d.o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "signature-only",
+    "very-short"
+  ],
+  "storylineTags": [
+    "signature-only"
+  ],
+  "facts": [
+    "see attached"
+  ]
+}

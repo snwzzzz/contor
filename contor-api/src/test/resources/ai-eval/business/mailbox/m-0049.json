@@ -1,0 +1,116 @@
+{
+  "id": "m-0049",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wislatrans-260709",
+  "cc": [],
+  "storyline": "D-wislatrans-marek",
+  "beat": "announce",
+  "category": "D",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katarzyna Lewandowska",
+    "fromAddress": "k.lewandowska@wislatrans.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Delivery WTS-PL-260709 / PO-26-1083",
+    "receivedAt": "2026-07-08T13:00:00Z",
+    "body": "Hello,\n\ndelivery for PO-26-1083 (Odlewnia Wiślana): 600 pcs, 3 pallets, consignment WTS-PL-260709.\nArrival at your warehouse Friday 10.07. 11:00.\nDriver: Marek W., mobile +48 5550 4171\n\nPlease confirm unloading slot 11:00.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260709",
+          "values": {
+            "tracking_number": "WTS-PL-260709",
+            "carrier": "Wisła-Trans",
+            "direction": "inbound",
+            "order_ref": "PO-26-1083",
+            "state": "booked",
+            "eta": "2026-07-10",
+            "driver": "Marek W."
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katarzyna Lewandowska",
+          "values": {
+            "email": "k.lewandowska@wislatrans.example",
+            "phone": "+48 71 5550 6101",
+            "role_title": "Dispatcher"
+          }
+        },
+        {
+          "title": "Marek W.",
+          "values": {
+            "full_name": "Marek W.",
+            "phone": "+48 5550 4171",
+            "role_title": "Driver"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Anlieferung Wisła-Trans PO-26-1083",
+          "entity": "slot-260709",
+          "values": {
+            "starts_at": "2026-07-10T11:00:00+02:00"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "domain": "wislatrans.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katarzyna Lewandowska",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      },
+      {
+        "type": "drives_for",
+        "from": "people:Marek W.",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Can you confirm the unloading slot Friday 10.07. 11:00?"
+    ],
+    "answeredBy": "m-0052"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "shared-driver",
+    "slot-booking"
+  ],
+  "storylineTags": [
+    "shared-driver"
+  ],
+  "facts": [
+    "delivery PO-26-1083: 600 pcs, 3 pallets",
+    "Friday 10.07. 11:00",
+    "consignment WTS-PL-260709",
+    "driver Marek W., mobile +48 5550 4171",
+    "please confirm slot 11:00"
+  ],
+  "derived": {
+    "people.role_title": "'Driver:' label in the mail"
+  }
+}

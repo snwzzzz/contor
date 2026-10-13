@@ -1,0 +1,82 @@
+{
+  "id": "m-0153",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moellenhoff-7781",
+  "cc": [],
+  "storyline": "A2-moellenhoff-monthly",
+  "beat": "order",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Uwe Rademacher",
+    "fromAddress": "u.rademacher@moellenhoff-stahlbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestellung 7781/26",
+    "receivedAt": "2026-07-16T08:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nhiermit bestellen wir unter unserer Bestellnummer 7781/26 die folgenden Positionen, wobei wir Sie bitten, die Anlieferung wie gewohnt in dem mit unserer Warenannahme abgestimmten Zeitfenster vorzunehmen:\n\n1. 400 Stück Gewindestange M12x1000 verzinkt\n2. 60 Kartons Sechskantschraube M8x40 8.8 verzinkt\n\nAnlieferung: Mittwoch, 22.07.2026, zwischen 7 und 12 Uhr, Tor 3.\n\nFür eine kurze Auftragsbestätigung wären wir Ihnen dankbar.\n\nMit freundlichen Grüßen\nUwe Rademacher\nArbeitsvorbereitung\nMöllenhoff Stahlbau GmbH & Co. KG\nTel. +49 231 5550 2501"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Möllenhoff Stahlbau 7781/26",
+          "entity": "so-0164",
+          "values": {
+            "customer": "Möllenhoff Stahlbau",
+            "state": "received",
+            "requested_delivery": "2026-07-22"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Uwe Rademacher",
+          "values": {
+            "email": "u.rademacher@moellenhoff-stahlbau.example",
+            "phone": "+49 231 5550 2501",
+            "role_title": "Arbeitsvorbereitung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Möllenhoff Stahlbau GmbH & Co. KG",
+          "values": {
+            "domain": "moellenhoff-stahlbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Uwe Rademacher",
+        "to": "organizations:Möllenhoff Stahlbau GmbH & Co. KG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0160"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "Bestellung 7781/26",
+    "400 Gewindestangen M12x1000",
+    "60 Kartons Sechskantschrauben M8x40",
+    "Anlieferung Mittwoch 22.07.2026 zwischen 7 und 12 Uhr, Tor 3"
+  ]
+}

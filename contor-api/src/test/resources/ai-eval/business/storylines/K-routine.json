@@ -1,0 +1,351 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "G5-jana-stock-reports",
+      "category": "G",
+      "summary": "The warehouse lead's weekly stock report, each naming a different critical article.",
+      "difficulty": "easy",
+      "editorNotes": "Recurring internal mail; one reorder to-do per week.",
+      "tags": ["recurring"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "kw28", "day": "2026-07-10", "time": "13:30", "from": "p-jana", "conversation": "bestand-kw28",
+          "facts": ["Bestandsliste KW 28", "kritisch: Rillenkugellager 6205-2RS (0 Stk. nach Falkenrath)", "bitte nachbestellen"],
+          "style": { "lang": "de", "tone": "terse", "length": "short", "signature": "none" },
+          "subject": "Bestand KW 28",
+          "body": "Hi Alex,\n\nBestandsliste KW 28 hängt an. Kritisch: Rillenkugellager 6205-2RS – nach Falkenrath sind wir bei 0 Stück. Bitte nachbestellen, Elbtal ist ja eh schon im Verzug.\n\nJana",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Rillenkugellager 6205-2RS nachbestellen", "values": { "state": "open" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["recurring"]
+          }
+        },
+        {
+          "key": "kw29", "day": "2026-07-17", "time": "13:15", "from": "p-jana", "conversation": "bestand-kw29",
+          "facts": ["Bestandsliste KW 29", "kritisch: Schnittschutzhandschuhe Stufe C (4 Pack)", "Bestellung bis Dienstag"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Bestand KW 29",
+          "body": "Bestandsliste KW 29 anbei. Kritisch: Schnittschutzhandschuhe Stufe C, nur noch 4 Pack. Bitte bis Dienstag bestellen.\nJana",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Schnittschutzhandschuhe Stufe C nachbestellen", "values": { "state": "open", "due_date": "2026-07-21" } }]
+            },
+            "derived": { "tasks.due_date": "bis Dienstag after Friday 17.07. = 21.07.2026" },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["recurring", "relative-date"]
+          }
+        },
+        {
+          "key": "kw30", "day": "2026-07-24", "time": "13:40", "from": "p-jana", "conversation": "bestand-kw30",
+          "facts": ["Bestandsliste KW 30", "nichts kritisch", "Trennscheiben 2,5 mm von Kessler zurück auf Lager"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Bestand KW 30",
+          "body": "Bestandsliste KW 30 anbei, diesmal nichts kritisch. Die falschen Trennscheiben von Kessler sind zurück und wieder eingelagert.\nJana",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["recurring", "smooth"]
+          }
+        },
+        {
+          "key": "kw31", "day": "2026-07-31", "time": "12:55", "from": "p-jana", "conversation": "bestand-kw31",
+          "facts": ["Bestandsliste KW 31", "kritisch: Schaftfräser VHM 12 mm (6 Stk.)", "Bassano bestellen?"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Bestand KW 31",
+          "body": "Bestandsliste KW 31 anbei. Kritisch: Schaftfräser VHM 12 mm, noch 6 Stück. Soll ich bei Bassano bestellen oder machst du?\nJana",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Schaftfräser VHM 12 mm bei Bassano nachbestellen", "values": { "state": "open" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Soll ich bei Bassano bestellen oder machst du?"] },
+            "importance": "NORMAL",
+            "tags": ["recurring"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C1-rhoenblick-gloves",
+      "category": "C1",
+      "summary": "A routine domestic purchase of protective gloves: order, confirmation, arrival.",
+      "difficulty": "easy",
+      "editorNotes": "Smooth inbound procurement.",
+      "tags": ["smooth"],
+      "numbers": ["PO-26-1095"],
+      "beats": [
+        {
+          "key": "po", "day": "2026-07-20", "time": "08:50", "direction": "sent", "to": ["p-becker"], "conversation": "rhoenblick-po-1095",
+          "facts": ["PO-26-1095", "40 Pack Schnittschutzhandschuhe Stufe C à 24,50 € = 980,00 €"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Bestellung PO-26-1095",
+          "body": "Guten Morgen Frau Becker,\n\nbitte liefern Sie uns 40 Pack Schnittschutzhandschuhe Stufe C à 24,50 € = 980,00 € (PO-26-1095).\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "confirm", "day": "2026-07-20", "time": "11:30", "from": "p-becker", "inReplyTo": "#po",
+          "facts": ["Auftragsbestätigung PO-26-1095", "980,00 €", "Lieferung Mittwoch 22.07."],
+          "style": { "lang": "de", "tone": "service", "length": "1-3 sentences", "signature": "full" },
+          "subject": "AW: Bestellung PO-26-1095",
+          "body": "Guten Tag Herr Morgan,\n\nvielen Dank für Ihre Bestellung PO-26-1095 über 980,00 €. Die Lieferung erfolgt am Mittwoch, 22.07.\n\nMit freundlichen Grüßen\nNina Becker\nKundenservice\nRhönblick Arbeitsschutz GmbH\nTel. +49 661 5550 5801",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Rhönblick Arbeitsschutz PO-26-1095", "values": { "po_number": "PO-26-1095", "supplier": "Rhönblick Arbeitsschutz", "total": { "amount": 980.00, "currency": "EUR" }, "state": "confirmed", "expected_arrival": "2026-07-22" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        },
+        {
+          "key": "arrived", "day": "2026-07-22", "time": "10:10", "from": "p-jana", "conversation": "jana-rhoenblick-we",
+          "facts": ["Handschuhe da", "40 Pack", "PO-26-1095 gebucht"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Handschuhe",
+          "body": "Handschuhe sind da, 40 Pack, PO-26-1095 gebucht.\nJ.",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Rhönblick Arbeitsschutz PO-26-1095", "values": { "po_number": "PO-26-1095", "state": "received" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "C1-wupperthal-abrasives",
+      "category": "C1",
+      "summary": "A routine purchase of abrasives with an order confirmation; the invoice comes in H2.",
+      "difficulty": "easy",
+      "editorNotes": "Smooth inbound procurement.",
+      "tags": ["smooth"],
+      "numbers": ["PO-26-1090"],
+      "beats": [
+        {
+          "key": "po", "day": "2026-07-07", "time": "14:00", "direction": "sent", "to": ["p-hollmann"], "conversation": "wupperthal-po-1090",
+          "facts": ["PO-26-1090", "80 Pack Fächerschleifscheiben 125 K80 à 21,40 € = 1.712,00 €", "40 Pack Trennscheiben à 4,11 €"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Bestellung PO-26-1090",
+          "body": "Guten Tag Herr Hollmann,\n\nbitte liefern Sie unter PO-26-1090: 80 Pack Fächerschleifscheiben 125 K80 à 21,40 € = 1.712,00 € und 40 Pack Trennscheiben 125x1,0 Inox à 4,11 € = 164,40 €. Gesamt 1.876,40 €.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "confirm", "day": "2026-07-08", "time": "08:40", "from": "p-hollmann", "inReplyTo": "#po",
+          "facts": ["AB zu PO-26-1090", "1.876,40 €", "Lieferung 10.07.2026"],
+          "style": { "lang": "de", "tone": "routine", "length": "1-3 sentences", "signature": "full" },
+          "subject": "AW: Bestellung PO-26-1090",
+          "body": "Sehr geehrter Herr Morgan,\n\nwir bestätigen Ihre Bestellung PO-26-1090 über 1.876,40 €. Liefertermin: 10.07.2026.\n\nMit freundlichen Grüßen\nDirk Hollmann\nVertriebsinnendienst\nWupperthal Schleifmittel GmbH\nTel. +49 202 5550 5601",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Wupperthal Schleifmittel PO-26-1090", "values": { "po_number": "PO-26-1090", "supplier": "Wupperthal Schleifmittel", "total": { "amount": 1876.40, "currency": "EUR" }, "state": "confirmed", "expected_arrival": "2026-07-10" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A1-delacroix-rfq",
+      "category": "A1",
+      "summary": "A new French customer asks for a quote, orders and confirms the order arrived.",
+      "difficulty": "medium",
+      "editorNotes": "Formal English; prices in the sent quote only; first order of a new customer.",
+      "tags": ["new-customer", "context-needed"],
+      "numbers": ["Q-26-0318", "SO-26-0167"],
+      "beats": [
+        {
+          "key": "rfq", "day": "2026-07-14", "time": "09:45", "from": "p-marchand", "conversation": "delacroix-rfq",
+          "facts": ["quotation request", "100 bearing units UCP 205", "200 bearings 6205-2RS", "delivery Grenoble", "questions: unit prices, delivery time"],
+          "style": { "lang": "en", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Request for quotation",
+          "body": "Dear Mr Morgan,\n\nWe would be grateful for your quotation for 100 bearing units UCP 205 and 200 deep groove ball bearings 6205-2RS, delivered to Grenoble. Kindly indicate your unit prices and the delivery time.\n\nYours sincerely,\nJulien Marchand\nResponsable achats\nDelacroix Usinage SAS\n+33 4 5550 3901",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["What are your unit prices for 100 UCP 205 and 200 bearings 6205-2RS?", "What is the delivery time?"], "answeredBy": "#quote" },
+            "importance": "NORMAL",
+            "tags": ["new-customer"]
+          }
+        },
+        {
+          "key": "quote", "day": "2026-07-14", "time": "15:30", "direction": "sent", "to": ["p-marchand"], "inReplyTo": "#rfq",
+          "facts": ["quotation Q-26-0318", "UCP 205 at 20.80 EUR, 200 × 6.10 EUR", "total 3,300.00 EUR", "delivery 6 working days"],
+          "style": { "lang": "en", "tone": "formal", "length": "short" },
+          "subject": "RE: Request for quotation",
+          "body": "Dear Mr Marchand,\n\nthank you for your request. Our quotation Q-26-0318:\n- 100 x NH-52340 bearing unit UCP 205 at 20.80 EUR = 2,080.00 EUR\n- 200 x NH-52300 bearing 6205-2RS at 6.10 EUR = 1,220.00 EUR\nTotal 3,300.00 EUR net, delivered Grenoble, delivery time 6 working days.\n\nYours sincerely\nAlex Morgan"
+        },
+        {
+          "key": "order", "day": "2026-07-21", "time": "10:20", "from": "p-marchand", "inReplyTo": "#quote",
+          "facts": ["order according to quotation Q-26-0318", "PO DU-26-0098"],
+          "style": { "lang": "en", "tone": "formal", "length": "1-3 sentences", "quoting": "none" },
+          "subject": "RE: Request for quotation",
+          "body": "Dear Mr Morgan,\n\nPlease accept our order DU-26-0098 according to your quotation Q-26-0318.\n\nYours sincerely,\nJulien Marchand",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Delacroix Usinage DU-26-0098", "entity": "so-0167", "values": { "customer": "Delacroix Usinage", "total": { "amount": 3300.00, "currency": "EUR" }, "state": "received" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "dependsOn": ["#quote"],
+            "tags": ["context-needed"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-21", "time": "14:00", "direction": "sent", "to": ["p-marchand"], "inReplyTo": "#order",
+          "facts": ["SO-26-0167", "3,300.00 EUR", "delivery 29 July"],
+          "style": { "lang": "en", "tone": "formal", "length": "1-3 sentences" },
+          "subject": "RE: Request for quotation",
+          "body": "Dear Mr Marchand,\n\nthank you, your order DU-26-0098 is confirmed as SO-26-0167, 3,300.00 EUR net, delivery in Grenoble on 29 July.\n\nYours sincerely\nAlex Morgan"
+        },
+        {
+          "key": "received", "day": "2026-07-29", "time": "16:45", "from": "p-marchand", "inReplyTo": "#confirm",
+          "facts": ["goods for SO-26-0167 received in good order"],
+          "style": { "lang": "en", "tone": "formal", "length": "1-3 sentences" },
+          "subject": "RE: Request for quotation",
+          "body": "Dear Mr Morgan,\n\nWe confirm receipt of the goods for SO-26-0167 in good order.\n\nYours sincerely,\nJulien Marchand",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Delacroix Usinage SO-26-0167", "entity": "so-0167", "values": { "order_number": "SO-26-0167", "customer": "Delacroix Usinage", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A2-ostrowski-repeat",
+      "category": "A2",
+      "summary": "The Polish buyer repeats the July order by its number only.",
+      "difficulty": "hard",
+      "editorNotes": "'Same as 2026/OS/118' needs the earlier order mail from the same sender.",
+      "tags": ["terse-repeat-order", "context-needed", "different-marek"],
+      "numbers": ["SO-26-0173"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-28", "time": "09:10", "from": "p-kowalczyk", "conversation": "ostrowski-142",
+          "facts": ["same as order 2026/OS/118", "our order 2026/OS/142", "delivery by 7 August"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "Order 2026/OS/142",
+          "body": "Alex, please the same as our order 2026/OS/118 again, new number 2026/OS/142, delivery by 7 August. Thanks!\nMarek",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ostrowski Serwis 2026/OS/142", "entity": "so-0173", "values": { "customer": "Ostrowski Serwis", "state": "received", "requested_delivery": "2026-08-07" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "dependsOn": ["A5-ostrowski-cancel#order"],
+            "tags": ["terse-repeat-order", "context-needed", "different-marek"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-28", "time": "11:30", "direction": "sent", "to": ["p-kowalczyk"], "inReplyTo": "#order",
+          "facts": ["SO-26-0173", "30 packs NH-40115 and 20 packs NH-40220", "1,461.00 EUR", "free delivery (Q3 threshold)", "delivery 5 August"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: Order 2026/OS/142",
+          "body": "Hi Marek,\n\nsame as 2026/OS/118: 30 packs NH-40115 and 20 packs NH-40220, 1,461.00 EUR, now free delivery. Confirmed as SO-26-0173, delivery on 5 August.\n\nAlex"
+        }
+      ]
+    },
+    {
+      "id": "A2-halvorsen-deputy",
+      "category": "A2",
+      "summary": "The Norwegian deputy orders more cut-off wheels 'at the HV-6120 prices' while the buyer is on holiday.",
+      "difficulty": "medium",
+      "editorNotes": "A person who just appeared orders with a reference to an earlier order of his colleague.",
+      "tags": ["context-needed", "currency"],
+      "numbers": ["SO-26-0174"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-28", "time": "08:30", "from": "p-berg", "conversation": "halvorsen-hv-6188",
+          "facts": ["Ingrid asked to order 30 packs cut-off wheels", "same prices as HV-6120", "PO HV-6188", "no rush, August is fine"],
+          "style": { "lang": "en", "tone": "very short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "PO HV-6188",
+          "body": "Hi,\n\nIngrid asked me to order 30 packs cut-off wheels 125x1.0, same prices as HV-6120. Our PO HV-6188. No rush, August is fine.\n\nKristian",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Halvorsen Verkstedservice HV-6188", "entity": "so-0174", "values": { "customer": "Halvorsen Verkstedservice", "state": "received" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-28", "time": "10:40", "direction": "sent", "to": ["p-berg"], "inReplyTo": "#order",
+          "facts": ["SO-26-0174", "NOK 9,240.00", "ships 4 August incl. all customs papers"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: PO HV-6188",
+          "body": "Hi Kristian,\n\nthanks - HV-6188 is confirmed as SO-26-0174, 30 packs at the HV-6120 price, NOK 9,240.00. We ship on 4 August, this time with all customs papers attached from the start.\n\nBest regards\nAlex"
+        }
+      ]
+    },
+    {
+      "id": "E6-lindgren-catalogue",
+      "category": "E6",
+      "summary": "The owner sends the requested catalogue to the Swedish buyer, who thanks him.",
+      "difficulty": "easy",
+      "editorNotes": "Closes the forwarded to-do of G4; the thanks needs no answer.",
+      "tags": ["smooth", "todo-done"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "send", "day": "2026-07-22", "time": "15:30", "direction": "sent", "to": ["p-nyberg"], "cc": ["p-sophie"], "conversation": "lindgren-katalog",
+          "facts": ["catalogue 2026 as PDF attached"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Nordhafen catalogue 2026",
+          "body": "Hi Oskar,\n\nSophie passed on your request - here is our catalogue 2026 as PDF. Good luck to the apprentices!\n\nAlex"
+        },
+        {
+          "key": "thanks", "day": "2026-07-23", "time": "08:05", "from": "p-nyberg", "inReplyTo": "#send",
+          "facts": ["got it, thanks"],
+          "style": { "lang": "en", "tone": "relaxed", "length": "1-3 sentences", "signature": "none" },
+          "subject": "RE: Nordhafen catalogue 2026",
+          "body": "Got it, thanks a lot Alex!\n/Oskar",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["smooth", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "E6-moellenhoff-feedback",
+      "category": "E6",
+      "summary": "A loyal customer praises the delivery reliability and asks to keep the time window.",
+      "difficulty": "easy",
+      "editorNotes": "Positive feedback; a wish, no question; courtesy thank-you fits.",
+      "tags": ["smooth"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "praise", "day": "2026-07-27", "time": "11:20", "from": "p-rademacher", "conversation": "moellenhoff-feedback",
+          "facts": ["Lieferungen im Juli pünktlich und vollständig", "Dank an das Lager", "Zeitfenster 7-12 Uhr auch im August beibehalten"],
+          "style": { "lang": "de", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Rückmeldung Lieferungen Juli",
+          "body": "Sehr geehrter Herr Morgan,\n\nich möchte Ihnen und Ihrem Lagerteam einmal ausdrücklich danken: Ihre Lieferungen im Juli kamen durchweg pünktlich und vollständig, was bei unseren Montageplänen keine Selbstverständlichkeit ist. Bitte behalten Sie das Zeitfenster 7–12 Uhr auch im August bei.\n\nMit freundlichen Grüßen\nUwe Rademacher\nArbeitsvorbereitung\nMöllenhoff Stahlbau GmbH & Co. KG\nTel. +49 231 5550 2501",
+          "labels": {
+            "needsReply": false,
+            "reply": { "intent": "COURTESY", "courtesyKind": "THANK_YOU" },
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    }
+  ]
+}

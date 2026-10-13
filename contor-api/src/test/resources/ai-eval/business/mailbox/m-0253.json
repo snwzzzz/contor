@@ -1,0 +1,86 @@
+{
+  "id": "m-0253",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-anadolu-we",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "arrived",
+  "category": "C1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "WE Anadolu",
+    "receivedAt": "2026-07-24T13:40:00Z",
+    "body": "Hi Alex, der Türke ist durch, 1.200 Flansche zu PO-26-1088 gebucht. 2 Kisten haben aber Flugrost, hab Fotos gemacht und die Kisten erstmal gesperrt. Willst du das bei Anadolu reklamieren?\nJana"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Anadolu Dövme PO-26-1088",
+          "values": {
+            "po_number": "PO-26-1088",
+            "state": "received"
+          }
+        }
+      ],
+      "shipments": [
+        {
+          "title": "Bosporus Lojistik CMR-BL-260718",
+          "values": {
+            "order_ref": "PO-26-1088",
+            "state": "delivered"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Flugrost an 2 Kisten bei Anadolu reklamieren",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Willst du das bei Anadolu reklamieren?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0179"
+  ],
+  "tags": [],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "Türke ist durch",
+    "1.200 Flansche",
+    "2 Kisten mit Rost, Fotos gemacht",
+    "Wareneingang PO-26-1088 gebucht"
+  ]
+}

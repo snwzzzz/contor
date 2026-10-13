@@ -1,0 +1,333 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "E1-hartmann-escalation",
+      "category": "E1",
+      "summary": "A bearing supplier postpones twice; the customer's polite question turns impatient, then angry to the managing director with the owner in CC, who forwards it; the owner resolves it.",
+      "difficulty": "hard",
+      "editorNotes": "Tone escalates; the second mail is never answered; the angry mail is CC-only for the owner (no reply expected from him) but URGENT; the forward carries the to-do on top.",
+      "tags": ["escalation", "churn-signal"],
+      "numbers": ["SO-26-0149", "RMA-26-043", "PO-26-1079"],
+      "insights": [
+        { "id": "insight-elbtal-postponed", "title": "Elbtal Lagertechnik postponed PO-26-1079 twice, which delayed Hartmann's order", "evidence": ["#elbtal1", "#elbtal2", "#angry"], "asOf": "2026-07-16" }
+      ],
+      "beats": [
+        {
+          "key": "elbtal1", "day": "2026-07-06", "time": "13:10", "from": "p-paulsen", "conversation": "elbtal-po-1079",
+          "facts": ["PO-26-1079: 300 Rillenkugellager 6205-2RS", "Liefertermin verschiebt sich vom 06.07. auf 14.07.", "Grund: Vorlieferant"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Terminverschiebung PO-26-1079",
+          "body": "Guten Tag Herr Morgan,\n\nleider verschiebt sich Ihre Bestellung PO-26-1079 (300 Rillenkugellager 6205-2RS) wegen eines Lieferengpasses bei unserem Vorlieferanten vom 06.07. auf den 14.07. Wir bitten um Verständnis.\n\nFreundliche Grüße\nKerstin Paulsen\nAuftragsbearbeitung\nElbtal Lagertechnik GmbH\nTel. +49 351 5550 5701",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Elbtal Lagertechnik PO-26-1079", "values": { "po_number": "PO-26-1079", "supplier": "Elbtal Lagertechnik", "state": "confirmed", "expected_arrival": "2026-07-14" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["delay"]
+          }
+        },
+        {
+          "key": "ask", "day": "2026-07-07", "time": "09:30", "from": "p-reuter", "conversation": "hartmann-so-0149",
+          "facts": ["Bitte bestätigen: SO-26-0149 kommt wie vereinbart am 10.07.", "Stillstand danach geplant"],
+          "style": { "lang": "de", "tone": "polite", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Liefertermin SO-26-0149",
+          "body": "Guten Tag Herr Morgan,\n\nkönnen Sie mir bitte bestätigen, dass SO-26-0149 wie vereinbart am 10.07. bei uns ist? Wir planen unseren Wartungsstillstand danach.\n\nMit freundlichen Grüßen\nThomas Reuter\nLeiter Instandhaltung\nHartmann Hydraulik GmbH\nTel. +49 821 5550 3201",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Hartmann Hydraulik SO-26-0149", "values": { "order_number": "SO-26-0149", "customer": "Hartmann Hydraulik", "confirmed_delivery": "2026-07-10" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Kommt SO-26-0149 wie vereinbart am 10.07.?"], "answeredBy": "#answer1" },
+            "importance": "NORMAL",
+            "tags": ["escalation"]
+          }
+        },
+        {
+          "key": "answer1", "day": "2026-07-07", "time": "11:00", "direction": "sent", "to": ["p-reuter"], "inReplyTo": "#ask",
+          "facts": ["Lager verzögern sich beim Lieferanten", "neuer Termin 15.07."],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences" },
+          "subject": "AW: Liefertermin SO-26-0149",
+          "body": "Guten Tag Herr Reuter,\n\nleider verzögern sich die Lager bei unserem Lieferanten. Neuer Liefertermin für SO-26-0149 ist der 15.07. Ich bitte um Entschuldigung.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "elbtal2", "day": "2026-07-14", "time": "08:45", "from": "p-paulsen", "inReplyTo": "#elbtal1",
+          "facts": ["PO-26-1079 erneut verschoben", "neuer Termin 16.07."],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Terminverschiebung PO-26-1079",
+          "body": "Guten Morgen Herr Morgan,\n\nes tut mir sehr leid, PO-26-1079 verschiebt sich noch einmal, auf den 16.07. Die Ware ist dann aber fest zugesagt.\n\nFreundliche Grüße\nKerstin Paulsen",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Elbtal Lagertechnik PO-26-1079", "values": { "po_number": "PO-26-1079", "expected_arrival": "2026-07-16" } }]
+            },
+            "needsReply": false,
+            "importance": "HIGH",
+            "tags": ["second-delay"]
+          }
+        },
+        {
+          "key": "impatient", "day": "2026-07-13", "time": "08:10", "from": "p-reuter", "inReplyTo": "#answer1",
+          "facts": ["der 15.07. ist übermorgen", "noch keine Versandbestätigung", "kommt die Ware jetzt oder nicht?", "Stillstand fest eingeplant"],
+          "style": { "lang": "de", "tone": "impatient", "length": "1-3 sentences", "quoting": "none" },
+          "subject": "AW: Liefertermin SO-26-0149",
+          "body": "Herr Morgan,\n\nder 15.07. ist übermorgen und ich habe immer noch keine Versandbestätigung. Kommt die Ware jetzt oder nicht? Unser Stillstand ist fest eingeplant.\n\nT. Reuter",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Hartmann Hydraulik SO-26-0149", "values": { "order_number": "SO-26-0149", "customer": "Hartmann Hydraulik", "confirmed_delivery": "2026-07-15" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Kommt die Ware jetzt oder nicht?"] },
+            "importance": "HIGH",
+            "dependsOn": ["#answer1"],
+            "tags": ["escalation", "unanswered"]
+          }
+        },
+        {
+          "key": "angry", "day": "2026-07-16", "time": "07:45", "from": "p-reuter", "to": ["p-helga"], "cc": ["p-alex"], "conversation": "hartmann-eskalation",
+          "facts": ["seit zwei Wochen mit Terminen vertröstet", "keine Antwort auf letzte Mail", "Stillstand verlängert sich, ca. 8.000 € pro Tag", "verbindliche Zusage bis heute 14 Uhr", "sonst Schadenersatz und andere Lieferanten"],
+          "style": { "lang": "de", "tone": "angry", "length": "medium", "signature": "full" },
+          "subject": "Beschwerde: Lieferverzug SO-26-0149",
+          "body": "Sehr geehrte Frau Dr. Sommerfeld,\n\nich wende mich direkt an Sie, weil wir seit zwei Wochen mit Lieferterminen für unseren Auftrag SO-26-0149 vertröstet werden. Auf meine letzte Mail an Herrn Morgan habe ich keine Antwort erhalten.\n\nUnser Wartungsstillstand verlängert sich dadurch jeden Tag; das kostet uns rund 8.000 € pro Tag. Ich erwarte bis heute 14 Uhr eine verbindliche Zusage. Andernfalls behalten wir uns Schadenersatzforderungen vor und werden uns nach anderen Lieferanten umsehen.\n\nMit freundlichen Grüßen\nThomas Reuter\nLeiter Instandhaltung\nHartmann Hydraulik GmbH\nTel. +49 821 5550 3201",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "Hartmann Hydraulik delay SO-26-0149", "entity": "rma-043", "values": { "customer": "Hartmann Hydraulik", "topic": "delay", "severity": "high", "state": "open", "opened_on": "2026-07-16" } }],
+              "tasks": [{ "title": "Hartmann verbindlichen Liefertermin für SO-26-0149 zusagen", "values": { "state": "open", "due_date": "2026-07-16" } }]
+            },
+            "derived": { "complaints.opened_on": "date of the mail", "tasks.due_date": "heute 14 Uhr = 16.07.2026" },
+            "needsReply": false,
+            "importance": "URGENT",
+            "tags": ["escalation", "cc-only", "churn-signal", "competitor-mentioned"]
+          }
+        },
+        {
+          "key": "forward", "day": "2026-07-16", "time": "08:05", "from": "p-helga", "conversation": "hartmann-eskalation-fw",
+          "facts": ["bitte heute klären", "Herrn Reuter direkt anrufen", "bis 12 Uhr wissen, was los ist", "weitergeleitete Beschwerde"],
+          "style": { "lang": "de", "tone": "short, decisive", "length": "1-3 sentences", "quoting": "forward" },
+          "subject": "WG: Beschwerde: Lieferverzug SO-26-0149",
+          "body": "Alex,\n\nbitte heute klären und Herrn Reuter direkt anrufen. Ich will bis 12 Uhr wissen, was los ist.\n\nH.\n\nVon: Thomas Reuter <thomas.reuter@hartmann-hydraulik.example>\nGesendet: Donnerstag, 16. Juli 2026 07:45\nAn: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nCc: Alex Morgan <alex.morgan@nordhafen.example>\nBetreff: Beschwerde: Lieferverzug SO-26-0149\n\nSehr geehrte Frau Dr. Sommerfeld,\n\nich wende mich direkt an Sie, weil wir seit zwei Wochen mit Lieferterminen für unseren Auftrag SO-26-0149 vertröstet werden. Auf meine letzte Mail an Herrn Morgan habe ich keine Antwort erhalten.\n\nUnser Wartungsstillstand verlängert sich dadurch jeden Tag; das kostet uns rund 8.000 € pro Tag. Ich erwarte bis heute 14 Uhr eine verbindliche Zusage.",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Herrn Reuter wegen SO-26-0149 anrufen", "values": { "state": "open", "due_date": "2026-07-16" } }]
+            },
+            "derived": { "tasks.due_date": "heute = 16.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": ["Was ist los mit SO-26-0149?"], "answeredBy": "#to-helga" },
+            "importance": "URGENT",
+            "tags": ["forwarded", "escalation"]
+          }
+        },
+        {
+          "key": "elbtal3", "day": "2026-07-16", "time": "09:20", "from": "p-paulsen", "inReplyTo": "#elbtal2",
+          "facts": ["PO-26-1079 kommt heute gegen 13 Uhr"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Terminverschiebung PO-26-1079",
+          "body": "Guten Morgen Herr Morgan,\n\nPO-26-1079 ist unterwegs und kommt heute gegen 13 Uhr bei Ihnen an.\n\nFreundliche Grüße\nKerstin Paulsen",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Elbtal Lagertechnik PO-26-1079", "values": { "po_number": "PO-26-1079", "state": "shipped", "expected_arrival": "2026-07-16" } }]
+            },
+            "derived": { "purchase_orders.expected_arrival": "heute = 16.07.2026" },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "to-helga", "day": "2026-07-16", "time": "10:30", "direction": "sent", "to": ["p-helga"], "inReplyTo": "#forward",
+          "facts": ["Lager von Elbtal kommen heute 13 Uhr", "Versand heute Abend per Kiebitz Express", "Zustellung morgen 10 Uhr", "Reuter angerufen, halbwegs beruhigt"],
+          "style": { "lang": "de", "tone": "brief", "length": "short" },
+          "subject": "AW: WG: Beschwerde: Lieferverzug SO-26-0149",
+          "body": "Hallo Helga,\n\nUrsache: Elbtal hat die Lager zweimal verschoben, und ich habe Reuters zweite Mail übersehen – mein Fehler. Die Lager kommen heute um 13 Uhr, Versand heute Abend per Kiebitz Express, Zustellung morgen bis 10 Uhr. Ich habe Herrn Reuter angerufen, er ist halbwegs beruhigt. Vorschlag: Expresskosten übernehmen und 5 % Nachlass.\n\nAlex"
+        },
+        {
+          "key": "to-reuter", "day": "2026-07-16", "time": "10:45", "direction": "sent", "to": ["p-reuter"], "cc": ["p-helga"], "inReplyTo": "#angry",
+          "facts": ["wie telefonisch besprochen", "Versand heute, Zustellung morgen 17.07. bis 10 Uhr", "Expresskosten übernommen, 5 % auf die Rechnung", "Reklamation RMA-26-043"],
+          "style": { "lang": "de", "tone": "apologetic", "length": "short" },
+          "subject": "AW: Beschwerde: Lieferverzug SO-26-0149",
+          "body": "Sehr geehrter Herr Reuter,\n\nwie telefonisch besprochen: SO-26-0149 geht heute per Express raus, Zustellung morgen, 17.07., bis 10 Uhr. Als Entschuldigung übernehmen wir die Expresskosten und gewähren 5 % Nachlass auf die Rechnung. Ihre Reklamation führen wir unter RMA-26-043.\n\nNochmals Entschuldigung für die fehlende Rückmeldung.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "resolved", "day": "2026-07-17", "time": "13:20", "from": "p-reuter", "inReplyTo": "#to-reuter",
+          "facts": ["Ware ist da, Anlage läuft wieder", "5 % angenommen", "darf nicht noch einmal passieren"],
+          "style": { "lang": "de", "tone": "cool", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "AW: AW: Beschwerde: Lieferverzug SO-26-0149",
+          "body": "Herr Morgan,\n\ndie Ware ist da, die Anlage läuft wieder. Die 5 % nehmen wir an. Trotzdem: So etwas darf nicht noch einmal passieren.\n\nT. Reuter\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 16. Juli 2026 10:45\nAn: Thomas Reuter <thomas.reuter@hartmann-hydraulik.example>\nCc: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nBetreff: AW: Beschwerde: Lieferverzug SO-26-0149\n\nwie telefonisch besprochen: SO-26-0149 geht heute per Express raus, Zustellung morgen, 17.07., bis 10 Uhr. Als Entschuldigung übernehmen wir die Expresskosten und gewähren 5 % Nachlass auf die Rechnung. Ihre Reklamation führen wir unter RMA-26-043.",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "RMA-26-043 Hartmann Hydraulik delay", "entity": "rma-043", "values": { "reference": "RMA-26-043", "customer": "Hartmann Hydraulik", "state": "resolved" } }],
+              "sales_orders": [{ "title": "Hartmann Hydraulik SO-26-0149", "values": { "order_number": "SO-26-0149", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["churn-signal"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "E2-kessler-churn",
+      "category": "E2",
+      "summary": "An at-risk customer orders a third of the usual quantity, receives a wrong item, then the managing director names a competitor offer and asks for a meeting.",
+      "difficulty": "hard",
+      "editorNotes": "The shrinking volume is only visible in the remark 'sonst 60'; competitor price 12 % lower; scheduling 'Dienstag oder Mittwoch nächste Woche'.",
+      "tags": ["churn-signal", "competitor-mentioned"],
+      "numbers": ["SO-26-0155", "RMA-26-044"],
+      "insights": [
+        { "id": "insight-kessler-at-risk", "title": "Kessler Maschinenbau orders far less and has a cheaper competitor offer", "evidence": ["#order", "#competitor"], "asOf": "2026-07-23" }
+      ],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-08", "time": "10:50", "from": "p-wendt", "conversation": "kessler-km-26-0712",
+          "facts": ["Bestellung KM-26-0712", "20 Kartons Schrauben M8x40 (sonst 60)", "5 Pack Trennscheiben 125x1,0", "Liefertermin 17.07.", "derzeit weniger Aufträge"],
+          "style": { "lang": "de", "tone": "polite", "length": "short", "signature": "full" },
+          "subject": "Bestellung KM-26-0712",
+          "body": "Guten Tag Herr Morgan,\n\nunsere Bestellung KM-26-0712:\n- 20 Kartons Sechskantschrauben M8x40 (sonst 60 – wir haben derzeit weniger Aufträge)\n- 5 Pack Trennscheiben 125x1,0 Inox\nLiefertermin: 17.07.\n\nMit freundlichen Grüßen\nSabine Wendt\nEinkauf\nKessler Maschinenbau GmbH\nTel. +49 521 5550 3101",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Kessler Maschinenbau KM-26-0712", "entity": "so-0155", "values": { "customer": "Kessler Maschinenbau", "state": "received", "requested_delivery": "2026-07-17" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "tags": ["churn-signal"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-08", "time": "15:30", "direction": "sent", "to": ["p-wendt"], "inReplyTo": "#order",
+          "facts": ["SO-26-0155", "20 × 18,40 € = 368,00 €", "5 × 27,50 € = 137,50 €", "505,50 € netto", "Liefertermin 17.07."],
+          "style": { "lang": "de", "tone": "friendly", "length": "short" },
+          "subject": "AW: Bestellung KM-26-0712",
+          "body": "Guten Tag Frau Wendt,\n\nvielen Dank, erfasst als SO-26-0155:\n20 Kartons NH-20410 à 18,40 € = 368,00 €\n5 Pack NH-40115 à 27,50 € = 137,50 €\nGesamt 505,50 € netto, Liefertermin 17.07.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "wrong", "day": "2026-07-21", "time": "09:40", "from": "p-wendt", "inReplyTo": "#confirm",
+          "facts": ["in Lieferung SO-26-0155 Trennscheiben 125x2,5 statt 125x1,0", "bitte tauschen"],
+          "style": { "lang": "de", "tone": "polite but firm", "length": "1-3 sentences", "quoting": "none" },
+          "subject": "AW: Bestellung KM-26-0712 – falsche Ware",
+          "body": "Guten Tag Herr Morgan,\n\nin der Lieferung zu SO-26-0155 waren Trennscheiben 125x2,5 statt 125x1,0. Bitte tauschen Sie die 5 Pack zeitnah aus.\n\nMit freundlichen Grüßen\nSabine Wendt",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "Kessler Maschinenbau wrong item SO-26-0155", "entity": "rma-044", "values": { "customer": "Kessler Maschinenbau", "topic": "wrong_item", "severity": "low", "state": "open", "opened_on": "2026-07-21" } }],
+              "sales_orders": [{ "title": "Kessler Maschinenbau SO-26-0155", "entity": "so-0155", "values": { "order_number": "SO-26-0155", "state": "delivered" } }],
+              "tasks": [{ "title": "5 Pack Trennscheiben 125x1,0 bei Kessler austauschen", "values": { "state": "open" } }]
+            },
+            "derived": { "complaints.opened_on": "date of the mail" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#swap" },
+            "importance": "NORMAL",
+            "tags": ["wrong-item"]
+          }
+        },
+        {
+          "key": "swap", "day": "2026-07-21", "time": "11:15", "direction": "sent", "to": ["p-wendt"], "inReplyTo": "#wrong",
+          "facts": ["RMA-26-044", "Austausch Donnerstag 23.07.", "falsche Scheiben holt Kiebitz ab"],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences" },
+          "subject": "AW: Bestellung KM-26-0712 – falsche Ware",
+          "body": "Guten Tag Frau Wendt,\n\nentschuldigen Sie bitte die Verwechslung. Unter RMA-26-044 liefern wir am Donnerstag, 23.07., die richtigen Scheiben; die falschen holt Kiebitz bei der Zustellung gleich mit ab.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "competitor", "day": "2026-07-23", "time": "16:05", "from": "p-kkessler", "conversation": "kessler-konditionen",
+          "facts": ["Angebot eines Wettbewerbers rund 12 % unter den Preisen bei M8-Schrauben", "ohne Entgegenkommen Umstellung ab September", "Gespräch nächste Woche, Dienstag oder Mittwoch?"],
+          "style": { "lang": "de", "tone": "blunt", "length": "short", "signature": "full" },
+          "subject": "Konditionen Normteile",
+          "body": "Sehr geehrter Herr Morgan,\n\nuns liegt das Angebot eines Wettbewerbers vor, das bei M8-Schrauben rund 12 % unter Ihren Preisen liegt. Dazu kamen zuletzt Lieferprobleme. Wenn Sie uns hier nicht entgegenkommen, werden wir unsere Bezüge ab September umstellen.\n\nKönnen wir dazu nächste Woche sprechen, Dienstag oder Mittwoch, gern bei uns in Bielefeld?\n\nMit freundlichen Grüßen\nKlaus Kessler\nGeschäftsführer\nKessler Maschinenbau GmbH\nTel. +49 521 5550 3100",
+          "labels": {
+            "records": {
+              "customers": [{ "title": "Kessler Maschinenbau", "values": { "name": "Kessler Maschinenbau", "segment": "at_risk" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Können wir nächste Woche Dienstag oder Mittwoch sprechen?"], "scheduleFrom": "2026-07-28", "scheduleTo": "2026-07-29", "timeOfDay": "ANY", "answeredBy": "#propose" },
+            "importance": "HIGH",
+            "tags": ["competitor-mentioned", "churn-signal", "relative-date"]
+          }
+        },
+        {
+          "key": "propose", "day": "2026-07-23", "time": "17:00", "direction": "sent", "to": ["p-kkessler"], "inReplyTo": "#competitor",
+          "facts": ["Mittwoch 29.07. um 10 Uhr in Bielefeld?", "bringe ein Angebot mit"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Konditionen Normteile",
+          "body": "Sehr geehrter Herr Kessler,\n\nvielen Dank für die offenen Worte. Passt Ihnen Mittwoch, 29.07., um 10 Uhr bei Ihnen in Bielefeld? Ich bringe ein Angebot mit.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "accept", "day": "2026-07-24", "time": "08:30", "from": "p-kkessler", "inReplyTo": "#propose",
+          "facts": ["Mittwoch 10 Uhr passt"],
+          "style": { "lang": "de", "tone": "blunt", "length": "1-3 sentences", "quoting": "full", "signature": "short" },
+          "subject": "AW: AW: Konditionen Normteile",
+          "body": "Mittwoch 10 Uhr passt.\nK. Kessler\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 23. Juli 2026 17:00\nAn: Klaus Kessler <k.kessler@kessler-maschinenbau.example>\nBetreff: AW: Konditionen Normteile\n\nPasst Ihnen Mittwoch, 29.07., um 10 Uhr bei Ihnen in Bielefeld? Ich bringe ein Angebot mit.",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Termin mit Klaus Kessler zu Konditionen", "values": { "starts_at": "2026-07-29T10:00:00+02:00", "location": "Bielefeld" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Klaus Kessler", "to": "events:Termin mit Klaus Kessler zu Konditionen" }],
+            "needsReply": false,
+            "importance": "NORMAL",
+            "dependsOn": ["#propose"],
+            "tags": ["very-short", "facts-in-quote"]
+          }
+        },
+        {
+          "key": "offer", "day": "2026-07-30", "time": "09:15", "direction": "sent", "to": ["p-kkessler"], "cc": ["p-wendt"], "inReplyTo": "#accept",
+          "facts": ["wie besprochen", "8 % Rabatt auf das M8-Sortiment ab August", "bei Jahresmenge 600 Kartons"],
+          "style": { "lang": "de", "tone": "formal", "length": "short" },
+          "subject": "Angebot Konditionen M8-Sortiment",
+          "body": "Sehr geehrter Herr Kessler,\n\nvielen Dank für das gute Gespräch gestern. Wie besprochen bieten wir Ihnen ab August 8 % Rabatt auf das gesamte M8-Sortiment bei einer Jahresmenge von 600 Kartons. Für Lieferprobleme wie im Juli haben wir zusätzlich einen festen Sicherheitsbestand für Sie eingerichtet.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "E2-jensen-shrinking",
+      "category": "E2",
+      "summary": "A Danish customer places a small order because business is slow and later says it will skip the August order.",
+      "difficulty": "medium",
+      "editorNotes": "The churn signal is spread over two mails three weeks apart.",
+      "tags": ["churn-signal"],
+      "numbers": ["SO-26-0154"],
+      "insights": [
+        { "id": "insight-jensen-slowing", "title": "Jensen Maskinfabrik orders less and skips August", "evidence": ["#order", "#skip"], "asOf": "2026-07-30" }
+      ],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-09", "time": "10:10", "from": "p-kjaer", "conversation": "jensen-july",
+          "facts": ["only a small order this month", "15 bearing units UCP 205", "delivery in week 30", "times are slow"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "July order",
+          "body": "Hi Alex,\n\nonly a small order this month: 15 bearing units UCP 205, delivery in week 30. Times are slow here.\n\nMads Kjær\nBuyer\nJensen Maskinfabrik A/S\n+45 5550 3301",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Jensen Maskinfabrik July order", "entity": "so-0154", "values": { "customer": "Jensen Maskinfabrik", "state": "received", "requested_delivery": "2026-07-20" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "week 30 -> Monday 20.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "tags": ["churn-signal", "calendar-week"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-09", "time": "14:40", "direction": "sent", "to": ["p-kjaer"], "inReplyTo": "#order",
+          "facts": ["SO-26-0154", "15 × 21.90 = 328.50 EUR", "delivery Wednesday 22 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: July order",
+          "body": "Hi Mads,\n\nconfirmed as SO-26-0154: 15 x NH-52340 at 21.90 EUR = 328.50 EUR, delivery on Wednesday, 22 July. I hope things pick up soon!\n\nAlex"
+        },
+        {
+          "key": "skip", "day": "2026-07-30", "time": "13:25", "from": "p-kjaer", "conversation": "jensen-august",
+          "facts": ["we will skip the August order", "will get back in September"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "August",
+          "body": "Hi Alex,\n\njust so you know: we will skip the August order. I'll get back to you in September.\n\nMads",
+          "labels": {
+            "records": {
+              "customers": [{ "title": "Jensen Maskinfabrik", "values": { "name": "Jensen Maskinfabrik", "segment": "at_risk" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "dependsOn": ["#order"],
+            "tags": ["churn-signal", "very-short"]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "id": "m-0286",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-bounce-full",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "bounce-full",
+  "kind": "bounce",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mail Delivery System",
+    "fromAddress": "mailer-daemon@mx.nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Delivery delayed: Nordhafen catalogue 2026",
+    "receivedAt": "2026-07-28T12:02:00Z",
+    "body": "Delivery is delayed to these recipients or groups:\n\nlager@lindgren-verktyg.example\n\nThe recipient's mailbox is full. The server will keep trying to deliver this message for the next 2 days.\n\nThis is an automatically generated message."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "bounce"
+  ],
+  "facts": []
+}

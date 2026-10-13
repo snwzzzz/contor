@@ -1,0 +1,77 @@
+{
+  "id": "m-0230",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-odlewnia-quality",
+  "cc": [],
+  "storyline": "C5-odlewnia-quality",
+  "beat": "report",
+  "category": "C5",
+  "lang": "en",
+  "inReplyTo": "m-0137",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Agnieszka Mazur",
+    "fromAddress": "a.mazur@odlewnia-wislana.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Quality complaint PO-26-1083 - 8D report",
+    "receivedAt": "2026-07-22T12:15:00Z",
+    "body": "Dear Mr Morgan,\n\nplease find below the summary of our 8D report concerning the porosity found in housings GG25 type B (PO-26-1083). The full report with photos and X-ray images is attached.\n\nD1 - Team: quality manager, foundry master, moulding line supervisor, export sales.\n\nD2 - Problem description: 38 of 600 delivered housings show shrinkage porosity in the area of the bearing seat. The defect was detected by the customer during incoming inspection on 13.07.2026.\n\nD3 - Containment actions: all housings of the same casting batch still in our warehouse were blocked. The remaining 438 pcs (400 pcs open quantity plus 38 pcs replacement) were checked 100 % by X-ray before dispatch. No further defective parts were found.\n\nD4 - Root cause: after the repair of mould no. 4, two venting channels were not reopened completely. Air trapped during pouring led to shrinkage cavities in the thickest wall section. The pouring temperature was within tolerance.\n\nD5 - Corrective actions: venting channels reopened and checked; a venting check was added to the release procedure after each mould repair.\n\nD6 - Implementation and verification: the corrective actions were implemented on 17.07.2026. Three trial batches were cast and X-rayed without findings.\n\nD7 - Prevention: the work instruction for mould maintenance was updated; all moulders were trained on 20.07.2026. The same check was introduced for the moulds of comparable housings.\n\nD8 - Closure: we consider the complaint closed after your confirmation. We thank you for your patience and apologise again for the inconvenience caused.\n\nPlease confirm the acceptance of the report.\n\nYours faithfully\nAgnieszka Mazur\nExport Sales\nOdlewnia Wiślana Sp. z o.o.\nGliwice, Poland\nTel. +48 32 5550 5101"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Agnieszka Mazur",
+          "values": {
+            "email": "a.mazur@odlewnia-wislana.example",
+            "phone": "+48 32 5550 5101",
+            "role_title": "Export Sales"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Odlewnia Wiślana Sp. z o.o.",
+          "values": {
+            "domain": "odlewnia-wislana.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Agnieszka Mazur",
+        "to": "organizations:Odlewnia Wiślana Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Please confirm the acceptance of the 8D report."
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "very-long",
+    "quality"
+  ],
+  "storylineTags": [
+    "quality",
+    "very-long"
+  ],
+  "facts": [
+    "8D report for PO-26-1083",
+    "D1-D8 summary",
+    "root cause: insufficient venting of mould no. 4 after repair",
+    "containment: 100 % X-ray of the remaining 438 pcs",
+    "please confirm acceptance of the report"
+  ]
+}

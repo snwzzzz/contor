@@ -1,0 +1,84 @@
+{
+  "id": "m-0081",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-marek-private-0710",
+  "cc": [],
+  "storyline": "D-wislatrans-marek",
+  "beat": "jam",
+  "category": "D",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Wiśniewski",
+    "fromAddress": "marek.w84@pocztamail.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Lieferung heute",
+    "receivedAt": "2026-07-10T07:12:00Z",
+    "body": "Hallo, hier Marek, Fahrer von Wisla-Trans mit Gusteile für Nordhafen. Stehe A2 Stau bei Hannover, komme 14:30 statt 11 uhr. Entschuldigung\nMarek Wiśniewski\n+48 5550 4171"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Marek Wiśniewski",
+          "values": {
+            "email": "marek.w84@pocztamail.example",
+            "phone": "+48 5550 4171",
+            "role_title": "Fahrer",
+            "full_name": "Marek Wiśniewski"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "name": "Wisła-Trans"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Anlieferung Wisła-Trans PO-26-1083",
+          "entity": "slot-260709",
+          "values": {
+            "starts_at": "2026-07-10T14:30:00+02:00"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "drives_for",
+        "from": "people:Marek Wiśniewski",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "shared-driver",
+    "name-typo",
+    "relative-date"
+  ],
+  "storylineTags": [
+    "shared-driver"
+  ],
+  "facts": [
+    "hier Marek, Fahrer von Wisla-Trans",
+    "Stau auf der A2 bei Hannover",
+    "komme 14:30 statt 11 Uhr",
+    "Tel. +48 5550 4171"
+  ],
+  "derived": {
+    "events.starts_at": "heute 14:30 = 10.07.2026 14:30 CEST"
+  }
+}

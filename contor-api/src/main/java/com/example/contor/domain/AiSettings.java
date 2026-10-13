@@ -70,6 +70,10 @@ public class AiSettings extends AuditableEntity {
     @Column(name = "onboarded_at")
     private Instant onboardedAt;
 
+    /** Who the user is in their own words (role, company, customers and suppliers); tells the AI whose side the mail is on. */
+    @Column(name = "owner_profile")
+    private String ownerProfile;
+
     /** Unsaved defaults for a user without a settings row. */
     public static AiSettings defaults(AppUser user) {
         return AiSettings.builder().user(user).build();

@@ -1,0 +1,94 @@
+{
+  "id": "m-0289",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vossberg-halle4",
+  "cc": [],
+  "storyline": "J4-vossberg-typo",
+  "beat": "change",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jens Albers",
+    "fromAddress": "jens.albers@vossberg-foerdertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "SO-26-171",
+    "receivedAt": "2026-07-29T05:50:00Z",
+    "body": "Moin Alex, bei SO-26-171 bitte Lieferadresse auf Halle 4 ändern (Tor Ost). Betrag €885.00 passt so.\nJens"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Vossberg Fördertechnik SO-26-0171",
+          "entity": "so-0171",
+          "values": {
+            "order_number": "SO-26-0171",
+            "customer": "Vossberg Fördertechnik",
+            "total": {
+              "amount": 885,
+              "currency": "EUR"
+            }
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Lieferadresse für SO-26-0171 auf Halle 4 ändern",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jens Albers",
+          "values": {
+            "email": "jens.albers@vossberg-foerdertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Vossberg Fördertechnik GmbH",
+          "values": {
+            "domain": "vossberg-foerdertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Jens Albers",
+        "to": "organizations:Vossberg Fördertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "number-typo",
+    "amount-format",
+    "very-short"
+  ],
+  "storylineTags": [
+    "number-typo",
+    "amount-format"
+  ],
+  "facts": [
+    "SO-26-171",
+    "Lieferadresse auf Halle 4 ändern",
+    "Betrag €885.00 passt"
+  ],
+  "derived": {
+    "sales_orders.order_number": "SO-26-171 is SO-26-0171 (missing leading zero)"
+  }
+}

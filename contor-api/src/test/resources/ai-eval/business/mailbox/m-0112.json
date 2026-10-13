@@ -1,0 +1,78 @@
+{
+  "id": "m-0112",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-delacroix-rfq",
+  "cc": [],
+  "storyline": "A1-delacroix-rfq",
+  "beat": "rfq",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Julien Marchand",
+    "fromAddress": "j.marchand@delacroix-usinage.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Request for quotation",
+    "receivedAt": "2026-07-14T07:45:00Z",
+    "body": "Dear Mr Morgan,\n\nWe would be grateful for your quotation for 100 bearing units UCP 205 and 200 deep groove ball bearings 6205-2RS, delivered to Grenoble. Kindly indicate your unit prices and the delivery time.\n\nYours sincerely,\nJulien Marchand\nResponsable achats\nDelacroix Usinage SAS\n+33 4 5550 3901"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Julien Marchand",
+          "values": {
+            "email": "j.marchand@delacroix-usinage.example",
+            "phone": "+33 4 5550 3901",
+            "role_title": "Responsable achats"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Delacroix Usinage SAS",
+          "values": {
+            "domain": "delacroix-usinage.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Julien Marchand",
+        "to": "organizations:Delacroix Usinage SAS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "What are your unit prices for 100 UCP 205 and 200 bearings 6205-2RS?",
+      "What is the delivery time?"
+    ],
+    "answeredBy": "m-0123"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer",
+    "context-needed"
+  ],
+  "facts": [
+    "quotation request",
+    "100 bearing units UCP 205",
+    "200 bearings 6205-2RS",
+    "delivery Grenoble",
+    "questions: unit prices, delivery time"
+  ]
+}

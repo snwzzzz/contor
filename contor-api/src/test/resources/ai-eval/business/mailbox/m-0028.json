@@ -1,0 +1,82 @@
+{
+  "id": "m-0028",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "A4-dijkstra-change",
+  "beat": "order",
+  "category": "A4",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Femke de Wit",
+    "fromAddress": "f.dewit@dijkstra-werktuigen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "PO DW-2291",
+    "receivedAt": "2026-07-07T09:00:00Z",
+    "body": "Hi Alex,\n\nplease find our PO DW-2291:\n1. 200 pcs threaded rod M12x1000\n2. 100 boxes hex nut M8\nDelivery: 21 July to Eindhoven.\n\nRegards,\nFemke de Wit\nPurchasing\nDijkstra Werktuigen B.V.\n+31 40 5550 2301"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Dijkstra Werktuigen DW-2291",
+          "entity": "so-0147",
+          "values": {
+            "customer": "Dijkstra Werktuigen",
+            "state": "received",
+            "requested_delivery": "2026-07-21"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Femke de Wit",
+          "values": {
+            "email": "f.dewit@dijkstra-werktuigen.example",
+            "phone": "+31 40 5550 2301",
+            "role_title": "Purchasing"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Dijkstra Werktuigen B.V.",
+          "values": {
+            "domain": "dijkstra-werktuigen.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Femke de Wit",
+        "to": "organizations:Dijkstra Werktuigen B.V."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0031"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "contradicting-change"
+  ],
+  "facts": [
+    "PO DW-2291",
+    "200 threaded rods M12x1000",
+    "100 boxes nuts M8",
+    "delivery 21 July"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "id": "m-0152",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-elbtal-po-1079",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "elbtal3",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": "m-0110",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kerstin Paulsen",
+    "fromAddress": "k.paulsen@elbtal-lagertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Terminverschiebung PO-26-1079",
+    "receivedAt": "2026-07-16T07:20:00Z",
+    "body": "Guten Morgen Herr Morgan,\n\nPO-26-1079 ist unterwegs und kommt heute gegen 13 Uhr bei Ihnen an.\n\nFreundliche Grüße\nKerstin Paulsen"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Elbtal Lagertechnik PO-26-1079",
+          "values": {
+            "po_number": "PO-26-1079",
+            "state": "shipped",
+            "expected_arrival": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Kerstin Paulsen",
+          "values": {
+            "email": "k.paulsen@elbtal-lagertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Elbtal Lagertechnik GmbH",
+          "values": {
+            "domain": "elbtal-lagertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Kerstin Paulsen",
+        "to": "organizations:Elbtal Lagertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "PO-26-1079 kommt heute gegen 13 Uhr"
+  ],
+  "derived": {
+    "purchase_orders.expected_arrival": "heute = 16.07.2026"
+  }
+}

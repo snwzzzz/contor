@@ -1,0 +1,62 @@
+{
+  "id": "m-0223",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-rhoenblick-we",
+  "cc": [],
+  "storyline": "C1-rhoenblick-gloves",
+  "beat": "arrived",
+  "category": "C1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Handschuhe",
+    "receivedAt": "2026-07-22T08:10:00Z",
+    "body": "Handschuhe sind da, 40 Pack, PO-26-1095 gebucht.\nJ."
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Rhönblick Arbeitsschutz PO-26-1095",
+          "values": {
+            "po_number": "PO-26-1095",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth",
+    "very-short"
+  ],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "Handschuhe da",
+    "40 Pack",
+    "PO-26-1095 gebucht"
+  ]
+}

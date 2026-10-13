@@ -1,0 +1,80 @@
+{
+  "id": "m-0015",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-elbtal-po-1079",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "elbtal1",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kerstin Paulsen",
+    "fromAddress": "k.paulsen@elbtal-lagertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Terminverschiebung PO-26-1079",
+    "receivedAt": "2026-07-06T11:10:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nleider verschiebt sich Ihre Bestellung PO-26-1079 (300 Rillenkugellager 6205-2RS) wegen eines Lieferengpasses bei unserem Vorlieferanten vom 06.07. auf den 14.07. Wir bitten um Verständnis.\n\nFreundliche Grüße\nKerstin Paulsen\nAuftragsbearbeitung\nElbtal Lagertechnik GmbH\nTel. +49 351 5550 5701"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Elbtal Lagertechnik PO-26-1079",
+          "values": {
+            "po_number": "PO-26-1079",
+            "supplier": "Elbtal Lagertechnik",
+            "state": "confirmed",
+            "expected_arrival": "2026-07-14"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Kerstin Paulsen",
+          "values": {
+            "email": "k.paulsen@elbtal-lagertechnik.example",
+            "phone": "+49 351 5550 5701",
+            "role_title": "Auftragsbearbeitung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Elbtal Lagertechnik GmbH",
+          "values": {
+            "domain": "elbtal-lagertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Kerstin Paulsen",
+        "to": "organizations:Elbtal Lagertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "delay"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "PO-26-1079: 300 Rillenkugellager 6205-2RS",
+    "Liefertermin verschiebt sich vom 06.07. auf 14.07.",
+    "Grund: Vorlieferant"
+  ]
+}

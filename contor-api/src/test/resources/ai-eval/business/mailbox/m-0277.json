@@ -1,0 +1,97 @@
+{
+  "id": "m-0277",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-asg-2607270",
+  "cc": [],
+  "storyline": "B4-steiner-customs",
+  "beat": "hold",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Stefan Moser",
+    "fromAddress": "s.moser@alpen-sammelgut.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "DRINGEND: Zollstopp ASG-2607270 Steiner Präzisionsteile",
+    "receivedAt": "2026-07-28T07:20:00Z",
+    "body": "Grüß Gott Herr Morgan,\n\ndie Sendung ASG-2607270 für Steiner Präzisionsteile, Winterthur, steht am Zoll in Buchs SG. Es fehlt die Handelsrechnung, außerdem brauchen wir Ihre EORI-Nummer und die Zolltarifnummern (HS-Codes) aller Positionen.\n\nBitte schicken Sie uns alles bis morgen 12 Uhr, sonst geht die Sendung zurück in unser Lager.\n\nMit freundlichen Grüßen\nStefan Moser\nDisposition\nAlpen-Sammelgut Spedition GmbH\nTel. +43 512 5550 6301"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Alpen-Sammelgut ASG-2607270",
+          "values": {
+            "tracking_number": "ASG-2607270",
+            "carrier": "Alpen-Sammelgut",
+            "direction": "outbound",
+            "state": "delayed"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Handelsrechnung, EORI-Nummer und Zolltarifnummern für ASG-2607270 an Alpen-Sammelgut senden",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-29"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Stefan Moser",
+          "values": {
+            "email": "s.moser@alpen-sammelgut.example",
+            "phone": "+43 512 5550 6301",
+            "role_title": "Disposition"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Alpen-Sammelgut Spedition GmbH",
+          "values": {
+            "domain": "alpen-sammelgut.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Stefan Moser",
+        "to": "organizations:Alpen-Sammelgut Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0283"
+  },
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "customs-hold",
+    "relative-date"
+  ],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "Sendung ASG-2607270 für Steiner Präzisionsteile steht am Zoll in Buchs SG",
+    "Handelsrechnung fehlt",
+    "EORI-Nummer und Zolltarifnummern aller Positionen",
+    "bis morgen 12 Uhr, sonst zurück ins Lager"
+  ],
+  "derived": {
+    "tasks.due_date": "morgen = 29.07.2026"
+  }
+}

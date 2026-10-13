@@ -1,0 +1,61 @@
+{
+  "id": "m-0158",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-daniel-hs-codes",
+  "cc": [],
+  "storyline": "G1-daniel-hs-codes",
+  "beat": "done",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": "m-0157",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Daniel Okafor",
+    "fromAddress": "daniel.okafor@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: HS-Codes Top 20",
+    "receivedAt": "2026-07-16T09:25:00Z",
+    "body": "Danke, hab alles!\nD."
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Zolltarifnummern der Top-20-Artikel an Daniel schicken",
+          "values": {
+            "state": "done"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Daniel Okafor",
+          "values": {
+            "email": "daniel.okafor@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [
+    "m-0120"
+  ],
+  "tags": [
+    "todo-done",
+    "very-short"
+  ],
+  "storylineTags": [
+    "todo-done"
+  ],
+  "facts": [
+    "danke, hab alles"
+  ]
+}

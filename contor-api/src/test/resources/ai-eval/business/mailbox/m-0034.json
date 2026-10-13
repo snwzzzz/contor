@@ -1,0 +1,86 @@
+{
+  "id": "m-0034",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-thiele-rfq",
+  "cc": [],
+  "storyline": "A1-thiele-rfq",
+  "beat": "order",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": "m-0018",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Robert Thiele",
+    "fromAddress": "r.thiele@thiele-messebau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: AW: Anfrage Stehlager und Trennscheiben",
+    "receivedAt": "2026-07-08T06:05:00Z",
+    "body": "Hallo Herr Morgan,\n\nwir nehmen das Angebot Q-26-0311 so an. Lieferadresse wie angegeben.\n\nGruß\nR. Thiele\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 6. Juli 2026 14:30\nAn: Robert Thiele <r.thiele@thiele-messebau.example>\nBetreff: AW: Anfrage Stehlager und Trennscheiben\n\nSehr geehrter Herr Thiele,\n\nvielen Dank für Ihre Anfrage. Gern biete ich Ihnen an (Angebot Q-26-0311):\n\n- 6 St. Stehlagereinheit UCP 205 (NH-52340) à 21,90 € = 131,40 €\n- 40 Pack Trennscheibe 125x1,0 Inox (NH-40115) à 27,50 € = 1.100,00 €\n\nSumme: 1.231,40 € netto zzgl. MwSt., frei Haus.\nBeides ist am Lager; bei Bestellung bis Mittwoch liefern wir bis 15.07. nach Leipzig. Das Angebot gilt 14 Tage."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Thiele Messebau Bestellung zu Q-26-0311",
+          "entity": "so-0151",
+          "values": {
+            "customer": "Thiele Messebau",
+            "total": {
+              "amount": 1231.4,
+              "currency": "EUR"
+            },
+            "state": "received",
+            "requested_delivery": "2026-07-15"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Robert Thiele",
+          "values": {
+            "email": "r.thiele@thiele-messebau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Thiele Messebau GmbH",
+          "values": {
+            "domain": "thiele-messebau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Robert Thiele",
+        "to": "organizations:Thiele Messebau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0043"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0018"
+  ],
+  "tags": [
+    "context-needed"
+  ],
+  "storylineTags": [
+    "context-needed"
+  ],
+  "facts": [
+    "nimmt Angebot Q-26-0311 an",
+    "Lieferadresse wie angegeben"
+  ]
+}

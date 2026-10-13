@@ -1,0 +1,81 @@
+{
+  "id": "m-0147",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-pichler-preis",
+  "cc": [],
+  "storyline": "E2-pichler-price",
+  "beat": "ok",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": "m-0130",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Gerhard Pichler",
+    "fromAddress": "g.pichler@pichler-metallbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Preise Fächerschleifscheiben",
+    "receivedAt": "2026-07-16T05:58:00Z",
+    "body": "Na guat, 29,90 passt. Schick ma 50 Pack Fächerschleifscheiben, Liefertermin egal, aber vor August.\n\nServus\nGerhard"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Pichler Metallbau Fächerschleifscheiben",
+          "entity": "so-0163",
+          "values": {
+            "customer": "Pichler Metallbau",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Gerhard Pichler",
+          "values": {
+            "email": "g.pichler@pichler-metallbau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Pichler Metallbau GmbH",
+          "values": {
+            "domain": "pichler-metallbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Gerhard Pichler",
+        "to": "organizations:Pichler Metallbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0155"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0130"
+  ],
+  "tags": [],
+  "storylineTags": [
+    "competitor-mentioned",
+    "churn-signal"
+  ],
+  "facts": [
+    "29,90 passt",
+    "50 Pack Fächerschleifscheiben",
+    "vor August"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "id": "m-0101",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-odlewnia-pruefung",
+  "cc": [],
+  "storyline": "C5-odlewnia-quality",
+  "beat": "inspection",
+  "category": "C5",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Prüfung Gussgehäuse",
+    "receivedAt": "2026-07-13T09:30:00Z",
+    "body": "Eingangsprüfung Odlewnia durch: 38 von 600 Gehäusen haben Lunker, sieht nach Porosität aus. Hab die 38 gesperrt. Reklamierst du?\nJana"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "38 Gussgehäuse mit Lunkern bei Odlewnia reklamieren",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Reklamierst du?"
+    ],
+    "answeredBy": "m-0102"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "quality"
+  ],
+  "storylineTags": [
+    "quality",
+    "very-long"
+  ],
+  "facts": [
+    "Eingangsprüfung Odlewnia",
+    "38 von 600 Gehäusen mit Lunkern (Porosität)",
+    "gesperrt"
+  ]
+}

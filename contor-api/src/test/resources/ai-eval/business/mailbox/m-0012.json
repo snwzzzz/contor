@@ -1,0 +1,87 @@
+{
+  "id": "m-0012",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-auerbach-erstkontakt",
+  "cc": [],
+  "storyline": "E5-auerbach-new",
+  "beat": "contact",
+  "category": "E5",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Philipp Seidel",
+    "fromAddress": "philipp.seidel@auerbach-medizintechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Anfrage Lieferantenaufnahme",
+    "receivedAt": "2026-07-06T08:40:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nwir sind Hersteller chirurgischer Instrumente in Tuttlingen und suchen einen weiteren Lieferanten für Zerspanungswerkzeuge (VHM-Fräser, Gewindebohrer). Vorab drei Fragen:\n\n1. Liefern Sie mit Werkszeugnis 3.1?\n2. Welche Zahlungsbedingungen gelten für Neukunden?\n3. Bieten Sie Rahmenverträge an?\n\nÜber eine Rückmeldung freue ich mich.\n\nMit freundlichen Grüßen\nPhilipp Seidel\nEinkauf\nAuerbach Medizintechnik GmbH\nTel. +49 7461 5550 3701"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Auerbach Medizintechnik",
+          "values": {
+            "name": "Auerbach Medizintechnik",
+            "segment": "new"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Philipp Seidel",
+          "values": {
+            "email": "philipp.seidel@auerbach-medizintechnik.example",
+            "phone": "+49 7461 5550 3701",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Auerbach Medizintechnik GmbH",
+          "values": {
+            "domain": "auerbach-medizintechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Philipp Seidel",
+        "to": "organizations:Auerbach Medizintechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Liefern Sie mit Werkszeugnis 3.1?",
+      "Welche Zahlungsbedingungen gelten für Neukunden?",
+      "Bieten Sie Rahmenverträge an?"
+    ],
+    "answeredBy": "m-0019"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer"
+  ],
+  "facts": [
+    "Hersteller chirurgischer Instrumente",
+    "sucht Lieferanten für VHM-Fräser und Gewindebohrer",
+    "1) Werkszeugnis 3.1?",
+    "2) Zahlungsbedingungen für Neukunden?",
+    "3) Rahmenverträge?"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "m-0204",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-pichler-re-0377",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "H1-pichler-dunning",
+  "beat": "dunning2",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": "m-0025",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "g.pichler@pichler-metallbau.example"
+    ],
+    "subject": "2. Mahnung RE-2026-0377",
+    "receivedAt": "2026-07-21T08:00:00Z",
+    "body": "Sehr geehrter Herr Pichler,\n\nleider konnten wir bis heute keinen Zahlungseingang zu unserer Rechnung RE-2026-0377 über 2.214,60 € feststellen. Wir bitten Sie, den Betrag zuzüglich 10,00 € Mahngebühr bis spätestens 28.07.2026 zu überweisen.\n\nMit freundlichen Grüßen\nTobias Krüger\nBuchhaltung\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1021"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Nordhafen RE-2026-0377 Pichler",
+          "values": {
+            "invoice_number": "RE-2026-0377",
+            "amount": {
+              "amount": 2214.6,
+              "currency": "EUR"
+            },
+            "due_date": "2026-07-28",
+            "state": "open",
+            "direction": "outgoing"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example",
+            "phone": "+49 40 5550 1021",
+            "role_title": "Buchhaltung"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "cc-only",
+    "dunning"
+  ],
+  "storylineTags": [
+    "cc-only",
+    "dunning"
+  ],
+  "facts": [
+    "2. Mahnung RE-2026-0377",
+    "2.214,60 € zzgl. 10,00 € Mahngebühr",
+    "Frist 28.07.2026"
+  ]
+}

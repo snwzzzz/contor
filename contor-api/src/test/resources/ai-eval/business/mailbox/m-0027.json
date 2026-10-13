@@ -1,0 +1,76 @@
+{
+  "id": "m-0027",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moreau-rfq",
+  "cc": [],
+  "storyline": "A1-moreau-rfq",
+  "beat": "rfq",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@ateliers-moreau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Request for quotation - end mills and taps",
+    "receivedAt": "2026-07-07T08:05:00Z",
+    "body": "Hello Alex,\n\nwe need a quotation for:\n- 30 solid carbide end mills 12 mm Z4\n- 20 machine taps M10\n\ndelivered to our workshop in Lyon. What is your lead time, and is there a minimum order quantity for the end mills?\n\nThank you and best regards,\nCamille Rousseau\nBuyer\nAteliers Moreau SARL\n+33 4 5550 2901"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@ateliers-moreau.example",
+            "phone": "+33 4 5550 2901",
+            "role_title": "Buyer"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "What is the price for 30 end mills and 20 taps?",
+      "What is your lead time?",
+      "Is there a minimum order quantity for the end mills?"
+    ],
+    "answeredBy": "m-0032"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "context-needed",
+    "quantity-differs"
+  ],
+  "facts": [
+    "30 end mills solid carbide 12 mm Z4",
+    "20 machine taps M10",
+    "delivery to Lyon",
+    "questions: price, lead time, minimum order quantity"
+  ]
+}

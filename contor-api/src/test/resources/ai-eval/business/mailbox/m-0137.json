@@ -1,0 +1,67 @@
+{
+  "id": "m-0137",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-odlewnia-quality",
+  "cc": [],
+  "storyline": "C5-odlewnia-quality",
+  "beat": "ack",
+  "category": "C5",
+  "lang": "en",
+  "inReplyTo": "m-0102",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Agnieszka Mazur",
+    "fromAddress": "a.mazur@odlewnia-wislana.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Quality complaint PO-26-1083 - porosity",
+    "receivedAt": "2026-07-15T08:40:00Z",
+    "body": "Dear Mr Morgan,\n\nwe received your complaint and apologise. You will receive the 8D report by 22.07.; the 38 pcs will be replaced together with the remaining 400 pcs.\n\nYours faithfully\nAgnieszka Mazur"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Agnieszka Mazur",
+          "values": {
+            "email": "a.mazur@odlewnia-wislana.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Odlewnia Wiślana Sp. z o.o.",
+          "values": {
+            "domain": "odlewnia-wislana.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Agnieszka Mazur",
+        "to": "organizations:Odlewnia Wiślana Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "quality"
+  ],
+  "storylineTags": [
+    "quality",
+    "very-long"
+  ],
+  "facts": [
+    "complaint received",
+    "8D report by 22.07.",
+    "38 pcs replaced with the remaining 400 pcs"
+  ]
+}

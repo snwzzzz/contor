@@ -7,6 +7,7 @@ import com.example.contor.api.model.Creator;
 import com.example.contor.api.model.NewCollectionCommand;
 import com.example.contor.api.model.NewCollectionFieldCommand;
 import com.example.contor.api.model.RelationTypeDto;
+import com.example.contor.service.BusinessCollections;
 import com.example.contor.service.SystemDataSeeder;
 
 import java.util.ArrayList;
@@ -16,7 +17,8 @@ import java.util.Map;
 
 /**
  * The fixed schema every evaluation runs against: the real seeded system collections (so the eval follows the product)
- * plus typical categories the discovery step creates for a mailbox.
+ * plus typical categories the discovery step creates for a mailbox. {@link #all()} is the personal shopper view of the
+ * synthetic corpus, {@link #business()} the wholesale view of the business mailbox ({@code ai-eval/business}).
  */
 final class EvalCollections {
 
@@ -29,6 +31,41 @@ final class EvalCollections {
         commands.add(invoices());
         commands.add(subscriptions());
         commands.add(applications());
+        return numbered(commands);
+    }
+
+    /** The system collections plus the categories of a wholesaler's mailbox ({@link BusinessCollections}, mirrored in scripts/business-dataset/lib/schema.mjs). */
+    static List<CollectionDto> business() {
+        List<NewCollectionCommand> commands = new ArrayList<>(SystemDataSeeder.systemCollections());
+        commands.addAll(businessCommands());
+        return numbered(commands);
+    }
+
+    /** The business collections on top of the seeded system ones, as commands (the mailbox replay creates them for real). */
+    static List<NewCollectionCommand> businessCommands() {
+        return BusinessCollections.commands();
+    }
+
+    /** The seeded relation types plus those of the business mailbox; ids follow {@link #business()}. */
+    static List<RelationTypeDto> businessRelationTypes() {
+        Map<String, Long> ids = new LinkedHashMap<>();
+        business().forEach(collection -> ids.put(collection.getSlug(), collection.getId()));
+        List<RelationTypeDto> types = new ArrayList<>(List.of(
+                relationType(1L, "works_at", "works at", "employs", true, ids.get("people"), ids.get("organizations")),
+                relationType(2L, "knows", "knows", "knows", false, ids.get("people"), ids.get("people")),
+                relationType(3L, "attends", "attends", "attended by", true, ids.get("people"), ids.get("events"))));
+        for (BusinessCollections.RelationTypeSpec spec : BusinessCollections.relationTypes()) {
+            types.add(relationType(types.size() + 1L, spec.slug(), spec.name(), spec.inverseName(), true, ids.get(spec.from()), ids.get(spec.to())));
+        }
+        return types;
+    }
+
+    private static RelationTypeDto relationType(long id, String slug, String name, String inverse, boolean directed, Long from, Long to) {
+        return new RelationTypeDto(id, slug, name, directed, new LinkedHashMap<>(), Creator.USER).inverseName(inverse)
+                .fromCollectionId(from).toCollectionId(to);
+    }
+
+    private static List<CollectionDto> numbered(List<NewCollectionCommand> commands) {
         List<CollectionDto> collections = new ArrayList<>();
         for (int i = 0; i < commands.size(); i++) {
             collections.add(toDto(commands.get(i), i + 1L));

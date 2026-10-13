@@ -1,0 +1,91 @@
+{
+  "id": "m-0300",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-rousseau-news",
+  "cc": [],
+  "storyline": "J3-rousseau-job-change",
+  "beat": "news",
+  "category": "J",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@delacroix-usinage.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "News from Grenoble",
+    "receivedAt": "2026-07-30T08:15:00Z",
+    "body": "Hi Alex,\n\nsome news: since this week I work as purchasing lead at Delacroix Usinage in Grenoble - you already know my new colleague Julien Marchand. My successor at Ateliers Moreau is Lucas Bernard (l.bernard@ateliers-moreau.example); he will place the orders from now on.\n\nLooking forward to working with you from here as well!\n\nCamille Rousseau\nPurchasing Lead\nDelacroix Usinage SAS\n+33 4 5550 3902"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@delacroix-usinage.example",
+            "phone": "+33 4 5550 3902",
+            "role_title": "Purchasing Lead"
+          }
+        },
+        {
+          "title": "Lucas Bernard",
+          "values": {
+            "email": "l.bernard@ateliers-moreau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Delacroix Usinage SAS",
+          "values": {
+            "name": "Delacroix Usinage",
+            "domain": "delacroix-usinage.example"
+          }
+        },
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "name": "Ateliers Moreau",
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Delacroix Usinage SAS"
+      },
+      {
+        "type": "works_at",
+        "from": "people:Lucas Bernard",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "CONGRATULATE"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "job-change"
+  ],
+  "storylineTags": [
+    "job-change"
+  ],
+  "facts": [
+    "since this week purchasing lead at Delacroix Usinage, Grenoble",
+    "Julien Marchand is her new colleague",
+    "successor at Ateliers Moreau: Lucas Bernard, l.bernard@ateliers-moreau.example",
+    "new phone +33 4 5550 3902"
+  ]
+}

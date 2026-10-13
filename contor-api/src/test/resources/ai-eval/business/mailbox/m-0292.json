@@ -1,0 +1,72 @@
+{
+  "id": "m-0292",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-odlewnia-we2",
+  "cc": [],
+  "storyline": "D-wislatrans-rest",
+  "beat": "unloaded",
+  "category": "D",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Odlewnia Rest",
+    "receivedAt": "2026-07-29T08:20:00Z",
+    "body": "Rest von Odlewnia ist da (WTS-PL-260728), 438 Stück. Stichprobe sieht gut aus, PO-26-1083 ist damit komplett.\nJana"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260728",
+          "values": {
+            "tracking_number": "WTS-PL-260728",
+            "state": "delivered"
+          }
+        }
+      ],
+      "purchase_orders": [
+        {
+          "title": "Odlewnia Wiślana PO-26-1083",
+          "values": {
+            "po_number": "PO-26-1083",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "shared-driver",
+    "name-typo"
+  ],
+  "facts": [
+    "Rest von Odlewnia da (WTS-PL-260728)",
+    "438 Stück",
+    "Stichprobe gut",
+    "PO-26-1083 komplett"
+  ]
+}
