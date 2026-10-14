@@ -1564,6 +1564,36 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}/paragraphs:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmailParagraphs
+      summary: The paragraphs of an email that report citations point at
+      description: |
+        The text body (or the HTML body as text) without quoted history, reply headers and signature, split into
+        paragraphs: blank lines separate them, list items are paragraphs of their own, a short greeting joins the next
+        paragraph, very long ones are split at a sentence end. A citation addresses a paragraph by `index` and keeps its
+        `hash`, so it is still found when the splitting rules change.
+      responses:
+        '200':
+          description: The paragraphs in order (empty when the email has no text)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailParagraphDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/emails/{emailId}/reply-suggestion:
     parameters:
       - name: emailId
@@ -3016,6 +3046,19 @@ components:
           $ref: '#/components/schemas/ProposalDto'
         replySuggestion:
           $ref: '#/components/schemas/ReplySuggestionState'
+    EmailParagraphDto:
+      type: object
+      required: [index, text, hash]
+      properties:
+        index:
+          type: integer
+          format: int32
+          description: Position in the email, from 0
+        text:
+          type: string
+        hash:
+          type: string
+          description: 16 hex characters of the paragraph's normalized text (case, whitespace, typographic quotes ignored)
     ReplyDraftState:
       type: string
       description: READY = kept and shown in the thread (never sent) · DISCARDED = thrown away.

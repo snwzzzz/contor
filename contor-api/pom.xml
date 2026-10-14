@@ -20,6 +20,7 @@
 		<bouncycastle.version>1.86</bouncycastle.version>
 		<msal4j.version>1.17.2</msal4j.version>
 		<microsoft-graph.version>6.23.0</microsoft-graph.version>
+		<jsoup.version>1.21.1</jsoup.version>
 		<argLine></argLine>
 		<api.spec>${project.basedir}/../api-spec/openapi.yaml</api.spec>
 		<!-- JUnit tags: the default build skips the slow AI evaluation (real Ollama); -Pai-eval runs only that -->
@@ -89,6 +90,12 @@
 			<groupId>com.microsoft.graph</groupId>
 			<artifactId>microsoft-graph</artifactId>
 			<version>${microsoft-graph.version}</version>
+		</dependency>
+		<dependency>
+			<!-- HTML mail to text for report paragraphs (ai/HtmlText) -->
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
 		</dependency>
 
 		<dependency>

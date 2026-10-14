@@ -145,6 +145,22 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
 
+## Reports (AI, in progress)
+
+Fact-checked AI reports on any record and the connections you pick, with every sentence cited down to a record field
+or an email paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md). Built so far (R1–R3):
+
+- Tables (`V1_0_27__reports.sql`): `report` (anchor record, prompt, scope, status, fact-check counts; follow-up questions
+  are reports with `parent_report_id`), `report_section`, `report_finding`, `report_claim` (one sentence and its
+  fact-check result) and `report_citation` (record, field with value snapshot, email paragraph with verbatim quote, or
+  relation). Deleting a report deletes its sections, sentences, citations and follow-ups.
+- Email paragraphs: `GET /api/emails/{id}/paragraphs` (your mailboxes only) splits an email into the paragraphs citations
+  point at (`ai/EmailParagraphs`): text body, or the HTML body as text (`ai/HtmlText`, using **jsoup**); quoted history
+  and signatures removed; blank lines separate paragraphs, list items are their own, a short greeting joins the next
+  paragraph, paragraphs over 1 200 characters are split at a sentence end. Each paragraph carries a hash of its
+  normalized text, so citations survive later changes to the splitting rules.
+- Not yet: generating reports, the API for them and the UI.
+
 ## Local AI (Ollama)
 
 The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and

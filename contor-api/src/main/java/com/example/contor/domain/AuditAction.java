@@ -26,5 +26,8 @@ public enum AuditAction {
     PROPOSAL_SUPERSEDED,
     AI_SETTINGS_CHANGED,
     AI_ANALYSIS_STARTED,
-    AI_ANALYSIS_CANCELLED
+    AI_ANALYSIS_CANCELLED,
+    /** Logged with the scope size and model only, never the prompt or mail text. */
+    REPORT_GENERATED,
+    REPORT_DELETED
 }

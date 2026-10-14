@@ -176,6 +176,34 @@ public class MailControllerTest {
     }
 
     @Test
+    void get_email_paragraphs_returns_200() throws Exception {
+        when(mailService.getEmailParagraphs(9L)).thenReturn(List.of(
+                new EmailParagraphDto(0, "Your order has shipped.", "0123456789abcdef"),
+                new EmailParagraphDto(1, "It is held at customs.", "fedcba9876543210")));
+
+        mockMvc.perform(get("/api/emails/9/paragraphs").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].index").value(1))
+                .andExpect(jsonPath("$[1].text").value("It is held at customs."))
+                .andExpect(jsonPath("$[1].hash").value("fedcba9876543210"));
+    }
+
+    @Test
+    void get_email_paragraphs_returns_404() throws Exception {
+        when(mailService.getEmailParagraphs(9L)).thenThrow(new EmailNotFoundException(9L));
+
+        mockMvc.perform(get("/api/emails/9/paragraphs").with(TestAuth.user()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void get_email_paragraphs_requires_login() throws Exception {
+        mockMvc.perform(get("/api/emails/9/paragraphs"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void get_email_thread_returns_404() throws Exception {
         when(mailService.getEmailThread(9L)).thenThrow(new EmailNotFoundException(9L));
 
