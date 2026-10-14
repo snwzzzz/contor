@@ -1,0 +1,83 @@
+{
+  "id": "m-0193",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-rhoenblick-po-1095",
+  "cc": [],
+  "storyline": "C1-rhoenblick-gloves",
+  "beat": "confirm",
+  "category": "C1",
+  "lang": "de",
+  "inReplyTo": "m-0188",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Nina Becker",
+    "fromAddress": "nina.becker@rhoenblick-arbeitsschutz.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bestellung PO-26-1095",
+    "receivedAt": "2026-07-20T09:30:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nvielen Dank für Ihre Bestellung PO-26-1095 über 980,00 €. Die Lieferung erfolgt am Mittwoch, 22.07.\n\nMit freundlichen Grüßen\nNina Becker\nKundenservice\nRhönblick Arbeitsschutz GmbH\nTel. +49 661 5550 5801"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Rhönblick Arbeitsschutz PO-26-1095",
+          "values": {
+            "po_number": "PO-26-1095",
+            "supplier": "Rhönblick Arbeitsschutz",
+            "total": {
+              "amount": 980,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "expected_arrival": "2026-07-22"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Nina Becker",
+          "values": {
+            "email": "nina.becker@rhoenblick-arbeitsschutz.example",
+            "phone": "+49 661 5550 5801",
+            "role_title": "Kundenservice"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Rhönblick Arbeitsschutz GmbH",
+          "values": {
+            "domain": "rhoenblick-arbeitsschutz.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Nina Becker",
+        "to": "organizations:Rhönblick Arbeitsschutz GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "Auftragsbestätigung PO-26-1095",
+    "980,00 €",
+    "Lieferung Mittwoch 22.07."
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "id": "m-0197",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-auerbach-amt-4410",
+  "cc": [],
+  "storyline": "E5-auerbach-new",
+  "beat": "thanks",
+  "category": "E5",
+  "lang": "de",
+  "inReplyTo": "m-0076",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Philipp Seidel",
+    "fromAddress": "philipp.seidel@auerbach-medizintechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bestellung AMT-4410",
+    "receivedAt": "2026-07-20T13:30:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\ndie Ware zu SO-26-0157 ist heute eingetroffen, die Zeugnisse liegen bei. Vielen Dank für die unkomplizierte Abwicklung – wir freuen uns auf die weitere Zusammenarbeit!\n\nMit freundlichen Grüßen\nPhilipp Seidel"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Auerbach Medizintechnik SO-26-0157",
+          "entity": "so-0157",
+          "values": {
+            "order_number": "SO-26-0157",
+            "customer": "Auerbach Medizintechnik",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Philipp Seidel",
+          "values": {
+            "email": "philipp.seidel@auerbach-medizintechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Auerbach Medizintechnik GmbH",
+          "values": {
+            "domain": "auerbach-medizintechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Philipp Seidel",
+        "to": "organizations:Auerbach Medizintechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "THANK_YOU"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth",
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer"
+  ],
+  "facts": [
+    "Ware zu SO-26-0157 erhalten",
+    "Zeugnisse liegen bei",
+    "Dank für die unkomplizierte Abwicklung",
+    "freuen uns auf weitere Zusammenarbeit"
+  ]
+}

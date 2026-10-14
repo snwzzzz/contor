@@ -1,0 +1,60 @@
+{
+  "id": "m-0087",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bestand-kw28",
+  "cc": [],
+  "storyline": "G5-jana-stock-reports",
+  "beat": "kw28",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestand KW 28",
+    "receivedAt": "2026-07-10T11:30:00Z",
+    "body": "Hi Alex,\n\nBestandsliste KW 28 hängt an. Kritisch: Rillenkugellager 6205-2RS – nach Falkenrath sind wir bei 0 Stück. Bitte nachbestellen, Elbtal ist ja eh schon im Verzug.\n\nJana"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Rillenkugellager 6205-2RS nachbestellen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "recurring"
+  ],
+  "storylineTags": [
+    "recurring"
+  ],
+  "facts": [
+    "Bestandsliste KW 28",
+    "kritisch: Rillenkugellager 6205-2RS (0 Stk. nach Falkenrath)",
+    "bitte nachbestellen"
+  ]
+}

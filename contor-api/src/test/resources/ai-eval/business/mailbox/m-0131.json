@@ -1,0 +1,83 @@
+{
+  "id": "m-0131",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bassano-po-1094",
+  "cc": [],
+  "storyline": "C1-bassano-express",
+  "beat": "confirm",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0115",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marco Ferraro",
+    "fromAddress": "m.ferraro@utensileria-bassano.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: PO-26-1094 end mills",
+    "receivedAt": "2026-07-15T07:10:00Z",
+    "body": "Ciao Alex!\n\nPO-26-1094 confirmed, 50 pcs, 2,050.00 EUR. We ship tomorrow by express, delivery in Hamburg on 17/07. Always a pleasure!\n\nMarco Ferraro\nSales Manager Export\nUtensileria Bassano S.r.l.\nTel. +39 0424 5550 5301"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Utensileria Bassano PO-26-1094",
+          "values": {
+            "po_number": "PO-26-1094",
+            "supplier": "Utensileria Bassano",
+            "total": {
+              "amount": 2050,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "expected_arrival": "2026-07-17"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marco Ferraro",
+          "values": {
+            "email": "m.ferraro@utensileria-bassano.example",
+            "phone": "+39 0424 5550 5301",
+            "role_title": "Sales Manager Export"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Utensileria Bassano S.r.l.",
+          "values": {
+            "domain": "utensileria-bassano.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marco Ferraro",
+        "to": "organizations:Utensileria Bassano S.r.l."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "date-format"
+  ],
+  "storylineTags": [
+    "date-format"
+  ],
+  "facts": [
+    "PO-26-1094 confirmed",
+    "shipped tomorrow by express",
+    "delivery 17/07"
+  ]
+}

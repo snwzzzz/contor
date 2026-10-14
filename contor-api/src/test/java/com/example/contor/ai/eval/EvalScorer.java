@@ -27,12 +27,14 @@ import java.util.TreeSet;
 final class EvalScorer {
 
     static final double TITLE_SIMILARITY = 0.5;
+    private static final double LENIENT_OVERLAP = 0.15;
     private static final double KEY_MATCH = 2.0;
     private static final Set<String> DATE_COLLECTIONS = Set.of("events", "tasks");
     private static final Set<CollectionFieldType> DATE_TYPES = Set.of(CollectionFieldType.DATE, CollectionFieldType.DATETIME);
 
     private final Map<String, CollectionDto> collections = new HashMap<>();
     private final Set<String> undirectedRelationTypes;
+    private final boolean lenientTitles;
 
     EvalScorer(List<CollectionDto> collections) {
         this(collections, Set.of());
@@ -40,8 +42,18 @@ final class EvalScorer {
 
     /** @param undirectedRelationTypes slugs of relation types that hold in both directions (e.g. {@code knows}) */
     EvalScorer(List<CollectionDto> collections, Set<String> undirectedRelationTypes) {
+        this(collections, undirectedRelationTypes, false);
+    }
+
+    /**
+     * @param lenientTitles records without match keys also match when their titles share a reference number (e.g. the
+     *                      "1088" of PO-26-1088) or, with at least a little title overlap, the same date value — for
+     *                      free-text titles such as to-dos written in another language or word order (business eval)
+     */
+    EvalScorer(List<CollectionDto> collections, Set<String> undirectedRelationTypes, boolean lenientTitles) {
         collections.forEach(collection -> this.collections.put(collection.getSlug(), collection));
         this.undirectedRelationTypes = undirectedRelationTypes;
+        this.lenientTitles = lenientTitles;
     }
 
     EvalReport score(String model, String promptVersion, List<EvalCase> cases, List<CaseResult> results) {
@@ -200,7 +212,30 @@ final class EvalScorer {
             });
             return equal ? KEY_MATCH : -1;
         }
-        return titleSimilarity(expected.title(), produced.title());
+        double similarity = titleSimilarity(expected.title(), produced.title());
+        if (lenientTitles && similarity < TITLE_SIMILARITY
+                && (sharesReference(expected.title(), produced.title()) || (similarity >= LENIENT_OVERLAP && sameDate(collection, expected, produced)))) {
+            return TITLE_SIMILARITY;
+        }
+        return similarity;
+    }
+
+    /** A token with a digit, at least three characters long and not a year, in both titles (an order or invoice number). */
+    private static boolean sharesReference(String a, String b) {
+        Set<String> references = new HashSet<>(Normalizers.tokens(a).stream().filter(EvalScorer::isReference).toList());
+        return Normalizers.tokens(b).stream().filter(EvalScorer::isReference).anyMatch(references::contains);
+    }
+
+    private static boolean isReference(String token) {
+        return token.length() >= 3 && token.chars().anyMatch(Character::isDigit) && !token.matches("20\\d\\d");
+    }
+
+    private static boolean sameDate(CollectionDto collection, EvalCase.ExpectedRecord expected, ProducedRecord produced) {
+        return expected.values().entrySet().stream().anyMatch(entry -> {
+            CollectionFieldType type = fieldType(collection, entry.getKey());
+            return DATE_TYPES.contains(type) && entry.getValue() != null && produced.values().get(entry.getKey()) != null
+                    && normalize(type, entry.getValue()).equals(normalize(type, produced.values().get(entry.getKey())));
+        });
     }
 
     static double titleSimilarity(String a, String b) {

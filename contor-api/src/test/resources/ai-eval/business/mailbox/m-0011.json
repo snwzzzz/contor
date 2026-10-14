@@ -1,0 +1,44 @@
+{
+  "id": "m-0011",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-vossberg-0706",
+  "cc": [],
+  "storyline": "A2-vossberg-repeat",
+  "beat": "confirm1",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": "m-0007",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "jens.albers@vossberg-foerdertechnik.example"
+    ],
+    "subject": "AW: Bestellung",
+    "receivedAt": "2026-07-06T08:30:00Z",
+    "body": "Moin Jens,\n\nist erfasst als SO-26-0144:\n40 Kartons NH-20410 à 18,40 € = 736,00 €\n10 Kartons NH-20412 à 14,90 € = 149,00 €\nzusammen 885,00 € netto. Lieferung Donnerstag, 09.07., mit Palettenring.\n\nGruß\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "terse-repeat-order",
+    "context-needed"
+  ],
+  "facts": [
+    "AB SO-26-0144",
+    "40 × 18,40 € = 736,00 €",
+    "10 × 14,90 € = 149,00 €",
+    "885,00 € netto",
+    "Lieferung Do 09.07. mit Palettenring"
+  ]
+}

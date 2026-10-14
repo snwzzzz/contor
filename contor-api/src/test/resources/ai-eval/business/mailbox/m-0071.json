@@ -1,0 +1,85 @@
+{
+  "id": "m-0071",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-auerbach-amt-4410",
+  "cc": [],
+  "storyline": "E5-auerbach-new",
+  "beat": "order",
+  "category": "E5",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Philipp Seidel",
+    "fromAddress": "philipp.seidel@auerbach-medizintechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestellung AMT-4410",
+    "receivedAt": "2026-07-09T12:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nhiermit bestellen wir (Bestellnummer AMT-4410):\n- 20 Stk. Schaftfräser VHM 12 mm Z4\n- 30 Stk. Maschinengewindebohrer M10\njeweils mit Werkszeugnis 3.1. Liefertermin: 20.07.\n\nMit freundlichen Grüßen\nPhilipp Seidel\nEinkauf\nAuerbach Medizintechnik GmbH\nTel. +49 7461 5550 3701"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Auerbach Medizintechnik AMT-4410",
+          "entity": "so-0157",
+          "values": {
+            "customer": "Auerbach Medizintechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Philipp Seidel",
+          "values": {
+            "email": "philipp.seidel@auerbach-medizintechnik.example",
+            "phone": "+49 7461 5550 3701",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Auerbach Medizintechnik GmbH",
+          "values": {
+            "domain": "auerbach-medizintechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Philipp Seidel",
+        "to": "organizations:Auerbach Medizintechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0076"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer"
+  ],
+  "facts": [
+    "Bestellung AMT-4410",
+    "20 Schaftfräser VHM 12 mm",
+    "30 Gewindebohrer M10",
+    "mit Werkszeugnis 3.1",
+    "Liefertermin 20.07."
+  ]
+}

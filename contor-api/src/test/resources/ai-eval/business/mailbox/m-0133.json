@@ -1,0 +1,94 @@
+{
+  "id": "m-0133",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vltava-fv20260412",
+  "cc": [],
+  "storyline": "C6-vltava-skonto-dispute",
+  "beat": "reminder",
+  "category": "C6",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tereza Dvořáková",
+    "fromAddress": "dvorakova@obaly-vltava.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Invoice FV20260412 - open balance",
+    "receivedAt": "2026-07-15T07:30:00Z",
+    "body": "Dear Mr Morgan,\n\nfor our invoice FV20260412 of 3,450.00 EUR we received 3,381.00 EUR on 9 July, i.e. with 2 % discount. The discount period is 14 days from the invoice date (22 June), so it ended on 6 July. Please pay the remaining 69.00 EUR.\n\nBest regards\nTereza Dvořáková\nSales\nObaly Vltava s.r.o.\nTel. +420 5550 5401"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Obaly Vltava FV20260412",
+          "values": {
+            "invoice_number": "FV20260412",
+            "issuer": "Obaly Vltava",
+            "amount": {
+              "amount": 3450,
+              "currency": "EUR"
+            },
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Restbetrag 69,00 EUR zu FV20260412 an Obaly Vltava zahlen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tereza Dvořáková",
+          "values": {
+            "email": "dvorakova@obaly-vltava.example",
+            "phone": "+420 5550 5401",
+            "role_title": "Sales"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Obaly Vltava s.r.o.",
+          "values": {
+            "domain": "obaly-vltava.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Tereza Dvořáková",
+        "to": "organizations:Obaly Vltava s.r.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "payment-dispute"
+  ],
+  "storylineTags": [
+    "payment-dispute",
+    "skonto"
+  ],
+  "facts": [
+    "invoice FV20260412",
+    "3,450.00 EUR",
+    "paid 3,381.00 EUR with 2 % discount",
+    "discount period ended 6 July (14 days from 22 June)",
+    "please pay the remaining 69.00 EUR"
+  ]
+}

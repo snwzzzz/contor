@@ -1,0 +1,77 @@
+{
+  "id": "m-0201",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ferraro-hamburg",
+  "cc": [],
+  "storyline": "F6-ferraro-dinner",
+  "beat": "booked",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": "m-0195",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marco Ferraro",
+    "fromAddress": "m.ferraro@utensileria-bassano.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Hamburg 28 July - dinner?",
+    "receivedAt": "2026-07-21T07:00:00Z",
+    "body": "No need, I already booked: Restaurant Kaimauer, Kaiufer 30, 28 July at 19:30. A presto!\nMarco"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Dinner with Marco Ferraro",
+          "entity": "ferraro-dinner",
+          "values": {
+            "starts_at": "2026-07-28T19:30:00+02:00",
+            "location": "Restaurant Kaimauer, Kaiufer 30"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marco Ferraro",
+          "values": {
+            "email": "m.ferraro@utensileria-bassano.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Utensileria Bassano S.r.l.",
+          "values": {
+            "domain": "utensileria-bassano.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marco Ferraro",
+        "to": "organizations:Utensileria Bassano S.r.l."
+      },
+      {
+        "type": "attends",
+        "from": "people:Marco Ferraro",
+        "to": "events:Dinner with Marco Ferraro"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [],
+  "facts": [
+    "already booked",
+    "Restaurant Kaimauer, Kaiufer 30",
+    "28 July 19:30"
+  ]
+}

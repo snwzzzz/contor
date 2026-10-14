@@ -1,0 +1,392 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "A2-brandauer-monthly",
+      "category": "A2",
+      "summary": "The monthly order of a loyal Austrian customer, plus an add-on two days later that ships in the same consignment.",
+      "difficulty": "easy",
+      "editorNotes": "The add-on refers to 'dieselbe Lieferung' only; the date comes from the first order.",
+      "tags": ["smooth", "context-needed"],
+      "numbers": ["SO-26-0158", "SO-26-0161"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-13", "time": "09:00", "from": "p-hofer", "conversation": "brandauer-ba-2026-07",
+          "facts": ["Monatsbestellung BA-2026-07", "25 Pack Fächerschleifscheiben 125 K80", "50 Stehlagereinheiten UCP 205", "Liefertermin 24.07.2026"],
+          "style": { "lang": "de", "tone": "friendly", "length": "short", "signature": "full" },
+          "subject": "Monatsbestellung BA-2026-07",
+          "body": "Grüß Gott Herr Morgan,\n\nanbei unsere Monatsbestellung BA-2026-07:\n- 25 Pack Fächerschleifscheiben 125 K80\n- 50 Stk. Stehlagereinheit UCP 205\n\nGewünschter Liefertermin ist der 24.07.2026. Danke schon im Voraus!\n\nLiebe Grüße aus Linz\nMartina Hofer\nEinkauf\nBrandauer Anlagentechnik GmbH\nTel. +43 732 5550 2101",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Brandauer Anlagentechnik BA-2026-07", "entity": "so-0158", "values": { "customer": "Brandauer Anlagentechnik", "state": "received", "requested_delivery": "2026-07-24" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-13", "time": "13:10", "direction": "sent", "to": ["p-hofer"], "inReplyTo": "#order",
+          "facts": ["AB SO-26-0158", "25 × 31,80 € = 795,00 €", "50 × 21,90 € = 1.095,00 €", "1.890,00 € netto", "Liefertermin 24.07., Alpen-Sammelgut"],
+          "style": { "lang": "de", "tone": "friendly", "length": "short" },
+          "subject": "AW: Monatsbestellung BA-2026-07",
+          "body": "Liebe Frau Hofer,\n\ndanke, erfasst als SO-26-0158:\n25 Pack NH-40220 à 31,80 € = 795,00 €\n50 Stk. NH-52340 à 21,90 € = 1.095,00 €\nGesamt 1.890,00 € netto, Liefertermin 24.07. mit Alpen-Sammelgut.\n\nViele Grüße nach Linz\nAlex Morgan"
+        },
+        {
+          "key": "addon", "day": "2026-07-15", "time": "10:20", "from": "p-hofer", "inReplyTo": "#confirm",
+          "facts": ["zusätzlich 10 Pack Spiralbohrer 8,5 mm", "in derselben Lieferung"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "AW: Monatsbestellung BA-2026-07",
+          "body": "Lieber Herr Morgan,\n\nkönnten Sie uns noch 10 Pack Spiralbohrer 8,5 mm dazupacken? Gern in derselben Lieferung.\n\nLiebe Grüße\nMartina Hofer\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 13. Juli 2026 13:10\nAn: Martina Hofer <m.hofer@brandauer-anlagentechnik.example>\nBetreff: AW: Monatsbestellung BA-2026-07\n\nLiebe Frau Hofer,\n\ndanke, erfasst als SO-26-0158:\n25 Pack NH-40220 à 31,80 € = 795,00 €\n50 Stk. NH-52340 à 21,90 € = 1.095,00 €\nGesamt 1.890,00 € netto, Liefertermin 24.07. mit Alpen-Sammelgut.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Brandauer Anlagentechnik Nachbestellung Spiralbohrer", "entity": "so-0161", "values": { "customer": "Brandauer Anlagentechnik", "state": "received", "requested_delivery": "2026-07-24" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Können Sie noch 10 Pack Spiralbohrer 8,5 mm dazupacken?"], "answeredBy": "#confirm2" },
+            "importance": "NORMAL",
+            "dependsOn": ["#confirm"]
+          }
+        },
+        {
+          "key": "confirm2", "day": "2026-07-15", "time": "11:30", "direction": "sent", "to": ["p-hofer"], "inReplyTo": "#addon",
+          "facts": ["SO-26-0161", "10 × 42,60 € = 426,00 €", "eine Sendung mit SO-26-0158 am 22.07."],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Monatsbestellung BA-2026-07",
+          "body": "Liebe Frau Hofer,\n\ngern: 10 Pack NH-31020 à 42,60 € = 426,00 €, erfasst als SO-26-0161. Beides geht am 22.07. in einer Sendung mit SO-26-0158 raus.\n\nViele Grüße\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "A3-falkenrath-rush",
+      "category": "A3",
+      "summary": "A machine stands still at a customer; bearings must arrive next morning, a Saturday delivery is asked for, stock is short.",
+      "difficulty": "hard",
+      "editorNotes": "Relative date 'morgen', internal check with the warehouse, partial shipment by parcel, remaining quantity becomes a to-do.",
+      "tags": ["rush-order"],
+      "numbers": ["SO-26-0152", "KP402611870093"],
+      "beats": [
+        {
+          "key": "rush", "day": "2026-07-09", "time": "07:15", "from": "p-kurz", "conversation": "falkenrath-rush",
+          "facts": ["Anlagenstillstand", "12 Rillenkugellager 6205-2RS", "4 Stehlagereinheiten UCP 205", "bis morgen (Fr 10.07.) früh", "Frage: morgen möglich? sonst Samstag?"],
+          "style": { "lang": "de", "tone": "urgent", "length": "short", "signature": "full" },
+          "subject": "DRINGEND: Anlagenstillstand – Lager benötigt",
+          "body": "Guten Morgen Herr Morgan,\n\nbei uns steht seit heute Nacht eine Förderanlage. Wir brauchen dringend 12 Rillenkugellager 6205-2RS und 4 Stehlagereinheiten UCP 205, am besten bis morgen früh. Können Sie das liefern? Falls morgen nicht klappt: geht auch eine Zustellung am Samstag?\n\nBitte um kurze Rückmeldung.\n\nMit freundlichen Grüßen\nMelanie Kurz\nEinkauf\nFalkenrath Antriebe GmbH\nTel. +49 561 5550 2701",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Falkenrath Antriebe Eilbestellung Lager", "entity": "so-0152", "values": { "customer": "Falkenrath Antriebe", "state": "received", "requested_delivery": "2026-07-10" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "morgen = Friday 10.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Können Sie 12 Rillenkugellager 6205-2RS und 4 Stehlagereinheiten UCP 205 bis morgen früh liefern?", "Geht auch eine Zustellung am Samstag?"], "answeredBy": "#reply" },
+            "importance": "URGENT",
+            "tags": ["rush-order", "relative-date"]
+          }
+        },
+        {
+          "key": "ask-jana", "day": "2026-07-09", "time": "07:40", "direction": "sent", "to": ["p-jana"], "conversation": "falkenrath-rush-intern",
+          "facts": ["12 × NH-52300 und 4 × NH-52340 für Falkenrath", "heute bis 14 Uhr fertig", "Kiebitz Express"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Eilt: Falkenrath",
+          "body": "Hi Jana,\n\nkannst du für Falkenrath 12 × NH-52300 und 4 × NH-52340 heute bis 14 Uhr fertig machen? Geht per Kiebitz Express raus.\n\nDanke dir\nAlex"
+        },
+        {
+          "key": "jana", "day": "2026-07-09", "time": "08:05", "from": "p-jana", "inReplyTo": "#ask-jana",
+          "facts": ["nur 8 Stück 6205-2RS am Lager", "Rest erst Montag von Elbtal", "UCP sind da"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "typos": 1, "quoting": "none", "signature": "none" },
+          "subject": "AW: Eilt: Falkenrath",
+          "body": "Hab nur 8 Stück 6205-2RS da, rest kommt erst Montag von Elbtal. Die 4 UCP sind da. Soll ich die 8 schonmal packen?\nJana",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Soll ich die 8 schon mal packen?"], "answeredBy": "#reply" },
+            "importance": "HIGH"
+          }
+        },
+        {
+          "key": "reply", "day": "2026-07-09", "time": "08:30", "direction": "sent", "to": ["p-kurz"], "cc": ["p-jana"], "inReplyTo": "#rush",
+          "facts": ["AB SO-26-0152", "8 Lager + 4 UCP heute per Kiebitz Express", "Zustellung morgen bis 12 Uhr", "restliche 4 Lager Montag", "Samstag nicht möglich"],
+          "style": { "lang": "de", "tone": "helpful", "length": "short" },
+          "subject": "AW: DRINGEND: Anlagenstillstand – Lager benötigt",
+          "body": "Guten Morgen Frau Kurz,\n\nwir haben 8 der 12 Lager 6205-2RS und alle 4 UCP 205 am Lager. Die gehen heute per Kiebitz Express raus, Zustellung morgen bis 12 Uhr. Die restlichen 4 Lager liefern wir am Montag nach. Eine Zustellung am Samstag bietet der Paketdienst leider nicht an.\n\nAuftragsnummer: SO-26-0152.\n\nViele Grüße\nAlex Morgan\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1001"
+        },
+        {
+          "key": "parcel", "day": "2026-07-09", "time": "17:45", "from": "p-kiebitz", "conversation": "kiebitz-KP402611870093",
+          "facts": ["Sendung KP402611870093", "an Falkenrath Antriebe GmbH, Kassel", "übernommen", "voraussichtliche Zustellung Fr, 10.07.2026, bis 12:00 Uhr"],
+          "style": { "lang": "de", "tone": "automated", "length": "short" },
+          "subject": "Ihre Sendung KP402611870093 wurde übernommen",
+          "body": "Guten Tag,\n\nIhre Sendung KP402611870093 an Falkenrath Antriebe GmbH, 34117 Kassel, wurde heute von uns übernommen.\n\nVoraussichtliche Zustellung: Fr, 10.07.2026, bis 12:00 Uhr (Express)\n\nSendungsverfolgung: https://track.kiebitz-paket.example/KP402611870093\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kiebitz Paket KP402611870093", "values": { "tracking_number": "KP402611870093", "carrier": "Kiebitz Paket", "direction": "outbound", "state": "picked_up", "eta": "2026-07-10" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "people", "title": null }, { "collection": "tasks", "title": null }]
+          }
+        },
+        {
+          "key": "arrived", "day": "2026-07-10", "time": "11:05", "from": "p-kurz", "inReplyTo": "#reply",
+          "facts": ["Lager sind da, Anlage läuft wieder", "Dank", "restliche 4 bitte wie besprochen Montag"],
+          "style": { "lang": "de", "tone": "relieved", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "AW: AW: DRINGEND: Anlagenstillstand – Lager benötigt",
+          "body": "Hallo Herr Morgan,\n\ndie Lager sind da, die Anlage läuft wieder – vielen Dank für den Einsatz! Die restlichen 4 Stück dann bitte wie besprochen am Montag.\n\nGruß\nMelanie Kurz\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 9. Juli 2026 08:30\nAn: Melanie Kurz <melanie.kurz@falkenrath-antriebe.example>\nCc: Jana Petersen <jana.petersen@nordhafen.example>\nBetreff: AW: DRINGEND: Anlagenstillstand – Lager benötigt\n\nwir haben 8 der 12 Lager 6205-2RS und alle 4 UCP 205 am Lager. Die gehen heute per Kiebitz Express raus, Zustellung morgen bis 12 Uhr. Die restlichen 4 Lager liefern wir am Montag nach.\n\nAuftragsnummer: SO-26-0152.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Falkenrath Antriebe SO-26-0152", "entity": "so-0152", "values": { "order_number": "SO-26-0152", "customer": "Falkenrath Antriebe", "state": "shipped" } }],
+              "tasks": [{ "title": "Restliche 4 Rillenkugellager an Falkenrath liefern", "values": { "state": "open", "due_date": "2026-07-13" } }]
+            },
+            "derived": { "tasks.due_date": "Montag = 13.07.2026" },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["partial-delivery"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A3-gruber-rush",
+      "category": "A3",
+      "summary": "A Swiss ropeway operator needs tools within two days; customs makes it impossible, a courier on Friday with prepayment is agreed.",
+      "difficulty": "medium",
+      "editorNotes": "Prepayment customer, CHF, customs lead time; the requested date moves from Thursday to Friday.",
+      "tags": ["rush-order", "currency"],
+      "numbers": ["SO-26-0162"],
+      "beats": [
+        {
+          "key": "rush", "day": "2026-07-14", "time": "06:50", "from": "p-caduff", "conversation": "gruber-revision",
+          "facts": ["Notfall Revision", "30 Maschinengewindebohrer M10", "10 Schaftfräser 12 mm", "bis Donnerstag 16.07. in Chur", "Frage: inkl. Verzollung möglich?"],
+          "style": { "lang": "de", "tone": "urgent", "length": "short", "signature": "full" },
+          "subject": "Eilbedarf Revision – bis Donnerstag",
+          "body": "Guten Morgen Herr Morgan\n\nWir sind mitten in der Revision einer Bahn und brauchen bis Donnerstag, 16.07., in Chur:\n- 30 Stk. Maschinengewindebohrer M10\n- 10 Stk. Schaftfräser VHM 12 mm\n\nGeht das inkl. Verzollung? Bitte um rasche Antwort.\n\nFreundliche Grüsse\nAndrea Caduff\nTechnischer Einkauf\nGruber Seilbahntechnik AG\nTel. +41 81 5550 4201",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Gruber Seilbahntechnik Eilauftrag Revision", "entity": "so-0162", "values": { "customer": "Gruber Seilbahntechnik", "state": "received", "requested_delivery": "2026-07-16" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Ist eine Lieferung bis Donnerstag, 16.07., in Chur möglich?", "Geht das inkl. Verzollung?"], "answeredBy": "#reply" },
+            "importance": "URGENT",
+            "tags": ["rush-order"]
+          }
+        },
+        {
+          "key": "reply", "day": "2026-07-14", "time": "09:10", "direction": "sent", "to": ["p-caduff"], "inReplyTo": "#rush",
+          "facts": ["Donnerstag inkl. Zoll nicht sicher (Abfertigung 1-2 Tage)", "Kurier bis Freitag 17.07. inkl. Verzollung", "Mehrkosten CHF 180.00", "Vorkasse"],
+          "style": { "lang": "de", "tone": "helpful", "length": "short" },
+          "subject": "AW: Eilbedarf Revision – bis Donnerstag",
+          "body": "Guten Tag Frau Caduff\n\nbeides ist am Lager, aber bis Donnerstag inkl. Verzollung kann ich es nicht sicher zusagen – die Abfertigung dauert erfahrungsgemäss 1 bis 2 Tage. Was sicher geht: Direktkurier mit Verzollung, Zustellung am Freitag, 17.07., Mehrkosten CHF 180.00. Da wir mit Ihnen auf Vorkasse arbeiten, schicke ich Ihnen nach Ihrer Freigabe eine Proforma.\n\nFreundliche Grüsse\nAlex Morgan"
+        },
+        {
+          "key": "ok", "day": "2026-07-14", "time": "11:40", "from": "p-caduff", "inReplyTo": "#reply",
+          "facts": ["Kurier bis Freitag", "Mehrkosten ok", "Proforma für Vorkasse an sie"],
+          "style": { "lang": "de", "tone": "urgent", "length": "1-3 sentences", "quoting": "none" },
+          "subject": "AW: Eilbedarf Revision – bis Donnerstag",
+          "body": "Dann bitte den Kurier bis Freitag, die Mehrkosten sind ok. Senden Sie mir die Proforma für die Vorkasse, wir überweisen sofort.\n\nGruss A. Caduff",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Gruber Seilbahntechnik Eilauftrag Revision", "entity": "so-0162", "values": { "customer": "Gruber Seilbahntechnik", "state": "received", "requested_delivery": "2026-07-17" } }],
+              "tasks": [{ "title": "Proforma für Vorkasse an Gruber Seilbahntechnik senden", "values": { "state": "open", "due_date": "2026-07-14" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "Freitag from the previous mail = 17.07.2026", "tasks.due_date": "sofort = same day" },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": [], "answeredBy": "#proforma" },
+            "importance": "HIGH",
+            "dependsOn": ["#reply"]
+          }
+        },
+        {
+          "key": "proforma", "day": "2026-07-14", "time": "15:00", "direction": "sent", "to": ["p-caduff"], "inReplyTo": "#ok",
+          "facts": ["Proforma zu SO-26-0162", "CHF 1'536.50 inkl. Kurier", "Versand nach Zahlungseingang"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Proforma SO-26-0162",
+          "body": "Guten Tag Frau Caduff\n\nanbei die Proforma zu SO-26-0162 über CHF 1'536.50 inkl. Kurier und Verzollung. Sobald die Zahlung da ist, geht die Ware raus.\n\nFreundliche Grüsse\nAlex Morgan"
+        },
+        {
+          "key": "arrived", "day": "2026-07-17", "time": "14:20", "from": "p-caduff", "inReplyTo": "#proforma",
+          "facts": ["Ware zu SO-26-0162 heute Mittag angekommen", "Revision läuft", "Dank"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Proforma SO-26-0162",
+          "body": "Grüezi Herr Morgan\n\nDie Ware zu SO-26-0162 ist heute Mittag angekommen, die Revision läuft. Merci für die schnelle Hilfe!\n\nAndrea Caduff",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Gruber Seilbahntechnik SO-26-0162", "entity": "so-0162", "values": { "order_number": "SO-26-0162", "customer": "Gruber Seilbahntechnik", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "reply": { "intent": "COURTESY", "courtesyKind": "THANK_YOU" },
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A4-dijkstra-change",
+      "category": "A4",
+      "summary": "A Dutch customer changes the quantity of a confirmed order and later reverts it while moving the date.",
+      "difficulty": "hard",
+      "editorNotes": "Second change contradicts the first; the end state must have 200 rods and 23 July.",
+      "tags": ["contradicting-change"],
+      "numbers": ["SO-26-0147"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-07", "time": "11:00", "from": "p-dewit", "conversation": "dijkstra-dw-2291",
+          "facts": ["PO DW-2291", "200 threaded rods M12x1000", "100 boxes nuts M8", "delivery 21 July"],
+          "style": { "lang": "en", "tone": "efficient", "length": "short", "signature": "full" },
+          "subject": "PO DW-2291",
+          "body": "Hi Alex,\n\nplease find our PO DW-2291:\n1. 200 pcs threaded rod M12x1000\n2. 100 boxes hex nut M8\nDelivery: 21 July to Eindhoven.\n\nRegards,\nFemke de Wit\nPurchasing\nDijkstra Werktuigen B.V.\n+31 40 5550 2301",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Dijkstra Werktuigen DW-2291", "entity": "so-0147", "values": { "customer": "Dijkstra Werktuigen", "state": "received", "requested_delivery": "2026-07-21" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-07", "time": "15:20", "direction": "sent", "to": ["p-dewit"], "inReplyTo": "#order",
+          "facts": ["SO-26-0147", "200 × 3.85 = 770.00 EUR", "100 × 14.90 = 1,490.00 EUR", "total 2,260.00 EUR", "delivery 21 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "RE: PO DW-2291",
+          "body": "Hi Femke,\n\nconfirmed as SO-26-0147:\n200 x NH-20530 at 3.85 EUR = 770.00 EUR\n100 x NH-20412 at 14.90 EUR = 1,490.00 EUR\nTotal 2,260.00 EUR net, delivery on 21 July.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "change1", "day": "2026-07-09", "time": "09:40", "from": "p-dewit", "inReplyTo": "#confirm",
+          "facts": ["change SO-26-0147", "250 threaded rods instead of 200", "same date"],
+          "style": { "lang": "en", "tone": "efficient", "length": "1-3 sentences", "quoting": "none" },
+          "subject": "RE: PO DW-2291",
+          "body": "Hi Alex,\n\nsmall change to SO-26-0147: we need 250 threaded rods instead of 200. Date stays the same. Can you confirm?\n\nFemke",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Dijkstra Werktuigen SO-26-0147", "entity": "so-0147", "values": { "order_number": "SO-26-0147", "customer": "Dijkstra Werktuigen" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Can you confirm 250 threaded rods instead of 200?"], "answeredBy": "#ok1" },
+            "importance": "HIGH",
+            "tags": ["contradicting-change"]
+          }
+        },
+        {
+          "key": "ok1", "day": "2026-07-09", "time": "11:00", "direction": "sent", "to": ["p-dewit"], "inReplyTo": "#change1",
+          "facts": ["250 rods confirmed", "new total 2,452.50 EUR", "delivery 21 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: PO DW-2291",
+          "body": "Hi Femke,\n\ndone: 250 rods, new total 2,452.50 EUR, still delivered on 21 July.\n\nAlex"
+        },
+        {
+          "key": "change2", "day": "2026-07-14", "time": "16:30", "from": "p-dewit", "inReplyTo": "#ok1",
+          "facts": ["sorry, back to 200 rods", "deliver on 23 July instead of 21 July", "goods receipt closed on the 21st"],
+          "style": { "lang": "en", "tone": "apologetic", "length": "short", "quoting": "partial" },
+          "subject": "RE: PO DW-2291",
+          "body": "Hi Alex,\n\nsorry for the back and forth - we go back to 200 rods after all (the extra project was postponed). And could you deliver on 23 July instead of 21 July? Our goods receipt is closed on the 21st.\n\nThanks!\nFemke\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Thursday, July 9, 2026 11:00 AM\nTo: Femke de Wit <f.dewit@dijkstra-werktuigen.example>\nSubject: RE: PO DW-2291\n\ndone: 250 rods, new total 2,452.50 EUR, still delivered on 21 July.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Dijkstra Werktuigen DW-2291", "entity": "so-0147", "values": { "customer": "Dijkstra Werktuigen", "requested_delivery": "2026-07-23" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Could you deliver on 23 July instead of 21 July?"], "answeredBy": "#ok2" },
+            "importance": "HIGH",
+            "mustNotProduce": [{ "collection": "sales_orders", "title": "250 rods" }],
+            "tags": ["contradicting-change"]
+          }
+        },
+        {
+          "key": "ok2", "day": "2026-07-15", "time": "08:45", "direction": "sent", "to": ["p-dewit"], "inReplyTo": "#change2",
+          "facts": ["back to 200 rods", "total 2,260.00 EUR", "delivery Thursday 23 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: PO DW-2291",
+          "body": "Hi Femke,\n\nno problem: back to 200 rods, total 2,260.00 EUR again, delivery on Thursday, 23 July.\n\nAlex"
+        }
+      ]
+    },
+    {
+      "id": "A5-ostrowski-cancel",
+      "category": "A5",
+      "summary": "A Polish customer's logistics clerk cancels an order that has already shipped; the buyer, also called Marek, reinstates it.",
+      "difficulty": "hard",
+      "editorNotes": "The buyer Marek Kowalczyk shares the first name with the shared driver and must stay a separate person. Cancellation arrives after shipment.",
+      "tags": ["cancel-after-shipment", "different-marek"],
+      "numbers": ["SO-26-0153", "WTS-PL-260714"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-08", "time": "10:30", "from": "p-kowalczyk", "conversation": "ostrowski-118",
+          "facts": ["30 packs cutting discs", "20 packs flap discs", "delivery to Poznań by 17 July", "their order 2026/OS/118"],
+          "style": { "lang": "en", "tone": "short", "length": "short", "signature": "full" },
+          "subject": "Order 2026/OS/118",
+          "body": "Dzień dobry Alex,\n\nplease send 30 packs cutting discs 125x1.0 Inox and 20 packs flap discs 125 K80, delivery to Poznań by 17 July. Our order number 2026/OS/118.\n\nPozdrawiam / Best regards\nMarek Kowalczyk\nPurchasing Manager\nOstrowski Serwis Sp. z o.o.\ntel. +48 61 5550 2801",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ostrowski Serwis 2026/OS/118", "entity": "so-0153", "values": { "customer": "Ostrowski Serwis", "state": "received", "requested_delivery": "2026-07-17" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "tags": ["different-marek"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-08", "time": "14:00", "direction": "sent", "to": ["p-kowalczyk"], "inReplyTo": "#order",
+          "facts": ["SO-26-0153", "30 × 27.50 = 825.00 EUR", "20 × 31.80 = 636.00 EUR", "total 1,461.00 EUR", "ships 14 July with Wisła-Trans, delivery 16 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "RE: Order 2026/OS/118",
+          "body": "Hi Marek,\n\nconfirmed as SO-26-0153:\n30 packs NH-40115 at 27.50 EUR = 825.00 EUR\n20 packs NH-40220 at 31.80 EUR = 636.00 EUR\nTotal 1,461.00 EUR net. Shipping on 14 July with Wisła-Trans groupage, delivery in Poznań on 16 July.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "pickup", "day": "2026-07-14", "time": "13:00", "from": "p-lewandowska", "conversation": "wislatrans-260714",
+          "facts": ["pickup done for Ostrowski Serwis, Poznań", "consignment WTS-PL-260714", "2 pallets", "your ref SO-26-0153", "delivery 16.07."],
+          "style": { "lang": "en", "tone": "dispatcher shorthand", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Pickup confirmation WTS-PL-260714",
+          "body": "Hello,\n\npickup done today in Hamburg for Ostrowski Serwis, Poznań - consignment WTS-PL-260714, 2 pallets, your ref SO-26-0153. Delivery planned 16.07.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260714", "values": { "tracking_number": "WTS-PL-260714", "carrier": "Wisła-Trans", "direction": "outbound", "order_ref": "SO-26-0153", "state": "picked_up", "eta": "2026-07-16" } }],
+              "sales_orders": [{ "title": "Ostrowski Serwis SO-26-0153", "entity": "so-0153", "values": { "order_number": "SO-26-0153", "state": "shipped" } }]
+            },
+            "relations": [{ "type": "ships", "from": "shipments:Wisła-Trans WTS-PL-260714", "to": "sales_orders:Ostrowski Serwis SO-26-0153" }],
+            "needsReply": false,
+            "importance": "LOW"
+          }
+        },
+        {
+          "key": "cancel", "day": "2026-07-15", "time": "08:20", "from": "p-zielinski", "conversation": "ostrowski-cancel",
+          "facts": ["please cancel order 2026/OS/118 (SO-26-0153)", "project was stopped"],
+          "style": { "lang": "en", "tone": "hesitant", "length": "1-3 sentences", "typos": 2, "signature": "full" },
+          "subject": "Cancel order 2026/OS/118",
+          "body": "Dear Mr Morgan,\n\nplease cancel the order 2026/OS/118 (your SO-26-0153), the project was stoped. Sorry for inconvenience.\n\nBest regards\nPaweł Zieliński\nLogistics\nOstrowski Serwis Sp. z o.o.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ostrowski Serwis SO-26-0153", "entity": "so-0153", "values": { "order_number": "SO-26-0153", "customer": "Ostrowski Serwis", "state": "cancelled" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": [], "answeredBy": "#explain" },
+            "importance": "HIGH",
+            "tags": ["cancel-after-shipment", "thread-split"]
+          }
+        },
+        {
+          "key": "explain", "day": "2026-07-15", "time": "09:30", "direction": "sent", "to": ["p-zielinski"], "cc": ["p-kowalczyk"], "inReplyTo": "#cancel",
+          "facts": ["goods left on 14 July with Wisła-Trans (WTS-PL-260714)", "arrive tomorrow", "return unopened with 10 % restocking fee, or keep"],
+          "style": { "lang": "en", "tone": "polite", "length": "short" },
+          "subject": "RE: Cancel order 2026/OS/118",
+          "body": "Dear Mr Zieliński,\n\nthe goods already left our warehouse on 14 July with Wisła-Trans (consignment WTS-PL-260714) and will arrive tomorrow. We can take them back unopened with a 10 % restocking fee, or you keep them. Please let me know how you want to proceed.\n\nBest regards\nAlex Morgan"
+        },
+        {
+          "key": "keep", "day": "2026-07-15", "time": "15:10", "from": "p-kowalczyk", "inReplyTo": "#explain",
+          "facts": ["we keep the goods", "Paweł did not know they were also for the other project", "order stays"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "RE: Cancel order 2026/OS/118",
+          "body": "Alex,\n\nwe keep the goods - Paweł didn't know they are also for the other project. Order stays as it is.\n\nPozdrawiam\nMarek\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Wednesday, July 15, 2026 9:30 AM\nTo: Paweł Zieliński <pawel.zielinski@ostrowski-serwis.example>\nCc: Marek Kowalczyk <marek.kowalczyk@ostrowski-serwis.example>\nSubject: RE: Cancel order 2026/OS/118\n\nthe goods already left our warehouse on 14 July with Wisła-Trans (consignment WTS-PL-260714) and will arrive tomorrow. We can take them back unopened with a 10 % restocking fee, or you keep them.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ostrowski Serwis 2026/OS/118", "entity": "so-0153", "values": { "customer": "Ostrowski Serwis", "state": "shipped" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "dependsOn": ["#cancel"],
+            "tags": ["different-marek", "reinstated"]
+          }
+        }
+      ]
+    }
+  ]
+}

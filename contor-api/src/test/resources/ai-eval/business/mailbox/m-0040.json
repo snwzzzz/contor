@@ -1,0 +1,85 @@
+{
+  "id": "m-0040",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-118",
+  "cc": [],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "order",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Kowalczyk",
+    "fromAddress": "marek.kowalczyk@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Order 2026/OS/118",
+    "receivedAt": "2026-07-08T08:30:00Z",
+    "body": "Dzień dobry Alex,\n\nplease send 30 packs cutting discs 125x1.0 Inox and 20 packs flap discs 125 K80, delivery to Poznań by 17 July. Our order number 2026/OS/118.\n\nPozdrawiam / Best regards\nMarek Kowalczyk\nPurchasing Manager\nOstrowski Serwis Sp. z o.o.\ntel. +48 61 5550 2801"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ostrowski Serwis 2026/OS/118",
+          "entity": "so-0153",
+          "values": {
+            "customer": "Ostrowski Serwis",
+            "state": "received",
+            "requested_delivery": "2026-07-17"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marek Kowalczyk",
+          "values": {
+            "email": "marek.kowalczyk@ostrowski-serwis.example",
+            "phone": "+48 61 5550 2801",
+            "role_title": "Purchasing Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marek Kowalczyk",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0046"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "different-marek"
+  ],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "30 packs cutting discs",
+    "20 packs flap discs",
+    "delivery to Poznań by 17 July",
+    "their order 2026/OS/118"
+  ]
+}

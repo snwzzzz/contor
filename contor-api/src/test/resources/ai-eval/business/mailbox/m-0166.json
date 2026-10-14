@@ -1,0 +1,94 @@
+{
+  "id": "m-0166",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-elbtal-elt-2026-3381",
+  "cc": [],
+  "storyline": "H2-supplier-invoices",
+  "beat": "elbtal",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kerstin Paulsen",
+    "fromAddress": "k.paulsen@elbtal-lagertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rechnung ELT-2026-3381 / PO-26-1079",
+    "receivedAt": "2026-07-17T07:30:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nanbei unsere Rechnung ELT-2026-3381 zu Ihrer Bestellung PO-26-1079 über 1.920,00 €. Zahlbar mit 2 % Skonto bis 31.07.2026, netto bis 16.08.2026. Als kleine Entschuldigung für die Verzögerung haben wir die Fracht nicht berechnet.\n\nFreundliche Grüße\nKerstin Paulsen\nAuftragsbearbeitung\nElbtal Lagertechnik GmbH\nTel. +49 351 5550 5701"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Elbtal Lagertechnik ELT-2026-3381",
+          "values": {
+            "invoice_number": "ELT-2026-3381",
+            "issuer": "Elbtal Lagertechnik",
+            "amount": {
+              "amount": 1920,
+              "currency": "EUR"
+            },
+            "due_date": "2026-08-16",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung ELT-2026-3381 mit Skonto bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-31"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Kerstin Paulsen",
+          "values": {
+            "email": "k.paulsen@elbtal-lagertechnik.example",
+            "phone": "+49 351 5550 5701",
+            "role_title": "Auftragsbearbeitung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Elbtal Lagertechnik GmbH",
+          "values": {
+            "domain": "elbtal-lagertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Kerstin Paulsen",
+        "to": "organizations:Elbtal Lagertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "skonto"
+  ],
+  "storylineTags": [
+    "skonto"
+  ],
+  "facts": [
+    "Rechnung ELT-2026-3381 zu PO-26-1079",
+    "1.920,00 €",
+    "2 % Skonto bis 31.07.2026",
+    "netto bis 16.08.2026"
+  ]
+}

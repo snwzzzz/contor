@@ -1,0 +1,82 @@
+{
+  "id": "m-0008",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-accept-tobias",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "accept-tobias",
+  "kind": "calendar-auto",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Angenommen: Weekly Leitungsrunde",
+    "receivedAt": "2026-07-06T06:02:00Z",
+    "body": "Tobias Krüger hat diese Besprechung angenommen."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "calendar-auto"
+  ],
+  "facts": []
+}

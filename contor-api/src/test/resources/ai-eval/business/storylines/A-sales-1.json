@@ -1,0 +1,310 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "A1-thiele-rfq",
+      "category": "A1",
+      "summary": "A one-off customer asks for a quote, accepts it by quote number only and confirms the delivery with thanks.",
+      "difficulty": "medium",
+      "editorNotes": "The order mail only names the quote number; prices and items are in the quoted quote (context-needed).",
+      "tags": ["context-needed"],
+      "numbers": ["Q-26-0311", "SO-26-0151"],
+      "beats": [
+        {
+          "key": "rfq", "day": "2026-07-06", "time": "09:12", "from": "p-rthiele", "conversation": "thiele-rfq",
+          "facts": ["6 Stehlagereinheiten UCP 205", "40 Pack Trennscheiben 125x1,0 Inox", "Lieferung bis Freitag 17.07. nach Leipzig", "Fragen: Preis, Lieferbarkeit bis 17.07."],
+          "style": { "lang": "de", "tone": "hurried", "length": "short", "signature": "full" },
+          "subject": "Anfrage Stehlager und Trennscheiben",
+          "body": "Sehr geehrter Herr Morgan,\n\nfür einen Messestand brauchen wir kurzfristig 6 Stehlagereinheiten UCP 205 und 40 Pack Trennscheiben 125x1,0 Inox. Was kostet das bei Ihnen, und schaffen Sie eine Lieferung nach Leipzig bis Freitag, 17.07.?\n\nDanke und Gruß\nRobert Thiele\nInhaber\nThiele Messebau GmbH\nTel. +49 341 5550 4001",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Was kosten 6 Stehlagereinheiten UCP 205 und 40 Pack Trennscheiben?", "Ist eine Lieferung nach Leipzig bis 17.07. möglich?"], "answeredBy": "#quote" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "quote", "day": "2026-07-06", "time": "14:30", "direction": "sent", "to": ["p-rthiele"], "inReplyTo": "#rfq",
+          "facts": ["Angebot Q-26-0311", "6 × NH-52340 à 21,90 € = 131,40 €", "40 × NH-40115 à 27,50 € = 1.100,00 €", "Summe 1.231,40 € netto", "Lieferung bis 15.07. möglich", "gültig 14 Tage"],
+          "style": { "lang": "de", "tone": "friendly", "length": "medium", "quoting": "full" },
+          "subject": "AW: Anfrage Stehlager und Trennscheiben",
+          "body": "Sehr geehrter Herr Thiele,\n\nvielen Dank für Ihre Anfrage. Gern biete ich Ihnen an (Angebot Q-26-0311):\n\n- 6 St. Stehlagereinheit UCP 205 (NH-52340) à 21,90 € = 131,40 €\n- 40 Pack Trennscheibe 125x1,0 Inox (NH-40115) à 27,50 € = 1.100,00 €\n\nSumme: 1.231,40 € netto zzgl. MwSt., frei Haus.\nBeides ist am Lager; bei Bestellung bis Mittwoch liefern wir bis 15.07. nach Leipzig. Das Angebot gilt 14 Tage.\n\nViele Grüße\nAlex Morgan\n\nNordhafen Industriebedarf GmbH\nKaiufer 12 · 20457 Hamburg\nTel. +49 40 5550 1001\n\nVon: Robert Thiele <r.thiele@thiele-messebau.example>\nGesendet: Montag, 6. Juli 2026 09:12\nAn: Alex Morgan <alex.morgan@nordhafen.example>\nBetreff: Anfrage Stehlager und Trennscheiben\n\nSehr geehrter Herr Morgan,\n\nfür einen Messestand brauchen wir kurzfristig 6 Stehlagereinheiten UCP 205 und 40 Pack Trennscheiben 125x1,0 Inox. Was kostet das bei Ihnen, und schaffen Sie eine Lieferung nach Leipzig bis Freitag, 17.07.?\n\nDanke und Gruß\nRobert Thiele"
+        },
+        {
+          "key": "order", "day": "2026-07-08", "time": "08:05", "from": "p-rthiele", "inReplyTo": "#quote",
+          "facts": ["nimmt Angebot Q-26-0311 an", "Lieferadresse wie angegeben"],
+          "style": { "lang": "de", "tone": "hurried", "length": "1-3 sentences", "quoting": "full", "signature": "short" },
+          "subject": "AW: AW: Anfrage Stehlager und Trennscheiben",
+          "body": "Hallo Herr Morgan,\n\nwir nehmen das Angebot Q-26-0311 so an. Lieferadresse wie angegeben.\n\nGruß\nR. Thiele\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 6. Juli 2026 14:30\nAn: Robert Thiele <r.thiele@thiele-messebau.example>\nBetreff: AW: Anfrage Stehlager und Trennscheiben\n\nSehr geehrter Herr Thiele,\n\nvielen Dank für Ihre Anfrage. Gern biete ich Ihnen an (Angebot Q-26-0311):\n\n- 6 St. Stehlagereinheit UCP 205 (NH-52340) à 21,90 € = 131,40 €\n- 40 Pack Trennscheibe 125x1,0 Inox (NH-40115) à 27,50 € = 1.100,00 €\n\nSumme: 1.231,40 € netto zzgl. MwSt., frei Haus.\nBeides ist am Lager; bei Bestellung bis Mittwoch liefern wir bis 15.07. nach Leipzig. Das Angebot gilt 14 Tage.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Thiele Messebau Bestellung zu Q-26-0311", "entity": "so-0151", "values": { "customer": "Thiele Messebau", "total": { "amount": 1231.40, "currency": "EUR" }, "state": "received", "requested_delivery": "2026-07-15" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "dependsOn": ["#quote"],
+            "tags": ["context-needed"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-08", "time": "11:20", "direction": "sent", "to": ["p-rthiele"], "inReplyTo": "#order",
+          "facts": ["Auftragsbestätigung SO-26-0151", "1.231,40 € netto", "Liefertermin 15.07.2026", "Versand per Palettenring Nord"],
+          "style": { "lang": "de", "tone": "friendly", "length": "short", "quoting": "none" },
+          "subject": "Auftragsbestätigung SO-26-0151",
+          "body": "Sehr geehrter Herr Thiele,\n\nvielen Dank für Ihren Auftrag. Hiermit bestätige ich Ihre Bestellung zu unserem Angebot Q-26-0311 unter der Auftragsnummer SO-26-0151 über 1.231,40 € netto. Liefertermin: Mittwoch, 15.07.2026, Versand per Palettenring Nord.\n\nViele Grüße\nAlex Morgan\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1001"
+        },
+        {
+          "key": "delivered", "day": "2026-07-15", "time": "16:40", "from": "p-rthiele", "inReplyTo": "#confirm",
+          "facts": ["Ware zu SO-26-0151 heute angekommen", "Dank"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Auftragsbestätigung SO-26-0151",
+          "body": "Hallo Herr Morgan,\n\ndie Ware zu SO-26-0151 ist heute vollständig angekommen, rechtzeitig für unseren Aufbau. Vielen Dank für die schnelle Abwicklung!\n\nR. Thiele",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Thiele Messebau SO-26-0151", "entity": "so-0151", "values": { "order_number": "SO-26-0151", "customer": "Thiele Messebau", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "reply": { "intent": "COURTESY", "courtesyKind": "THANK_YOU" },
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A1-moreau-rfq",
+      "category": "A1",
+      "summary": "A French customer asks for a quote in English and then orders a different quantity than quoted.",
+      "difficulty": "medium",
+      "editorNotes": "Order quantity (45) differs from the quote (30); the total is only stated in the confirmation the customer quotes back.",
+      "tags": ["context-needed", "quantity-differs"],
+      "numbers": ["Q-26-0312", "SO-26-0156"],
+      "beats": [
+        {
+          "key": "rfq", "day": "2026-07-07", "time": "10:05", "from": "p-rousseau", "conversation": "moreau-rfq",
+          "facts": ["30 end mills solid carbide 12 mm Z4", "20 machine taps M10", "delivery to Lyon", "questions: price, lead time, minimum order quantity"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short", "signature": "full" },
+          "subject": "Request for quotation - end mills and taps",
+          "body": "Hello Alex,\n\nwe need a quotation for:\n- 30 solid carbide end mills 12 mm Z4\n- 20 machine taps M10\n\ndelivered to our workshop in Lyon. What is your lead time, and is there a minimum order quantity for the end mills?\n\nThank you and best regards,\nCamille Rousseau\nBuyer\nAteliers Moreau SARL\n+33 4 5550 2901",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["What is the price for 30 end mills and 20 taps?", "What is your lead time?", "Is there a minimum order quantity for the end mills?"], "answeredBy": "#quote" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "quote", "day": "2026-07-07", "time": "16:10", "direction": "sent", "to": ["p-rousseau"], "inReplyTo": "#rfq",
+          "facts": ["quotation Q-26-0312", "NH-33110 30 × 64.20 = 1,926.00 EUR", "NH-31045 20 × 18.75 = 375.00 EUR", "total 2,301.00 EUR net", "freight 45.00 EUR flat", "lead time 5 working days", "no MOQ"],
+          "style": { "lang": "en", "tone": "friendly", "length": "medium" },
+          "subject": "RE: Request for quotation - end mills and taps",
+          "body": "Hello Camille,\n\nthank you for your request. Please find our quotation Q-26-0312:\n\n- NH-33110 solid carbide end mill 12 mm Z4: 30 pcs x 64.20 EUR = 1,926.00 EUR\n- NH-31045 machine tap M10: 20 pcs x 18.75 EUR = 375.00 EUR\n\nTotal: 2,301.00 EUR net, plus 45.00 EUR flat freight to Lyon.\nLead time is 5 working days from order; there is no minimum order quantity.\n\nBest regards\nAlex Morgan\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1001"
+        },
+        {
+          "key": "order", "day": "2026-07-10", "time": "09:30", "from": "p-rousseau", "inReplyTo": "#quote",
+          "facts": ["orders 45 end mills instead of 30", "plus the 20 taps", "same prices as Q-26-0312"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences", "quoting": "partial" },
+          "subject": "RE: Request for quotation - end mills and taps",
+          "body": "Hi Alex,\n\nplease book 45 end mills instead of 30, plus the 20 taps, at the prices of your quotation Q-26-0312. Delivery address as usual.\n\nMerci et bonne journée,\nCamille\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Tuesday, July 7, 2026 4:10 PM\nTo: Camille Rousseau <c.rousseau@ateliers-moreau.example>\nSubject: RE: Request for quotation - end mills and taps\n\nPlease find our quotation Q-26-0312:\n- NH-33110 solid carbide end mill 12 mm Z4: 30 pcs x 64.20 EUR = 1,926.00 EUR\n- NH-31045 machine tap M10: 20 pcs x 18.75 EUR = 375.00 EUR",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ateliers Moreau order Q-26-0312", "entity": "so-0156", "values": { "customer": "Ateliers Moreau", "state": "received" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "dependsOn": ["#quote"],
+            "tags": ["quantity-differs"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-10", "time": "13:00", "direction": "sent", "to": ["p-rousseau"], "inReplyTo": "#order",
+          "facts": ["order confirmation SO-26-0156", "45 end mills, 20 taps", "total 3,264.00 EUR net plus 45.00 EUR freight", "shipping 15 July, delivery 17 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "Order confirmation SO-26-0156",
+          "body": "Hello Camille,\n\nthank you for your order, confirmed as SO-26-0156:\n- 45 x NH-33110 end mill 12 mm Z4 at 64.20 EUR\n- 20 x NH-31045 tap M10 at 18.75 EUR\nTotal 3,264.00 EUR net plus 45.00 EUR freight. We ship on 15 July; delivery in Lyon on 17 July.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "ack", "day": "2026-07-13", "time": "09:02", "from": "p-rousseau", "inReplyTo": "#confirm",
+          "facts": ["SO-26-0156 noted", "total 3,264.00 EUR", "please send the invoice to comptabilite@ateliers-moreau.example"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "RE: Order confirmation SO-26-0156",
+          "body": "Hi Alex,\n\nthanks for the confirmation, SO-26-0156 with 3,264.00 EUR is noted on our side. Could you please send the invoice to comptabilite@ateliers-moreau.example rather than to me?\n\nCamille\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Friday, July 10, 2026 1:00 PM\nTo: Camille Rousseau <c.rousseau@ateliers-moreau.example>\nSubject: Order confirmation SO-26-0156\n\nthank you for your order, confirmed as SO-26-0156:\n- 45 x NH-33110 end mill 12 mm Z4 at 64.20 EUR\n- 20 x NH-31045 tap M10 at 18.75 EUR\nTotal 3,264.00 EUR net plus 45.00 EUR freight. We ship on 15 July; delivery in Lyon on 17 July.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Ateliers Moreau SO-26-0156", "entity": "so-0156", "values": { "order_number": "SO-26-0156", "customer": "Ateliers Moreau", "total": { "amount": 3264.00, "currency": "EUR" }, "state": "confirmed", "confirmed_delivery": "2026-07-17" } }],
+              "tasks": [{ "title": "Send the invoice for SO-26-0156 to comptabilite@ateliers-moreau.example", "values": { "state": "open" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "A1-steiner-rfq",
+      "category": "A1",
+      "summary": "A Swiss customer asks for a CHF quote with delivery in a calendar week and orders against it.",
+      "difficulty": "medium",
+      "editorNotes": "Swiss spelling (ss), CHF amounts with apostrophes, requested delivery given as KW 31 (Monday 27 July).",
+      "tags": ["calendar-week", "currency"],
+      "numbers": ["Q-26-0315", "SO-26-0160"],
+      "beats": [
+        {
+          "key": "rfq", "day": "2026-07-08", "time": "08:40", "from": "p-baumann", "conversation": "steiner-rfq",
+          "facts": ["500 Gewindestangen M12x1000", "20 Pack Spiralbohrer HSS-E 8,5 mm", "Preise in CHF", "Lieferung KW 31 nach Winterthur", "Frage DAP oder verzollt (DDP)"],
+          "style": { "lang": "de", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Offertanfrage Gewindestangen / Bohrer",
+          "body": "Guten Tag Herr Morgan\n\nBitte offerieren Sie uns in CHF:\n- 500 Stk. Gewindestange M12x1000 verzinkt\n- 20 Pack Spiralbohrer HSS-E 8,5 mm\n\nLieferung in KW 31 nach Winterthur. Können Sie den Termin halten, und liefern Sie DAP oder verzollt (DDP)?\n\nFreundliche Grüsse\nReto Baumann\nLeiter Einkauf\nSteiner Präzisionsteile AG\nTel. +41 52 5550 3001",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Preise für 500 Gewindestangen M12x1000 und 20 Pack Spiralbohrer in CHF?", "Ist Lieferung in KW 31 möglich?", "DAP oder verzollt (DDP)?"], "answeredBy": "#quote" },
+            "importance": "NORMAL",
+            "tags": ["calendar-week"]
+          }
+        },
+        {
+          "key": "quote", "day": "2026-07-08", "time": "15:00", "direction": "sent", "to": ["p-baumann"], "inReplyTo": "#rfq",
+          "facts": ["Offerte Q-26-0315", "500 × CHF 3.70 = CHF 1'850.00", "20 × CHF 40.90 = CHF 818.00", "Total CHF 2'668.00 netto, DAP Winterthur", "Verzollung durch Alpen-Sammelgut auf Kosten des Kunden", "KW 31 möglich bei Bestellung bis 15.07."],
+          "style": { "lang": "de", "tone": "friendly", "length": "medium" },
+          "subject": "AW: Offertanfrage Gewindestangen / Bohrer",
+          "body": "Guten Tag Herr Baumann\n\ngern offeriere ich Ihnen (Offerte Q-26-0315):\n- 500 Stk. Gewindestange M12x1000 (NH-20530) à CHF 3.70 = CHF 1'850.00\n- 20 Pack Spiralbohrer HSS-E 8,5 mm (NH-31020) à CHF 40.90 = CHF 818.00\n\nTotal CHF 2'668.00 netto, Lieferung DAP Winterthur. Die Verzollung übernimmt unser Spediteur Alpen-Sammelgut, die Kosten gehen zu Ihren Lasten. KW 31 schaffen wir, wenn Ihre Bestellung bis 15.07. bei uns ist.\n\nFreundliche Grüsse\nAlex Morgan\nNordhafen Industriebedarf GmbH"
+        },
+        {
+          "key": "order", "day": "2026-07-13", "time": "10:15", "from": "p-baumann", "inReplyTo": "#quote",
+          "facts": ["Bestellung gemäss Offerte Q-26-0315", "Lieferung KW 31", "interne Bestellnummer BE-77810"],
+          "style": { "lang": "de", "tone": "formal", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "AW: Offertanfrage Gewindestangen / Bohrer",
+          "body": "Guten Tag Herr Morgan\n\nWir bestellen gemäss Ihrer Offerte Q-26-0315, Lieferung wie besprochen in KW 31. Unsere Bestellnummer: BE-77810.\n\nFreundliche Grüsse\nReto Baumann\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Mittwoch, 8. Juli 2026 15:00\nAn: Reto Baumann <reto.baumann@steiner-praezision.example>\nBetreff: AW: Offertanfrage Gewindestangen / Bohrer\n\nGuten Tag Herr Baumann\n\ngern offeriere ich Ihnen (Offerte Q-26-0315):\n- 500 Stk. Gewindestange M12x1000 (NH-20530) à CHF 3.70 = CHF 1'850.00\n- 20 Pack Spiralbohrer HSS-E 8,5 mm (NH-31020) à CHF 40.90 = CHF 818.00\n\nTotal CHF 2'668.00 netto, Lieferung DAP Winterthur.",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Steiner Präzisionsteile Bestellung BE-77810", "entity": "so-0160", "values": { "customer": "Steiner Präzisionsteile", "total": { "amount": 2668.00, "currency": "CHF" }, "state": "received", "requested_delivery": "2026-07-27" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "KW 31 -> Monday 27.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "dependsOn": ["#quote"],
+            "tags": ["calendar-week", "context-needed"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-13", "time": "14:00", "direction": "sent", "to": ["p-baumann"], "inReplyTo": "#order",
+          "facts": ["Auftragsbestätigung SO-26-0160 zu BE-77810", "Liefertermin Mittwoch 29.07.2026", "Versand mit Alpen-Sammelgut"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Auftragsbestätigung SO-26-0160 (Ihre Bestellung BE-77810)",
+          "body": "Guten Tag Herr Baumann\n\nbesten Dank, Ihre Bestellung BE-77810 ist bei uns als SO-26-0160 erfasst. Liefertermin: Mittwoch, 29.07.2026 (KW 31), Versand mit Alpen-Sammelgut inkl. Verzollung.\n\nFreundliche Grüsse\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "A2-vossberg-repeat",
+      "category": "A2",
+      "summary": "A loyal customer orders tersely, and three weeks later orders 'the same as last time' for a calendar week.",
+      "difficulty": "hard",
+      "editorNotes": "The second order names no articles or quantities; only the first order mail from the same sender resolves it.",
+      "tags": ["terse-repeat-order", "context-needed"],
+      "numbers": ["SO-26-0144", "SO-26-0171"],
+      "beats": [
+        {
+          "key": "order1", "day": "2026-07-06", "time": "07:58", "from": "p-albers", "conversation": "vossberg-0706",
+          "facts": ["40 Kartons M8x40 (NH-20410)", "10 Kartons Muttern M8", "Lieferung bis Donnerstag (09.07.)"],
+          "style": { "lang": "de", "tone": "curt", "length": "1-3 sentences", "signature": "none", "typos": 1 },
+          "subject": "Bestellung",
+          "body": "Moin Alex,\n\nbitte 40 Kartons M8x40 (NH-20410) und 10 Kartons Muttern M8, Lieferung bis Do. Danke\n\nJens",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Vossberg Fördertechnik Bestellung vom 06.07.", "entity": "so-0144", "values": { "customer": "Vossberg Fördertechnik", "state": "received", "requested_delivery": "2026-07-09" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "Do = Thursday after Monday 06.07." },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm1" },
+            "importance": "NORMAL",
+            "tags": ["relative-date", "very-short"]
+          }
+        },
+        {
+          "key": "confirm1", "day": "2026-07-06", "time": "10:30", "direction": "sent", "to": ["p-albers"], "inReplyTo": "#order1",
+          "facts": ["AB SO-26-0144", "40 × 18,40 € = 736,00 €", "10 × 14,90 € = 149,00 €", "885,00 € netto", "Lieferung Do 09.07. mit Palettenring"],
+          "style": { "lang": "de", "tone": "friendly", "length": "short" },
+          "subject": "AW: Bestellung",
+          "body": "Moin Jens,\n\nist erfasst als SO-26-0144:\n40 Kartons NH-20410 à 18,40 € = 736,00 €\n10 Kartons NH-20412 à 14,90 € = 149,00 €\nzusammen 885,00 € netto. Lieferung Donnerstag, 09.07., mit Palettenring.\n\nGruß\nAlex"
+        },
+        {
+          "key": "order2", "day": "2026-07-27", "time": "08:03", "from": "p-albers", "conversation": "vossberg-0727",
+          "facts": ["dasselbe wie letztes Mal", "Lieferung KW 32"],
+          "style": { "lang": "de", "tone": "curt", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Nachbestellung",
+          "body": "Moin, nochmal dasselbe wie letztes Mal, diesmal KW 32.\nJens",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Vossberg Fördertechnik Nachbestellung KW 32", "entity": "so-0171", "values": { "customer": "Vossberg Fördertechnik", "state": "received", "requested_delivery": "2026-08-03" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "KW 32 -> Monday 03.08.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm2" },
+            "importance": "NORMAL",
+            "dependsOn": ["#order1"],
+            "tags": ["terse-repeat-order", "calendar-week", "very-short"]
+          }
+        },
+        {
+          "key": "confirm2", "day": "2026-07-27", "time": "11:00", "direction": "sent", "to": ["p-albers"], "inReplyTo": "#order2",
+          "facts": ["SO-26-0171", "40 Kartons NH-20410, 10 Kartons NH-20412", "885,00 € netto", "Lieferung Montag 03.08."],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Nachbestellung",
+          "body": "Moin Jens,\n\nwie beim letzten Mal: 40 Kartons NH-20410 und 10 Kartons NH-20412, 885,00 € netto, erfasst als SO-26-0171. Lieferung Montag, 03.08.\n\nGruß\nAlex"
+        }
+      ]
+    },
+    {
+      "id": "A2-lindgren-repeat",
+      "category": "A2",
+      "summary": "A Swedish customer asks to repeat a June order by its own PO reference, gets a confirmation and says thanks.",
+      "difficulty": "medium",
+      "editorNotes": "The June order is not in the mailbox, so quantities cannot be resolved from mail; the final 'perfect, thanks' must not re-create the order from the quoted confirmation.",
+      "tags": ["terse-repeat-order", "currency"],
+      "numbers": ["SO-26-0150"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-09", "time": "13:20", "from": "p-nyberg", "conversation": "lindgren-repeat",
+          "facts": ["repeat the June order", "same quantities and SEK prices", "their PO ref LV-4471", "delivery before mid-August is fine"],
+          "style": { "lang": "en", "tone": "relaxed", "length": "short", "signature": "full" },
+          "subject": "Repeat order LV-4471",
+          "body": "Hi Alex,\n\ncould you repeat our June order? Same quantities, same SEK prices. Our PO reference is LV-4471. No rush, delivery before the middle of August is fine - half of the team is on holiday anyway.\n\nCheers,\nOskar Nyberg\nBuyer\nLindgren Verktyg AB\n+46 31 5550 2601",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Lindgren Verktyg order LV-4471", "entity": "so-0150", "values": { "customer": "Lindgren Verktyg", "state": "received" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-09", "time": "16:00", "direction": "sent", "to": ["p-nyberg"], "inReplyTo": "#order",
+          "facts": ["booked as SO-26-0150", "60 packs NH-31020, 30 packs NH-40220", "total SEK 39,850.00", "delivery week 33 (10-14 August)"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "RE: Repeat order LV-4471",
+          "body": "Hi Oskar,\n\nbooked as SO-26-0150, same as June: 60 packs NH-31020 drills 8.5 mm and 30 packs NH-40220 flap discs, total SEK 39,850.00. Delivery in week 33 (10-14 August).\n\nEnjoy the summer!\nAlex"
+        },
+        {
+          "key": "thanks", "day": "2026-07-10", "time": "08:12", "from": "p-nyberg", "inReplyTo": "#confirm",
+          "facts": ["perfect, thanks"],
+          "style": { "lang": "en", "tone": "relaxed", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "RE: Repeat order LV-4471",
+          "body": "Perfect, thanks! Have a good summer too.\n/Oskar\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Thursday, July 9, 2026 4:00 PM\nTo: Oskar Nyberg <oskar.nyberg@lindgren-verktyg.example>\nSubject: RE: Repeat order LV-4471\n\nHi Oskar,\n\nbooked as SO-26-0150, same as June: 60 packs NH-31020 drills 8.5 mm and 30 packs NH-40220 flap discs, total SEK 39,850.00. Delivery in week 33 (10-14 August).",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Lindgren Verktyg SO-26-0150", "entity": "so-0150", "values": { "order_number": "SO-26-0150", "customer": "Lindgren Verktyg", "total": { "amount": 39850.00, "currency": "SEK" }, "state": "confirmed" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["very-short", "facts-in-quote"]
+          }
+        }
+      ]
+    }
+  ]
+}

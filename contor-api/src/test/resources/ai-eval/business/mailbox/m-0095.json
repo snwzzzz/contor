@@ -1,0 +1,86 @@
+{
+  "id": "m-0095",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-so-0149",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "impatient",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": "m-0029",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Thomas Reuter",
+    "fromAddress": "thomas.reuter@hartmann-hydraulik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Liefertermin SO-26-0149",
+    "receivedAt": "2026-07-13T06:10:00Z",
+    "body": "Herr Morgan,\n\nder 15.07. ist übermorgen und ich habe immer noch keine Versandbestätigung. Kommt die Ware jetzt oder nicht? Unser Stillstand ist fest eingeplant.\n\nT. Reuter"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Hartmann Hydraulik SO-26-0149",
+          "values": {
+            "order_number": "SO-26-0149",
+            "customer": "Hartmann Hydraulik",
+            "confirmed_delivery": "2026-07-15"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Thomas Reuter",
+          "values": {
+            "email": "thomas.reuter@hartmann-hydraulik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Hartmann Hydraulik GmbH",
+          "values": {
+            "domain": "hartmann-hydraulik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Thomas Reuter",
+        "to": "organizations:Hartmann Hydraulik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Kommt die Ware jetzt oder nicht?"
+    ]
+  },
+  "importance": "HIGH",
+  "dependsOn": [
+    "m-0029"
+  ],
+  "tags": [
+    "escalation",
+    "unanswered"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "der 15.07. ist übermorgen",
+    "noch keine Versandbestätigung",
+    "kommt die Ware jetzt oder nicht?",
+    "Stillstand fest eingeplant"
+  ]
+}

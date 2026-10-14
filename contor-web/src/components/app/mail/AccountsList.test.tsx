@@ -103,6 +103,23 @@ describe("AccountsList", () => {
     expect(screen.queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
   });
 
+  it("shows the demo mailbox as a demo, without sync or reconnect", async () => {
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [{ id: 5, provider: "DEMO", emailAddress: "orders@nordhafen.example", displayName: "Nordhafen demo (orders)", status: "ACTIVE" }],
+      },
+    });
+
+    renderWithProviders(<AccountsList />);
+
+    expect(await screen.findByText("orders@nordhafen.example")).toBeInTheDocument();
+    expect(screen.getByText("Demo")).toBeInTheDocument();
+    expect(screen.getByText(/fictional demo mailbox/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /reconnect/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /disconnect/i })).toBeInTheDocument();
+  });
+
   it("offers a reconnect when the account needs re-authorization", async () => {
     mockApi({
       "GET /api/mail/accounts": {

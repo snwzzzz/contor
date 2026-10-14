@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.TextStyle;
@@ -55,7 +56,7 @@ import java.util.stream.Collectors;
 @Service
 public class EmailExtractionService implements ExtractionService {
 
-    public static final String PROMPT_VERSION = "extract-v6";
+    public static final String PROMPT_VERSION = "extract-v7";
 
     static final int MAX_BODY_CHARS = 8000;
     private static final String TASKS = "tasks";
@@ -72,7 +73,11 @@ public class EmailExtractionService implements ExtractionService {
             listed relation types, from the item that the type's first collection describes. List each relation once. \
             reason: at most 12 words. When unsure, return an empty list.""";
 
-    private static final String SYSTEM = """
+    /**
+     * Without an owner profile: the personal rules measured with the personal corpus (extract-v6). With a profile the
+     * business rules below apply (extract-v7: whose side an email is on, shipments and deadlines, updates of records).
+     */
+    private static final String SYSTEM_PERSONAL = """
             You are the assistant inside contor, a personal management app. You read one email of the user and \
             extract what is worth recording into the user's collections. Answer with JSON only.
             Today is %s (%s). The user's time zone is %s. The user's own address is %s: never record the user.
@@ -92,6 +97,43 @@ public class EmailExtractionService implements ExtractionService {
             - confidence between 0 and 1; reason: one short sentence quoting the evidence.
             - Advertising, newsletters and notifications without anything to record: return no items.""";
 
+    private static final String SYSTEM_BUSINESS = """
+            You are the assistant inside contor, an app that keeps the user's records, calendar and to-dos from their \
+            mail. You read one email of the user and extract what is worth recording into the user's collections. Answer \
+            with JSON only.
+            Today is %s (%s). The user's time zone is %s. The user's own address is %s: never record the user.%s
+            Rules:
+            - Record only facts stated in the email or in the earlier emails shown with it. Leave a field out instead of \
+            guessing; never invent numbers (order, invoice, tracking numbers, amounts).
+            - Decide from the user's point of view whose order, invoice or shipment it is; the collection descriptions say \
+            which collection fits.
+            - people: individual humans the user deals with (a personal sender, people named with contact details). \
+            Never companies, newsletters, no-reply or system senders. A human sender is always a people item (email from \
+            the From line, phone and role from the signature), colleagues too.
+            - organizations: companies, shops, employers, authorities, schools the user actually deals with; the company \
+            of a human sender (domain from the address) is one, except the user's own company.
+            - events: appointments with people, meetings, calls, visits, interviews, trade fairs, bookings, trips and \
+            slots at a fixed time. starts_at is required. Delivery dates, ETAs, dispatch and pickup dates are not events: \
+            they belong to the order or shipment they concern.
+            - tasks: concrete things the user has to do (reply, pay, sign, send, call, order, change something), with \
+            due_date if stated. A deadline to do something is a task with that due_date, not an event. Title in the \
+            language of the email, starting with the action.
+            - A notification about a shipment or delivery with a tracking or consignment number is a record of that \
+            shipment, not a notification without anything to record. When it names an order (purchase or sales order \
+            number), it also returns that order with its new state (shipped, received, delivered).
+            - An email that confirms, changes, cancels or reports the arrival of something already recorded (see "Already \
+            recorded" with the earlier emails) returns that record again: same collection, its key value (order number, \
+            tracking number, ...) and the values that changed, e.g. the new state or date.
+            - any other collection: only when the email is clearly about such a thing.
+            - title: short and specific, e.g. a person's full name, "Interview at Acme", "Pay invoice 2024-118".
+            - Resolve relative dates ("Friday", "tomorrow", "next week", "by Thursday") relative to the date the email \
+            was sent (its Date line, with weekday), never relative to today.
+            - DATE as YYYY-MM-DD; DATETIME as ISO-8601 with offset in the user's time zone unless the email names \
+            another zone; MONEY as {"amount": 12.5, "currency": "EUR"}; ENUM and STATUS only with the listed values.
+            - confidence between 0 and 1; reason: one short sentence quoting the evidence.
+            - Return no items only for advertising, newsletters and automated notifications with nothing to record. An \
+            email a person writes to the user (customer, supplier, colleague) always yields at least its sender.""";
+
     private final LlmClient llmClient;
     private final AiProperties properties;
     private final ObjectMapper objectMapper;
@@ -103,7 +145,7 @@ public class EmailExtractionService implements ExtractionService {
     private final Clock clock;
 
     @Override
-    public List<ProposalDraft> analyze(EmailContent email, List<CollectionDto> targets) {
+    public List<ProposalDraft> analyze(EmailContent email, List<CollectionDto> targets, String ownerProfile) {
         if (targets.isEmpty()) {
             return List.of();
         }
@@ -111,8 +153,11 @@ public class EmailExtractionService implements ExtractionService {
         targets.forEach(collection -> bySlug.put(collection.getSlug(), collection));
 
         LocalDate today = LocalDate.now(clock.withZone(properties.timezone()));
-        String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH),
-                properties.timezone(), email.mailbox());
+        String weekday = today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        String system = ownerProfile == null || ownerProfile.isBlank()
+                ? SYSTEM_PERSONAL.formatted(today, weekday, properties.timezone(), email.mailbox())
+                : SYSTEM_BUSINESS.formatted(today, weekday, properties.timezone(), email.mailbox(),
+                "\nAbout the user, in their own words (it describes the user, never a record): " + ownerProfile.strip());
         Map<String, Object> schema = JsonSchemas.object(Map.of("items", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
                 "collection", JsonSchemas.oneOf(List.copyOf(bySlug.keySet())),
                 "title", JsonSchemas.string(),
@@ -399,18 +444,12 @@ public class EmailExtractionService implements ExtractionService {
         if (existing.isPresent()) {
             RecordDto record = existing.get();
             Endpoint endpoint = new Existing(collection.getId(), record.getId());
-            Map<String, Object> missing = new LinkedHashMap<>();
-            values.forEach((slug, value) -> {
-                Object current = record.getValues() != null ? record.getValues().get(slug) : null;
-                if (current == null || (current instanceof String text && text.isBlank())) {
-                    missing.put(slug, value);
-                }
-            });
-            if (missing.isEmpty()) {
+            Map<String, Object> changes = changes(collection, record, values);
+            if (changes.isEmpty()) {
                 return new Drafted(Optional.empty(), endpoint);
             }
             payload.put("recordId", record.getId());
-            payload.put("values", missing);
+            payload.put("values", changes);
             return new Drafted(Optional.of(new ProposalDraft(ProposalKind.UPDATE_RECORD, payload, confidence, reason)), endpoint);
         }
 
@@ -426,6 +465,59 @@ public class EmailExtractionService implements ExtractionService {
         payload.put("values", values);
         return new Drafted(Optional.of(new ProposalDraft(ProposalKind.CREATE_RECORD, payload, confidence, reason, ref, List.of(), List.of())),
                 ref != null ? new FromDraft(ref) : null);
+    }
+
+    /**
+     * What an email may change on an existing record: empty values get filled; a STATUS only moves forward along the
+     * field's states (booked, ..., delivered; a quoted older mail must not move it back); dates and amounts take the
+     * newer mail's value. Other existing values (names, texts) stay as they are.
+     */
+    private static Map<String, Object> changes(CollectionDto collection, RecordDto record, Map<String, Object> values) {
+        Map<String, Object> changes = new LinkedHashMap<>();
+        Map<String, CollectionFieldDto> fields = new HashMap<>();
+        activeFields(collection).forEach(field -> fields.put(field.getSlug(), field));
+        values.forEach((slug, value) -> {
+            Object current = record.getValues() != null ? record.getValues().get(slug) : null;
+            if (current == null || (current instanceof String text && text.isBlank())) {
+                changes.put(slug, value);
+                return;
+            }
+            CollectionFieldDto field = fields.get(slug);
+            if (field == null) {
+                return;
+            }
+            boolean changed = switch (field.getType()) {
+                case STATUS -> movesForward(field, current, value);
+                case DATE, DATETIME, MONEY -> !sameValue(field.getType(), current, value);
+                default -> false;
+            };
+            if (changed) {
+                changes.put(slug, value);
+            }
+        });
+        return changes;
+    }
+
+    private static boolean movesForward(CollectionFieldDto field, Object current, Object value) {
+        List<String> states = allowedValues(field).orElse(List.of());
+        int from = states.indexOf(String.valueOf(current));
+        int to = states.indexOf(String.valueOf(value));
+        return to >= 0 && to > from;
+    }
+
+    private static boolean sameValue(CollectionFieldType type, Object current, Object value) {
+        try {
+            return switch (type) {
+                case DATE -> LocalDate.parse(String.valueOf(current).substring(0, 10)).equals(LocalDate.parse(String.valueOf(value).substring(0, 10)));
+                case DATETIME -> OffsetDateTime.parse(String.valueOf(current)).toInstant().equals(OffsetDateTime.parse(String.valueOf(value)).toInstant());
+                case MONEY -> current instanceof Map<?, ?> a && value instanceof Map<?, ?> b
+                        && new BigDecimal(String.valueOf(a.get("amount"))).compareTo(new BigDecimal(String.valueOf(b.get("amount")))) == 0
+                        && String.valueOf(a.get("currency")).equalsIgnoreCase(String.valueOf(b.get("currency")));
+                default -> String.valueOf(current).equals(String.valueOf(value));
+            };
+        } catch (RuntimeException e) {
+            return String.valueOf(current).equals(String.valueOf(value));
+        }
     }
 
     /** Match-key values present in the item (all keys of the collection, or none). */

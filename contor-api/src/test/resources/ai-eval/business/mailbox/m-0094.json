@@ -1,0 +1,91 @@
+{
+  "id": "m-0094",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-anadolu-2027",
+  "cc": [],
+  "storyline": "F1-anadolu-video",
+  "beat": "invite",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mehmet Arslan",
+    "fromAddress": "m.arslan@anadolu-dovme.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Video call - annual volume 2027",
+    "receivedAt": "2026-07-13T06:00:00Z",
+    "body": "Dear Mr Morgan,\n\nI hope this message finds you well. We would like to discuss your expected annual volume of forged flanges for 2027 with you. Would you be available for a video call on Thursday, 16 July, at 11:00 Istanbul time?\n\nBest regards,\nMehmet Arslan\nExport Manager\nAnadolu Dövme Sanayi A.Ş.\nTel: +90 224 5550 5501"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Video call with Mehmet Arslan about volume 2027",
+          "entity": "anadolu-call",
+          "values": {
+            "starts_at": "2026-07-16T11:00:00+03:00"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Mehmet Arslan",
+          "values": {
+            "email": "m.arslan@anadolu-dovme.example",
+            "phone": "+90 224 5550 5501",
+            "role_title": "Export Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Anadolu Dövme Sanayi A.Ş.",
+          "values": {
+            "domain": "anadolu-dovme.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Mehmet Arslan",
+        "to": "organizations:Anadolu Dövme Sanayi A.Ş."
+      },
+      {
+        "type": "attends",
+        "from": "people:Mehmet Arslan",
+        "to": "events:Video call with Mehmet Arslan about volume 2027"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Would you be available for a video call on Thursday, 16 July, at 11:00 Istanbul time?"
+    ],
+    "scheduleFrom": "2026-07-16",
+    "scheduleTo": "2026-07-16",
+    "timeOfDay": "MORNING",
+    "answeredBy": "m-0099"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "time-zone"
+  ],
+  "storylineTags": [
+    "time-zone"
+  ],
+  "facts": [
+    "video call Thursday 16 July 11:00 Istanbul time",
+    "topic: annual volume 2027",
+    "question: are you available?"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "id": "m-0145",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-tradehub-4",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "tradehub-4",
+  "kind": "marketplace-alert",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "TradeHub Preisalarm",
+    "fromAddress": "alerts@tradehub-markt.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Preisalarm: Schaftfräser VHM 12 mm Z4 ab 52,00 €",
+    "receivedAt": "2026-07-16T03:10:00Z",
+    "body": "Hallo,\n\nfür Ihren Preisalarm „Schaftfräser VHM 12 mm Z4“ gibt es neue Angebote: ab 52,00 € bei 4 Anbietern.\n\nAngebote ansehen: https://www.tradehub-markt.example/alarm\n\nDiese E-Mail wurde automatisch versendet. Preisalarme verwalten: https://www.tradehub-markt.example/konto\nTradeHub Marktplatz"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "marketplace-alert"
+  ],
+  "facts": []
+}

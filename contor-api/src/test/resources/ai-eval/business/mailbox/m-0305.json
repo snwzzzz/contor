@@ -1,0 +1,65 @@
+{
+  "id": "m-0305",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bestand-kw31",
+  "cc": [],
+  "storyline": "G5-jana-stock-reports",
+  "beat": "kw31",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestand KW 31",
+    "receivedAt": "2026-07-31T10:55:00Z",
+    "body": "Bestandsliste KW 31 anbei. Kritisch: Schaftfräser VHM 12 mm, noch 6 Stück. Soll ich bei Bassano bestellen oder machst du?\nJana"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Schaftfräser VHM 12 mm bei Bassano nachbestellen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Soll ich bei Bassano bestellen oder machst du?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "recurring"
+  ],
+  "storylineTags": [
+    "recurring"
+  ],
+  "facts": [
+    "Bestandsliste KW 31",
+    "kritisch: Schaftfräser VHM 12 mm (6 Stk.)",
+    "Bassano bestellen?"
+  ]
+}

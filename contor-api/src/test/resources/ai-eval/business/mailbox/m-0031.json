@@ -1,0 +1,43 @@
+{
+  "id": "m-0031",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "A4-dijkstra-change",
+  "beat": "confirm",
+  "category": "A4",
+  "lang": "en",
+  "inReplyTo": "m-0028",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "f.dewit@dijkstra-werktuigen.example"
+    ],
+    "subject": "RE: PO DW-2291",
+    "receivedAt": "2026-07-07T13:20:00Z",
+    "body": "Hi Femke,\n\nconfirmed as SO-26-0147:\n200 x NH-20530 at 3.85 EUR = 770.00 EUR\n100 x NH-20412 at 14.90 EUR = 1,490.00 EUR\nTotal 2,260.00 EUR net, delivery on 21 July.\n\nBest regards\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "contradicting-change"
+  ],
+  "facts": [
+    "SO-26-0147",
+    "200 × 3.85 = 770.00 EUR",
+    "100 × 14.90 = 1,490.00 EUR",
+    "total 2,260.00 EUR",
+    "delivery 21 July"
+  ]
+}

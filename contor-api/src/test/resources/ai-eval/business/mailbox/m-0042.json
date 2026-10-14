@@ -1,0 +1,86 @@
+{
+  "id": "m-0042",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-behrens-halbjahr",
+  "cc": [],
+  "storyline": "F5-behrens-appointment",
+  "beat": "offer",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Ulrich Behrens",
+    "fromAddress": "u.behrens@behrens-kolb.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Termin Halbjahresabschluss",
+    "receivedAt": "2026-07-08T09:15:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nfür die Besprechung des Halbjahresabschlusses schlage ich Mittwoch, 22.07., 10:00 Uhr oder Donnerstag, 23.07., 14:00 Uhr in unserer Kanzlei vor. Welcher Termin passt Ihnen? Bitte bringen Sie die aktuelle OP-Liste mit.\n\nMit freundlichen Grüßen\nUlrich Behrens\nSteuerberater\nSteuerkanzlei Behrens & Kolb\nTel. +49 40 5550 7501"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "OP-Liste für die Besprechung mit Herrn Behrens mitbringen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Ulrich Behrens",
+          "values": {
+            "email": "u.behrens@behrens-kolb.example",
+            "phone": "+49 40 5550 7501",
+            "role_title": "Steuerberater"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Steuerkanzlei Behrens & Kolb",
+          "values": {
+            "domain": "behrens-kolb.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Ulrich Behrens",
+        "to": "organizations:Steuerkanzlei Behrens & Kolb"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Welcher Termin passt Ihnen: Mittwoch, 22.07., 10:00 oder Donnerstag, 23.07., 14:00?"
+    ],
+    "scheduleFrom": "2026-07-22",
+    "scheduleTo": "2026-07-23",
+    "timeOfDay": "ANY",
+    "answeredBy": "m-0045"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "answered"
+  ],
+  "storylineTags": [
+    "answered"
+  ],
+  "facts": [
+    "Besprechung Halbjahresabschluss",
+    "Mittwoch 22.07. 10:00 oder Donnerstag 23.07. 14:00",
+    "in der Kanzlei",
+    "bitte OP-Liste mitbringen"
+  ]
+}

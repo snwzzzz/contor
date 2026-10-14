@@ -1,0 +1,84 @@
+{
+  "id": "m-0218",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-fair",
+  "cc": [],
+  "storyline": "F2-ostrowski-fair",
+  "beat": "confirm",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": "m-0212",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Kowalczyk",
+    "fromAddress": "marek.kowalczyk@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: IndustrieTage Ruhrfeld",
+    "receivedAt": "2026-07-22T06:15:00Z",
+    "body": "Great, see you there!\nMarek\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Tuesday, July 21, 2026 2:00 PM\nTo: Marek Kowalczyk <marek.kowalczyk@ostrowski-serwis.example>\nSubject: RE: IndustrieTage Ruhrfeld\n\nyes, we are there: hall 3, booth C14. 16 September at 14:00 works, I've blocked it."
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld",
+          "entity": "fair-ostrowski",
+          "values": {
+            "starts_at": "2026-09-16T14:00:00+02:00",
+            "location": "hall 3, booth C14"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marek Kowalczyk",
+          "values": {
+            "email": "marek.kowalczyk@ostrowski-serwis.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marek Kowalczyk",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      },
+      {
+        "type": "attends",
+        "from": "people:Marek Kowalczyk",
+        "to": "events:Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [
+    "m-0212"
+  ],
+  "tags": [
+    "very-short",
+    "facts-in-quote",
+    "different-marek"
+  ],
+  "storylineTags": [
+    "trade-fair",
+    "different-marek"
+  ],
+  "facts": [
+    "great, see you at the booth"
+  ]
+}

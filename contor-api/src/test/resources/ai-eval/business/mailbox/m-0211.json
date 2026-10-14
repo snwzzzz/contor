@@ -1,0 +1,77 @@
+{
+  "id": "m-0211",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-halvorsen-received",
+  "cc": [],
+  "storyline": "B4-halvorsen-customs",
+  "beat": "received",
+  "category": "B4",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kristian Berg",
+    "fromAddress": "kristian.berg@halvorsen-verksted.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "HV-6120 received",
+    "receivedAt": "2026-07-21T11:15:00Z",
+    "body": "Hi,\n\nwe received the goods for PO HV-6120 today, all complete. Ingrid is on holiday until 3 August, I take care of the orders meanwhile.\n\nKristian Berg\nWarehouse\nHalvorsen Verkstedservice AS\n+47 5550 2402"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Halvorsen Verkstedservice HV-6120",
+          "entity": "so-0145",
+          "values": {
+            "customer": "Halvorsen Verkstedservice",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Kristian Berg",
+          "values": {
+            "email": "kristian.berg@halvorsen-verksted.example",
+            "phone": "+47 5550 2402",
+            "role_title": "Warehouse"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Halvorsen Verkstedservice AS",
+          "values": {
+            "domain": "halvorsen-verksted.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Kristian Berg",
+        "to": "organizations:Halvorsen Verkstedservice AS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "received goods for PO HV-6120 today",
+    "Ingrid is on holiday until 3 August"
+  ]
+}

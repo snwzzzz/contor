@@ -1,0 +1,86 @@
+{
+  "id": "m-0079",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-lindgren-repeat",
+  "cc": [],
+  "storyline": "A2-lindgren-repeat",
+  "beat": "thanks",
+  "category": "A2",
+  "lang": "en",
+  "inReplyTo": "m-0074",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Oskar Nyberg",
+    "fromAddress": "oskar.nyberg@lindgren-verktyg.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Repeat order LV-4471",
+    "receivedAt": "2026-07-10T06:12:00Z",
+    "body": "Perfect, thanks! Have a good summer too.\n/Oskar\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Thursday, July 9, 2026 4:00 PM\nTo: Oskar Nyberg <oskar.nyberg@lindgren-verktyg.example>\nSubject: RE: Repeat order LV-4471\n\nHi Oskar,\n\nbooked as SO-26-0150, same as June: 60 packs NH-31020 drills 8.5 mm and 30 packs NH-40220 flap discs, total SEK 39,850.00. Delivery in week 33 (10-14 August)."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Lindgren Verktyg SO-26-0150",
+          "entity": "so-0150",
+          "values": {
+            "order_number": "SO-26-0150",
+            "customer": "Lindgren Verktyg",
+            "total": {
+              "amount": 39850,
+              "currency": "SEK"
+            },
+            "state": "confirmed"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Oskar Nyberg",
+          "values": {
+            "email": "oskar.nyberg@lindgren-verktyg.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Lindgren Verktyg AB",
+          "values": {
+            "domain": "lindgren-verktyg.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Oskar Nyberg",
+        "to": "organizations:Lindgren Verktyg AB"
+      }
+    ]
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "very-short",
+    "facts-in-quote"
+  ],
+  "storylineTags": [
+    "terse-repeat-order",
+    "currency"
+  ],
+  "facts": [
+    "perfect, thanks"
+  ]
+}

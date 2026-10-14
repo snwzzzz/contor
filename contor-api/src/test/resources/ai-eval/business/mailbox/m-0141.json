@@ -1,0 +1,80 @@
+{
+  "id": "m-0141",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-cancel",
+  "cc": [],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "keep",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": "m-0132",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Kowalczyk",
+    "fromAddress": "marek.kowalczyk@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Cancel order 2026/OS/118",
+    "receivedAt": "2026-07-15T13:10:00Z",
+    "body": "Alex,\n\nwe keep the goods - Paweł didn't know they are also for the other project. Order stays as it is.\n\nPozdrawiam\nMarek\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Wednesday, July 15, 2026 9:30 AM\nTo: Paweł Zieliński <pawel.zielinski@ostrowski-serwis.example>\nCc: Marek Kowalczyk <marek.kowalczyk@ostrowski-serwis.example>\nSubject: RE: Cancel order 2026/OS/118\n\nthe goods already left our warehouse on 14 July with Wisła-Trans (consignment WTS-PL-260714) and will arrive tomorrow. We can take them back unopened with a 10 % restocking fee, or you keep them."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ostrowski Serwis 2026/OS/118",
+          "entity": "so-0153",
+          "values": {
+            "customer": "Ostrowski Serwis",
+            "state": "shipped"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marek Kowalczyk",
+          "values": {
+            "email": "marek.kowalczyk@ostrowski-serwis.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marek Kowalczyk",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0128"
+  ],
+  "tags": [
+    "different-marek",
+    "reinstated"
+  ],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "we keep the goods",
+    "Paweł did not know they were also for the other project",
+    "order stays"
+  ]
+}

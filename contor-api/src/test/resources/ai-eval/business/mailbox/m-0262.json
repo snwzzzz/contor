@@ -1,0 +1,76 @@
+{
+  "id": "m-0262",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-asg-2607221",
+  "cc": [],
+  "storyline": "B1-brandauer-consolidated",
+  "beat": "delay2",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": "m-0242",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Stefan Moser",
+    "fromAddress": "s.moser@alpen-sammelgut.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Abholbestätigung ASG-2607221 – Verzögerung",
+    "receivedAt": "2026-07-27T06:10:00Z",
+    "body": "Guten Morgen,\n\nes tut mir leid, wir haben heute einen Fahrerausfall. ASG-2607221 wird erst am Dienstag, 28.07., zugestellt.\n\nStefan Moser"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Alpen-Sammelgut ASG-2607221",
+          "values": {
+            "tracking_number": "ASG-2607221",
+            "state": "delayed",
+            "eta": "2026-07-28"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Stefan Moser",
+          "values": {
+            "email": "s.moser@alpen-sammelgut.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Alpen-Sammelgut Spedition GmbH",
+          "values": {
+            "domain": "alpen-sammelgut.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Stefan Moser",
+        "to": "organizations:Alpen-Sammelgut Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "second-delay"
+  ],
+  "storylineTags": [
+    "one-shipment-two-orders",
+    "second-delay"
+  ],
+  "facts": [
+    "leider neuer Termin Di 28.07.",
+    "Fahrerausfall"
+  ]
+}

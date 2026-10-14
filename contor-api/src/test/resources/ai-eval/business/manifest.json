@@ -1,0 +1,135 @@
+{
+  "generator": {
+    "version": "1",
+    "script": "scripts/business-dataset/build.mjs"
+  },
+  "sourcesSha256": "72343701349273b696338a49e33ac0e61c51e8533dc9641da15945f25c6d6e57",
+  "sources": {
+    "storylines/A-sales-1.json": {
+      "storylines": 5,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/A-sales-2.json": {
+      "storylines": 5,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/A-sales-3.json": {
+      "storylines": 4,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/B-shipping-1.json": {
+      "storylines": 5,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/B-shipping-2.json": {
+      "storylines": 3,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/C-procurement-1.json": {
+      "storylines": 3,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/C-procurement-2.json": {
+      "storylines": 5,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/E-relations-1.json": {
+      "storylines": 3,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/E-relations-2.json": {
+      "storylines": 4,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/F-meetings.json": {
+      "storylines": 7,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/G-todos.json": {
+      "storylines": 5,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/H-finance.json": {
+      "storylines": 4,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/J-edge.json": {
+      "storylines": 7,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "storylines/K-routine.json": {
+      "storylines": 8,
+      "prompt": "S1+R1",
+      "model": "claude-opus-5-5"
+    },
+    "noise/noise-slice-1.json": {
+      "mails": 19,
+      "prompt": "N1",
+      "model": "claude-opus-5-5"
+    }
+  },
+  "stats": {
+    "messages": 305,
+    "storylines": 68,
+    "threads": 167,
+    "byCategory": {
+      "I": 63,
+      "F": 18,
+      "A": 68,
+      "C": 34,
+      "E": 42,
+      "H": 8,
+      "D": 8,
+      "B": 38,
+      "G": 13,
+      "J": 13
+    },
+    "byFolder": {
+      "inbox": 229,
+      "sent": 76
+    },
+    "byAccount": {
+      "alex": 303,
+      "orders": 2
+    },
+    "byLanguage": {
+      "de": 202,
+      "en": 103
+    },
+    "needsReply": 72,
+    "labelledRecords": 489,
+    "period": [
+      "2026-07-06T02:30:00Z",
+      "2026-07-31T10:55:00Z"
+    ]
+  },
+  "validators": {
+    "errors": 0,
+    "missingEdgeCases": []
+  },
+  "labelAudit": {
+    "prompt": "L1",
+    "model": "claude-sonnet-5-5",
+    "audited": 164,
+    "rates": {
+      "needsReply": 0.9939024390243902,
+      "importance": 0.8109756097560976,
+      "intent": 0.8588235294117647,
+      "records": 0.905284147557328
+    }
+  },
+  "review": null
+}

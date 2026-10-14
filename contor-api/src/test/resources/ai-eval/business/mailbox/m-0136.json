@@ -1,0 +1,83 @@
+{
+  "id": "m-0136",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-brandauer-ba-2026-07",
+  "cc": [],
+  "storyline": "A2-brandauer-monthly",
+  "beat": "addon",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": "m-0103",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Martina Hofer",
+    "fromAddress": "m.hofer@brandauer-anlagentechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Monatsbestellung BA-2026-07",
+    "receivedAt": "2026-07-15T08:20:00Z",
+    "body": "Lieber Herr Morgan,\n\nkönnten Sie uns noch 10 Pack Spiralbohrer 8,5 mm dazupacken? Gern in derselben Lieferung.\n\nLiebe Grüße\nMartina Hofer\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 13. Juli 2026 13:10\nAn: Martina Hofer <m.hofer@brandauer-anlagentechnik.example>\nBetreff: AW: Monatsbestellung BA-2026-07\n\nLiebe Frau Hofer,\n\ndanke, erfasst als SO-26-0158:\n25 Pack NH-40220 à 31,80 € = 795,00 €\n50 Stk. NH-52340 à 21,90 € = 1.095,00 €\nGesamt 1.890,00 € netto, Liefertermin 24.07. mit Alpen-Sammelgut."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Brandauer Anlagentechnik Nachbestellung Spiralbohrer",
+          "entity": "so-0161",
+          "values": {
+            "customer": "Brandauer Anlagentechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Martina Hofer",
+          "values": {
+            "email": "m.hofer@brandauer-anlagentechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Brandauer Anlagentechnik GmbH",
+          "values": {
+            "domain": "brandauer-anlagentechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Martina Hofer",
+        "to": "organizations:Brandauer Anlagentechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Können Sie noch 10 Pack Spiralbohrer 8,5 mm dazupacken?"
+    ],
+    "answeredBy": "m-0139"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0103"
+  ],
+  "tags": [],
+  "storylineTags": [
+    "smooth",
+    "context-needed"
+  ],
+  "facts": [
+    "zusätzlich 10 Pack Spiralbohrer 8,5 mm",
+    "in derselben Lieferung"
+  ]
+}

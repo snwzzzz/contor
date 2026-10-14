@@ -1,0 +1,81 @@
+{
+  "id": "m-0293",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-roemer-abschied",
+  "cc": [],
+  "storyline": "E2-roemer-goodbye",
+  "beat": "goodbye",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katrin Vogt",
+    "fromAddress": "katrin.vogt@roemer-fahrzeugtechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Neuausrichtung unserer Beschaffung",
+    "receivedAt": "2026-07-29T09:40:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nnach reiflicher Überlegung haben wir uns entschieden, unsere Normteile ab September über einen Systemlieferanten zu beziehen. Die laufenden Bestellungen wickeln wir selbstverständlich noch mit Ihnen ab.\n\nIch möchte mich herzlich für die gute und verlässliche Zusammenarbeit in den letzten Jahren bedanken und wünsche Ihnen und Ihrem Team alles Gute.\n\nMit freundlichen Grüßen\nKatrin Vogt\nStrategischer Einkauf\nRömer Fahrzeugtechnik GmbH\nTel. +49 731 5550 3501"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Römer Fahrzeugtechnik",
+          "values": {
+            "name": "Römer Fahrzeugtechnik",
+            "segment": "lost"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katrin Vogt",
+          "values": {
+            "email": "katrin.vogt@roemer-fahrzeugtechnik.example",
+            "phone": "+49 731 5550 3501",
+            "role_title": "Strategischer Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Römer Fahrzeugtechnik GmbH",
+          "values": {
+            "domain": "roemer-fahrzeugtechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katrin Vogt",
+        "to": "organizations:Römer Fahrzeugtechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "KEEP_IN_TOUCH"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "goodbye"
+  ],
+  "storylineTags": [
+    "goodbye"
+  ],
+  "facts": [
+    "ab September Normteile über einen Systemlieferanten",
+    "laufende Bestellungen werden noch abgewickelt",
+    "Dank für die Zusammenarbeit",
+    "gute Wünsche"
+  ]
+}

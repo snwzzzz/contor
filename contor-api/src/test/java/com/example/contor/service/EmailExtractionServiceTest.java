@@ -184,6 +184,65 @@ class EmailExtractionServiceTest {
         assertThat(values(update)).containsOnly(Map.entry("phone", "+43 660 1234567"));
     }
 
+    private static CollectionDto shipments() {
+        return new CollectionDto().id(9L).slug("shipments").name("Shipments").description("Consignments").matchKeys(List.of("tracking_number"))
+                .fields(List.of(field("tracking_number", CollectionFieldType.TEXT, true, Map.of()),
+                        field("carrier", CollectionFieldType.TEXT, false, Map.of()),
+                        field("state", CollectionFieldType.STATUS, false,
+                                Map.of("states", List.of("booked", "picked_up", "in_transit", "delayed", "delivered", "damaged"))),
+                        field("eta", CollectionFieldType.DATE, false, Map.of()),
+                        field("total", CollectionFieldType.MONEY, false, Map.of())));
+    }
+
+    private void existingShipment(Map<String, Object> values) {
+        RecordDto existing = new RecordDto(5L, 9L, new LinkedHashMap<>(values), new LinkedHashMap<>(),
+                OffsetDateTime.parse("2026-07-14T00:00:00Z"), "AI").title("Wisła-Trans WTS-PL-260714");
+        when(recordService.listRecords(9L, List.of("tracking_number:eq:WTS-PL-260714"), null, null, 0, 1))
+                .thenReturn(new RecordPageDto(new ArrayList<>(List.of(existing)), 0, 1, 1L, 1));
+    }
+
+    @Test
+    void analyze_ExistingRecordGetsAForwardStatusAndChangedDatesAndAmountsButKeepsItsTexts() {
+        answer("""
+                {"items": [{"collection": "shipments", "title": "WTS-PL-260714 delivered",
+                            "values": {"tracking_number": "WTS-PL-260714", "carrier": "Wisla Trans Spedycja", "state": "delivered",
+                                       "eta": "2026-07-17", "total": {"amount": 1461, "currency": "EUR"}},
+                            "confidence": 0.9, "reason": "Delivered today"}]}
+                """);
+        existingShipment(Map.of("tracking_number", "WTS-PL-260714", "carrier", "Wisła-Trans", "state", "in_transit", "eta", "2026-07-16",
+                "total", Map.of("amount", 1400, "currency", "EUR")));
+
+        List<ProposalDraft> drafts = service.analyze(EMAIL, List.of(shipments()));
+
+        assertThat(drafts).singleElement().satisfies(update -> {
+            assertThat(update.kind()).isEqualTo(ProposalKind.UPDATE_RECORD);
+            assertThat(update.payload()).containsEntry("recordId", 5L);
+            assertThat(values(update)).containsOnlyKeys("state", "eta", "total").containsEntry("state", "delivered").containsEntry("eta", "2026-07-17");
+        });
+    }
+
+    @Test
+    void analyze_AStatusThatWouldGoBackwardsIsNotProposed() {
+        answer("""
+                {"items": [{"collection": "shipments", "title": "WTS-PL-260714", "values": {"tracking_number": "WTS-PL-260714", "state": "booked"},
+                            "confidence": 0.9, "reason": "Quoted pickup notice"}]}
+                """);
+        existingShipment(Map.of("tracking_number", "WTS-PL-260714", "state", "delivered"));
+
+        assertThat(service.analyze(EMAIL, List.of(shipments()))).isEmpty();
+    }
+
+    @Test
+    void analyze_SameAmountWrittenDifferentlyIsNoChange() {
+        answer("""
+                {"items": [{"collection": "shipments", "title": "WTS-PL-260714", "values": {"tracking_number": "WTS-PL-260714",
+                            "total": {"amount": 1461.0, "currency": "eur"}}, "confidence": 0.9, "reason": "r"}]}
+                """);
+        existingShipment(Map.of("tracking_number", "WTS-PL-260714", "total", Map.of("amount", new BigDecimal("1461.0000"), "currency", "EUR")));
+
+        assertThat(service.analyze(EMAIL, List.of(shipments()))).isEmpty();
+    }
+
     @Test
     void analyze_ExistingRecordWithNothingNewIsSkipped() {
         answer("""
@@ -235,6 +294,39 @@ class EmailExtractionServiceTest {
         assertThat(user.getValue())
                 .contains("Interview on Friday").contains("Anna Berger <anna@acme.com>").contains("send your CV")
                 .contains("events").contains("starts_at (DATETIME").contains("people").contains("full_name (TEXT, required");
+    }
+
+    @Test
+    void analyze_TheOwnerProfileAndTheBusinessRulesAreInTheSystemPrompt() {
+        answer("{\"items\": []}");
+
+        service.analyze(EMAIL, List.of(people(), events()), "Head of Operations at a wholesaler; customers order from us.");
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), anyString(), any());
+        assertThat(system.getValue())
+                .contains("About the user, in their own words (it describes the user, never a record): Head of Operations at a wholesaler; customers order from us.")
+                .contains("Return no items only for advertising, newsletters and automated notifications")
+                .doesNotContain("personal management app")
+                .contains("Delivery dates, ETAs, dispatch and pickup dates are not events")
+                .contains("A deadline to do something is a task")
+                .contains("tracking number")
+                .contains("already recorded")
+                .contains("phone and role from the signature")
+                .contains("also returns that order with its new state");
+    }
+
+    @Test
+    void analyze_WithoutAProfileThePromptHasNone() {
+        answer("{\"items\": []}");
+
+        service.analyze(EMAIL, List.of(people()));
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), anyString(), any());
+        assertThat(system.getValue()).doesNotContain("About the user")
+                .as("without a profile the proven personal rules stay").contains("a personal management app")
+                .doesNotContain("A human sender is always a people item");
     }
 
     @Test

@@ -1,0 +1,82 @@
+{
+  "id": "m-0178",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-tentative-daniel",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "tentative-daniel",
+  "kind": "calendar-auto",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Daniel Okafor",
+    "fromAddress": "daniel.okafor@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Mit Vorbehalt angenommen: Weekly Leitungsrunde 21.07.",
+    "receivedAt": "2026-07-17T14:30:00Z",
+    "body": "Daniel Okafor hat diese Besprechung mit Vorbehalt angenommen."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "calendar-auto"
+  ],
+  "facts": []
+}

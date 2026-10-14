@@ -1,0 +1,63 @@
+{
+  "id": "m-0199",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kiebitz-KP402611870411",
+  "cc": [],
+  "storyline": "B3-moreau-damage",
+  "beat": "parcel",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kiebitz Paket",
+    "fromAddress": "noreply@kiebitz-paket.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Ihre Sendung KP402611870411 wurde übernommen",
+    "receivedAt": "2026-07-20T15:30:00Z",
+    "body": "Guten Tag,\n\nIhre Sendung KP402611870411 an Ateliers Moreau SARL, 69007 Lyon (FR), wurde heute von uns übernommen.\n\nVoraussichtliche Zustellung: Mi, 22.07.2026\n\nSendungsverfolgung: https://track.kiebitz-paket.example/KP402611870411\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kiebitz Paket KP402611870411",
+          "values": {
+            "tracking_number": "KP402611870411",
+            "carrier": "Kiebitz Paket",
+            "direction": "outbound",
+            "state": "picked_up",
+            "eta": "2026-07-22"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "damage"
+  ],
+  "facts": [
+    "Sendung KP402611870411 an Ateliers Moreau SARL, Lyon (FR)",
+    "übernommen",
+    "voraussichtliche Zustellung Mi, 22.07.2026"
+  ]
+}

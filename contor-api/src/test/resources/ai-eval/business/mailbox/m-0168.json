@@ -1,0 +1,60 @@
+{
+  "id": "m-0168",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-frei-haus",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "J2-ostrowski-ok-machen",
+  "beat": "question",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Daniel Okafor",
+    "fromAddress": "daniel.okafor@nordhafen.example",
+    "to": [
+      "helga.sommerfeld@nordhafen.example"
+    ],
+    "subject": "Ostrowski frei Haus Q3",
+    "receivedAt": "2026-07-17T09:40:00Z",
+    "body": "Hi Helga,\n\nOstrowski fragt, ob wir ihnen in Q3 Lieferung frei Haus schon ab 1.000 € Bestellwert geben (statt 1.500 €). Zusatzkosten schätze ich auf ca. 300 € im Quartal, dafür bestellen sie häufiger. Machen wir das?\n\nDaniel"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Daniel Okafor",
+          "values": {
+            "email": "daniel.okafor@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "cc-only"
+  ],
+  "storylineTags": [
+    "ok-do-it",
+    "cc-only"
+  ],
+  "facts": [
+    "Ostrowski fragt nach Lieferung frei Haus ab 1.000 € Bestellwert statt 1.500 € für Q3",
+    "Zusatzkosten ca. 300 € im Quartal",
+    "machen wir das?"
+  ]
+}

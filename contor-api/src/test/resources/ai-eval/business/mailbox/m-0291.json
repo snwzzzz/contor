@@ -1,0 +1,73 @@
+{
+  "id": "m-0291",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-asg-2607270",
+  "cc": [],
+  "storyline": "B4-steiner-customs",
+  "beat": "cleared",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": "m-0283",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Stefan Moser",
+    "fromAddress": "s.moser@alpen-sammelgut.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: DRINGEND: Zollstopp ASG-2607270 Steiner Präzisionsteile",
+    "receivedAt": "2026-07-29T07:40:00Z",
+    "body": "Guten Morgen,\n\nASG-2607270 ist verzollt, Zustellung bei Steiner am Donnerstag, 30.07.\n\nStefan Moser"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Alpen-Sammelgut ASG-2607270",
+          "values": {
+            "tracking_number": "ASG-2607270",
+            "state": "in_transit",
+            "eta": "2026-07-30"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Stefan Moser",
+          "values": {
+            "email": "s.moser@alpen-sammelgut.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Alpen-Sammelgut Spedition GmbH",
+          "values": {
+            "domain": "alpen-sammelgut.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Stefan Moser",
+        "to": "organizations:Alpen-Sammelgut Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "ASG-2607270 verzollt",
+    "Zustellung bei Steiner Do 30.07."
+  ]
+}

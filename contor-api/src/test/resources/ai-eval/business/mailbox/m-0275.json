@@ -1,0 +1,75 @@
+{
+  "id": "m-0275",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-sorensen-gloves-2",
+  "cc": [],
+  "storyline": "A1-sorensen-unanswered",
+  "beat": "reminder",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Line Sørensen",
+    "fromAddress": "line@sorensen-agro.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "My request",
+    "receivedAt": "2026-07-28T07:05:00Z",
+    "body": "Hi again,\n\nany news on my request from last week? Otherwise I'll have to look somewhere else, harvest starts soon.\n\nLine"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Line Sørensen",
+          "values": {
+            "email": "line@sorensen-agro.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Sørensen Agro ApS",
+          "values": {
+            "domain": "sorensen-agro.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Line Sørensen",
+        "to": "organizations:Sørensen Agro ApS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Any news on my request from last week?"
+    ]
+  },
+  "importance": "HIGH",
+  "dependsOn": [
+    "m-0215"
+  ],
+  "tags": [
+    "context-needed",
+    "unanswered",
+    "thread-split",
+    "very-short"
+  ],
+  "storylineTags": [
+    "context-needed",
+    "unanswered"
+  ],
+  "facts": [
+    "any news on the request from last week?"
+  ]
+}

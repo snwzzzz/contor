@@ -1,0 +1,91 @@
+{
+  "id": "m-0186",
+  "account": "orders",
+  "folder": "inbox",
+  "conversationId": "c-falkenrath-4500012877",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "A6-falkenrath-orders",
+  "beat": "order",
+  "category": "A6",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "orders@nordhafen.example",
+    "fromName": "Melanie Kurz",
+    "fromAddress": "melanie.kurz@falkenrath-antriebe.example",
+    "to": [
+      "orders@nordhafen.example"
+    ],
+    "subject": "Bestellung 4500012877",
+    "receivedAt": "2026-07-20T06:30:00Z",
+    "body": "Guten Morgen,\n\nanbei unsere Bestellung 4500012877:\n- 60 Stk. Rillenkugellager 6205-2RS\n- 20 Stk. Stehlagereinheit UCP 205\nLiefertermin: KW 31.\n\nNach dem Stillstand neulich legen wir uns lieber einen Vorrat hin.\n\nMit freundlichen Grüßen\nMelanie Kurz\nEinkauf\nFalkenrath Antriebe GmbH\nTel. +49 561 5550 2701"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Falkenrath Antriebe 4500012877",
+          "entity": "so-0168",
+          "values": {
+            "customer": "Falkenrath Antriebe",
+            "state": "received",
+            "requested_delivery": "2026-07-27"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Melanie Kurz",
+          "values": {
+            "email": "melanie.kurz@falkenrath-antriebe.example",
+            "phone": "+49 561 5550 2701",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Falkenrath Antriebe GmbH",
+          "values": {
+            "domain": "falkenrath-antriebe.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Melanie Kurz",
+        "to": "organizations:Falkenrath Antriebe GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0192"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "duplicate-account",
+    "calendar-week"
+  ],
+  "storylineTags": [
+    "duplicate-account",
+    "calendar-week"
+  ],
+  "facts": [
+    "Bestellung 4500012877",
+    "60 Rillenkugellager 6205-2RS",
+    "20 Stehlagereinheiten UCP 205",
+    "Liefertermin KW 31"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "KW 31 -> Monday 27.07.2026"
+  }
+}

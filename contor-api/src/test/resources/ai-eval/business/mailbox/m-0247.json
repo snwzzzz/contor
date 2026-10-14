@@ -1,0 +1,84 @@
+{
+  "id": "m-0247",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vltava-fv20260412",
+  "cc": [],
+  "storyline": "C6-vltava-skonto-dispute",
+  "beat": "closed",
+  "category": "C6",
+  "lang": "en",
+  "inReplyTo": "m-0138",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tereza Dvořáková",
+    "fromAddress": "dvorakova@obaly-vltava.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Invoice FV20260412 - open balance",
+    "receivedAt": "2026-07-24T08:00:00Z",
+    "body": "Dear Mr Morgan,\n\nwe received the 69.00 EUR, invoice FV20260412 is closed. Thank you.\n\nBest regards\nTereza Dvořáková"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Obaly Vltava FV20260412",
+          "values": {
+            "invoice_number": "FV20260412",
+            "state": "paid"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Restbetrag 69,00 EUR zu FV20260412 an Obaly Vltava zahlen",
+          "values": {
+            "state": "done"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tereza Dvořáková",
+          "values": {
+            "email": "dvorakova@obaly-vltava.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Obaly Vltava s.r.o.",
+          "values": {
+            "domain": "obaly-vltava.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Tereza Dvořáková",
+        "to": "organizations:Obaly Vltava s.r.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "todo-done"
+  ],
+  "storylineTags": [
+    "payment-dispute",
+    "skonto"
+  ],
+  "facts": [
+    "received 69.00 EUR",
+    "invoice FV20260412 closed",
+    "thank you"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "m-0149",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-eskalation-fw",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "forward",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dr. Helga Sommerfeld",
+    "fromAddress": "helga.sommerfeld@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "WG: Beschwerde: Lieferverzug SO-26-0149",
+    "receivedAt": "2026-07-16T06:05:00Z",
+    "body": "Alex,\n\nbitte heute klären und Herrn Reuter direkt anrufen. Ich will bis 12 Uhr wissen, was los ist.\n\nH.\n\nVon: Thomas Reuter <thomas.reuter@hartmann-hydraulik.example>\nGesendet: Donnerstag, 16. Juli 2026 07:45\nAn: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nCc: Alex Morgan <alex.morgan@nordhafen.example>\nBetreff: Beschwerde: Lieferverzug SO-26-0149\n\nSehr geehrte Frau Dr. Sommerfeld,\n\nich wende mich direkt an Sie, weil wir seit zwei Wochen mit Lieferterminen für unseren Auftrag SO-26-0149 vertröstet werden. Auf meine letzte Mail an Herrn Morgan habe ich keine Antwort erhalten.\n\nUnser Wartungsstillstand verlängert sich dadurch jeden Tag; das kostet uns rund 8.000 € pro Tag. Ich erwarte bis heute 14 Uhr eine verbindliche Zusage."
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Herrn Reuter wegen SO-26-0149 anrufen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dr. Helga Sommerfeld",
+          "values": {
+            "email": "helga.sommerfeld@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [
+      "Was ist los mit SO-26-0149?"
+    ],
+    "answeredBy": "m-0154"
+  },
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "forwarded",
+    "escalation"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "bitte heute klären",
+    "Herrn Reuter direkt anrufen",
+    "bis 12 Uhr wissen, was los ist",
+    "weitergeleitete Beschwerde"
+  ],
+  "derived": {
+    "tasks.due_date": "heute = 16.07.2026"
+  }
+}

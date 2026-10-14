@@ -1,0 +1,94 @@
+{
+  "id": "m-0088",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wupperthal-ws-26-04417",
+  "cc": [],
+  "storyline": "H2-supplier-invoices",
+  "beat": "wupperthal",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dirk Hollmann",
+    "fromAddress": "d.hollmann@wupperthal-schleifmittel.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rechnung WS-26-04417",
+    "receivedAt": "2026-07-10T12:20:00Z",
+    "body": "Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere Rechnung WS-26-04417 über 1.876,40 €.\nZahlbar bis 20.07.2026 mit 3 % Skonto (1.820,11 €) oder bis 09.08.2026 netto.\n\nMit freundlichen Grüßen\nDirk Hollmann\nVertriebsinnendienst\nWupperthal Schleifmittel GmbH\nTel. +49 202 5550 5601"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Wupperthal Schleifmittel WS-26-04417",
+          "values": {
+            "invoice_number": "WS-26-04417",
+            "issuer": "Wupperthal Schleifmittel",
+            "amount": {
+              "amount": 1876.4,
+              "currency": "EUR"
+            },
+            "due_date": "2026-08-09",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung WS-26-04417 mit Skonto bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dirk Hollmann",
+          "values": {
+            "email": "d.hollmann@wupperthal-schleifmittel.example",
+            "phone": "+49 202 5550 5601",
+            "role_title": "Vertriebsinnendienst"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wupperthal Schleifmittel GmbH",
+          "values": {
+            "domain": "wupperthal-schleifmittel.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Dirk Hollmann",
+        "to": "organizations:Wupperthal Schleifmittel GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "skonto"
+  ],
+  "storylineTags": [
+    "skonto"
+  ],
+  "facts": [
+    "Rechnung WS-26-04417",
+    "1.876,40 €",
+    "bis 20.07.2026 mit 3 % Skonto (1.820,11 €)",
+    "netto bis 09.08.2026"
+  ]
+}

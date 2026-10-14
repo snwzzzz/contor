@@ -1,0 +1,102 @@
+{
+  "id": "m-0146",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-eskalation",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "angry",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Thomas Reuter",
+    "fromAddress": "thomas.reuter@hartmann-hydraulik.example",
+    "to": [
+      "helga.sommerfeld@nordhafen.example"
+    ],
+    "subject": "Beschwerde: Lieferverzug SO-26-0149",
+    "receivedAt": "2026-07-16T05:45:00Z",
+    "body": "Sehr geehrte Frau Dr. Sommerfeld,\n\nich wende mich direkt an Sie, weil wir seit zwei Wochen mit Lieferterminen für unseren Auftrag SO-26-0149 vertröstet werden. Auf meine letzte Mail an Herrn Morgan habe ich keine Antwort erhalten.\n\nUnser Wartungsstillstand verlängert sich dadurch jeden Tag; das kostet uns rund 8.000 € pro Tag. Ich erwarte bis heute 14 Uhr eine verbindliche Zusage. Andernfalls behalten wir uns Schadenersatzforderungen vor und werden uns nach anderen Lieferanten umsehen.\n\nMit freundlichen Grüßen\nThomas Reuter\nLeiter Instandhaltung\nHartmann Hydraulik GmbH\nTel. +49 821 5550 3201"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "Hartmann Hydraulik delay SO-26-0149",
+          "entity": "rma-043",
+          "values": {
+            "customer": "Hartmann Hydraulik",
+            "topic": "delay",
+            "severity": "high",
+            "state": "open",
+            "opened_on": "2026-07-16"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Hartmann verbindlichen Liefertermin für SO-26-0149 zusagen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Thomas Reuter",
+          "values": {
+            "email": "thomas.reuter@hartmann-hydraulik.example",
+            "phone": "+49 821 5550 3201",
+            "role_title": "Leiter Instandhaltung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Hartmann Hydraulik GmbH",
+          "values": {
+            "domain": "hartmann-hydraulik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Thomas Reuter",
+        "to": "organizations:Hartmann Hydraulik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "escalation",
+    "cc-only",
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "seit zwei Wochen mit Terminen vertröstet",
+    "keine Antwort auf letzte Mail",
+    "Stillstand verlängert sich, ca. 8.000 € pro Tag",
+    "verbindliche Zusage bis heute 14 Uhr",
+    "sonst Schadenersatz und andere Lieferanten"
+  ],
+  "derived": {
+    "complaints.opened_on": "date of the mail",
+    "tasks.due_date": "heute 14 Uhr = 16.07.2026"
+  }
+}

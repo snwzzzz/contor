@@ -1,0 +1,68 @@
+{
+  "id": "m-0005",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-weekly",
+  "cc": [],
+  "storyline": "F4-internal-weekly",
+  "beat": "intro",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dr. Helga Sommerfeld",
+    "fromAddress": "helga.sommerfeld@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example",
+      "jana.petersen@nordhafen.example",
+      "tobias.krueger@nordhafen.example",
+      "sophie.brandt@nordhafen.example",
+      "daniel.okafor@nordhafen.example"
+    ],
+    "subject": "Weekly Leitungsrunde",
+    "receivedAt": "2026-07-06T05:30:00Z",
+    "body": "Hallo zusammen,\n\nab nächster Woche machen wir montags um 8:30 eine Leitungsrunde im Besprechungsraum 2, 30 Minuten. Agenda: Aufträge, Lieferanten, Liquidität.\n\nHelga"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Weekly Leitungsrunde",
+          "values": {
+            "starts_at": "2026-07-13T08:30:00+02:00",
+            "location": "Besprechungsraum 2"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dr. Helga Sommerfeld",
+          "values": {
+            "email": "helga.sommerfeld@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "relative-date"
+  ],
+  "storylineTags": [
+    "reschedule"
+  ],
+  "facts": [
+    "Weekly ab nächster Woche montags 8:30",
+    "Besprechungsraum 2",
+    "Agenda: Aufträge, Lieferanten, Liquidität"
+  ],
+  "derived": {
+    "events.starts_at": "nächste Woche montags = 13.07.2026"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "id": "m-0173",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moreau-damage",
+  "cc": [],
+  "storyline": "B3-moreau-damage",
+  "beat": "report",
+  "category": "B3",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@ateliers-moreau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Damaged goods SO-26-0156",
+    "receivedAt": "2026-07-17T12:50:00Z",
+    "body": "Hi Alex,\n\nyour delivery SO-26-0156 arrived today, but the box was crushed and 3 of the end mills have broken tips. Photos are attached. How do we proceed? We need them for a job next week.\n\nCamille"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "Ateliers Moreau damage SO-26-0156",
+          "entity": "rma-041",
+          "values": {
+            "customer": "Ateliers Moreau",
+            "topic": "damage",
+            "severity": "medium",
+            "state": "open",
+            "opened_on": "2026-07-17"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Ateliers Moreau SO-26-0156",
+          "entity": "so-0156",
+          "values": {
+            "order_number": "SO-26-0156",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@ateliers-moreau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "How do we proceed with the 3 damaged end mills?"
+    ],
+    "answeredBy": "m-0177"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "damage"
+  ],
+  "storylineTags": [
+    "damage"
+  ],
+  "facts": [
+    "delivery SO-26-0156 arrived today",
+    "box crushed",
+    "3 end mills with broken tips",
+    "photos attached",
+    "question: how do we proceed?"
+  ],
+  "derived": {
+    "complaints.opened_on": "date of the mail"
+  }
+}

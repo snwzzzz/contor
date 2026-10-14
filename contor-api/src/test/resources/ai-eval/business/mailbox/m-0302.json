@@ -1,0 +1,92 @@
+{
+  "id": "m-0302",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kranhoeft-rechnung-juli",
+  "cc": [],
+  "storyline": "J7-rechnung-subjects",
+  "beat": "kranhoeft",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Claudia Wendler",
+    "fromAddress": "c.wendler@kranhoeft-spedition.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rechnung",
+    "receivedAt": "2026-07-30T13:45:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nanbei unsere Sammelrechnung KHS-R-26-3310 für die Frachten im Juli über 2.384,00 €, zahlbar bis 29.08.2026.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKranhöft Spedition GmbH"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Kranhöft Spedition KHS-R-26-3310",
+          "values": {
+            "invoice_number": "KHS-R-26-3310",
+            "issuer": "Kranhöft Spedition",
+            "amount": {
+              "amount": 2384,
+              "currency": "EUR"
+            },
+            "due_date": "2026-08-29",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung KHS-R-26-3310 bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-08-29"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Claudia Wendler",
+          "values": {
+            "email": "c.wendler@kranhoeft-spedition.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kranhöft Spedition GmbH",
+          "values": {
+            "domain": "kranhoeft-spedition.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Claudia Wendler",
+        "to": "organizations:Kranhöft Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "same-subject"
+  ],
+  "storylineTags": [
+    "same-subject"
+  ],
+  "facts": [
+    "Rechnung KHS-R-26-3310",
+    "Frachten Juli",
+    "2.384,00 €",
+    "zahlbar innerhalb 30 Tagen bis 29.08.2026"
+  ]
+}

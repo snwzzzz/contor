@@ -1,0 +1,40 @@
+{
+  "id": "m-0114",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-nordlicht-schaden-prn",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "docs",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": "m-0100",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "a.koenig@nordlicht-versicherung.example"
+    ],
+    "subject": "AW: Ihre Schadenmeldung – Schaden-Nr. NL-TS-26-0418",
+    "receivedAt": "2026-07-14T08:10:00Z",
+    "body": "Sehr geehrter Herr König,\n\nanbei die Fotos und der Lieferschein mit Vermerk zu Schaden NL-TS-26-0418.\n\nMit freundlichen Grüßen\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Fotos und Lieferschein zu NL-TS-26-0418 anbei"
+  ]
+}

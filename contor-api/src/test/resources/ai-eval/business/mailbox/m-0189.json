@@ -1,0 +1,64 @@
+{
+  "id": "m-0189",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-cierzo-we",
+  "cc": [],
+  "storyline": "C1-tornilleria-po",
+  "beat": "received",
+  "category": "C1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "WE Tornilleria",
+    "receivedAt": "2026-07-20T08:05:00Z",
+    "body": "Spanier da, 14 Paletten, alles ok. PO-26-1091 ist gebucht.\nJana"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Tornillería del Ebro PO-26-1091",
+          "values": {
+            "po_number": "PO-26-1091",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth",
+    "very-short"
+  ],
+  "storylineTags": [
+    "date-format",
+    "price-increase"
+  ],
+  "facts": [
+    "Spanier da",
+    "14 Paletten",
+    "alles ok",
+    "PO-26-1091 gebucht"
+  ]
+}

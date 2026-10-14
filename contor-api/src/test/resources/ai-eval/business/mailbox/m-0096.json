@@ -1,0 +1,83 @@
+{
+  "id": "m-0096",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-brandauer-ba-2026-07",
+  "cc": [],
+  "storyline": "A2-brandauer-monthly",
+  "beat": "order",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Martina Hofer",
+    "fromAddress": "m.hofer@brandauer-anlagentechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Monatsbestellung BA-2026-07",
+    "receivedAt": "2026-07-13T07:00:00Z",
+    "body": "Grüß Gott Herr Morgan,\n\nanbei unsere Monatsbestellung BA-2026-07:\n- 25 Pack Fächerschleifscheiben 125 K80\n- 50 Stk. Stehlagereinheit UCP 205\n\nGewünschter Liefertermin ist der 24.07.2026. Danke schon im Voraus!\n\nLiebe Grüße aus Linz\nMartina Hofer\nEinkauf\nBrandauer Anlagentechnik GmbH\nTel. +43 732 5550 2101"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Brandauer Anlagentechnik BA-2026-07",
+          "entity": "so-0158",
+          "values": {
+            "customer": "Brandauer Anlagentechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Martina Hofer",
+          "values": {
+            "email": "m.hofer@brandauer-anlagentechnik.example",
+            "phone": "+43 732 5550 2101",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Brandauer Anlagentechnik GmbH",
+          "values": {
+            "domain": "brandauer-anlagentechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Martina Hofer",
+        "to": "organizations:Brandauer Anlagentechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0103"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "smooth",
+    "context-needed"
+  ],
+  "facts": [
+    "Monatsbestellung BA-2026-07",
+    "25 Pack Fächerschleifscheiben 125 K80",
+    "50 Stehlagereinheiten UCP 205",
+    "Liefertermin 24.07.2026"
+  ]
+}

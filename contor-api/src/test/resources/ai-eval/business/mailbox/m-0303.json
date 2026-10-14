@@ -1,0 +1,82 @@
+{
+  "id": "m-0303",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-steiner-zollkosten",
+  "cc": [],
+  "storyline": "B4-steiner-customs",
+  "beat": "costs",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Reto Baumann",
+    "fromAddress": "reto.baumann@steiner-praezision.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "SO-26-0160 erhalten / Zollkosten",
+    "receivedAt": "2026-07-30T14:00:00Z",
+    "body": "Guten Tag Herr Morgan\n\nDie Ware zu SO-26-0160 ist heute eingetroffen, besten Dank. Der Spediteur hat uns Verzollungskosten von CHF 64.80 belastet – die gehen gemäss Ihrer Offerte zu unseren Lasten, richtig?\n\nFreundliche Grüsse\nReto Baumann"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Steiner Präzisionsteile SO-26-0160",
+          "entity": "so-0160",
+          "values": {
+            "order_number": "SO-26-0160",
+            "customer": "Steiner Präzisionsteile",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Reto Baumann",
+          "values": {
+            "email": "reto.baumann@steiner-praezision.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Steiner Präzisionsteile AG",
+          "values": {
+            "domain": "steiner-praezision.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Reto Baumann",
+        "to": "organizations:Steiner Präzisionsteile AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Gehen die Verzollungskosten von CHF 64.80 gemäss Offerte zu unseren Lasten?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "currency"
+  ],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "Ware zu SO-26-0160 erhalten",
+    "Verzollungskosten CHF 64.80 belastet",
+    "Frage: gehen laut Offerte zu ihren Lasten, richtig?"
+  ]
+}

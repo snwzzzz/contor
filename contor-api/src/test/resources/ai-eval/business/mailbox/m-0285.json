@@ -1,0 +1,85 @@
+{
+  "id": "m-0285",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-brandauer-ba-2026-07",
+  "cc": [],
+  "storyline": "B1-brandauer-consolidated",
+  "beat": "arrived",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": "m-0263",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Martina Hofer",
+    "fromAddress": "m.hofer@brandauer-anlagentechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Lieferung BA-2026-07?",
+    "receivedAt": "2026-07-28T11:30:00Z",
+    "body": "Herr Morgan,\n\nist heute gekommen, alles vollständig. Bitte schauen Sie, dass das nicht zur Regel wird.\n\nM. Hofer\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 27. Juli 2026 08:40\nAn: Martina Hofer <m.hofer@brandauer-anlagentechnik.example>\nBetreff: AW: Lieferung BA-2026-07?\n\nleider noch ein Tag Verzug: Die Spedition stellt erst am Dienstag, 28.07., zu.\n\nVon: Alex Morgan\nGesendet: Freitag, 24. Juli 2026 11:00\nBetreff: AW: Lieferung BA-2026-07?\n\nNeue Zustellung ist Montag, 27.07. – beide Aufträge kommen zusammen in der Sendung ASG-2607221."
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Alpen-Sammelgut ASG-2607221",
+          "values": {
+            "tracking_number": "ASG-2607221",
+            "state": "delivered"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Brandauer Anlagentechnik BA-2026-07",
+          "entity": "so-0158",
+          "values": {
+            "customer": "Brandauer Anlagentechnik",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Martina Hofer",
+          "values": {
+            "email": "m.hofer@brandauer-anlagentechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Brandauer Anlagentechnik GmbH",
+          "values": {
+            "domain": "brandauer-anlagentechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Martina Hofer",
+        "to": "organizations:Brandauer Anlagentechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "churn-signal"
+  ],
+  "storylineTags": [
+    "one-shipment-two-orders",
+    "second-delay"
+  ],
+  "facts": [
+    "heute gekommen, vollständig",
+    "soll nicht zur Regel werden"
+  ]
+}

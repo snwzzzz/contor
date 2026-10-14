@@ -1,0 +1,26 @@
+{
+  "prompt": "L1",
+  "model": "claude-sonnet-5-5",
+  "date": "2026-10-13",
+  "audited": 164,
+  "of": 164,
+  "ratesAfterFixes": {
+    "needsReply": 0.9939024390243902,
+    "importance": 0.8109756097560976,
+    "intent": 0.8588235294117647,
+    "records": 0.905284147557328
+  },
+  "ratesBeforeFixes": {
+    "needsReply": 0.963,
+    "importance": 0.811,
+    "intent": 0.784,
+    "records": 0.895
+  },
+  "fixed": [
+    "needsReply of 5 mails (requests to send documents are replies; requests to pay/deliver/change are not)",
+    "intent PROVIDE_INFO for 2 colleague requests",
+    "records added: damaged shipment PRN-26070931, 3 replacement to-dos, 2 orders named in carrier mails, a CMR reference, 2 customers at_risk"
+  ],
+  "kept": "remaining record differences are title wording (German vs English titles, Jaccard < 0.5), alternative proposed slots the auditor turned into events, automated senders as organizations, and 8 optional courtesy replies the auditor suggested for routine thank-you mails",
+  "disagreementsRemaining": 83
+}

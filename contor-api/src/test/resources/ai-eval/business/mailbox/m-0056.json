@@ -1,0 +1,92 @@
+{
+  "id": "m-0056",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-falkenrath-rush",
+  "cc": [],
+  "storyline": "A3-falkenrath-rush",
+  "beat": "rush",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Melanie Kurz",
+    "fromAddress": "melanie.kurz@falkenrath-antriebe.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "DRINGEND: Anlagenstillstand – Lager benötigt",
+    "receivedAt": "2026-07-09T05:15:00Z",
+    "body": "Guten Morgen Herr Morgan,\n\nbei uns steht seit heute Nacht eine Förderanlage. Wir brauchen dringend 12 Rillenkugellager 6205-2RS und 4 Stehlagereinheiten UCP 205, am besten bis morgen früh. Können Sie das liefern? Falls morgen nicht klappt: geht auch eine Zustellung am Samstag?\n\nBitte um kurze Rückmeldung.\n\nMit freundlichen Grüßen\nMelanie Kurz\nEinkauf\nFalkenrath Antriebe GmbH\nTel. +49 561 5550 2701"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Falkenrath Antriebe Eilbestellung Lager",
+          "entity": "so-0152",
+          "values": {
+            "customer": "Falkenrath Antriebe",
+            "state": "received",
+            "requested_delivery": "2026-07-10"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Melanie Kurz",
+          "values": {
+            "email": "melanie.kurz@falkenrath-antriebe.example",
+            "phone": "+49 561 5550 2701",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Falkenrath Antriebe GmbH",
+          "values": {
+            "domain": "falkenrath-antriebe.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Melanie Kurz",
+        "to": "organizations:Falkenrath Antriebe GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Können Sie 12 Rillenkugellager 6205-2RS und 4 Stehlagereinheiten UCP 205 bis morgen früh liefern?",
+      "Geht auch eine Zustellung am Samstag?"
+    ],
+    "answeredBy": "m-0061"
+  },
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "rush-order",
+    "relative-date"
+  ],
+  "storylineTags": [
+    "rush-order"
+  ],
+  "facts": [
+    "Anlagenstillstand",
+    "12 Rillenkugellager 6205-2RS",
+    "4 Stehlagereinheiten UCP 205",
+    "bis morgen (Fr 10.07.) früh",
+    "Frage: morgen möglich? sonst Samstag?"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "morgen = Friday 10.07.2026"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "m-0100",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-nordlicht-schaden-prn",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "insurer",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": "m-0080",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Andreas König",
+    "fromAddress": "a.koenig@nordlicht-versicherung.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Ihre Schadenmeldung – Schaden-Nr. NL-TS-26-0418",
+    "receivedAt": "2026-07-13T09:25:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nwir bestätigen den Eingang Ihrer Schadenmeldung vom 10.07.2026 zur Sendung PRN-26070931. Der Schaden ist unter der Nummer NL-TS-26-0418 erfasst.\n\nZur weiteren Bearbeitung benötigen wir bis zum 24.07.2026 Fotos der beschädigten Ware sowie eine Kopie des Lieferscheins mit dem Schadensvermerk. Bitte geben Sie bei jeder Korrespondenz die Schadennummer an.\n\nMit freundlichen Grüßen\nAndreas König\nSchadenregulierung\nNordlicht Transportversicherung AG\nTel. +49 40 5550 7201"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Fotos und Lieferschein zu Schaden NL-TS-26-0418 an Nordlicht senden",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-24"
+          }
+        }
+      ],
+      "shipments": [
+        {
+          "title": "Palettenring PRN-26070931",
+          "values": {
+            "tracking_number": "PRN-26070931",
+            "state": "damaged"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Andreas König",
+          "values": {
+            "email": "a.koenig@nordlicht-versicherung.example",
+            "phone": "+49 40 5550 7201",
+            "role_title": "Schadenregulierung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Nordlicht Transportversicherung AG",
+          "values": {
+            "domain": "nordlicht-versicherung.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Andreas König",
+        "to": "organizations:Nordlicht Transportversicherung AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0114"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "insurer"
+  ],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Schaden unter NL-TS-26-0418 erfasst",
+    "bitte Fotos und Lieferschein mit Vermerk bis 24.07.2026 einreichen"
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "m-0217",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bosporus-260718",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "slot",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0198",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Burak Demir",
+    "fromAddress": "operations@bosporus-lojistik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: STATUS CMR-BL-260718 / UNLOADING SLOT",
+    "receivedAt": "2026-07-22T06:15:00Z",
+    "body": "DEAR SIR,\n\nPLEASE GIVE US UNLOADING SLOT FOR FRIDAY 24.07. TRUCK CAN BE AT YOUR WAREHOUSE FROM 13:00 CET. WHICH TIME AND GATE?\n\nBR\nBURAK DEMIR"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Bosporus Lojistik CMR-BL-260718",
+          "values": {
+            "tracking_number": "CMR-BL-260718",
+            "eta": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Burak Demir",
+          "values": {
+            "email": "operations@bosporus-lojistik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Bosporus Lojistik A.Ş.",
+          "values": {
+            "domain": "bosporus-lojistik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Burak Demir",
+        "to": "organizations:Bosporus Lojistik A.Ş."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Which unloading time and gate on Friday 24.07.?"
+    ],
+    "scheduleFrom": "2026-07-24",
+    "scheduleTo": "2026-07-24",
+    "timeOfDay": "AFTERNOON",
+    "answeredBy": "m-0222"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "slot-booking",
+    "time-zone"
+  ],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "please give unloading slot for Friday 24.07.",
+    "truck can be at the warehouse from 13:00 CET"
+  ]
+}

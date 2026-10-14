@@ -1,0 +1,79 @@
+{
+  "id": "m-0084",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-tornilleria-price-2026-08",
+  "cc": [],
+  "storyline": "C1-tornilleria-po",
+  "beat": "increase",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Lucía Navarro",
+    "fromAddress": "lucia.navarro@tornilleria-ebro.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Price adjustment from 1 August 2026",
+    "receivedAt": "2026-07-10T09:00:00Z",
+    "body": "Dear customer,\n\ndue to the continued increase of steel prices and the new steel surcharge of our wire suppliers, we are forced to increase our prices by 6.5 % for all orders placed from 1 August 2026. Orders already confirmed, such as your PO-26-1091, are not affected.\n\nThe new price list will follow next week. We thank you for your understanding.\n\nUn saludo,\nLucía Navarro\nExport Department\nTornillería del Ebro S.L.\nTel. +34 976 5550 5201"
+  },
+  "expected": {
+    "records": {
+      "suppliers": [
+        {
+          "title": "Tornillería del Ebro",
+          "values": {
+            "name": "Tornillería del Ebro",
+            "notes": "prices +6.5 % from 1 August 2026 (steel surcharge)"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Lucía Navarro",
+          "values": {
+            "email": "lucia.navarro@tornilleria-ebro.example",
+            "phone": "+34 976 5550 5201",
+            "role_title": "Export Department"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Tornillería del Ebro S.L.",
+          "values": {
+            "domain": "tornilleria-ebro.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Lucía Navarro",
+        "to": "organizations:Tornillería del Ebro S.L."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "price-increase"
+  ],
+  "storylineTags": [
+    "date-format",
+    "price-increase"
+  ],
+  "facts": [
+    "steel surcharge",
+    "prices up 6.5 % for all orders from 1 August 2026",
+    "PO-26-1091 not affected",
+    "new price list follows"
+  ]
+}

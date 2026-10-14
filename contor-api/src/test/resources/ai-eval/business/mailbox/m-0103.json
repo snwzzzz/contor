@@ -1,0 +1,44 @@
+{
+  "id": "m-0103",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-brandauer-ba-2026-07",
+  "cc": [],
+  "storyline": "A2-brandauer-monthly",
+  "beat": "confirm",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": "m-0096",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "m.hofer@brandauer-anlagentechnik.example"
+    ],
+    "subject": "AW: Monatsbestellung BA-2026-07",
+    "receivedAt": "2026-07-13T11:10:00Z",
+    "body": "Liebe Frau Hofer,\n\ndanke, erfasst als SO-26-0158:\n25 Pack NH-40220 à 31,80 € = 795,00 €\n50 Stk. NH-52340 à 21,90 € = 1.095,00 €\nGesamt 1.890,00 € netto, Liefertermin 24.07. mit Alpen-Sammelgut.\n\nViele Grüße nach Linz\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "smooth",
+    "context-needed"
+  ],
+  "facts": [
+    "AB SO-26-0158",
+    "25 × 31,80 € = 795,00 €",
+    "50 × 21,90 € = 1.095,00 €",
+    "1.890,00 € netto",
+    "Liefertermin 24.07., Alpen-Sammelgut"
+  ]
+}

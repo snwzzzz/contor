@@ -1,0 +1,79 @@
+{
+  "id": "m-0142",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-thiele-rfq",
+  "cc": [],
+  "storyline": "A1-thiele-rfq",
+  "beat": "delivered",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": "m-0043",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Robert Thiele",
+    "fromAddress": "r.thiele@thiele-messebau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Auftragsbestätigung SO-26-0151",
+    "receivedAt": "2026-07-15T14:40:00Z",
+    "body": "Hallo Herr Morgan,\n\ndie Ware zu SO-26-0151 ist heute vollständig angekommen, rechtzeitig für unseren Aufbau. Vielen Dank für die schnelle Abwicklung!\n\nR. Thiele"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Thiele Messebau SO-26-0151",
+          "entity": "so-0151",
+          "values": {
+            "order_number": "SO-26-0151",
+            "customer": "Thiele Messebau",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Robert Thiele",
+          "values": {
+            "email": "r.thiele@thiele-messebau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Thiele Messebau GmbH",
+          "values": {
+            "domain": "thiele-messebau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Robert Thiele",
+        "to": "organizations:Thiele Messebau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "THANK_YOU"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "context-needed"
+  ],
+  "facts": [
+    "Ware zu SO-26-0151 heute angekommen",
+    "Dank"
+  ]
+}

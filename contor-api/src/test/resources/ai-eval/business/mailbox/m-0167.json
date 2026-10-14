@@ -1,0 +1,74 @@
+{
+  "id": "m-0167",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wislatrans-260714",
+  "cc": [],
+  "storyline": "B2-wislatrans-delay",
+  "beat": "pod",
+  "category": "B2",
+  "lang": "en",
+  "inReplyTo": "m-0159",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katarzyna Lewandowska",
+    "fromAddress": "k.lewandowska@wislatrans.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Pickup confirmation WTS-PL-260714",
+    "receivedAt": "2026-07-17T08:45:00Z",
+    "body": "Hello,\n\nWTS-PL-260714 delivered 10:20, POD signed by P. Zieliński.\n\nK. Lewandowska"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260714",
+          "values": {
+            "tracking_number": "WTS-PL-260714",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katarzyna Lewandowska",
+          "values": {
+            "email": "k.lewandowska@wislatrans.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "domain": "wislatrans.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katarzyna Lewandowska",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "delay"
+  ],
+  "facts": [
+    "WTS-PL-260714 delivered",
+    "POD signed by P. Zieliński"
+  ]
+}

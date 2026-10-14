@@ -1,0 +1,74 @@
+{
+  "id": "m-0010",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-thiele-rfq",
+  "cc": [],
+  "storyline": "A1-thiele-rfq",
+  "beat": "rfq",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Robert Thiele",
+    "fromAddress": "r.thiele@thiele-messebau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Anfrage Stehlager und Trennscheiben",
+    "receivedAt": "2026-07-06T07:12:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nfür einen Messestand brauchen wir kurzfristig 6 Stehlagereinheiten UCP 205 und 40 Pack Trennscheiben 125x1,0 Inox. Was kostet das bei Ihnen, und schaffen Sie eine Lieferung nach Leipzig bis Freitag, 17.07.?\n\nDanke und Gruß\nRobert Thiele\nInhaber\nThiele Messebau GmbH\nTel. +49 341 5550 4001"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Robert Thiele",
+          "values": {
+            "email": "r.thiele@thiele-messebau.example",
+            "phone": "+49 341 5550 4001",
+            "role_title": "Inhaber"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Thiele Messebau GmbH",
+          "values": {
+            "domain": "thiele-messebau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Robert Thiele",
+        "to": "organizations:Thiele Messebau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Was kosten 6 Stehlagereinheiten UCP 205 und 40 Pack Trennscheiben?",
+      "Ist eine Lieferung nach Leipzig bis 17.07. möglich?"
+    ],
+    "answeredBy": "m-0018"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "context-needed"
+  ],
+  "facts": [
+    "6 Stehlagereinheiten UCP 205",
+    "40 Pack Trennscheiben 125x1,0 Inox",
+    "Lieferung bis Freitag 17.07. nach Leipzig",
+    "Fragen: Preis, Lieferbarkeit bis 17.07."
+  ]
+}
