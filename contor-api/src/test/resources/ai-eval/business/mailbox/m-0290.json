@@ -1,0 +1,82 @@
+{
+  "id": "m-0290",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-akademie-3",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "akademie-3",
+  "kind": "seminar-ad",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Einkaufsakademie Nord",
+    "fromAddress": "seminare@einkaufsakademie-nord.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Seminar: Lieferantenbewertung mit Kennzahlen – noch Plätze frei",
+    "receivedAt": "2026-07-29T07:00:00Z",
+    "body": "Guten Tag,\n\nfür unser Seminar „Lieferantenbewertung mit Kennzahlen“ am 15.10.2026 in Hamburg sind noch Plätze frei. Frühbucherrabatt 10 % bis Ende des Monats.\n\nProgramm und Anmeldung: https://www.einkaufsakademie-nord.example/seminare\n\nEinkaufsakademie Nord · Abmelden: https://www.einkaufsakademie-nord.example/abmelden"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "seminar-ad"
+  ],
+  "facts": []
+}

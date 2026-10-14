@@ -1,0 +1,149 @@
+spring:
+  application:
+    name: contor-api
+  config:
+    # Local dev: read the repo-root .env (KEY=value, no quotes) when started from contor-api (IntelliJ, ./mvnw).
+    # Real environment variables still win.
+    import: optional:file:../.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5432/contor}
+    username: ${DB_USERNAME:contor}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db
+  jackson:
+    default-property-inclusion: non_null
+  session:
+    # Idle timeout; the absolute lifetime is app.security.session-absolute-timeout.
+    timeout: ${APP_SESSION_IDLE_TIMEOUT:30m}
+    jdbc:
+      initialize-schema: never
+
+server:
+  # Bind to loopback only unless explicitly configured otherwise.
+  address: ${APP_BIND_ADDRESS:127.0.0.1}
+  port: ${APP_PORT:8080}
+  # The Next.js server proxies /api/* and sends X-Forwarded-For. Only loopback counts as a trusted proxy
+  # (Tomcat's default would also trust private LAN ranges, letting LAN clients spoof their IP for rate limiting).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: 127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1
+  servlet:
+    session:
+      cookie:
+        name: CONTOR_SESSION
+        http-only: true
+        same-site: strict
+        secure: ${APP_SECURE_COOKIES:false}
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      # No probe group names in the anonymous response.
+      probes:
+        enabled: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  name: contor
+  dev-account:
+    # Dev profile only: a login kept ready on every start (created as OWNER, or password/lockout reset). Set in .env.
+    username: ${DEV_ACCOUNT_USERNAME:}
+    email: ${DEV_ACCOUNT_EMAIL:dev@outlook.com}
+    password: ${DEV_ACCOUNT_PASSWORD:}
+  demo-mailbox:
+    # Dev profile only: import the fictional business mailbox (ai-eval/business) into the dev login once.
+    enabled: ${DEMO_MAILBOX_ENABLED:false}
+    # Relative to contor-api (where the backend is started from).
+    path: ${DEMO_MAILBOX_PATH:src/test/resources/ai-eval/business/mailbox}
+    # Move all dates by whole weeks so the newest mail is from the last 7 days (dates inside the texts stay as written).
+    shift-to-today: ${DEMO_MAILBOX_SHIFT_TO_TODAY:false}
+  web:
+    # Public URL of contor-web; the browser is sent back here after the Microsoft OAuth callback.
+    url: ${APP_WEB_URL:http://localhost:3000}
+  encryption:
+    # Base64-encoded 256-bit AES key for *_enc columns. Required: the app refuses to start without a valid key.
+    key: ${APP_ENCRYPTION_KEY:}
+    key-version: ${APP_ENCRYPTION_KEY_VERSION:1}
+  version: '@project.version@'
+  ai:
+    # Ollama runs natively on the host (GPU) and must stay bound to localhost (the app refuses other hosts).
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+      timeout: ${OLLAMA_TIMEOUT:5m}
+      num-ctx: ${OLLAMA_NUM_CTX:16384}
+      keep-alive: ${OLLAMA_KEEP_ALIVE:30m}
+    # One model for routing and extraction (fits a 12 GB GPU next to the embedding model, no model swapping).
+    models:
+      routing: ${AI_MODEL_ROUTING:qwen3.5:9b}
+      extraction: ${AI_MODEL_EXTRACTION:qwen3.5:9b}
+      embedding: ${AI_MODEL_EMBEDDING:nomic-embed-text}
+    # Time zone local times in emails are read in ("Friday 9:00"); the JVM itself runs in UTC.
+    timezone: ${AI_TIMEZONE:Europe/Berlin}
+    # Background analysis of new mail for users who completed the AI setup.
+    processing:
+      enabled: ${AI_PROCESSING_ENABLED:true}
+      interval: ${AI_PROCESSING_INTERVAL:2m}
+      batch-size: ${AI_PROCESSING_BATCH_SIZE:20}
+    # What the model reads of your other mail with each email (ADR 0009): the conversation, the sender's earlier
+    # emails, related emails (embeddings) and records already created from them. Only mail received before the email.
+    context:
+      enabled: ${AI_CONTEXT_ENABLED:true}
+      budget-chars: ${AI_CONTEXT_BUDGET_CHARS:6000}
+      sender-emails: ${AI_CONTEXT_SENDER_EMAILS:5}
+      related-emails: ${AI_CONTEXT_RELATED_EMAILS:5}
+      related-max-distance: ${AI_CONTEXT_RELATED_MAX_DISTANCE:0.25}
+      related-within: ${AI_CONTEXT_RELATED_WITHIN:180d}
+    # When you can meet: reply drafts for meeting requests offer free times inside these hours (local time in
+    # AI_TIMEZONE), around the appointments of your Calendar collection. The Outlook calendar is not read.
+    # Insights: what only shows across several emails, proposed once a day (and on "Look for insights").
+    insights:
+      interval: ${AI_INSIGHTS_INTERVAL:24h}
+      initial-delay: ${AI_INSIGHTS_INITIAL_DELAY:15m}
+    availability:
+      work-days: ${AI_WORK_DAYS:MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY}
+      work-start: ${AI_WORK_START:09:00}
+      work-end: ${AI_WORK_END:18:00}
+      slot-minutes: ${AI_SLOT_MINUTES:60}
+      search-days: ${AI_SLOT_SEARCH_DAYS:10}
+      max-slots: 3
+  security:
+    secure-cookies: ${APP_SECURE_COOKIES:false}
+    session-absolute-timeout: ${APP_SESSION_ABSOLUTE_TIMEOUT:12h}
+    max-sessions-per-user: 3
+    lockout:
+      max-failed-attempts: 5
+      base-duration: 15m
+      max-duration: 24h
+    login-rate-limit:
+      max-attempts: 10
+      window: 1m
+  mail:
+    msgraph:
+      client-id: ${MSGRAPH_CLIENT_ID:}
+      client-secret: ${MSGRAPH_CLIENT_SECRET:}
+      tenant-id: ${MSGRAPH_TENANT_ID:common}
+      redirect-uri: ${MSGRAPH_REDIRECT_URI:http://localhost:8080/api/mail/accounts/callback}
+      scopes: ${MSGRAPH_SCOPES:Mail.Read,User.Read,Contacts.Read,offline_access}
+    sync:
+      interval: ${MAIL_SYNC_INTERVAL:5m}
+      enabled: ${MAIL_SYNC_ENABLED:true}

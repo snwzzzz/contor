@@ -1,0 +1,73 @@
+{
+  "id": "m-0234",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-thiele-falscher-alex",
+  "cc": [],
+  "storyline": "J-wrong-recipient",
+  "beat": "sorry",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": "m-0233",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Robert Thiele",
+    "fromAddress": "r.thiele@thiele-messebau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Leuchten Stand Halle 2",
+    "receivedAt": "2026-07-22T14:12:00Z",
+    "body": "Sorry, Herr Morgan – die Mail war für einen anderen Alex (unseren Elektriker). Bitte ignorieren!\n\nR. Thiele"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Robert Thiele",
+          "values": {
+            "email": "r.thiele@thiele-messebau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Thiele Messebau GmbH",
+          "values": {
+            "domain": "thiele-messebau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Robert Thiele",
+        "to": "organizations:Thiele Messebau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "wrong-recipient"
+  ],
+  "storylineTags": [
+    "wrong-recipient"
+  ],
+  "facts": [
+    "sorry, die Mail war für einen anderen Alex",
+    "bitte ignorieren"
+  ],
+  "retracts": [
+    "tasks:Leuchten für den Stand in Halle 2 bis Freitag liefern"
+  ]
+}

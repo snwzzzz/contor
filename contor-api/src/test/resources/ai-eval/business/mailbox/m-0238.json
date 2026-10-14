@@ -1,0 +1,71 @@
+{
+  "id": "m-0238",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-lindgren-katalog",
+  "cc": [],
+  "storyline": "E6-lindgren-catalogue",
+  "beat": "thanks",
+  "category": "E6",
+  "lang": "en",
+  "inReplyTo": "m-0232",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Oskar Nyberg",
+    "fromAddress": "oskar.nyberg@lindgren-verktyg.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Nordhafen catalogue 2026",
+    "receivedAt": "2026-07-23T06:05:00Z",
+    "body": "Got it, thanks a lot Alex!\n/Oskar"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Oskar Nyberg",
+          "values": {
+            "email": "oskar.nyberg@lindgren-verktyg.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Lindgren Verktyg AB",
+          "values": {
+            "domain": "lindgren-verktyg.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Oskar Nyberg",
+        "to": "organizations:Lindgren Verktyg AB"
+      }
+    ]
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth",
+    "very-short"
+  ],
+  "storylineTags": [
+    "smooth",
+    "todo-done"
+  ],
+  "facts": [
+    "got it, thanks"
+  ]
+}

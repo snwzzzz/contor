@@ -1,0 +1,13 @@
+{
+  "id": "reply-de-two-questions",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Julia Hartmann",
+    "fromAddress": "j.hartmann@lernwerk.de",
+    "to": ["me@example.com"],
+    "subject": "Workshop im November",
+    "receivedAt": "2026-10-07T09:30:00Z",
+    "body": "Hallo Alex,\nwir planen den Workshop für November. Kannst du mir bis Freitag dein Angebot schicken? Und wie viele Personen bringst du aus deinem Team mit?\nViele Grüße\nJulia"
+  }
+}

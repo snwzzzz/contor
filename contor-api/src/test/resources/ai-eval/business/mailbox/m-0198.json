@@ -1,0 +1,82 @@
+{
+  "id": "m-0198",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bosporus-260718",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "border",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Burak Demir",
+    "fromAddress": "operations@bosporus-lojistik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "STATUS CMR-BL-260718 / BORDER WAITING",
+    "receivedAt": "2026-07-20T13:40:00Z",
+    "body": "DEAR SIR,\n\nTRUCK 34 BL 2207 (CMR-BL-260718) IS WAITING AT KAPIKULE BORDER, QUEUE APPROX. 14 HOURS. NEW ETA HAMBURG 24.07. AFTERNOON.\n\nBEST REGARDS\nBURAK DEMIR\nBOSPORUS LOJISTIK OPERATIONS"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Bosporus Lojistik CMR-BL-260718",
+          "values": {
+            "tracking_number": "CMR-BL-260718",
+            "carrier": "Bosporus Lojistik",
+            "state": "delayed",
+            "eta": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Burak Demir",
+          "values": {
+            "email": "operations@bosporus-lojistik.example",
+            "role_title": "Operations"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Bosporus Lojistik A.Ş.",
+          "values": {
+            "domain": "bosporus-lojistik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Burak Demir",
+        "to": "organizations:Bosporus Lojistik A.Ş."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "delay",
+    "time-zone"
+  ],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "truck 34 BL 2207 waiting at Kapıkule border",
+    "queue approx. 14 hours",
+    "new ETA Hamburg 24.07. afternoon",
+    "CMR-BL-260718"
+  ]
+}

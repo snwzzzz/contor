@@ -1,0 +1,83 @@
+{
+  "id": "m-0044",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-odlewnia-po-1083",
+  "cc": [],
+  "storyline": "C2-odlewnia-partial",
+  "beat": "partial",
+  "category": "C2",
+  "lang": "en",
+  "inReplyTo": "m-0009",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Agnieszka Mazur",
+    "fromAddress": "a.mazur@odlewnia-wislana.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Order confirmation PO-26-1083 - partial delivery",
+    "receivedAt": "2026-07-08T11:30:00Z",
+    "body": "Dear Mr Morgan,\n\nunfortunately one of our moulds needs repair. We can deliver only 600 pcs of PO-26-1083 on 10.07.; the remaining 400 pcs will follow within two weeks (approx. 24.07.).\n\nPlease confirm if the partial delivery is acceptable for you.\n\nYours faithfully\nAgnieszka Mazur"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Odlewnia Wiślana PO-26-1083",
+          "values": {
+            "po_number": "PO-26-1083",
+            "state": "confirmed",
+            "expected_arrival": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Agnieszka Mazur",
+          "values": {
+            "email": "a.mazur@odlewnia-wislana.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Odlewnia Wiślana Sp. z o.o.",
+          "values": {
+            "domain": "odlewnia-wislana.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Agnieszka Mazur",
+        "to": "organizations:Odlewnia Wiślana Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Is the partial delivery acceptable for you?"
+    ],
+    "answeredBy": "m-0047"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "partial-delivery"
+  ],
+  "storylineTags": [
+    "partial-delivery"
+  ],
+  "facts": [
+    "only 600 pcs on 10.07.",
+    "remaining 400 pcs within two weeks (approx. 24.07.)",
+    "mould repair",
+    "please confirm partial delivery is acceptable"
+  ]
+}

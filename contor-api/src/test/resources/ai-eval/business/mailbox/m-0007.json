@@ -1,0 +1,86 @@
+{
+  "id": "m-0007",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vossberg-0706",
+  "cc": [],
+  "storyline": "A2-vossberg-repeat",
+  "beat": "order1",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jens Albers",
+    "fromAddress": "jens.albers@vossberg-foerdertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestellung",
+    "receivedAt": "2026-07-06T05:58:00Z",
+    "body": "Moin Alex,\n\nbitte 40 Kartons M8x40 (NH-20410) und 10 Kartons Muttern M8, Lieferung bis Do. Danke\n\nJens"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Vossberg Fördertechnik Bestellung vom 06.07.",
+          "entity": "so-0144",
+          "values": {
+            "customer": "Vossberg Fördertechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-09"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jens Albers",
+          "values": {
+            "email": "jens.albers@vossberg-foerdertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Vossberg Fördertechnik GmbH",
+          "values": {
+            "domain": "vossberg-foerdertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Jens Albers",
+        "to": "organizations:Vossberg Fördertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0011"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "relative-date",
+    "very-short"
+  ],
+  "storylineTags": [
+    "terse-repeat-order",
+    "context-needed"
+  ],
+  "facts": [
+    "40 Kartons M8x40 (NH-20410)",
+    "10 Kartons Muttern M8",
+    "Lieferung bis Donnerstag (09.07.)"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "Do = Thursday after Monday 06.07."
+  }
+}

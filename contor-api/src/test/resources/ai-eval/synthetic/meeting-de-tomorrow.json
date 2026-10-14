@@ -1,0 +1,34 @@
+{
+  "id": "meeting-de-tomorrow",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Zahnarztpraxis Dr. Weber",
+    "fromAddress": "praxis@zahnarzt-weber.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Terminerinnerung",
+    "receivedAt": "2026-10-08T09:00:00Z",
+    "body": "Guten Tag Herr Morgan,\nwir erinnern Sie an Ihren Termin morgen um 9:00 Uhr in unserer Praxis (Gartenweg 2). Bitte bringen Sie Ihre Versichertenkarte mit.\nIhr Praxisteam Dr. Weber"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Zahnarzttermin bei Dr. Weber",
+          "values": {
+            "starts_at": "2026-10-09T09:00:00+02:00",
+            "location": "Gartenweg 2"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    }
+  ]
+}

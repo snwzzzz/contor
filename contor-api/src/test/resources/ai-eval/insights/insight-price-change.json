@@ -1,0 +1,15 @@
+{
+  "id": "insight-price-change",
+  "today": "2026-10-12T08:00:00Z",
+  "emails": [
+    {"id": 15, "fromName": "Tech Weekly", "fromAddress": "newsletter@techweekly.com", "subject": "10 stories you missed", "snippet": "This week in tech: chips, clouds and a new phone.", "receivedAt": "2026-10-11T07:00:00Z", "folder": "inbox"},
+    {"id": 14, "fromName": "Priya Nair", "fromAddress": "priya.nair@horizon-labs.com", "subject": "Thank you!", "snippet": "Thanks for jumping in on the database migration last week.", "receivedAt": "2026-10-09T16:30:00Z", "folder": "inbox"},
+    {"id": 13, "fromName": "ShopNow", "fromAddress": "orders@shopnow.com", "subject": "Your order #SN-48213 has shipped", "snippet": "Your headphones are on their way and arrive Friday.", "receivedAt": "2026-10-08T12:00:00Z", "folder": "inbox"},
+    {"id": 12, "fromName": "StreamBox", "fromAddress": "billing@streambox.tv", "subject": "Your invoice for October", "snippet": "StreamBox Premium, October 2026: 14.99 EUR, charged to your card ending 4411.", "receivedAt": "2026-10-03T06:00:00Z", "folder": "inbox"},
+    {"id": 11, "fromName": "Anna Berger", "fromAddress": "anna.berger@acme-corp.com", "subject": "Interview for Backend Engineer", "snippet": "We would like to invite you to an interview on Friday at 9:00.", "receivedAt": "2026-09-28T08:00:00Z", "folder": "inbox"},
+    {"id": 10, "fromName": "StreamBox", "fromAddress": "billing@streambox.tv", "subject": "Your invoice for September", "snippet": "StreamBox Premium, September 2026: 9.99 EUR, charged to your card ending 4411.", "receivedAt": "2026-09-03T06:00:00Z", "folder": "inbox"}
+  ],
+  "openTasks": [],
+  "appointments": ["Interview at Acme Corp – 2026-10-09T09:00:00+02:00"],
+  "expected": [[10, 12]]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "reply-de-quote-request",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Petra Huber",
+    "fromAddress": "petra.huber@huber-events.at",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Anfrage Workshop im November",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hallo Alex,\nwir planen im November einen internen Workshop zu Cloud-Themen. Könntest du uns ein Angebot für zwei Tage schicken und sagen, welche Termine bei dir frei wären?\nDanke und liebe Grüße\nPetra"
+  }
+}

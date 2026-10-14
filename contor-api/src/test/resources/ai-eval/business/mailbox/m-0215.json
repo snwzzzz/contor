@@ -1,0 +1,75 @@
+{
+  "id": "m-0215",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-sorensen-gloves",
+  "cc": [],
+  "storyline": "A1-sorensen-unanswered",
+  "beat": "rfq",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Line Sørensen",
+    "fromAddress": "line@sorensen-agro.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Gloves",
+    "receivedAt": "2026-07-21T17:40:00Z",
+    "body": "Hi,\n\nI found your cut-resistant gloves level C on your website. What would 30 packs cost delivered to Aarhus, and how fast can you ship? Prepayment is fine for us.\n\nThanks,\nLine Sørensen\nSørensen Agro ApS\n+45 5550 4101"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Line Sørensen",
+          "values": {
+            "email": "line@sorensen-agro.example",
+            "phone": "+45 5550 4101"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Sørensen Agro ApS",
+          "values": {
+            "domain": "sorensen-agro.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Line Sørensen",
+        "to": "organizations:Sørensen Agro ApS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "What would 30 packs of cut-resistant gloves level C cost delivered to Aarhus?",
+      "How fast can you ship?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "unanswered"
+  ],
+  "storylineTags": [
+    "context-needed",
+    "unanswered"
+  ],
+  "facts": [
+    "cut-resistant gloves level C",
+    "30 packs",
+    "delivery to Aarhus",
+    "questions: price, delivery time, prepayment ok?"
+  ]
+}

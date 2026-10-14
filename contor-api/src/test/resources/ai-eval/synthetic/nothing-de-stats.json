@@ -1,0 +1,27 @@
+{
+  "id": "nothing-de-stats",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Dein Sparkonto",
+    "fromAddress": "no-reply@sparbank.de",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Ihre Kontoübersicht ist da",
+    "receivedAt": "2026-10-09T05:00:00Z",
+    "body": "Ihre monatliche Kontoübersicht steht im Postfach Ihres Online-Bankings bereit. Aus Sicherheitsgründen enthält diese E-Mail keine Kontodaten."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

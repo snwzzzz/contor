@@ -1,0 +1,85 @@
+{
+  "id": "m-0116",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-pichler-preis",
+  "cc": [],
+  "storyline": "E2-pichler-price",
+  "beat": "haggle",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Gerhard Pichler",
+    "fromAddress": "g.pichler@pichler-metallbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Preise Fächerschleifscheiben",
+    "receivedAt": "2026-07-14T08:20:00Z",
+    "body": "Servus Alex,\n\nehrlich gesagt: bei den Fächerschleifscheiben seid's ihr zu teuer, ich krieg die woanders um 27 Euro das Pack. Wenn du auf 28,50 runtergehst, bleib ich bei euch. Sonst muss ich schauen. Was meinst?\n\nGerhard\n--\nPichler Metallbau GmbH, Graz\nTel. +43 316 5550 3401"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Pichler Metallbau",
+          "values": {
+            "name": "Pichler Metallbau",
+            "segment": "at_risk"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Gerhard Pichler",
+          "values": {
+            "email": "g.pichler@pichler-metallbau.example",
+            "phone": "+43 316 5550 3401"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Pichler Metallbau GmbH",
+          "values": {
+            "domain": "pichler-metallbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Gerhard Pichler",
+        "to": "organizations:Pichler Metallbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Gehst du bei den Fächerschleifscheiben auf 28,50 runter?"
+    ],
+    "answeredBy": "m-0130"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "competitor-mentioned",
+    "churn-signal"
+  ],
+  "storylineTags": [
+    "competitor-mentioned",
+    "churn-signal"
+  ],
+  "facts": [
+    "Fächerschleifscheiben zu teuer",
+    "woanders um 27 Euro",
+    "bei 28,50 bleibt er",
+    "Frage: was meinst?"
+  ]
+}

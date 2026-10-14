@@ -1,0 +1,56 @@
+{
+  "id": "m-0059",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-falkenrath-rush-intern",
+  "cc": [],
+  "storyline": "A3-falkenrath-rush",
+  "beat": "jana",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": "m-0057",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Eilt: Falkenrath",
+    "receivedAt": "2026-07-09T06:05:00Z",
+    "body": "Hab nur 8 Stück 6205-2RS da, rest kommt erst Montag von Elbtal. Die 4 UCP sind da. Soll ich die 8 schonmal packen?\nJana"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Soll ich die 8 schon mal packen?"
+    ],
+    "answeredBy": "m-0061"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "rush-order"
+  ],
+  "facts": [
+    "nur 8 Stück 6205-2RS am Lager",
+    "Rest erst Montag von Elbtal",
+    "UCP sind da"
+  ]
+}

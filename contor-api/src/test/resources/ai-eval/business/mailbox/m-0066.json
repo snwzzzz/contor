@@ -1,0 +1,55 @@
+{
+  "id": "m-0066",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-glanzwerk-intern",
+  "cc": [],
+  "storyline": "G2-glanzwerk-cleaning",
+  "beat": "jana",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": "m-0062",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: WG: Grundreinigung Lagerhalle 18.07.",
+    "receivedAt": "2026-07-09T07:40:00Z",
+    "body": "Mach ich.\nJ."
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "very-short"
+  ],
+  "storylineTags": [
+    "delegation"
+  ],
+  "facts": [
+    "mach ich"
+  ]
+}

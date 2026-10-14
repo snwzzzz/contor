@@ -1,0 +1,79 @@
+{
+  "id": "m-0121",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vossberg-damage",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "ok",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": "m-0075",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jens Albers",
+    "fromAddress": "jens.albers@vossberg-foerdertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Lieferung heute – Schaden",
+    "receivedAt": "2026-07-14T12:02:00Z",
+    "body": "Ersatz ist da. Passt.\nJens"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "Vossberg Fördertechnik Transportschaden",
+          "entity": "rma-042",
+          "values": {
+            "customer": "Vossberg Fördertechnik",
+            "state": "resolved"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jens Albers",
+          "values": {
+            "email": "jens.albers@vossberg-foerdertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Vossberg Fördertechnik GmbH",
+          "values": {
+            "domain": "vossberg-foerdertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Jens Albers",
+        "to": "organizations:Vossberg Fördertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [
+    "m-0075"
+  ],
+  "tags": [
+    "very-short",
+    "smooth"
+  ],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Ersatz ist da",
+    "passt"
+  ]
+}

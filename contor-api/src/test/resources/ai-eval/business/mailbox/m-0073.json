@@ -1,0 +1,99 @@
+{
+  "id": "m-0073",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vossberg-damage",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "report",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jens Albers",
+    "fromAddress": "jens.albers@vossberg-foerdertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Lieferung heute – Schaden",
+    "receivedAt": "2026-07-09T13:30:00Z",
+    "body": "Alex,\n\nPalette kam umgekippt an, 6 Kartons Schrauben sind aufgeplatzt. Fahrer hats auf dem Lieferschein vermerkt, Fotos anbei. Brauchen Ersatz bis Mitte nächster Woche.\n\nJens"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "Vossberg Fördertechnik Transportschaden",
+          "entity": "rma-042",
+          "values": {
+            "customer": "Vossberg Fördertechnik",
+            "topic": "damage",
+            "severity": "medium",
+            "state": "open",
+            "opened_on": "2026-07-09"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Ersatz für 6 Kartons Schrauben an Vossberg liefern",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-15"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jens Albers",
+          "values": {
+            "email": "jens.albers@vossberg-foerdertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Vossberg Fördertechnik GmbH",
+          "values": {
+            "domain": "vossberg-foerdertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Jens Albers",
+        "to": "organizations:Vossberg Fördertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0075"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "damage"
+  ],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Palette kam umgekippt an",
+    "6 Kartons Schrauben aufgeplatzt",
+    "Fahrer hat es auf dem Lieferschein vermerkt",
+    "Fotos anbei",
+    "brauchen Ersatz"
+  ],
+  "derived": {
+    "complaints.opened_on": "date of the mail",
+    "tasks.due_date": "Mitte nächster Woche = Wednesday 15.07.2026"
+  }
+}

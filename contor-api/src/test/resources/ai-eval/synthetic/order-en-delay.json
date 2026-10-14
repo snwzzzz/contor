@@ -1,0 +1,35 @@
+{
+  "id": "order-en-delay",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "BookNook",
+    "fromAddress": "support@booknook.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Update on your order BN-1207",
+    "receivedAt": "2026-10-13T10:00:00Z",
+    "body": "Hi Alex, your order BN-1207 (3 books, 41.70 EUR) is delayed. The new estimated delivery date is October 20, 2026. Sorry for the inconvenience!"
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "BookNook order BN-1207",
+          "values": {
+            "order_number": "BN-1207",
+            "shop": "BookNook",
+            "total": {
+              "amount": 41.7,
+              "currency": "EUR"
+            },
+            "expected_delivery": "2026-10-20"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -1,0 +1,30 @@
+{
+  "id": "trip-en-car-rental",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "DriveEasy",
+    "fromAddress": "noreply@driveeasy.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Pick-up reminder: your rental car",
+    "receivedAt": "2026-10-12T08:00:00Z",
+    "body": "Reminder: pick up your rental car (reservation DE-5502) tomorrow, Tuesday October 13, at 10:30 at Munich Airport, Terminal 2. Please bring your driving licence and credit card."
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Rental car pick-up at Munich Airport",
+          "values": {
+            "starts_at": "2026-10-13T10:30:00+02:00",
+            "location": "Munich Airport, Terminal 2"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

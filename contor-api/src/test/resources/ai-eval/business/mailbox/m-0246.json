@@ -1,0 +1,82 @@
+{
+  "id": "m-0246",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kessler-konditionen",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "accept",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": "m-0243",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Klaus Kessler",
+    "fromAddress": "k.kessler@kessler-maschinenbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: AW: Konditionen Normteile",
+    "receivedAt": "2026-07-24T06:30:00Z",
+    "body": "Mittwoch 10 Uhr passt.\nK. Kessler\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 23. Juli 2026 17:00\nAn: Klaus Kessler <k.kessler@kessler-maschinenbau.example>\nBetreff: AW: Konditionen Normteile\n\nPasst Ihnen Mittwoch, 29.07., um 10 Uhr bei Ihnen in Bielefeld? Ich bringe ein Angebot mit."
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Termin mit Klaus Kessler zu Konditionen",
+          "values": {
+            "starts_at": "2026-07-29T10:00:00+02:00",
+            "location": "Bielefeld"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Klaus Kessler",
+          "values": {
+            "email": "k.kessler@kessler-maschinenbau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kessler Maschinenbau GmbH",
+          "values": {
+            "domain": "kessler-maschinenbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Klaus Kessler",
+        "to": "organizations:Kessler Maschinenbau GmbH"
+      },
+      {
+        "type": "attends",
+        "from": "people:Klaus Kessler",
+        "to": "events:Termin mit Klaus Kessler zu Konditionen"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0243"
+  ],
+  "tags": [
+    "very-short",
+    "facts-in-quote"
+  ],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "Mittwoch 10 Uhr passt"
+  ]
+}

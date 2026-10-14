@@ -1,0 +1,80 @@
+{
+  "id": "m-0227",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moreau-damage",
+  "cc": [],
+  "storyline": "B3-moreau-damage",
+  "beat": "resolved",
+  "category": "B3",
+  "lang": "en",
+  "inReplyTo": "m-0177",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@ateliers-moreau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Damaged goods SO-26-0156",
+    "receivedAt": "2026-07-22T09:20:00Z",
+    "body": "Hi Alex,\n\nthe replacement for RMA-26-041 arrived this morning, all good. Thank you for the quick help!\n\nCamille"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "RMA-26-041 Ateliers Moreau damage",
+          "entity": "rma-041",
+          "values": {
+            "reference": "RMA-26-041",
+            "customer": "Ateliers Moreau",
+            "state": "resolved"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@ateliers-moreau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "THANK_YOU"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "damage"
+  ],
+  "facts": [
+    "replacement for RMA-26-041 received",
+    "all good",
+    "thanks"
+  ]
+}

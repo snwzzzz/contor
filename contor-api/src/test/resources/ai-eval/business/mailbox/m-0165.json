@@ -1,0 +1,93 @@
+{
+  "id": "m-0165",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bassano-invoice-0812",
+  "cc": [],
+  "storyline": "C1-bassano-express",
+  "beat": "invoice",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marco Ferraro",
+    "fromAddress": "m.ferraro@utensileria-bassano.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Invoice 2026/VEN/0812",
+    "receivedAt": "2026-07-17T06:30:00Z",
+    "body": "Dear Alex,\n\nattached our invoice 2026/VEN/0812 for PO-26-1094, amount 2,050.00 EUR, payment 60 days end of month (30/09/2026).\n\nMarco Ferraro\nUtensileria Bassano S.r.l.\nTel. +39 0424 5550 5301"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Utensileria Bassano 2026/VEN/0812",
+          "values": {
+            "invoice_number": "2026/VEN/0812",
+            "issuer": "Utensileria Bassano",
+            "amount": {
+              "amount": 2050,
+              "currency": "EUR"
+            },
+            "due_date": "2026-09-30",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung 2026/VEN/0812 bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-09-30"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marco Ferraro",
+          "values": {
+            "email": "m.ferraro@utensileria-bassano.example",
+            "phone": "+39 0424 5550 5301"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Utensileria Bassano S.r.l.",
+          "values": {
+            "domain": "utensileria-bassano.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marco Ferraro",
+        "to": "organizations:Utensileria Bassano S.r.l."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "date-format"
+  ],
+  "storylineTags": [
+    "date-format"
+  ],
+  "facts": [
+    "invoice 2026/VEN/0812",
+    "PO-26-1094",
+    "2,050.00 EUR",
+    "payment 60 days end of month: 30/09/2026"
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "id": "m-0233",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-thiele-falscher-alex",
+  "cc": [],
+  "storyline": "J-wrong-recipient",
+  "beat": "wrong",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Robert Thiele",
+    "fromAddress": "r.thiele@thiele-messebau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Leuchten Stand Halle 2",
+    "receivedAt": "2026-07-22T14:02:00Z",
+    "body": "Hallo Alex,\n\nfür den Standaufbau in Halle 2 bitte die Leuchten bis Freitag liefern, Rechnung wie besprochen an die Messe-GmbH.\n\nGruß\nRobert"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Leuchten für den Stand in Halle 2 bis Freitag liefern",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-24"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Robert Thiele",
+          "values": {
+            "email": "r.thiele@thiele-messebau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Thiele Messebau GmbH",
+          "values": {
+            "domain": "thiele-messebau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Robert Thiele",
+        "to": "organizations:Thiele Messebau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "wrong-recipient"
+  ],
+  "storylineTags": [
+    "wrong-recipient"
+  ],
+  "facts": [
+    "Standaufbau Messe Leipzig",
+    "bitte die Leuchten bis Freitag liefern",
+    "Rechnung an die Messe-GmbH"
+  ],
+  "derived": {
+    "tasks.due_date": "bis Freitag after Wednesday 22.07. = 24.07.2026"
+  }
+}

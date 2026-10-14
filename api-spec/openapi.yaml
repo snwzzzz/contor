@@ -1,0 +1,3430 @@
+openapi: 3.0.3
+info:
+  title: contor API
+  description: |
+    Single source of truth for the contor HTTP API.
+    Backend interfaces/models and the frontend client are generated from this file.
+    Never edit generated code; change this spec and regenerate.
+
+    Naming conventions: `NewXCommand` (create), `UpdateXCommand` (partial update, `null` = unchanged),
+    `XDto` (read model). IDs are plain integers.
+
+    Authentication: session cookie (set by `POST /api/auth/login`). Every mutating request needs the
+    `X-XSRF-TOKEN` header carrying the value of the `XSRF-TOKEN` cookie (see `GET /api/auth/csrf`).
+    Every error response has the `ErrorResponse` body.
+  version: 0.1.0
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+tags:
+  - name: System
+    description: Application meta information
+  - name: Auth
+    description: Session login/logout, CSRF bootstrap, current user, password change
+  - name: Setup
+    description: One-time first-run setup (creates the OWNER). Only reachable while no user exists.
+  - name: Collections
+    description: User/AI-defined collections and their fields. Schema changes are OWNER-only.
+  - name: Records
+    description: Records of a collection. Values are keyed by field slug.
+  - name: Labels
+    description: Labels for emails
+  - name: Rules
+    description: Deterministic mail rules (stored only in phase 1)
+  - name: Relations
+    description: Relation types and relations between records (graph)
+  - name: Proposals
+    description: AI proposals and their decisions
+  - name: SavedQueries
+    description: Saved queries (stored only in phase 1)
+  - name: Mail
+    description: Synced mailboxes and emails (read-only in phase 1)
+  - name: Dev
+    description: Local development only (backend `dev` profile); these paths do not exist otherwise
+  - name: Senders
+    description: Pictures of mail senders (sender domain logos, Outlook contact photos)
+  - name: AI
+    description: Local Ollama assistant - model status, permissions (setup wizard) and inbox analysis runs
+  - name: ReplyDrafts
+    description: Reply drafts the assistant wrote for inbox emails. Nothing is ever sent or written to the mailbox.
+paths:
+  /api/system/version:
+    get:
+      tags: [System]
+      operationId: getVersion
+      summary: Application name and version
+      responses:
+        '200':
+          description: The running application version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/csrf:
+    get:
+      tags: [Auth]
+      operationId: initCsrf
+      summary: Initialize the CSRF cookie
+      description: |
+        Sets the readable `XSRF-TOKEN` cookie. Every mutating request must echo its value in the
+        `X-XSRF-TOKEN` header. The token rotates after login and logout; always read the current cookie.
+      security: []
+      responses:
+        '204':
+          description: CSRF cookie set
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with username and password (starts a session)
+      description: |
+        Unknown user, wrong password and locked account all return the same 401 message.
+        5 failed attempts lock the account (15 min, doubling on repeated lockouts). Requests are rate limited per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginCommand'
+      responses:
+        '200':
+          description: Logged in; session cookie set, session id rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/auth/dev-login:
+    get:
+      tags: [Dev]
+      operationId: getDevLogin
+      summary: Whether automatic dev sign-in is available, and as whom
+      description: |
+        Only with the backend `dev` profile and a configured dev account (DEV_ACCOUNT_*), and only for requests from
+        this machine (loopback). 404 otherwise.
+      security: []
+      responses:
+        '200':
+          description: Dev sign-in is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevLoginDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Dev]
+      operationId: devLogin
+      summary: Sign in as the dev account without a password (dev profile, loopback only)
+      description: Starts a session exactly like the normal login (session id rotated, session limit, CSRF refresh, audit).
+      security: []
+      responses:
+        '200':
+          description: Signed in; session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: End the current session
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: The logged-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/auth/password:
+    put:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change the password of the logged-in user
+      description: All other sessions of the user are ended.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordCommand'
+      responses:
+        '204':
+          description: Password changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/setup:
+    get:
+      tags: [Setup]
+      operationId: getSetupStatus
+      summary: Whether first-run setup is still required
+      description: Anonymous access only while no user exists; afterwards this requires authentication.
+      security: []
+      responses:
+        '200':
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Setup]
+      operationId: completeSetup
+      summary: Create the OWNER account with the one-time setup token from the backend log
+      description: |
+        Anonymous access only while no user exists. Once the owner exists the endpoint is permanently
+        disabled (401 for anonymous, 404 for authenticated callers). Does not log in.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupCommand'
+      responses:
+        '201':
+          description: Owner created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/collections:
+    get:
+      tags: [Collections]
+      operationId: listCollections
+      summary: All active collections with their fields
+      responses:
+        '200':
+          description: Collections ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Collections]
+      operationId: createCollection
+      summary: Create a collection (and its table) with optional initial fields. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCollectionCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      tags: [Collections]
+      operationId: getCollection
+      summary: One collection with its fields (archived fields included, marked by archivedAt)
+      responses:
+        '200':
+          description: The collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Collections]
+      operationId: updateCollection
+      summary: Partial update of collection metadata (null = unchanged). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/collections/{collectionId}/fields:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    post:
+      tags: [Collections]
+      operationId: addField
+      summary: Add a field (adds the column(s) to the collection table). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCollectionFieldCommand'
+      responses:
+        '201':
+          description: The collection including the new field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}/fields/{fieldId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: fieldId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [Collections]
+      operationId: archiveField
+      summary: Archive a field (hidden and read-only; the column is kept). OWNER only.
+      responses:
+        '200':
+          description: The collection with the archived field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/collections/{collectionId}/records:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      tags: [Records]
+      operationId: listRecords
+      summary: Records of a collection, filtered, sorted and paginated
+      parameters:
+        - name: filter
+          in: query
+          required: false
+          description: |
+            Repeatable `field:op:value` (AND-combined). `field` is a field slug or a system field
+            (`id`, `title`, `status`, `createdAt`, `lastModified`). Ops: `eq`, `ne`, `lt`, `lte`, `gt`, `gte`,
+            `contains` (text, case-insensitive), `empty`, `notempty` (no value). MONEY filters on the amount.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: q
+          in: query
+          required: false
+          description: Global search, case-insensitive, in the title and every text-like field (text, long text, email, URL, phone, enum, status); AND-combined with `filter`.
+          schema:
+            type: string
+            maxLength: 200
+        - name: sort
+          in: query
+          required: false
+          description: Field slug or system field; prefix with `-` for descending. Default `-id`.
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 200
+            default: 25
+      responses:
+        '200':
+          description: One page of records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Records]
+      operationId: createRecord
+      summary: Create a record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRecordCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}/records/{recordId}:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Records]
+      operationId: getRecord
+      summary: One record
+      responses:
+        '200':
+          description: The record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Records]
+      operationId: updateRecord
+      summary: Partial update. Keys absent from `values` are unchanged; a key with `null` clears the field.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecordCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Records]
+      operationId: deleteRecord
+      summary: Delete a record
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/collections/{collectionId}/records/{recordId}/emails:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Records]
+      operationId: listRecordEmails
+      summary: Emails of the current user's mailboxes in which the record comes up, newest first
+      description: |
+        An email belongs to a record when the record was created or updated from it (record source), when it was sent
+        from one of the record's EMAIL field addresses, or when its sender address is at the record's domain (a field
+        named `domain`, or the host of a URL field).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of emails (summaries without bodies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailPageDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/labels:
+    get:
+      tags: [Labels]
+      operationId: listLabels
+      summary: All labels ordered by name
+      responses:
+        '200':
+          description: Labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LabelDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Labels]
+      operationId: createLabel
+      summary: Create a label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLabelCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/labels/{labelId}:
+    parameters:
+      - $ref: '#/components/parameters/LabelId'
+    get:
+      tags: [Labels]
+      operationId: getLabel
+      summary: One label
+      responses:
+        '200':
+          description: The label
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Labels]
+      operationId: updateLabel
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLabelCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Labels]
+      operationId: deleteLabel
+      summary: Delete a label (also removes it from all emails)
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/rules:
+    get:
+      tags: [Rules]
+      operationId: listRules
+      summary: All rules ordered by priority (ascending), then name
+      responses:
+        '200':
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Rules]
+      operationId: createRule
+      summary: Create a rule (stored only; rule execution comes in a later phase)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRuleCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/rules/{ruleId}:
+    parameters:
+      - $ref: '#/components/parameters/RuleId'
+    get:
+      tags: [Rules]
+      operationId: getRule
+      summary: One rule
+      responses:
+        '200':
+          description: The rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Rules]
+      operationId: updateRule
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Rules]
+      operationId: deleteRule
+      summary: Delete a rule
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/relation-types:
+    get:
+      tags: [Relations]
+      operationId: listRelationTypes
+      summary: All relation types ordered by name
+      responses:
+        '200':
+          description: Relation types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Relations]
+      operationId: createRelationType
+      summary: Create a relation type. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRelationTypeCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relation-types/{relationTypeId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationTypeId'
+    get:
+      tags: [Relations]
+      operationId: getRelationType
+      summary: One relation type
+      responses:
+        '200':
+          description: The relation type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Relations]
+      operationId: updateRelationType
+      summary: Partial update of names and attribute schema (null = unchanged). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRelationTypeCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationTypeDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Relations]
+      operationId: deleteRelationType
+      summary: Delete a relation type that is not used by any relation. OWNER only.
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relations:
+    get:
+      tags: [Relations]
+      operationId: listRelations
+      summary: All relations of one record (outgoing and incoming)
+      parameters:
+        - name: collectionId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: recordId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Relations touching the record
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Relations]
+      operationId: createRelation
+      summary: Relate two records. Both must exist and match the relation type's collections.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRelationCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/relations/{relationId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationId'
+    get:
+      tags: [Relations]
+      operationId: getRelation
+      summary: One relation
+      responses:
+        '200':
+          description: The relation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Relations]
+      operationId: updateRelation
+      summary: Partial update of attributes and validity (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRelationCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Relations]
+      operationId: deleteRelation
+      summary: Delete a relation
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/proposals:
+    get:
+      tags: [Proposals]
+      operationId: listProposals
+      summary: Proposals, newest or most important first, optionally filtered by state, group and importance
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
+        - name: minImportance
+          in: query
+          required: false
+          description: Only proposals of at least this importance (default LOW = all)
+          schema:
+            $ref: '#/components/schemas/ProposalPriority'
+        - name: sort
+          in: query
+          required: false
+          description: NEWEST (default) or IMPORTANCE (highest score first, then newest)
+          schema:
+            $ref: '#/components/schemas/ProposalSort'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of proposals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/proposals/count:
+    get:
+      tags: [Proposals]
+      operationId: countProposals
+      summary: Number of proposals in a state (default PENDING), e.g. for the sidebar badge
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalState'
+        - name: group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProposalGroup'
+        - name: minImportance
+          in: query
+          required: false
+          description: Only proposals of at least this importance (default LOW = all)
+          schema:
+            $ref: '#/components/schemas/ProposalPriority'
+      responses:
+        '200':
+          description: The count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalCountDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/proposals/{proposalId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalId'
+    get:
+      tags: [Proposals]
+      operationId: getProposal
+      summary: One proposal
+      responses:
+        '200':
+          description: The proposal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/proposals/{proposalId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/ProposalId'
+    post:
+      tags: [Proposals]
+      operationId: decideProposal
+      summary: Approve (optionally with an edited payload) or reject a pending proposal
+      description: |
+        APPROVE applies the proposal (status APPROVED, or EDITED_AND_APPROVED when `payload` is given). If applying
+        fails validation the proposal stays PENDING and the error is returned (400), so it can be edited and retried.
+        Proposal kinds without an applier yet return 409. A proposal that depends on other proposals (e.g. a relation
+        needs its two records) can only be approved once they are applied (409 before). REJECT also rejects the pending
+        proposals that depend on it. Approving a dependency applies the dependents that were waiting for AUTO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecideProposalCommand'
+      responses:
+        '200':
+          description: The decided proposal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/saved-queries:
+    get:
+      tags: [SavedQueries]
+      operationId: listSavedQueries
+      summary: Saved queries, pinned first, then by name
+      responses:
+        '200':
+          description: Saved queries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedQueryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [SavedQueries]
+      operationId: createSavedQuery
+      summary: Save a query (stored only; execution comes in a later phase)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewSavedQueryCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/saved-queries/{savedQueryId}:
+    parameters:
+      - $ref: '#/components/parameters/SavedQueryId'
+    get:
+      tags: [SavedQueries]
+      operationId: getSavedQuery
+      summary: One saved query
+      responses:
+        '200':
+          description: The saved query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [SavedQueries]
+      operationId: updateSavedQuery
+      summary: Partial update (null = unchanged)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSavedQueryCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedQueryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [SavedQueries]
+      operationId: deleteSavedQuery
+      summary: Delete a saved query
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/mail/accounts:
+    get:
+      tags: [Mail]
+      operationId: listMailAccounts
+      summary: Connected mailboxes of the current user (never exposes tokens)
+      responses:
+        '200':
+          description: Mail accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MailAccountDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/mail/accounts/connect:
+    post:
+      tags: [Mail]
+      operationId: connectMailAccount
+      summary: Initiate OAuth2 connection for Microsoft Graph. Returns the authorization URL. OWNER only.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectMailAccountCommand'
+      responses:
+        '200':
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailAuthorizeUrlDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/mail/accounts/callback:
+    get:
+      tags: [Mail]
+      operationId: mailAccountCallback
+      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and forwards to the web app.
+      description: |
+        Always answers with a small HTML page that forwards the browser (meta refresh) to `APP_WEB_URL/settings/accounts?connected=true`.
+        Not a 302: the browser arrives from Microsoft, so a redirect chain stays cross-site and the SameSite=Strict
+        session cookie would not be sent; a forward started by this localhost page is same-site.
+        Failures (sign-in cancelled, expired state, token exchange) forward to `/settings/accounts?mailError=<message>`.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HTML page forwarding the browser to the web app's account settings
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/mail/accounts/{accountId}/photo:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    get:
+      tags: [Mail]
+      operationId: getMailAccountPhoto
+      summary: Profile photo of a connected mailbox (from Microsoft Graph, fetched on the first sync after connecting).
+      responses:
+        '200':
+          description: The photo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/senders/logos:
+    get:
+      tags: [Senders]
+      operationId: listSenderLogos
+      summary: Which of the given sender domains have a logo
+      description: |
+        Unknown or stale domains are first fetched by the backend from https://<domain> (apple-touch-icon, favicon;
+        public hosts only, raster images only) and cached: found logos for 30 days, misses for 7 days. Invalid domains
+        are ignored. At most 100 domains per request.
+      parameters:
+        - name: domain
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              maxLength: 253
+      responses:
+        '200':
+          description: The requested domains that have a logo, lower case
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/senders/logos/{domain}:
+    get:
+      tags: [Senders]
+      operationId: getSenderLogo
+      summary: Cached logo of a sender domain (resolve it with listSenderLogos first)
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 253
+      responses:
+        '200':
+          description: The logo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/senders/contact-photos:
+    get:
+      tags: [Senders]
+      operationId: listContactPhotos
+      summary: Contact photos of the current user's mailboxes (Outlook contacts, refreshed by the mail sync daily)
+      responses:
+        '200':
+          description: One entry per contact address with a photo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactPhotoDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/senders/contact-photos/{contactPhotoId}:
+    get:
+      tags: [Senders]
+      operationId: getContactPhoto
+      summary: The photo of one contact
+      parameters:
+        - name: contactPhotoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The photo
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/mail/accounts/{accountId}/sync:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    post:
+      tags: [Mail]
+      operationId: syncMailAccount
+      summary: Trigger incremental email synchronization for a mail account. OWNER only.
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailSyncStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/mail/accounts/{accountId}/disconnect:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    post:
+      tags: [Mail]
+      operationId: disconnectMailAccount
+      summary: Disconnect a mail account (marks DISABLED and clears tokens). OWNER only.
+      responses:
+        '204':
+          description: Account disconnected
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/mail/accounts/{accountId}/status:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    get:
+      tags: [Mail]
+      operationId: getMailAccountSyncStatus
+      summary: Get sync status for a mail account
+      responses:
+        '200':
+          description: Current sync status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailSyncStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails:
+    get:
+      tags: [Mail]
+      operationId: listEmails
+      summary: Emails of the current user's mailboxes, newest first
+      parameters:
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: labelId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: processingState
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/EmailProcessingState'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive search text, matched in the parts named by `field`
+          schema:
+            type: string
+            maxLength: 200
+        - name: field
+          in: query
+          required: false
+          description: Where `q` is searched (default ALL)
+          schema:
+            $ref: '#/components/schemas/EmailSearchField'
+        - name: answered
+          in: query
+          required: false
+          description: >
+            true: only emails the user already answered (a newer sent message in the same conversation);
+            false: only emails not answered yet; omitted: all. Ignored for the SENT folder.
+          schema:
+            type: boolean
+        - name: folder
+          in: query
+          required: false
+          description: INBOX (default) or SENT (the user's own sent mail, Sent Items)
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of emails (summaries without bodies)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailPageDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails/suggestions:
+    get:
+      tags: [Mail]
+      operationId: suggestEmailSenders
+      summary: Senders (people) and sender companies (domains) of the current user's inbox matching a prefix of the search box
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - name: folder
+          in: query
+          required: false
+          description: SENT suggests the people you wrote to (recipients of your sent mail) instead of senders
+          schema:
+            $ref: '#/components/schemas/EmailFolder'
+
+      responses:
+        '200':
+          description: Most frequent matching people first, then companies; at most a handful of each
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailSuggestionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/emails/{emailId}/thread:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmailThread
+      summary: The conversation an email belongs to, in its mailbox, the user's own replies (Sent Items) included
+      responses:
+        '200':
+          description: |
+            The messages of the conversation, oldest first (just the email itself when it has no conversation), with
+            the assistant's reply drafts for it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailThreadDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}/reply-suggestion:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [ReplyDrafts]
+      operationId: suggestReply
+      summary: Ask the assistant for a reply draft to this email (on demand, in the background)
+      description: |
+        Queues one draft call on the AI thread; the candidate rules and the triage call are skipped because you asked.
+        The result is a pending DRAFT_REPLY proposal (it replaces an older pending one of the conversation). Poll
+        `GET /api/emails/{emailId}/thread` (`replySuggestion` RUNNING, then IDLE or FAILED). 409 when mail access or
+        reply drafts are turned off in the AI settings, or when the email is one of your own sent messages.
+      responses:
+        '202':
+          description: Queued
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    patch:
+      tags: [ReplyDrafts]
+      operationId: updateReplyDraft
+      summary: Edit a kept reply draft (partial update)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReplyDraftCommand'
+      responses:
+        '200':
+          description: The updated draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reply-drafts/{replyDraftId}/discard:
+    parameters:
+      - $ref: '#/components/parameters/ReplyDraftId'
+    post:
+      tags: [ReplyDrafts]
+      operationId: discardReplyDraft
+      summary: Discard a kept reply draft (it disappears from the thread)
+      responses:
+        '200':
+          description: The discarded draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyDraftDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmail
+      summary: One email with bodies
+      responses:
+        '200':
+          description: The email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/ai/status:
+    get:
+      tags: [AI]
+      operationId: getAiStatus
+      summary: Whether the local Ollama is reachable and the configured models are installed
+      responses:
+        '200':
+          description: Current status (never fails when Ollama is down; `reachable` is false then)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/ai/models/pull:
+    post:
+      tags: [AI]
+      operationId: pullAiModels
+      summary: Start downloading every configured model that is not installed yet (background). OWNER only.
+      responses:
+        '202':
+          description: Downloads started; poll GET /api/ai/status for progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatusDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/settings:
+    get:
+      tags: [AI]
+      operationId: getAiSettings
+      summary: The current user's AI permissions (defaults until the setup wizard saved them)
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [AI]
+      operationId: updateAiSettings
+      summary: Change AI permissions (partial update). OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAiSettingsCommand'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/ai/analysis:
+    post:
+      tags: [AI]
+      operationId: startAnalysis
+      summary: Start the inbox analysis (discovery, then extraction) in the background. OWNER only.
+      description: |
+        409 when a run is already active, mail access is not granted, or the models are not ready.
+      responses:
+        '201':
+          description: The queued run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/insights:
+    get:
+      tags: [AI]
+      operationId: getInsightRun
+      summary: Whether a requested insight pass of the current user is still running
+      responses:
+        '200':
+          description: The state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [AI]
+      operationId: requestInsights
+      summary: Look for insights now (in the background, on the AI thread)
+      description: |
+        Insights are what only shows across several emails (an unanswered question, overlapping appointments, what the
+        model notices in the last two weeks). They also run daily. New ones arrive as INSIGHT proposals.
+      responses:
+        '202':
+          description: Queued (or already queued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/ai/analysis/latest:
+    get:
+      tags: [AI]
+      operationId: getLatestAnalysis
+      summary: The current user's most recent analysis run
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/ai/analysis/{runId}/continue:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: continueAnalysis
+      summary: Continue a run waiting for the review of discovered categories (starts extraction). OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ai/analysis/{runId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisRunId'
+    post:
+      tags: [AI]
+      operationId: cancelAnalysis
+      summary: Stop an active run after the email currently being analyzed. OWNER only.
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRunDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/ai/eval/export:
+    get:
+      tags: [AI]
+      operationId: exportEvalCases
+      summary: Export emails with their decided AI proposals as extraction eval cases. OWNER only.
+      description: |
+        For each of the owner's own emails: the email as the extraction model sees it, `expected` built from the
+        proposals that were applied (CREATE_RECORD, using the final payload, i.e. including the user's corrections),
+        and `mustNotProduce` from the rejected CREATE_RECORD proposals. Correct the findings in the UI, export, and
+        save the result as JSON files in the git-ignored `ai-eval/private/` folder. Emails of other users are skipped.
+      parameters:
+        - name: emailIds
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items:
+              type: integer
+              format: int64
+      responses:
+        '200':
+          description: One case per found email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalCaseExportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    AnalysisRunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    LabelId:
+      name: labelId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RuleId:
+      name: ruleId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RelationTypeId:
+      name: relationTypeId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RelationId:
+      name: relationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ProposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ReplyDraftId:
+      name: replyDraftId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SavedQueryId:
+      name: savedQueryId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 25
+    CollectionId:
+      name: collectionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    MailAccountId:
+      name: accountId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: CONTOR_SESSION
+  responses:
+    BadRequest:
+      description: Invalid input (all validation failures in one message)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Not authenticated, or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Missing/invalid CSRF token, invalid setup token, or not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Duplicate (e.g. slug or unique field value already taken)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      description: Uniform error body for every non-2xx response. Never contains stack traces or internals.
+      required: [message, status]
+      properties:
+        message:
+          type: string
+        status:
+          type: integer
+          format: int32
+    VersionDto:
+      type: object
+      required: [name, version]
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+    Role:
+      type: string
+      enum: [OWNER, USER]
+    CurrentUserDto:
+      type: object
+      required: [id, username, email, role, totpEnabled]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        totpEnabled:
+          type: boolean
+    LoginCommand:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+    ChangePasswordCommand:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          description: 12-128 characters with lowercase, uppercase, digit and special character; not a common password.
+          maxLength: 128
+    SetupStatusDto:
+      type: object
+      required: [setupRequired]
+      properties:
+        setupRequired:
+          type: boolean
+    SetupCommand:
+      type: object
+      required: [token, username, email, password]
+      properties:
+        token:
+          type: string
+          description: One-time setup token printed to the backend log on startup.
+          maxLength: 128
+        username:
+          type: string
+          maxLength: 64
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          description: 12-128 characters with lowercase, uppercase, digit and special character; not a common password.
+          maxLength: 128
+    Creator:
+      type: string
+      description: Who defined a collection, field set or relation type.
+      enum: [USER, AI]
+    CollectionFieldType:
+      type: string
+      description: |
+        Closed set of field types and their JSON value shapes:
+        TEXT, LONG_TEXT, URL, EMAIL, PHONE, FILE: string ·
+        NUMBER: number · MONEY: `{"amount": number, "currency": "EUR"}` ·
+        DATE: `YYYY-MM-DD` · DATETIME: ISO-8601 with offset (returned in UTC) · BOOLEAN: boolean ·
+        ENUM, STATUS: one of the configured values (string) · RELATION: id (integer) of a record in the target collection.
+      enum: [TEXT, LONG_TEXT, NUMBER, MONEY, DATE, DATETIME, BOOLEAN, ENUM, STATUS, URL, EMAIL, PHONE, RELATION, FILE]
+    DisplayConfigDto:
+      type: object
+      description: Default presentation. Field references are field slugs.
+      properties:
+        defaultView:
+          type: string
+          description: e.g. table, kanban, calendar
+        kanbanStatusField:
+          type: string
+        calendarDateField:
+          type: string
+        titleField:
+          type: string
+    CollectionFieldDto:
+      type: object
+      required: [id, slug, name, type, options, required, uniqueValue, position]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: '#/components/schemas/CollectionFieldType'
+        options:
+          type: object
+          additionalProperties: {}
+        required:
+          type: boolean
+        uniqueValue:
+          type: boolean
+        position:
+          type: integer
+          format: int32
+        archivedAt:
+          type: string
+          format: date-time
+    CollectionDto:
+      type: object
+      required: [id, slug, name, system, matchKeys, displayConfig, schemaVersion, createdBy, fields]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        system:
+          type: boolean
+          description: Seeded by contor (People, Organizations, Events, Tasks)
+        matchKeys:
+          type: array
+          description: Field slugs used to recognise an existing record
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+        schemaVersion:
+          type: integer
+          format: int32
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+        archivedAt:
+          type: string
+          format: date-time
+        fields:
+          type: array
+          description: Ordered by position
+          items:
+            $ref: '#/components/schemas/CollectionFieldDto'
+    NewCollectionFieldCommand:
+      type: object
+      required: [slug, name, type]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, not a reserved word, unique within the collection. Becomes the column name.'
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          description: Also used to explain the field to the AI.
+          maxLength: 2000
+        type:
+          $ref: '#/components/schemas/CollectionFieldType'
+        options:
+          type: object
+          description: |
+            Type-specific: ENUM `{"values": [..]}` · STATUS `{"states": [..], "transitions": {"from": ["to", ..]}}`
+            (ordered states; no transitions = any change allowed; a new record without status gets the first state) ·
+            RELATION `{"targetCollectionId": 1}` · TEXT `{"maxLength": 500}` · NUMBER `{"min": 0, "max": 10}`.
+          additionalProperties: {}
+        required:
+          type: boolean
+          default: false
+        uniqueValue:
+          type: boolean
+          default: false
+    NewCollectionCommand:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, not a reserved word. The table is named `c_<slug>`.'
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        icon:
+          type: string
+          maxLength: 100
+        matchKeys:
+          type: array
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewCollectionFieldCommand'
+    UpdateCollectionCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        icon:
+          type: string
+          maxLength: 100
+        matchKeys:
+          type: array
+          items:
+            type: string
+        displayConfig:
+          $ref: '#/components/schemas/DisplayConfigDto'
+    RecordDto:
+      type: object
+      required: [id, collectionId, values, extra, createdAt, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique only within its collection; reference records as (collectionId, id).
+        collectionId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          description: Values of active fields keyed by field slug (see CollectionFieldType for shapes)
+          additionalProperties: {}
+        extra:
+          type: object
+          description: Values for fields that do not exist (yet)
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          description: USER, AI or SYSTEM
+    RecordPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    NewRecordCommand:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          description: Keyed by field slug. Unknown or archived fields are rejected.
+          additionalProperties: {}
+        extra:
+          type: object
+          additionalProperties: {}
+    UpdateRecordCommand:
+      type: object
+      description: Partial update. null title/status/extra = unchanged; keys absent from values = unchanged, null value = clear.
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        values:
+          type: object
+          additionalProperties: {}
+        extra:
+          type: object
+          description: Replaces extra when given.
+          additionalProperties: {}
+    LabelOrigin:
+      type: string
+      description: How a label got onto an email.
+      enum: [MANUAL, RULE, AI]
+    LabelDto:
+      type: object
+      required: [id, slug, name, color, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          description: '#RRGGBB'
+        description:
+          type: string
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+    NewLabelCommand:
+      type: object
+      required: [slug, name, color]
+      properties:
+        slug:
+          type: string
+          description: '`^[a-z][a-z0-9_]{1,40}$`, unique'
+        name:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+          description: '#RRGGBB'
+        description:
+          type: string
+          maxLength: 2000
+    UpdateLabelCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+        description:
+          type: string
+          maxLength: 2000
+    RuleDto:
+      type: object
+      required: [id, name, enabled, priority, conditions, actions]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+          format: int32
+          description: Lower runs first
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        createdFromProposalId:
+          type: integer
+          format: int64
+    NewRuleCommand:
+      type: object
+      required: [name]
+      description: Conditions/actions are stored as given; their format is defined with the rule engine in a later phase.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        enabled:
+          type: boolean
+          default: true
+        priority:
+          type: integer
+          format: int32
+          default: 100
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    UpdateRuleCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+          format: int32
+        conditions:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    RelationOrigin:
+      type: string
+      enum: [USER, AI, RULE]
+    RelationTypeDto:
+      type: object
+      required: [id, slug, name, directed, attributesSchema, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+          description: Label from the source side, e.g. "works at"
+        inverseName:
+          type: string
+          description: Label from the target side, e.g. "employs"
+        fromCollectionId:
+          type: integer
+          format: int64
+          description: Allowed source collection; absent = any
+        toCollectionId:
+          type: integer
+          format: int64
+          description: Allowed target collection; absent = any
+        directed:
+          type: boolean
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+        createdBy:
+          $ref: '#/components/schemas/Creator'
+    NewRelationTypeCommand:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+          maxLength: 200
+        inverseName:
+          type: string
+          maxLength: 200
+        fromCollectionId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        directed:
+          type: boolean
+          default: true
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+    UpdateRelationTypeCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        inverseName:
+          type: string
+          maxLength: 200
+        attributesSchema:
+          type: object
+          additionalProperties: {}
+    RelationDto:
+      type: object
+      required: [id, relationTypeId, fromCollectionId, fromRecordId, toCollectionId, toRecordId, attributes, createdBy]
+      properties:
+        id:
+          type: integer
+          format: int64
+        relationTypeId:
+          type: integer
+          format: int64
+        fromCollectionId:
+          type: integer
+          format: int64
+        fromRecordId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        toRecordId:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties: {}
+        sourceEmailId:
+          type: integer
+          format: int64
+        confidence:
+          type: number
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/RelationOrigin'
+    NewRelationCommand:
+      type: object
+      required: [relationTypeId, fromCollectionId, fromRecordId, toCollectionId, toRecordId]
+      properties:
+        relationTypeId:
+          type: integer
+          format: int64
+        fromCollectionId:
+          type: integer
+          format: int64
+        fromRecordId:
+          type: integer
+          format: int64
+        toCollectionId:
+          type: integer
+          format: int64
+        toRecordId:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties: {}
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+    UpdateRelationCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        attributes:
+          type: object
+          additionalProperties: {}
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+    ProposalAction:
+      type: string
+      description: |
+        What a proposal does when applied. Payloads (phase 1 appliers):
+        CREATE_RECORD `{"collectionId": 1, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
+        UPDATE_RECORD `{"collectionId": 1, "recordId": 5, "title": "..", "status": "..", "values": {..}, "extra": {..}}` ·
+        CREATE_COLLECTION: a NewCollectionCommand (`{"slug", "name", "description", "icon", "matchKeys", "displayConfig",
+        "fields": [..]}`), created with createdBy AI; OWNER only ·
+        CREATE_RELATION `{"relationTypeId": 3, "from": END, "to": END}` where END is `{"collectionId": 1, "recordId": 5}`
+        (an existing record) or `{"proposalId": 21}` (the record that proposal created, read from its `result`; the
+        proposal is a dependency, so the relation can only be approved once it is applied). Validated like a manual
+        relation (type collections, records exist); created as AI with the source email and the proposal's confidence;
+        an identical existing relation is a no-op (the proposal is applied and its result names the existing relation).
+        DRAFT_REPLY `{"emailId": 8, "accountId": 1, "conversationId": "..", "to": [{"name": "..", "address": ".."}],
+        "cc": [..], "subject": "Re: ..", "body": "plain text", "language": "de", "placeholders": ["[available times]"]}`:
+        a reply the assistant wrote for the source email (`to` = its sender, `cc` = its Cc without your own addresses;
+        `placeholders` are the `[...]` parts you still have to fill in; optional since reply-v2: `intent` = what the reply
+        does (SCHEDULE, ANSWER_QUESTIONS, CONFIRM, DECLINE, PROVIDE_INFO, COURTESY = an optional polite reply to an email
+        that needs no answer, with `courtesyKind` REJECTION_THANKS, DECLINE_OFFER, THANK_YOU, CONGRATULATE or
+        KEEP_IN_TOUCH; only with the courtesyReplies setting, always LOW importance), `questions` = `[{"question": "..", "answered":
+        true|false|null}]` the questions of the email and whether the draft answers them (false = left as a placeholder,
+        null = not reported), `proposedSlots` = `[{"start": "ISO-8601", "end": "ISO-8601"}]` the free times from your
+        calendar the draft offers). Approving keeps it as a reply draft (never
+        sent, nothing is written to the mailbox); it needs `to` and `body`, and the email must be in your mailboxes.
+        A pending draft is rejected automatically when you answer in Outlook or a newer email arrives in the conversation.
+        Applying stores a `result` on every applied proposal (CREATE_RECORD/UPDATE_RECORD: `{"collectionId", "recordId"}`,
+        CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
+        a proposal the system rejected carries `{"reason"}`.
+        INSIGHT `{"insightKey": "unanswered:42", "title": "..", "observation": "..", "whyItMatters": "..",
+        "evidenceEmailIds": [42], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
+        "source": "rule:unanswered-question" | "rule:clash" | "model"}`: something that only shows across several emails.
+        Approving creates the follow-ups left in the (edited) payload as records linked to the evidence emails (result
+        `{"records": [{"collectionId", "recordId"}]}`); an insight is proposed once per key, also after it was dismissed.
+        Other kinds are stored but cannot be applied yet.
+      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT]
+    ProposalState:
+      type: string
+      enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
+    ProposalGroup:
+      type: string
+      description: |
+        FINDINGS: data the AI extracted (CREATE_RECORD / UPDATE_RECORD in any collection except the assistant's
+        calendar `events` and to-dos `tasks`). ACTIONS: everything else – things the AI proposes to do (calendar
+        entries, to-dos, new categories, reply drafts, later labels).
+      enum: [ACTIONS, FINDINGS]
+    ProposalPriority:
+      type: string
+      description: |
+        How much a proposal deserves attention, derived from importanceScore: LOW < 35 <= NORMAL < 60 <= HIGH < 80 <= URGENT.
+        The score comes from rules (no model call): the kind (a reply someone waits for > a to-do > an appointment > a new
+        category > a finding > a relation), a deadline or date in the payload (within 2 days +25, within 7 days +10, past -20),
+        the reply triage's urgency (high +20, low -10), a sender among your contacts (+10) or someone you wrote to (+10), a
+        bulk sender (-30).
+      enum: [LOW, NORMAL, HIGH, URGENT]
+    ProposalSort:
+      type: string
+      enum: [NEWEST, IMPORTANCE]
+    ProposalDecision:
+      type: string
+      enum: [APPROVE, REJECT]
+    ProposalDto:
+      type: object
+      required: [id, kind, status, payload, importance, importanceScore, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        kind:
+          $ref: '#/components/schemas/ProposalAction'
+        status:
+          $ref: '#/components/schemas/ProposalState'
+        payload:
+          type: object
+          description: What was proposed
+          additionalProperties: {}
+        finalPayload:
+          type: object
+          description: What was actually applied
+          additionalProperties: {}
+        sourceEmailId:
+          type: integer
+          format: int64
+        confidence:
+          type: number
+        reasoning:
+          type: string
+        importance:
+          $ref: '#/components/schemas/ProposalPriority'
+        importanceScore:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        importanceReason:
+          type: string
+          description: Why it got its importance, e.g. "a to-do; due within 2 days" (absent for proposals never scored)
+        model:
+          type: string
+        promptVersion:
+          type: string
+        schemaVersion:
+          type: integer
+          format: int32
+        decidedAt:
+          type: string
+          format: date-time
+        decidedById:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    ProposalPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    ProposalCountDto:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          format: int64
+    DecideProposalCommand:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: '#/components/schemas/ProposalDecision'
+        payload:
+          type: object
+          description: Edited payload to apply instead of the proposed one (APPROVE only)
+          additionalProperties: {}
+    SavedQueryDto:
+      type: object
+      required: [id, name, dsl, pinned]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+    NewSavedQueryCommand:
+      type: object
+      required: [name, dsl]
+      description: The DSL is stored as given; its format and execution come in a later phase.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+          default: false
+    UpdateSavedQueryCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        dsl:
+          type: object
+          additionalProperties: {}
+        pinned:
+          type: boolean
+    MailProviderKind:
+      type: string
+      description: MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; DEMO = the dev-only fictional demo mailbox (never synced).
+      enum: [MICROSOFT_GRAPH, DEMO]
+    MailAccountState:
+      type: string
+      enum: [ACTIVE, NEEDS_REAUTH, DISABLED]
+    EmailProcessingState:
+      type: string
+      enum: [NEW, QUEUED, PROCESSING, DONE, FAILED, SKIPPED]
+    EmailFolder:
+      type: string
+      description: >
+        INBOX: received mail; SENT: the user's own sent mail. Sent mail is shown and searched, never analyzed by the
+        assistant.
+      enum: [INBOX, SENT]
+    EmailSearchField:
+      type: string
+      description: >
+        ALL: subject, sender, recipients and body; SUBJECT: subject only; PEOPLE: sender name/address and
+        recipients (to, cc); CONTENT: body and preview text.
+      enum: [ALL, SUBJECT, PEOPLE, CONTENT]
+    EmailSuggestionKind:
+      type: string
+      description: PERSON is one sender address; COMPANY is a sender domain (free-mail domains are left out).
+      enum: [PERSON, COMPANY]
+    EmailSuggestionDto:
+      type: object
+      required: [kind, label, value, emailCount]
+      properties:
+        kind:
+          $ref: '#/components/schemas/EmailSuggestionKind'
+        label:
+          type: string
+          description: Display name (sender name, else the address; the domain for a company)
+        value:
+          type: string
+          description: What to search with field=PEOPLE (the address, or `@domain` for a company)
+        emailCount:
+          type: integer
+          format: int64
+    MailAccountDto:
+      type: object
+      required: [id, provider, emailAddress, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        provider:
+          $ref: '#/components/schemas/MailProviderKind'
+        emailAddress:
+          type: string
+        displayName:
+          type: string
+        status:
+          $ref: '#/components/schemas/MailAccountState'
+        lastSyncedAt:
+          type: string
+          format: date-time
+        hasPhoto:
+          type: boolean
+          default: false
+          description: The mailbox has a profile photo, served by GET /api/mail/accounts/{accountId}/photo.
+    DevLoginDto:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+    ContactPhotoDto:
+      type: object
+      required: [id, emailAddress]
+      properties:
+        id:
+          type: integer
+          format: int64
+        emailAddress:
+          type: string
+          description: Contact address, lower case
+    ConnectMailAccountCommand:
+      type: object
+      properties:
+        emailHint:
+          type: string
+    MailAuthorizeUrlDto:
+      type: object
+      required: [authorizeUrl]
+      properties:
+        authorizeUrl:
+          type: string
+    MailSyncStatusDto:
+      type: object
+      required: [accountId, status]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/MailAccountState'
+        lastSyncedAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+        messagesSynced:
+          type: integer
+          format: int32
+    RecipientDto:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+    EmailLabelDto:
+      type: object
+      required: [labelId, slug, name, color, source]
+      properties:
+        labelId:
+          type: integer
+          format: int64
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        source:
+          $ref: '#/components/schemas/LabelOrigin'
+        confidence:
+          type: number
+    EmailSummaryDto:
+      type: object
+      required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels]
+      properties:
+        id:
+          type: integer
+          format: int64
+        accountId:
+          type: integer
+          format: int64
+        conversationId:
+          type: string
+        folder:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+        toRecipients:
+          type: array
+          description: The To recipients (the list of a sent email shows them instead of the sender)
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        snippet:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        hasAttachments:
+          type: boolean
+        processingState:
+          $ref: '#/components/schemas/EmailProcessingState'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailLabelDto'
+        threadSize:
+          type: integer
+          format: int32
+          minimum: 1
+          description: "Messages in the email's conversation (sent ones included); 1 when it has no conversation"
+        answered:
+          type: boolean
+          description: "The user replied: a sent message in the same conversation is newer than this email"
+        replyState:
+          $ref: '#/components/schemas/ReplyMarker'
+    ReplyMarker:
+      type: string
+      description: |
+        The assistant's reply for this email: SUGGESTED = a draft waits for your decision (DRAFT_REPLY proposal),
+        DRAFT_READY = you kept a draft (not sent). Absent when there is neither.
+      enum: [SUGGESTED, DRAFT_READY]
+    ReplySuggestionState:
+      type: string
+      description: |
+        On-demand reply suggestion for the email of a thread: RUNNING while it is queued or the model writes it,
+        FAILED when the last attempt failed (try again), IDLE otherwise.
+      enum: [IDLE, RUNNING, FAILED]
+    EmailThreadDto:
+      type: object
+      required: [messages, replyDrafts, replySuggestion]
+      properties:
+        conversationId:
+          type: string
+        messages:
+          type: array
+          description: Oldest first; the user's own replies have `folder` = "sent"
+          items:
+            $ref: '#/components/schemas/EmailDto'
+        replyDrafts:
+          type: array
+          description: Kept (READY) reply drafts for messages of this conversation, oldest first
+          items:
+            $ref: '#/components/schemas/ReplyDraftDto'
+        pendingReplyProposal:
+          $ref: '#/components/schemas/ProposalDto'
+        replySuggestion:
+          $ref: '#/components/schemas/ReplySuggestionState'
+    ReplyDraftState:
+      type: string
+      description: READY = kept and shown in the thread (never sent) · DISCARDED = thrown away.
+      enum: [READY, DISCARDED]
+    ReplyDraftDto:
+      type: object
+      required: [id, emailId, accountId, toRecipients, ccRecipients, subject, body, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        emailId:
+          type: integer
+          format: int64
+          description: The email this draft answers
+        accountId:
+          type: integer
+          format: int64
+        conversationId:
+          type: string
+        toRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        body:
+          type: string
+          description: Plain text
+        status:
+          $ref: '#/components/schemas/ReplyDraftState'
+        proposalId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    UpdateReplyDraftCommand:
+      type: object
+      description: Partial update; null = unchanged. Only READY drafts can be edited (409 otherwise).
+      properties:
+        toRecipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+          maxLength: 998
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
+    EmailDto:
+      type: object
+      required: [id, accountId, receivedAt, read, hasAttachments, processingState, labels, toRecipients, ccRecipients]
+      properties:
+        id:
+          type: integer
+          format: int64
+        accountId:
+          type: integer
+          format: int64
+        internetMessageId:
+          type: string
+        conversationId:
+          type: string
+        folder:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+        toRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        ccRecipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipientDto'
+        subject:
+          type: string
+        snippet:
+          type: string
+        bodyText:
+          type: string
+        bodyHtml:
+          type: string
+          description: Untrusted HTML from the sender. Clients must render it sanitized in a sandboxed frame, never inline.
+        receivedAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        hasAttachments:
+          type: boolean
+        processingState:
+          $ref: '#/components/schemas/EmailProcessingState'
+        processingError:
+          type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailLabelDto'
+    EmailPageDto:
+      type: object
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailSummaryDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    AiModelRole:
+      type: string
+      description: What a configured model is used for.
+      enum: [EXTRACTION, ROUTING, EMBEDDING]
+    AiPullState:
+      type: string
+      enum: [IDLE, PULLING, FAILED]
+    AiModelDto:
+      type: object
+      required: [name, roles, installed, pullState]
+      properties:
+        name:
+          type: string
+          description: Ollama model tag, e.g. qwen3.5:9b
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelRole'
+        installed:
+          type: boolean
+        pullState:
+          $ref: '#/components/schemas/AiPullState'
+        pullPercent:
+          type: integer
+          format: int32
+          description: Download progress 0-100 while PULLING
+        pullError:
+          type: string
+    AiStatusDto:
+      type: object
+      required: [reachable, ready, models]
+      properties:
+        reachable:
+          type: boolean
+          description: Ollama answered on its (loopback) base URL
+        version:
+          type: string
+        ready:
+          type: boolean
+          description: Reachable and every configured model installed
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiModelDto'
+        embeddings:
+          $ref: '#/components/schemas/EmbeddingProgressDto'
+    EmbeddingProgressDto:
+      type: object
+      description: |
+        How much of the current user's inbox is indexed for semantic search with the configured embedding model.
+        Absent when the status is not requested for a signed-in user.
+      required: [indexed, total, running]
+      properties:
+        indexed:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+        running:
+          type: boolean
+          description: A backfill is currently embedding mail
+    AiAccess:
+      type: string
+      description: |
+        OFF = the AI never touches this area · SUGGEST = proposals for review · AUTO = applied directly.
+        `replies` (reply drafts) only knows OFF and SUGGEST: a draft is never sent, so AUTO is rejected (400).
+      enum: ['OFF', SUGGEST, AUTO]
+    AiSettingsDto:
+      type: object
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies]
+      properties:
+        mailAccess:
+          type: boolean
+          description: The AI may read and analyze the user's mailboxes (master switch)
+        historyDays:
+          type: integer
+          format: int32
+          description: How many days back the inbox analysis reads; 0 = everything
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
+          $ref: '#/components/schemas/AiAccess'
+        courtesyReplies:
+          type: boolean
+          description: Also suggest optional polite replies to emails that need no answer (a job rejection, a thank-you); only with replies = SUGGEST
+        ownerProfile:
+          type: string
+          nullable: true
+          description: Who the user is in their own words (role, company, what it buys and sells); tells the AI whose side an email is on
+        onboardedAt:
+          type: string
+          format: date-time
+          description: When the setup wizard was completed; new mail is only processed afterwards
+    UpdateAiSettingsCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        mailAccess:
+          type: boolean
+        historyDays:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 3650
+        categories:
+          $ref: '#/components/schemas/AiAccess'
+        records:
+          $ref: '#/components/schemas/AiAccess'
+        calendar:
+          $ref: '#/components/schemas/AiAccess'
+        tasks:
+          $ref: '#/components/schemas/AiAccess'
+        replies:
+          $ref: '#/components/schemas/AiAccess'
+        courtesyReplies:
+          type: boolean
+        ownerProfile:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: null = unchanged; blank clears it
+        completeOnboarding:
+          type: boolean
+          description: true marks the setup wizard as completed (sets onboardedAt once)
+    AnalysisState:
+      type: string
+      description: |
+        QUEUED → DISCOVERING → (AWAITING_REVIEW when discovered categories need approval) → EXTRACTING → COMPLETED;
+        FAILED or CANCELLED end a run early.
+      enum: [QUEUED, DISCOVERING, AWAITING_REVIEW, EXTRACTING, COMPLETED, FAILED, CANCELLED]
+    EvalCaseExportDto:
+      type: object
+      required: [cases]
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalCaseDto'
+    EvalCaseDto:
+      type: object
+      description: One labelled email of the extraction evaluation (the file format of `ai-eval/**/*.json`).
+      required: [id, email, expected, mustNotProduce]
+      properties:
+        id:
+          type: string
+        email:
+          $ref: '#/components/schemas/EvalEmailDto'
+        expected:
+          $ref: '#/components/schemas/EvalExpectedDto'
+        mustNotProduce:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalForbiddenDto'
+    EvalEmailDto:
+      type: object
+      required: [mailbox, fromAddress, to, subject, receivedAt, body]
+      properties:
+        mailbox:
+          type: string
+        fromName:
+          type: string
+          nullable: true
+        fromAddress:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        body:
+          type: string
+    EvalExpectedDto:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: object
+          description: Expected records per collection slug.
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/EvalRecordDto'
+    EvalRecordDto:
+      type: object
+      required: [title, values]
+      properties:
+        title:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+    EvalForbiddenDto:
+      type: object
+      required: [collection]
+      properties:
+        collection:
+          type: string
+        title:
+          type: string
+          nullable: true
+    InsightRunDto:
+      type: object
+      required: [running]
+      properties:
+        running:
+          type: boolean
+          description: A pass requested by the user is queued or running
+    AnalysisRunDto:
+      type: object
+      required: [id, status, discoverySteps, discoveryStepsDone, totalEmails, processedEmails, failedEmails, proposalsCreated, autoApplied, categoriesDiscovered, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/AnalysisState'
+        since:
+          type: string
+          format: date-time
+          description: Oldest email included; absent = everything
+        discoverySteps:
+          type: integer
+          format: int32
+          description: Model calls the category discovery needs (one per batch of emails plus one merge); 0 before it starts
+        discoveryStepsDone:
+          type: integer
+          format: int32
+        currentEmailSubject:
+          type: string
+          description: Subject of the email the model is reading right now (EXTRACTING only)
+        currentEmailFrom:
+          type: string
+          description: Sender name (or address) of that email
+        totalEmails:
+          type: integer
+          format: int32
+        processedEmails:
+          type: integer
+          format: int32
+        failedEmails:
+          type: integer
+          format: int32
+        proposalsCreated:
+          type: integer
+          format: int32
+          description: Proposals waiting for review
+        autoApplied:
+          type: integer
+          format: int32
+          description: Changes applied directly (AUTO permissions)
+        categoriesDiscovered:
+          type: integer
+          format: int32
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time

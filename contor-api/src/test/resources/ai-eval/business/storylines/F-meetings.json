@@ -1,0 +1,329 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "F1-anadolu-video",
+      "category": "F",
+      "summary": "The Turkish supplier proposes a video call in Istanbul time; the owner accepts and gets a meeting link.",
+      "difficulty": "hard",
+      "editorNotes": "11:00 Istanbul time (UTC+3) is 10:00 in Hamburg; the event must carry the right instant.",
+      "tags": ["time-zone"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "invite", "day": "2026-07-13", "time": "09:00", "from": "p-arslan", "conversation": "anadolu-2027",
+          "facts": ["video call Thursday 16 July 11:00 Istanbul time", "topic: annual volume 2027", "question: are you available?"],
+          "style": { "lang": "en", "tone": "very polite", "length": "short", "signature": "full" },
+          "subject": "Video call - annual volume 2027",
+          "body": "Dear Mr Morgan,\n\nI hope this message finds you well. We would like to discuss your expected annual volume of forged flanges for 2027 with you. Would you be available for a video call on Thursday, 16 July, at 11:00 Istanbul time?\n\nBest regards,\nMehmet Arslan\nExport Manager\nAnadolu Dövme Sanayi A.Ş.\nTel: +90 224 5550 5501",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Video call with Mehmet Arslan about volume 2027", "entity": "anadolu-call", "values": { "starts_at": "2026-07-16T11:00:00+03:00" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Mehmet Arslan", "to": "events:Video call with Mehmet Arslan about volume 2027" }],
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Would you be available for a video call on Thursday, 16 July, at 11:00 Istanbul time?"], "scheduleFrom": "2026-07-16", "scheduleTo": "2026-07-16", "timeOfDay": "MORNING", "answeredBy": "#accept" },
+            "importance": "NORMAL",
+            "tags": ["time-zone"]
+          }
+        },
+        {
+          "key": "accept", "day": "2026-07-13", "time": "11:20", "direction": "sent", "to": ["p-arslan"], "inReplyTo": "#invite",
+          "facts": ["Thursday 11:00 Istanbul time = 10:00 Hamburg works"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: Video call - annual volume 2027",
+          "body": "Dear Mr Arslan,\n\nThursday at 11:00 your time (10:00 in Hamburg) works for me. Please send the link.\n\nBest regards\nAlex Morgan"
+        },
+        {
+          "key": "link", "day": "2026-07-14", "time": "08:40", "from": "p-arslan", "inReplyTo": "#accept",
+          "facts": ["confirmed Thursday 16 July 11:00 Istanbul time", "link https://meet.anadolu-dovme.example/ads-nordhafen"],
+          "style": { "lang": "en", "tone": "very polite", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Video call - annual volume 2027",
+          "body": "Dear Mr Morgan,\n\nthank you, confirmed for Thursday, 16 July, 11:00 Istanbul time. Here is the link: https://meet.anadolu-dovme.example/ads-nordhafen\n\nBest regards,\nMehmet Arslan",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Video call with Mehmet Arslan about volume 2027", "entity": "anadolu-call", "values": { "starts_at": "2026-07-16T11:00:00+03:00", "location": "https://meet.anadolu-dovme.example/ads-nordhafen" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Mehmet Arslan", "to": "events:Video call with Mehmet Arslan about volume 2027" }],
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["time-zone"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "F2-ostrowski-fair",
+      "category": "F",
+      "summary": "A customer asks for a meeting at the September trade fair; the owner names hall and booth; the customer confirms.",
+      "difficulty": "medium",
+      "editorNotes": "Event two months ahead; hall and booth only in the owner's reply, the confirmation depends on it.",
+      "tags": ["trade-fair", "different-marek"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "ask", "day": "2026-07-21", "time": "11:30", "from": "p-kowalczyk", "conversation": "ostrowski-fair",
+          "facts": ["will you be at IndustrieTage Ruhrfeld in September?", "meet at your booth on 16 September at 14:00?"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "IndustrieTage Ruhrfeld",
+          "body": "Hi Alex,\n\nwill you be at IndustrieTage Ruhrfeld in September? Could we meet at your booth on 16 September at 14:00?\n\nPozdrawiam\nMarek Kowalczyk\nPurchasing Manager\nOstrowski Serwis Sp. z o.o.\ntel. +48 61 5550 2801",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld", "entity": "fair-ostrowski", "values": { "starts_at": "2026-09-16T14:00:00+02:00" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Marek Kowalczyk", "to": "events:Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld" }],
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Will you be at IndustrieTage Ruhrfeld in September?", "Could we meet at your booth on 16 September at 14:00?"], "scheduleFrom": "2026-09-16", "scheduleTo": "2026-09-16", "timeOfDay": "AFTERNOON", "answeredBy": "#yes" },
+            "importance": "NORMAL",
+            "tags": ["different-marek"]
+          }
+        },
+        {
+          "key": "yes", "day": "2026-07-21", "time": "14:00", "direction": "sent", "to": ["p-kowalczyk"], "inReplyTo": "#ask",
+          "facts": ["yes", "Halle 3, booth C14", "16 September 14:00 works"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: IndustrieTage Ruhrfeld",
+          "body": "Hi Marek,\n\nyes, we are there: hall 3, booth C14. 16 September at 14:00 works, I've blocked it.\n\nAlex"
+        },
+        {
+          "key": "confirm", "day": "2026-07-22", "time": "08:15", "from": "p-kowalczyk", "inReplyTo": "#yes",
+          "facts": ["great, see you at the booth"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "RE: IndustrieTage Ruhrfeld",
+          "body": "Great, see you there!\nMarek\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Tuesday, July 21, 2026 2:00 PM\nTo: Marek Kowalczyk <marek.kowalczyk@ostrowski-serwis.example>\nSubject: RE: IndustrieTage Ruhrfeld\n\nyes, we are there: hall 3, booth C14. 16 September at 14:00 works, I've blocked it.",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld", "entity": "fair-ostrowski", "values": { "starts_at": "2026-09-16T14:00:00+02:00", "location": "hall 3, booth C14" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Marek Kowalczyk", "to": "events:Meeting with Marek Kowalczyk at IndustrieTage Ruhrfeld" }],
+            "needsReply": false,
+            "importance": "LOW",
+            "dependsOn": ["#yes"],
+            "tags": ["very-short", "facts-in-quote", "different-marek"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "F3-messe-exhibitor",
+      "category": "F",
+      "summary": "The trade fair organiser confirms the booth and sets two document deadlines.",
+      "difficulty": "easy",
+      "editorNotes": "One all-day event over three days plus two to-dos with different deadlines.",
+      "tags": ["trade-fair"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "booth", "day": "2026-07-15", "time": "10:00", "from": "p-falk", "conversation": "messe-standbestaetigung",
+          "facts": ["Standbestätigung IndustrieTage Ruhrfeld 15.-17.09.2026", "Halle 3, Stand C14", "Standbaupläne bis 31.07.2026 einreichen", "Ausstellerausweise bis 14.08.2026 bestellen"],
+          "style": { "lang": "de", "tone": "service", "length": "short", "signature": "full" },
+          "subject": "Standbestätigung IndustrieTage Ruhrfeld 2026",
+          "body": "Sehr geehrter Herr Morgan,\n\nwir freuen uns, Ihnen Ihren Stand für die IndustrieTage Ruhrfeld vom 15. bis 17.09.2026 zu bestätigen: Halle 3, Stand C14.\n\nBitte denken Sie an folgende Fristen:\n- Standbaupläne einreichen bis 31.07.2026\n- Ausstellerausweise bestellen bis 14.08.2026\n\nMit freundlichen Grüßen\nMiriam Falk\nAusstellerservice\nMesse Ruhrfeld GmbH\nTel. +49 201 5550 7401",
+          "labels": {
+            "records": {
+              "events": [{ "title": "IndustrieTage Ruhrfeld", "values": { "starts_at": "2026-09-15T00:00:00+02:00", "ends_at": "2026-09-17T23:59:00+02:00", "all_day": true, "location": "Halle 3, Stand C14" } }],
+              "tasks": [
+                { "title": "Standbaupläne für IndustrieTage Ruhrfeld einreichen", "values": { "state": "open", "due_date": "2026-07-31" } },
+                { "title": "Ausstellerausweise für IndustrieTage Ruhrfeld bestellen", "values": { "state": "open", "due_date": "2026-08-14" } }
+              ]
+            },
+            "derived": { "events.starts_at": "15. bis 17.09.2026 -> 15.09.2026 all day", "events.ends_at": "17.09.2026, end of day" },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["trade-fair"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "F4-internal-weekly",
+      "category": "F",
+      "summary": "The managing director introduces a weekly meeting, moves one instance and cancels another.",
+      "difficulty": "medium",
+      "editorNotes": "Recurring meeting stated as 'ab nächster Woche montags'; a reschedule and a cancellation (nothing to create).",
+      "tags": ["reschedule"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "intro", "day": "2026-07-06", "time": "07:30", "from": "p-helga", "to": ["p-alex", "p-jana", "p-tobias", "p-sophie", "p-daniel"], "conversation": "weekly",
+          "facts": ["Weekly ab nächster Woche montags 8:30", "Besprechungsraum 2", "Agenda: Aufträge, Lieferanten, Liquidität"],
+          "style": { "lang": "de", "tone": "short, decisive", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Weekly Leitungsrunde",
+          "body": "Hallo zusammen,\n\nab nächster Woche machen wir montags um 8:30 eine Leitungsrunde im Besprechungsraum 2, 30 Minuten. Agenda: Aufträge, Lieferanten, Liquidität.\n\nHelga",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Weekly Leitungsrunde", "values": { "starts_at": "2026-07-13T08:30:00+02:00", "location": "Besprechungsraum 2" } }]
+            },
+            "derived": { "events.starts_at": "nächste Woche montags = 13.07.2026" },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["relative-date"]
+          }
+        },
+        {
+          "key": "moved", "day": "2026-07-17", "time": "16:10", "from": "p-helga", "to": ["p-alex", "p-jana", "p-tobias", "p-sophie", "p-daniel"], "inReplyTo": "#intro",
+          "facts": ["Weekly am Montag verschiebt sich auf Dienstag 21.07. 9:00", "Helga Montag beim Steuerberater"],
+          "style": { "lang": "de", "tone": "short", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: Weekly Leitungsrunde",
+          "body": "Die Runde am Montag verschiebt sich auf Dienstag, 21.07., 9:00 – ich bin Montag beim Steuerberater.\nH.",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Weekly Leitungsrunde 21.07.", "values": { "starts_at": "2026-07-21T09:00:00+02:00" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["reschedule"]
+          }
+        },
+        {
+          "key": "cancelled", "day": "2026-07-24", "time": "12:00", "from": "p-helga", "to": ["p-alex", "p-jana", "p-tobias", "p-sophie", "p-daniel"], "inReplyTo": "#moved",
+          "facts": ["Runde am 27.07. fällt aus"],
+          "style": { "lang": "de", "tone": "short", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: Weekly Leitungsrunde",
+          "body": "Die Runde am 27.07. fällt aus. Schönes Wochenende!\nH.",
+          "labels": {
+            "contacts": false,
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }, { "collection": "events", "title": "Weekly Leitungsrunde 27.07." }],
+            "tags": ["cancelled", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "F5-behrens-appointment",
+      "category": "F",
+      "summary": "The tax accountant offers two slots for the half-year review and asks for a document; the owner picks one.",
+      "difficulty": "medium",
+      "editorNotes": "Two alternative slots (no event until chosen), an attached to-do; the confirmation names the address.",
+      "tags": ["answered"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "offer", "day": "2026-07-08", "time": "11:15", "from": "p-ubehrens", "conversation": "behrens-halbjahr",
+          "facts": ["Besprechung Halbjahresabschluss", "Mittwoch 22.07. 10:00 oder Donnerstag 23.07. 14:00", "in der Kanzlei", "bitte OP-Liste mitbringen"],
+          "style": { "lang": "de", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Termin Halbjahresabschluss",
+          "body": "Sehr geehrter Herr Morgan,\n\nfür die Besprechung des Halbjahresabschlusses schlage ich Mittwoch, 22.07., 10:00 Uhr oder Donnerstag, 23.07., 14:00 Uhr in unserer Kanzlei vor. Welcher Termin passt Ihnen? Bitte bringen Sie die aktuelle OP-Liste mit.\n\nMit freundlichen Grüßen\nUlrich Behrens\nSteuerberater\nSteuerkanzlei Behrens & Kolb\nTel. +49 40 5550 7501",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "OP-Liste für die Besprechung mit Herrn Behrens mitbringen", "values": { "state": "open" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Welcher Termin passt Ihnen: Mittwoch, 22.07., 10:00 oder Donnerstag, 23.07., 14:00?"], "scheduleFrom": "2026-07-22", "scheduleTo": "2026-07-23", "timeOfDay": "ANY", "answeredBy": "#pick" },
+            "importance": "NORMAL",
+            "tags": ["answered"]
+          }
+        },
+        {
+          "key": "pick", "day": "2026-07-08", "time": "13:40", "direction": "sent", "to": ["p-ubehrens"], "inReplyTo": "#offer",
+          "facts": ["Donnerstag 23.07. 14:00 passt", "OP-Liste bringe ich mit"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Termin Halbjahresabschluss",
+          "body": "Sehr geehrter Herr Behrens,\n\nDonnerstag, 23.07., 14:00 Uhr passt mir gut. Die OP-Liste bringe ich mit.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "confirm", "day": "2026-07-09", "time": "09:05", "from": "p-ubehrens", "inReplyTo": "#pick",
+          "facts": ["bestätigt Donnerstag 23.07. 14:00", "Kanzlei Speicherallee 7, 20457 Hamburg"],
+          "style": { "lang": "de", "tone": "formal", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Termin Halbjahresabschluss",
+          "body": "Sehr geehrter Herr Morgan,\n\nvielen Dank, dann sehen wir uns am Donnerstag, 23.07., um 14:00 Uhr in unserer Kanzlei, Speicherallee 7, 20457 Hamburg.\n\nMit freundlichen Grüßen\nUlrich Behrens",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Besprechung Halbjahresabschluss mit Herrn Behrens", "values": { "starts_at": "2026-07-23T14:00:00+02:00", "location": "Speicherallee 7, 20457 Hamburg" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Ulrich Behrens", "to": "events:Besprechung Halbjahresabschluss mit Herrn Behrens" }],
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F6-ferraro-dinner",
+      "category": "F",
+      "summary": "The Italian supplier visits Hamburg and invites the owner to dinner; the owner accepts and the restaurant is booked.",
+      "difficulty": "easy",
+      "editorNotes": "Evening slot (timeOfDay EVENING); the location only arrives in the third mail.",
+      "tags": [],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "invite", "day": "2026-07-20", "time": "12:30", "from": "p-ferraro", "conversation": "ferraro-hamburg",
+          "facts": ["in Hamburg on 28 July for a customer visit", "dinner at 19:30?", "a restaurant at the harbour"],
+          "style": { "lang": "en", "tone": "enthusiastic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "Hamburg 28 July - dinner?",
+          "body": "Ciao Alex,\n\nI'll be in Hamburg on 28 July for a customer visit. Would you join me for dinner at 19:30? I'd love to try a restaurant at the harbour.\n\nMarco",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Dinner with Marco Ferraro", "entity": "ferraro-dinner", "values": { "starts_at": "2026-07-28T19:30:00+02:00" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Marco Ferraro", "to": "events:Dinner with Marco Ferraro" }],
+            "needsReply": true,
+            "reply": { "intent": "SCHEDULE", "questions": ["Would you join me for dinner on 28 July at 19:30?"], "scheduleFrom": "2026-07-28", "scheduleTo": "2026-07-28", "timeOfDay": "EVENING", "answeredBy": "#yes" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "yes", "day": "2026-07-20", "time": "14:10", "direction": "sent", "to": ["p-ferraro"], "inReplyTo": "#invite",
+          "facts": ["gladly", "28 July 19:30"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: Hamburg 28 July - dinner?",
+          "body": "Ciao Marco,\n\ngladly! 28 July at 19:30 works. Shall I book something?\n\nAlex"
+        },
+        {
+          "key": "booked", "day": "2026-07-21", "time": "09:00", "from": "p-ferraro", "inReplyTo": "#yes",
+          "facts": ["already booked", "Restaurant Kaimauer, Kaiufer 30", "28 July 19:30"],
+          "style": { "lang": "en", "tone": "enthusiastic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Hamburg 28 July - dinner?",
+          "body": "No need, I already booked: Restaurant Kaimauer, Kaiufer 30, 28 July at 19:30. A presto!\nMarco",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Dinner with Marco Ferraro", "entity": "ferraro-dinner", "values": { "starts_at": "2026-07-28T19:30:00+02:00", "location": "Restaurant Kaimauer, Kaiufer 30" } }]
+            },
+            "relations": [{ "type": "attends", "from": "people:Marco Ferraro", "to": "events:Dinner with Marco Ferraro" }],
+            "needsReply": false,
+            "importance": "LOW"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F7-sophie-visit",
+      "category": "F",
+      "summary": "A colleague asks the owner to join a customer visit; the owner says yes.",
+      "difficulty": "easy",
+      "editorNotes": "Internal scheduling with a relative weekday; answered by the owner.",
+      "tags": ["answered"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "ask", "day": "2026-07-27", "time": "09:50", "from": "p-sophie", "conversation": "sophie-vossberg-besuch",
+          "facts": ["Kundenbesuch bei Vossberg in Bremen", "Donnerstag 10 Uhr", "kannst du mitkommen?", "Thema Rahmenvertrag 2027"],
+          "style": { "lang": "de", "tone": "friendly, chatty", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Vossberg Donnerstag?",
+          "body": "Hi Alex,\n\nich fahre Donnerstag zu Vossberg nach Bremen, Termin um 10 Uhr, Thema Rahmenvertrag 2027. Kannst du mitkommen? Jens hat extra nach dir gefragt :)\n\nSophie",
+          "labels": {
+            "records": {
+              "events": [{ "title": "Kundenbesuch Vossberg Rahmenvertrag 2027", "values": { "starts_at": "2026-07-30T10:00:00+02:00", "location": "Bremen" } }]
+            },
+            "derived": { "events.starts_at": "Donnerstag after Monday 27.07. = 30.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Kannst du Donnerstag mit zu Vossberg kommen?"], "answeredBy": "#yes" },
+            "importance": "NORMAL",
+            "tags": ["relative-date", "answered"]
+          }
+        },
+        {
+          "key": "yes", "day": "2026-07-27", "time": "10:05", "direction": "sent", "to": ["p-sophie"], "inReplyTo": "#ask",
+          "facts": ["komme mit", "Abfahrt 8 Uhr"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Vossberg Donnerstag?",
+          "body": "Klar, ich komme mit. Abfahrt 8 Uhr am Lager?\nAlex"
+        }
+      ]
+    }
+  ]
+}

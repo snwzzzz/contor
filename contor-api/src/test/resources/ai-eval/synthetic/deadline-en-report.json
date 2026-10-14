@@ -1,0 +1,37 @@
+{
+  "id": "deadline-en-report",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Elena Costa",
+    "fromAddress": "elena.costa@halden-group.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Report needed",
+    "receivedAt": "2026-10-14T09:00:00Z",
+    "body": "Hi Alex,\ncould you send me the quarterly report by end of next week? I need it for the board meeting.\nThanks, Elena"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Elena Costa",
+          "values": {
+            "email": "elena.costa@halden-group.com"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Send the quarterly report to Elena Costa",
+          "values": {
+            "due_date": "2026-10-23"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -1,0 +1,77 @@
+{
+  "id": "m-0301",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jensen-august",
+  "cc": [],
+  "storyline": "E2-jensen-shrinking",
+  "beat": "skip",
+  "category": "E2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mads Kjær",
+    "fromAddress": "mads.kjaer@jensen-maskinfabrik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "August",
+    "receivedAt": "2026-07-30T11:25:00Z",
+    "body": "Hi Alex,\n\njust so you know: we will skip the August order. I'll get back to you in September.\n\nMads"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Jensen Maskinfabrik",
+          "values": {
+            "name": "Jensen Maskinfabrik",
+            "segment": "at_risk"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Mads Kjær",
+          "values": {
+            "email": "mads.kjaer@jensen-maskinfabrik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Jensen Maskinfabrik A/S",
+          "values": {
+            "domain": "jensen-maskinfabrik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Mads Kjær",
+        "to": "organizations:Jensen Maskinfabrik A/S"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0067"
+  ],
+  "tags": [
+    "churn-signal",
+    "very-short"
+  ],
+  "storylineTags": [
+    "churn-signal"
+  ],
+  "facts": [
+    "we will skip the August order",
+    "will get back in September"
+  ]
+}

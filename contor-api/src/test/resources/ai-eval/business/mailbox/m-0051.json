@@ -1,0 +1,44 @@
+{
+  "id": "m-0051",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-kessler-km-26-0712",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "confirm",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": "m-0041",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "s.wendt@kessler-maschinenbau.example"
+    ],
+    "subject": "AW: Bestellung KM-26-0712",
+    "receivedAt": "2026-07-08T13:30:00Z",
+    "body": "Guten Tag Frau Wendt,\n\nvielen Dank, erfasst als SO-26-0155:\n20 Kartons NH-20410 à 18,40 € = 368,00 €\n5 Pack NH-40115 à 27,50 € = 137,50 €\nGesamt 505,50 € netto, Liefertermin 17.07.\n\nViele Grüße\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "SO-26-0155",
+    "20 × 18,40 € = 368,00 €",
+    "5 × 27,50 € = 137,50 €",
+    "505,50 € netto",
+    "Liefertermin 17.07."
+  ]
+}

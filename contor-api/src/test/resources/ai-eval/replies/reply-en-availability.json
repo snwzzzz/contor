@@ -1,0 +1,15 @@
+{
+  "id": "reply-en-availability",
+  "needsReply": true,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Tom Becker",
+    "fromAddress": "tom.becker@northwind.io",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Dinner next week?",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hi Alex,\nI'm in Vienna next week for a conference. Are you free for dinner on Wednesday or Thursday evening? Let me know what works.\nCheers, Tom"
+  }
+}

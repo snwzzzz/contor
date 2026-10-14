@@ -1,0 +1,101 @@
+{
+  "id": "m-0179",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-anadolu-po-1088",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "loaded",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0023",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Elif Kaya",
+    "fromAddress": "e.kaya@anadolu-dovme.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Purchase order PO-26-1088 - loading",
+    "receivedAt": "2026-07-18T12:20:00Z",
+    "body": "Dear Mr Morgan,\n\nloading of PO-26-1088 was completed today. Truck 34 BL 2207 (Bosporus Lojistik), CMR no. CMR-BL-260718, 1,200 pcs on 6 crates.\nThe truck will reach the Kapıkule border on Monday 20/07; estimated arrival in Hamburg 23/07/2026.\n\nBest regards,\nElif Kaya\nLogistics\nAnadolu Dövme Sanayi A.Ş.\nTel: +90 224 5550 5502"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Anadolu Dövme PO-26-1088",
+          "values": {
+            "po_number": "PO-26-1088",
+            "state": "shipped",
+            "expected_arrival": "2026-07-23"
+          }
+        }
+      ],
+      "shipments": [
+        {
+          "title": "Bosporus Lojistik CMR-BL-260718",
+          "values": {
+            "tracking_number": "CMR-BL-260718",
+            "carrier": "Bosporus Lojistik",
+            "direction": "inbound",
+            "order_ref": "PO-26-1088",
+            "state": "in_transit",
+            "eta": "2026-07-23"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Elif Kaya",
+          "values": {
+            "email": "e.kaya@anadolu-dovme.example",
+            "phone": "+90 224 5550 5502",
+            "role_title": "Logistics"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Anadolu Dövme Sanayi A.Ş.",
+          "values": {
+            "domain": "anadolu-dovme.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Elif Kaya",
+        "to": "organizations:Anadolu Dövme Sanayi A.Ş."
+      },
+      {
+        "type": "delivers",
+        "from": "shipments:Bosporus Lojistik CMR-BL-260718",
+        "to": "purchase_orders:Anadolu Dövme PO-26-1088"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "date-format",
+    "weekend-mail"
+  ],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "loading completed today (Saturday)",
+    "truck 34 BL 2207 of Bosporus Lojistik",
+    "CMR-BL-260718",
+    "Kapıkule border Monday 20/07",
+    "arrival Hamburg approx. 23/07/2026"
+  ]
+}

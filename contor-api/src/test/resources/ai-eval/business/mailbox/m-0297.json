@@ -1,0 +1,82 @@
+{
+  "id": "m-0297",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-tradehub-8",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "tradehub-8",
+  "kind": "marketplace-alert",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "TradeHub Preisalarm",
+    "fromAddress": "alerts@tradehub-markt.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Preisalarm: Gewindestange M12x1000 ab 3,10 €",
+    "receivedAt": "2026-07-30T03:10:00Z",
+    "body": "Hallo,\n\nfür Ihren Preisalarm „Gewindestange M12x1000“ gibt es neue Angebote: ab 3,10 € bei 7 Anbietern.\n\nAngebote ansehen: https://www.tradehub-markt.example/alarm\n\nDiese E-Mail wurde automatisch versendet. Preisalarme verwalten: https://www.tradehub-markt.example/konto\nTradeHub Marktplatz"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "marketplace-alert"
+  ],
+  "facts": []
+}

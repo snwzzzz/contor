@@ -1,0 +1,35 @@
+{
+  "id": "subscription-en-trial",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "NoteMate",
+    "fromAddress": "hello@notemate.app",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your free trial ends in 3 days",
+    "receivedAt": "2026-10-12T09:00:00Z",
+    "body": "Your NoteMate Pro trial ends on October 15. After that you will be charged 4.99 EUR per month unless you cancel before then."
+  },
+  "expected": {
+    "records": {
+      "subscriptions": [
+        {
+          "title": "NoteMate Pro",
+          "values": {
+            "service": "NoteMate Pro",
+            "price": {
+              "amount": 4.99,
+              "currency": "EUR"
+            },
+            "billing_period": "monthly",
+            "next_billing": "2026-10-15"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

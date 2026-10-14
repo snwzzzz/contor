@@ -1,0 +1,35 @@
+{
+  "id": "subscription-en-price-change",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "StreamBox",
+    "fromAddress": "info@streambox.tv",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Changes to your StreamBox plan",
+    "receivedAt": "2026-10-05T13:00:00Z",
+    "body": "Hi Alex,\nstarting with your next billing date on November 3, 2026, the price of your monthly Standard plan will change from 11.99 EUR to 13.99 EUR. You can cancel any time in your account settings."
+  },
+  "expected": {
+    "records": {
+      "subscriptions": [
+        {
+          "title": "StreamBox",
+          "values": {
+            "service": "StreamBox",
+            "price": {
+              "amount": 13.99,
+              "currency": "EUR"
+            },
+            "billing_period": "monthly",
+            "next_billing": "2026-11-03"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

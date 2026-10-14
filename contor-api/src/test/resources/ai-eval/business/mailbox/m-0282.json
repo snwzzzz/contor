@@ -1,0 +1,58 @@
+{
+  "id": "m-0282",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-steiner-handelsrechnung",
+  "cc": [],
+  "storyline": "B4-steiner-customs",
+  "beat": "tobias",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": "m-0278",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Eilt: Handelsrechnung Steiner SO-26-0160",
+    "receivedAt": "2026-07-28T09:10:00Z",
+    "body": "Hi Alex,\n\nHandelsrechnung RE-2026-0438 hängt an, die EORI steht unten auf der Rechnung.\n\nTobias"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Nordhafen RE-2026-0438 Steiner",
+          "values": {
+            "invoice_number": "RE-2026-0438",
+            "direction": "outgoing"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "Handelsrechnung RE-2026-0438 hängt an",
+    "EORI steht unten auf der Rechnung"
+  ]
+}

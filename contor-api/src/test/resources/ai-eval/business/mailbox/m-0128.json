@@ -1,0 +1,83 @@
+{
+  "id": "m-0128",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-cancel",
+  "cc": [],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "cancel",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Paweł Zieliński",
+    "fromAddress": "pawel.zielinski@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Cancel order 2026/OS/118",
+    "receivedAt": "2026-07-15T06:20:00Z",
+    "body": "Dear Mr Morgan,\n\nplease cancel the order 2026/OS/118 (your SO-26-0153), the project was stoped. Sorry for inconvenience.\n\nBest regards\nPaweł Zieliński\nLogistics\nOstrowski Serwis Sp. z o.o."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ostrowski Serwis SO-26-0153",
+          "entity": "so-0153",
+          "values": {
+            "order_number": "SO-26-0153",
+            "customer": "Ostrowski Serwis",
+            "state": "cancelled"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Paweł Zieliński",
+          "values": {
+            "email": "pawel.zielinski@ostrowski-serwis.example",
+            "role_title": "Logistics"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Paweł Zieliński",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0132"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "cancel-after-shipment",
+    "thread-split"
+  ],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "please cancel order 2026/OS/118 (SO-26-0153)",
+    "project was stopped"
+  ]
+}

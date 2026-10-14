@@ -1,0 +1,66 @@
+{
+  "id": "m-0174",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-frei-haus",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "J2-ostrowski-ok-machen",
+  "beat": "ok",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": "m-0168",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dr. Helga Sommerfeld",
+    "fromAddress": "helga.sommerfeld@nordhafen.example",
+    "to": [
+      "daniel.okafor@nordhafen.example"
+    ],
+    "subject": "AW: Ostrowski frei Haus Q3",
+    "receivedAt": "2026-07-17T13:00:00Z",
+    "body": "ok, machen.\nH.\n\nVon: Daniel Okafor <daniel.okafor@nordhafen.example>\nGesendet: Freitag, 17. Juli 2026 11:40\nAn: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nCc: Alex Morgan <alex.morgan@nordhafen.example>\nBetreff: Ostrowski frei Haus Q3\n\nHi Helga,\n\nOstrowski fragt, ob wir ihnen in Q3 Lieferung frei Haus schon ab 1.000 € Bestellwert geben (statt 1.500 €). Zusatzkosten schätze ich auf ca. 300 € im Quartal, dafür bestellen sie häufiger. Machen wir das?\n\nDaniel"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Ostrowski Serwis",
+          "values": {
+            "name": "Ostrowski Serwis",
+            "notes": "Q3 2026: Lieferung frei Haus ab 1.000 € Bestellwert"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dr. Helga Sommerfeld",
+          "values": {
+            "email": "helga.sommerfeld@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [
+    "m-0168"
+  ],
+  "tags": [
+    "ok-do-it",
+    "cc-only",
+    "facts-in-quote"
+  ],
+  "storylineTags": [
+    "ok-do-it",
+    "cc-only"
+  ],
+  "facts": [
+    "ok, machen"
+  ]
+}

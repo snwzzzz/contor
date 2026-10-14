@@ -1,0 +1,77 @@
+{
+  "id": "m-0063",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-behrens-halbjahr",
+  "cc": [],
+  "storyline": "F5-behrens-appointment",
+  "beat": "confirm",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": "m-0045",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Ulrich Behrens",
+    "fromAddress": "u.behrens@behrens-kolb.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Termin Halbjahresabschluss",
+    "receivedAt": "2026-07-09T07:05:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nvielen Dank, dann sehen wir uns am Donnerstag, 23.07., um 14:00 Uhr in unserer Kanzlei, Speicherallee 7, 20457 Hamburg.\n\nMit freundlichen Grüßen\nUlrich Behrens"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Besprechung Halbjahresabschluss mit Herrn Behrens",
+          "values": {
+            "starts_at": "2026-07-23T14:00:00+02:00",
+            "location": "Speicherallee 7, 20457 Hamburg"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Ulrich Behrens",
+          "values": {
+            "email": "u.behrens@behrens-kolb.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Steuerkanzlei Behrens & Kolb",
+          "values": {
+            "domain": "behrens-kolb.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Ulrich Behrens",
+        "to": "organizations:Steuerkanzlei Behrens & Kolb"
+      },
+      {
+        "type": "attends",
+        "from": "people:Ulrich Behrens",
+        "to": "events:Besprechung Halbjahresabschluss mit Herrn Behrens"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "answered"
+  ],
+  "facts": [
+    "bestätigt Donnerstag 23.07. 14:00",
+    "Kanzlei Speicherallee 7, 20457 Hamburg"
+  ]
+}

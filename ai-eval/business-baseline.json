@@ -1,0 +1,339 @@
+{
+  "model" : "qwen3.5:9b",
+  "promptVersion" : "extract-v7+business",
+  "cases" : 164,
+  "failedCases" : 0,
+  "collections" : {
+    "complaints" : {
+      "expected" : 8,
+      "produced" : 11,
+      "truePositives" : 3,
+      "precision" : 0.2727272727272727,
+      "recall" : 0.375
+    },
+    "customers" : {
+      "expected" : 8,
+      "produced" : 3,
+      "truePositives" : 2,
+      "precision" : 0.6666666666666666,
+      "recall" : 0.25
+    },
+    "events" : {
+      "expected" : 16,
+      "produced" : 20,
+      "truePositives" : 8,
+      "precision" : 0.4,
+      "recall" : 0.5
+    },
+    "invoices" : {
+      "expected" : 14,
+      "produced" : 14,
+      "truePositives" : 13,
+      "precision" : 0.9285714285714286,
+      "recall" : 0.9285714285714286
+    },
+    "organizations" : {
+      "expected" : 130,
+      "produced" : 105,
+      "truePositives" : 97,
+      "precision" : 0.9238095238095239,
+      "recall" : 0.7461538461538462
+    },
+    "people" : {
+      "expected" : 162,
+      "produced" : 147,
+      "truePositives" : 140,
+      "precision" : 0.9523809523809523,
+      "recall" : 0.8641975308641975
+    },
+    "purchase_orders" : {
+      "expected" : 18,
+      "produced" : 26,
+      "truePositives" : 16,
+      "precision" : 0.6153846153846154,
+      "recall" : 0.8888888888888888
+    },
+    "sales_orders" : {
+      "expected" : 54,
+      "produced" : 42,
+      "truePositives" : 36,
+      "precision" : 0.8571428571428571,
+      "recall" : 0.6666666666666666
+    },
+    "shipments" : {
+      "expected" : 34,
+      "produced" : 38,
+      "truePositives" : 30,
+      "precision" : 0.7894736842105263,
+      "recall" : 0.8823529411764706
+    },
+    "suppliers" : {
+      "expected" : 1,
+      "produced" : 3,
+      "truePositives" : 0,
+      "precision" : 0.0,
+      "recall" : 0.0
+    },
+    "tasks" : {
+      "expected" : 38,
+      "produced" : 20,
+      "truePositives" : 8,
+      "precision" : 0.4,
+      "recall" : 0.21052631578947367
+    }
+  },
+  "fields" : {
+    "complaints.customer" : {
+      "correct" : 1,
+      "total" : 3,
+      "accuracy" : 0.3333333333333333
+    },
+    "complaints.opened_on" : {
+      "correct" : 0,
+      "total" : 1,
+      "accuracy" : 0.0
+    },
+    "complaints.reference" : {
+      "correct" : 2,
+      "total" : 2,
+      "accuracy" : 1.0
+    },
+    "complaints.severity" : {
+      "correct" : 0,
+      "total" : 1,
+      "accuracy" : 0.0
+    },
+    "complaints.state" : {
+      "correct" : 3,
+      "total" : 3,
+      "accuracy" : 1.0
+    },
+    "complaints.topic" : {
+      "correct" : 1,
+      "total" : 1,
+      "accuracy" : 1.0
+    },
+    "customers.customer_number" : {
+      "correct" : 1,
+      "total" : 1,
+      "accuracy" : 1.0
+    },
+    "customers.name" : {
+      "correct" : 1,
+      "total" : 2,
+      "accuracy" : 0.5
+    },
+    "customers.notes" : {
+      "correct" : 0,
+      "total" : 1,
+      "accuracy" : 0.0
+    },
+    "customers.payment_terms" : {
+      "correct" : 0,
+      "total" : 1,
+      "accuracy" : 0.0
+    },
+    "customers.segment" : {
+      "correct" : 1,
+      "total" : 1,
+      "accuracy" : 1.0
+    },
+    "events.location" : {
+      "correct" : 5,
+      "total" : 5,
+      "accuracy" : 1.0
+    },
+    "events.starts_at" : {
+      "correct" : 7,
+      "total" : 8,
+      "accuracy" : 0.875
+    },
+    "invoices.amount" : {
+      "correct" : 11,
+      "total" : 11,
+      "accuracy" : 1.0
+    },
+    "invoices.direction" : {
+      "correct" : 9,
+      "total" : 12,
+      "accuracy" : 0.75
+    },
+    "invoices.due_date" : {
+      "correct" : 8,
+      "total" : 9,
+      "accuracy" : 0.8888888888888888
+    },
+    "invoices.invoice_number" : {
+      "correct" : 13,
+      "total" : 13,
+      "accuracy" : 1.0
+    },
+    "invoices.issuer" : {
+      "correct" : 0,
+      "total" : 10,
+      "accuracy" : 0.0
+    },
+    "invoices.state" : {
+      "correct" : 11,
+      "total" : 11,
+      "accuracy" : 1.0
+    },
+    "organizations.domain" : {
+      "correct" : 97,
+      "total" : 97,
+      "accuracy" : 1.0
+    },
+    "organizations.name" : {
+      "correct" : 1,
+      "total" : 2,
+      "accuracy" : 0.5
+    },
+    "people.email" : {
+      "correct" : 140,
+      "total" : 140,
+      "accuracy" : 1.0
+    },
+    "people.full_name" : {
+      "correct" : 1,
+      "total" : 1,
+      "accuracy" : 1.0
+    },
+    "people.phone" : {
+      "correct" : 58,
+      "total" : 62,
+      "accuracy" : 0.9354838709677419
+    },
+    "people.role_title" : {
+      "correct" : 60,
+      "total" : 61,
+      "accuracy" : 0.9836065573770492
+    },
+    "purchase_orders.expected_arrival" : {
+      "correct" : 4,
+      "total" : 10,
+      "accuracy" : 0.4
+    },
+    "purchase_orders.po_number" : {
+      "correct" : 16,
+      "total" : 16,
+      "accuracy" : 1.0
+    },
+    "purchase_orders.state" : {
+      "correct" : 11,
+      "total" : 15,
+      "accuracy" : 0.7333333333333333
+    },
+    "purchase_orders.supplier" : {
+      "correct" : 0,
+      "total" : 7,
+      "accuracy" : 0.0
+    },
+    "purchase_orders.total" : {
+      "correct" : 6,
+      "total" : 6,
+      "accuracy" : 1.0
+    },
+    "sales_orders.confirmed_delivery" : {
+      "correct" : 0,
+      "total" : 3,
+      "accuracy" : 0.0
+    },
+    "sales_orders.customer" : {
+      "correct" : 8,
+      "total" : 28,
+      "accuracy" : 0.2857142857142857
+    },
+    "sales_orders.order_number" : {
+      "correct" : 22,
+      "total" : 22,
+      "accuracy" : 1.0
+    },
+    "sales_orders.requested_delivery" : {
+      "correct" : 5,
+      "total" : 13,
+      "accuracy" : 0.38461538461538464
+    },
+    "sales_orders.state" : {
+      "correct" : 24,
+      "total" : 32,
+      "accuracy" : 0.75
+    },
+    "sales_orders.total" : {
+      "correct" : 4,
+      "total" : 5,
+      "accuracy" : 0.8
+    },
+    "shipments.carrier" : {
+      "correct" : 3,
+      "total" : 14,
+      "accuracy" : 0.21428571428571427
+    },
+    "shipments.direction" : {
+      "correct" : 11,
+      "total" : 13,
+      "accuracy" : 0.8461538461538461
+    },
+    "shipments.driver" : {
+      "correct" : 0,
+      "total" : 3,
+      "accuracy" : 0.0
+    },
+    "shipments.eta" : {
+      "correct" : 17,
+      "total" : 20,
+      "accuracy" : 0.85
+    },
+    "shipments.order_ref" : {
+      "correct" : 9,
+      "total" : 9,
+      "accuracy" : 1.0
+    },
+    "shipments.state" : {
+      "correct" : 17,
+      "total" : 29,
+      "accuracy" : 0.5862068965517241
+    },
+    "shipments.tracking_number" : {
+      "correct" : 29,
+      "total" : 29,
+      "accuracy" : 1.0
+    },
+    "tasks.due_date" : {
+      "correct" : 8,
+      "total" : 8,
+      "accuracy" : 1.0
+    },
+    "tasks.state" : {
+      "correct" : 8,
+      "total" : 8,
+      "accuracy" : 1.0
+    }
+  },
+  "fieldsOverall" : {
+    "correct" : 633,
+    "total" : 749,
+    "accuracy" : 0.8451268357810414
+  },
+  "dates" : {
+    "correct" : 15,
+    "total" : 41,
+    "accuracy" : 0.36585365853658536
+  },
+  "falsePositives" : {
+    "nothingCases" : 1,
+    "withOutput" : 0,
+    "rate" : 0.0
+  },
+  "forbiddenHits" : 1,
+  "latency" : {
+    "p50Millis" : 13645,
+    "p95Millis" : 35723
+  },
+  "relations" : {
+    "expected" : 149,
+    "produced" : 117,
+    "truePositives" : 95,
+    "precision" : 0.811965811965812,
+    "recall" : 0.6375838926174496
+  }
+}

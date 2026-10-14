@@ -1,0 +1,86 @@
+{
+  "id": "m-0190",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-nordkap-first",
+  "cc": [],
+  "storyline": "E5-nordkap-new",
+  "beat": "contact",
+  "category": "E5",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sindre Haugen",
+    "fromAddress": "sindre.haugen@nordkap-marine.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "New customer inquiry - bearings",
+    "receivedAt": "2026-07-20T08:25:00Z",
+    "body": "Hi Alex,\n\nwe are a marine service company in Bergen and Halvorsen Verkstedservice recommended you. Could you send us your price list for bearings and bearing units in NOK? And do you ship to Bergen including the customs paperwork?\n\nBest regards\nSindre Haugen\nOperations Manager\nNordkap Marine Service AS\n+47 5550 3801"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Nordkap Marine Service",
+          "values": {
+            "name": "Nordkap Marine Service",
+            "segment": "new"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sindre Haugen",
+          "values": {
+            "email": "sindre.haugen@nordkap-marine.example",
+            "phone": "+47 5550 3801",
+            "role_title": "Operations Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Nordkap Marine Service AS",
+          "values": {
+            "domain": "nordkap-marine.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Sindre Haugen",
+        "to": "organizations:Nordkap Marine Service AS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Could you send your price list for bearings and bearing units in NOK?",
+      "Do you ship to Bergen including the customs paperwork?"
+    ],
+    "answeredBy": "m-0203"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer",
+    "currency"
+  ],
+  "facts": [
+    "marine service company in Bergen",
+    "recommended by Halvorsen",
+    "price list for bearings and bearing units in NOK?",
+    "ship to Bergen incl. customs paperwork?"
+  ]
+}

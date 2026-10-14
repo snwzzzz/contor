@@ -1,0 +1,59 @@
+{
+  "id": "m-0089",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jana-odlewnia-we1",
+  "cc": [],
+  "storyline": "D-wislatrans-marek",
+  "beat": "unloaded",
+  "category": "D",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "WE Odlewnia",
+    "receivedAt": "2026-07-10T13:05:00Z",
+    "body": "Der Pole ist da, 600 Gehäuse auf 3 Paletten (WTS-PL-260709). WE ist gebucht, Prüfung mach ich Montag.\nJana"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260709",
+          "values": {
+            "tracking_number": "WTS-PL-260709",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "shared-driver"
+  ],
+  "facts": [
+    "Pole ist da",
+    "600 Gehäuse, 3 Paletten, WTS-PL-260709",
+    "Wareneingang gebucht"
+  ]
+}

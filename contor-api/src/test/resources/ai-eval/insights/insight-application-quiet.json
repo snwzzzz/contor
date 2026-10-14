@@ -1,0 +1,15 @@
+{
+  "id": "insight-application-quiet",
+  "today": "2026-10-12T08:00:00Z",
+  "emails": [
+    {"id": 26, "fromName": "Bahn", "fromAddress": "ticket@bahn-online.de", "subject": "Ihre Fahrkarte", "snippet": "Berlin Hbf – München Hbf, 18.10.2026, 08:34, Wagen 7, Platz 45.", "receivedAt": "2026-10-10T19:00:00Z", "folder": "inbox"},
+    {"id": 25, "fromName": "Nordlicht Systems", "fromAddress": "karriere@nordlicht-systems.de", "subject": "Ihre Bewerbung als Frontend-Entwickler", "snippet": "Leider haben wir uns für einen anderen Kandidaten entschieden.", "receivedAt": "2026-10-08T07:00:00Z", "folder": "inbox"},
+    {"id": 24, "fromName": "Brightwave", "fromAddress": "lisa.meyer@brightwave.io", "subject": "Your application as Product Designer", "snippet": "We have decided to move forward with another candidate.", "receivedAt": "2026-10-05T15:00:00Z", "folder": "inbox"},
+    {"id": 23, "fromName": "Tech Weekly", "fromAddress": "newsletter@techweekly.com", "subject": "This week in tech", "snippet": "Ten stories you missed.", "receivedAt": "2026-10-04T07:00:00Z", "folder": "inbox"},
+    {"id": 21, "fromName": "Acme Corp Careers", "fromAddress": "careers@acme-corp.com", "subject": "We received your application – Senior Backend Engineer", "snippet": "Thank you for applying. Our team reviews every application and will get back to you within 7 days.", "receivedAt": "2026-09-21T09:00:00Z", "folder": "inbox"},
+    {"id": 20, "fromName": "Me", "fromAddress": "me@example.com", "subject": "Application: Senior Backend Engineer", "snippet": "Dear Acme team, please find attached my application for the Senior Backend Engineer position.", "receivedAt": "2026-09-20T18:00:00Z", "folder": "sent"}
+  ],
+  "openTasks": [],
+  "appointments": [],
+  "expected": [[21]]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "m-0075",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-vossberg-damage",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "reply",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": "m-0073",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "jens.albers@vossberg-foerdertechnik.example"
+    ],
+    "subject": "AW: Lieferung heute – Schaden",
+    "receivedAt": "2026-07-09T14:15:00Z",
+    "body": "Moin Jens,\n\nsorry dafür. Läuft unter RMA-26-042, die 6 Kartons Ersatz gehen Montag, 13.07., raus. Den Schaden regel ich mit der Versicherung.\n\nGruß\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Reklamation RMA-26-042",
+    "Ersatz 6 Kartons geht Montag 13.07. raus"
+  ]
+}

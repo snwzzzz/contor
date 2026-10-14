@@ -1,0 +1,38 @@
+{
+  "id": "order-en-return",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Zalora Style",
+    "fromAddress": "returns@zalorastyle.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Return label for order ZS-9031",
+    "receivedAt": "2026-10-08T16:40:00Z",
+    "body": "Your return for order ZS-9031 has been approved. Please print the attached label and drop the parcel at any post office within 14 days (by October 22)."
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "Zalora Style order ZS-9031",
+          "values": {
+            "order_number": "ZS-9031",
+            "shop": "Zalora Style"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Return parcel for order ZS-9031",
+          "values": {
+            "due_date": "2026-10-22"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

@@ -1,0 +1,82 @@
+{
+  "id": "m-0050",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-prn-26070931",
+  "cc": [],
+  "storyline": "B3-vossberg-damage",
+  "beat": "pickup",
+  "category": "B3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Holger Brandes",
+    "fromAddress": "h.brandes@palettenring-nord.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Avis PRN-26070931",
+    "receivedAt": "2026-07-08T13:20:00Z",
+    "body": "Moin,\n\nAbholung morgen 7 Uhr bei Ihnen, Sendung PRN-26070931, 1 Palette für Vossberg Fördertechnik, Bremen. Zustellung morgen Nachmittag.\n\nGruß\nHolger Brandes\nDisposition\nPalettenring Nord GmbH\nTel. +49 40 5550 6501"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Palettenring PRN-26070931",
+          "values": {
+            "tracking_number": "PRN-26070931",
+            "carrier": "Palettenring Nord",
+            "direction": "outbound",
+            "state": "booked",
+            "eta": "2026-07-09"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Holger Brandes",
+          "values": {
+            "email": "h.brandes@palettenring-nord.example",
+            "phone": "+49 40 5550 6501",
+            "role_title": "Disposition"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Palettenring Nord GmbH",
+          "values": {
+            "domain": "palettenring-nord.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Holger Brandes",
+        "to": "organizations:Palettenring Nord GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "damage",
+    "insurer"
+  ],
+  "facts": [
+    "Abholung morgen 7 Uhr",
+    "Sendung PRN-26070931, 1 Palette für Vossberg Fördertechnik, Bremen",
+    "Zustellung morgen Nachmittag"
+  ],
+  "derived": {
+    "shipments.eta": "morgen = 09.07.2026"
+  }
+}

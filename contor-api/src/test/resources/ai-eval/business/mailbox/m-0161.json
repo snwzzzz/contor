@@ -1,0 +1,82 @@
+{
+  "id": "m-0161",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-noise-read-rademacher",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "read-rademacher",
+  "kind": "read-receipt",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Uwe Rademacher",
+    "fromAddress": "u.rademacher@moellenhoff-stahlbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Gelesen: AW: Bestellung 7781/26",
+    "receivedAt": "2026-07-16T12:42:00Z",
+    "body": "Ihre Nachricht\n\nAn: Uwe Rademacher\nBetreff: AW: Bestellung 7781/26\nGesendet: Donnerstag, 16. Juli 2026 14:30\n\nwurde am Donnerstag, 16. Juli 2026 14:42 gelesen."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "read-receipt"
+  ],
+  "facts": []
+}

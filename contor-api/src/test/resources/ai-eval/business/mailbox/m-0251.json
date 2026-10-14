@@ -1,0 +1,58 @@
+{
+  "id": "m-0251",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-bestand-kw30",
+  "cc": [],
+  "storyline": "G5-jana-stock-reports",
+  "beat": "kw30",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jana Petersen",
+    "fromAddress": "jana.petersen@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestand KW 30",
+    "receivedAt": "2026-07-24T11:40:00Z",
+    "body": "Bestandsliste KW 30 anbei, diesmal nichts kritisch. Die falschen Trennscheiben von Kessler sind zurück und wieder eingelagert.\nJana"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Jana Petersen",
+          "values": {
+            "email": "jana.petersen@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "recurring",
+    "smooth"
+  ],
+  "storylineTags": [
+    "recurring"
+  ],
+  "facts": [
+    "Bestandsliste KW 30",
+    "nichts kritisch",
+    "Trennscheiben 2,5 mm von Kessler zurück auf Lager"
+  ]
+}

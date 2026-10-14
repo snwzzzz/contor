@@ -1,0 +1,13 @@
+{
+  "id": "courtesy-de-rejection-noreply",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Karriereportal Nordlicht",
+    "fromAddress": "no-reply@karriere.nordlicht-systems.de",
+    "to": ["me@example.com"],
+    "subject": "Ihre Bewerbung als Backend-Entwickler",
+    "receivedAt": "2026-10-08T07:00:00Z",
+    "body": "Sehr geehrter Herr Morgan,\nvielen Dank für Ihr Interesse. Leider müssen wir Ihnen mitteilen, dass wir uns für andere Bewerber entschieden haben.\nDiese Nachricht wurde automatisch erstellt. Bitte antworten Sie nicht auf diese E-Mail."
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "m-0046",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-ostrowski-118",
+  "cc": [],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "confirm",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": "m-0040",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "marek.kowalczyk@ostrowski-serwis.example"
+    ],
+    "subject": "RE: Order 2026/OS/118",
+    "receivedAt": "2026-07-08T12:00:00Z",
+    "body": "Hi Marek,\n\nconfirmed as SO-26-0153:\n30 packs NH-40115 at 27.50 EUR = 825.00 EUR\n20 packs NH-40220 at 31.80 EUR = 636.00 EUR\nTotal 1,461.00 EUR net. Shipping on 14 July with Wisła-Trans groupage, delivery in Poznań on 16 July.\n\nBest regards\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "SO-26-0153",
+    "30 × 27.50 = 825.00 EUR",
+    "20 × 31.80 = 636.00 EUR",
+    "total 1,461.00 EUR",
+    "ships 14 July with Wisła-Trans, delivery 16 July"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "id": "m-0228",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-sophie-katalog",
+  "cc": [],
+  "storyline": "G4-sophie-catalogue",
+  "beat": "forward",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sophie Brandt",
+    "fromAddress": "sophie.brandt@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "WG: Catalogue",
+    "receivedAt": "2026-07-22T11:05:00Z",
+    "body": "Hi Alex,\n\nkannst du Oskar den neuen Katalog als PDF schicken? Ich habe keinen Zugriff auf die neue Version. Danke dir!\n\nSophie\n\nVon: Oskar Nyberg <oskar.nyberg@lindgren-verktyg.example>\nGesendet: Mittwoch, 22. Juli 2026 11:40\nAn: Sophie Brandt <sophie.brandt@nordhafen.example>\nBetreff: Catalogue\n\nHi Sophie,\n\ncould you send us your updated catalogue as PDF? Our new apprentices are building a parts list.\n\nCheers,\nOskar"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Oskar Nyberg den neuen Katalog als PDF schicken",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sophie Brandt",
+          "values": {
+            "email": "sophie.brandt@nordhafen.example"
+          }
+        },
+        {
+          "title": "Oskar Nyberg",
+          "values": {
+            "email": "oskar.nyberg@lindgren-verktyg.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [
+      "Kannst du Oskar den neuen Katalog als PDF schicken?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "forwarded"
+  ],
+  "storylineTags": [
+    "forwarded"
+  ],
+  "facts": [
+    "kannst du Oskar den neuen Katalog schicken?",
+    "kein Zugriff auf die neue Version",
+    "weitergeleitet: Oskar fragt nach aktuellem Katalog als PDF"
+  ]
+}

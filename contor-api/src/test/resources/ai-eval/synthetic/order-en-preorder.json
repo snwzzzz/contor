@@ -1,0 +1,36 @@
+{
+  "id": "order-en-preorder",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "GameVault",
+    "fromAddress": "no-reply@gamevault.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Pre-order confirmed: Starfall 2",
+    "receivedAt": "2026-10-09T18:30:00Z",
+    "body": "You pre-ordered Starfall 2 (59.99 USD), order GV-77120. It will be released on November 12, 2026 and shipped on that day."
+  },
+  "expected": {
+    "records": {
+      "orders": [
+        {
+          "title": "GameVault pre-order Starfall 2",
+          "values": {
+            "order_number": "GV-77120",
+            "shop": "GameVault",
+            "total": {
+              "amount": 59.99,
+              "currency": "USD"
+            },
+            "state": "ordered",
+            "expected_delivery": "2026-11-12"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

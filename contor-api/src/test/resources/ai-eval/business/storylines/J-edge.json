@@ -1,0 +1,256 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "J1-dijkstra-three-topics",
+      "category": "J",
+      "summary": "One mail carries a new order, a complaint about a past delivery and a visit request; one reply answers all three.",
+      "difficulty": "hard",
+      "editorNotes": "Several topics in one mail: a sales order, a complaint and a scheduling question.",
+      "tags": ["several-topics"],
+      "numbers": ["SO-26-0166", "RMA-26-045"],
+      "beats": [
+        {
+          "key": "three", "day": "2026-07-16", "time": "15:20", "from": "p-dewit", "conversation": "dijkstra-three",
+          "facts": ["1) new order DW-2310: 50 packs drill bits 8.5 mm, delivery 30 July", "2) last delivery of hex nuts: 2 boxes M10 instead of M8, please replace", "3) MD Pieter Dijkstra wants to visit Hamburg: 10 or 11 September?"],
+          "style": { "lang": "en", "tone": "efficient, lists", "length": "medium", "signature": "full" },
+          "subject": "Three things",
+          "body": "Hi Alex,\n\nthree things before my holiday:\n\n1. New order DW-2310: 50 packs HSS-E drill bits 8.5 mm, delivery 30 July.\n2. In the last delivery of hex nuts M8 we found 2 boxes with M10 nuts. Please replace them.\n3. Our managing director, Pieter Dijkstra, would like to visit you in Hamburg. Would 10 or 11 September work for you?\n\nThanks!\nFemke de Wit\nPurchasing\nDijkstra Werktuigen B.V.\n+31 40 5550 2301",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Dijkstra Werktuigen DW-2310", "entity": "so-0166", "values": { "customer": "Dijkstra Werktuigen", "state": "received", "requested_delivery": "2026-07-30" } }],
+              "complaints": [{ "title": "Dijkstra Werktuigen wrong item hex nuts", "entity": "rma-045", "values": { "customer": "Dijkstra Werktuigen", "topic": "wrong_item", "severity": "low", "state": "open", "opened_on": "2026-07-16" } }],
+              "tasks": [{ "title": "2 Kartons M8-Muttern für Dijkstra Werktuigen ersetzen", "values": { "state": "open" } }]
+            },
+            "derived": { "complaints.opened_on": "date of the mail" },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Can you confirm order DW-2310?", "Can you replace the 2 boxes of M10 nuts?", "Would 10 or 11 September work for a visit?"], "scheduleFrom": "2026-09-10", "scheduleTo": "2026-09-11", "timeOfDay": "ANY", "answeredBy": "#answer" },
+            "importance": "HIGH",
+            "tags": ["several-topics"]
+          }
+        },
+        {
+          "key": "answer", "day": "2026-07-16", "time": "17:30", "direction": "sent", "to": ["p-dewit"], "inReplyTo": "#three",
+          "facts": ["1) SO-26-0166, 50 × 42.60 = 2,130.00 EUR, 30 July", "2) RMA-26-045, replacement travels with SO-26-0147", "3) 10 September 10:00 at our office"],
+          "style": { "lang": "en", "tone": "friendly", "length": "short" },
+          "subject": "RE: Three things",
+          "body": "Hi Femke,\n\n1. Confirmed as SO-26-0166: 50 packs NH-31020 at 42.60 EUR = 2,130.00 EUR, delivery 30 July.\n2. Sorry about the nuts - RMA-26-045; 2 boxes of M8 travel with SO-26-0147.\n3. 10 September at 10:00 in our office would be great.\n\nEnjoy your holiday!\nAlex"
+        }
+      ]
+    },
+    {
+      "id": "J2-ostrowski-ok-machen",
+      "category": "J",
+      "summary": "Export sales asks the managing director about free delivery for a customer, owner in CC; she answers 'ok, machen' and the facts are only in the quote.",
+      "difficulty": "hard",
+      "editorNotes": "Both mails are CC-only for the owner; the decision mail has two words of new text.",
+      "tags": ["ok-do-it", "cc-only"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "question", "day": "2026-07-17", "time": "11:40", "from": "p-daniel", "to": ["p-helga"], "cc": ["p-alex"], "conversation": "ostrowski-frei-haus",
+          "facts": ["Ostrowski fragt nach Lieferung frei Haus ab 1.000 € Bestellwert statt 1.500 € für Q3", "Zusatzkosten ca. 300 € im Quartal", "machen wir das?"],
+          "style": { "lang": "de", "tone": "quick", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Ostrowski frei Haus Q3",
+          "body": "Hi Helga,\n\nOstrowski fragt, ob wir ihnen in Q3 Lieferung frei Haus schon ab 1.000 € Bestellwert geben (statt 1.500 €). Zusatzkosten schätze ich auf ca. 300 € im Quartal, dafür bestellen sie häufiger. Machen wir das?\n\nDaniel",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["cc-only"]
+          }
+        },
+        {
+          "key": "ok", "day": "2026-07-17", "time": "15:00", "from": "p-helga", "to": ["p-daniel"], "cc": ["p-alex"], "inReplyTo": "#question",
+          "facts": ["ok, machen"],
+          "style": { "lang": "de", "tone": "short, decisive", "length": "1-3 sentences", "quoting": "full", "signature": "none" },
+          "subject": "AW: Ostrowski frei Haus Q3",
+          "body": "ok, machen.\nH.\n\nVon: Daniel Okafor <daniel.okafor@nordhafen.example>\nGesendet: Freitag, 17. Juli 2026 11:40\nAn: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nCc: Alex Morgan <alex.morgan@nordhafen.example>\nBetreff: Ostrowski frei Haus Q3\n\nHi Helga,\n\nOstrowski fragt, ob wir ihnen in Q3 Lieferung frei Haus schon ab 1.000 € Bestellwert geben (statt 1.500 €). Zusatzkosten schätze ich auf ca. 300 € im Quartal, dafür bestellen sie häufiger. Machen wir das?\n\nDaniel",
+          "labels": {
+            "records": {
+              "customers": [{ "title": "Ostrowski Serwis", "values": { "name": "Ostrowski Serwis", "notes": "Q3 2026: Lieferung frei Haus ab 1.000 € Bestellwert" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "dependsOn": ["#question"],
+            "tags": ["ok-do-it", "cc-only", "facts-in-quote"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J3-rousseau-job-change",
+      "category": "J",
+      "summary": "The buyer of one customer announces she has moved to another customer and names her successor.",
+      "difficulty": "hard",
+      "editorNotes": "Same person, new company and address; a new person (successor) with contact details; works_at changes.",
+      "tags": ["job-change"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "news", "day": "2026-07-30", "time": "10:15", "from": "p-rousseau", "fromAddress": "c.rousseau@delacroix-usinage.example", "conversation": "rousseau-news",
+          "facts": ["since this week purchasing lead at Delacroix Usinage, Grenoble", "Julien Marchand is her new colleague", "successor at Ateliers Moreau: Lucas Bernard, l.bernard@ateliers-moreau.example", "new phone +33 4 5550 3902"],
+          "style": { "lang": "en", "tone": "warm", "length": "short", "signature": "full" },
+          "subject": "News from Grenoble",
+          "body": "Hi Alex,\n\nsome news: since this week I work as purchasing lead at Delacroix Usinage in Grenoble - you already know my new colleague Julien Marchand. My successor at Ateliers Moreau is Lucas Bernard (l.bernard@ateliers-moreau.example); he will place the orders from now on.\n\nLooking forward to working with you from here as well!\n\nCamille Rousseau\nPurchasing Lead\nDelacroix Usinage SAS\n+33 4 5550 3902",
+          "labels": {
+            "contacts": false,
+            "records": {
+              "people": [
+                { "title": "Camille Rousseau", "values": { "email": "c.rousseau@delacroix-usinage.example", "phone": "+33 4 5550 3902", "role_title": "Purchasing Lead" } },
+                { "title": "Lucas Bernard", "values": { "email": "l.bernard@ateliers-moreau.example" } }
+              ],
+              "organizations": [
+                { "title": "Delacroix Usinage SAS", "values": { "name": "Delacroix Usinage", "domain": "delacroix-usinage.example" } },
+                { "title": "Ateliers Moreau SARL", "values": { "name": "Ateliers Moreau", "domain": "ateliers-moreau.example" } }
+              ]
+            },
+            "relations": [
+              { "type": "works_at", "from": "people:Camille Rousseau", "to": "organizations:Delacroix Usinage SAS" },
+              { "type": "works_at", "from": "people:Lucas Bernard", "to": "organizations:Ateliers Moreau SARL" }
+            ],
+            "needsReply": false,
+            "reply": { "intent": "COURTESY", "courtesyKind": "CONGRATULATE" },
+            "importance": "LOW",
+            "tags": ["job-change"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J4-vossberg-typo",
+      "category": "J",
+      "summary": "A customer writes an order number without the leading zero and an amount in English format, asking for a changed delivery address.",
+      "difficulty": "medium",
+      "editorNotes": "'SO-26-171' is SO-26-0171; '€885.00' in a German mail.",
+      "tags": ["number-typo", "amount-format"],
+      "numbers": ["SO-26-171"],
+      "beats": [
+        {
+          "key": "change", "day": "2026-07-29", "time": "07:50", "from": "p-albers", "conversation": "vossberg-halle4",
+          "facts": ["SO-26-171", "Lieferadresse auf Halle 4 ändern", "Betrag €885.00 passt"],
+          "style": { "lang": "de", "tone": "curt", "length": "1-3 sentences", "signature": "none", "typos": 1 },
+          "subject": "SO-26-171",
+          "body": "Moin Alex, bei SO-26-171 bitte Lieferadresse auf Halle 4 ändern (Tor Ost). Betrag €885.00 passt so.\nJens",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Vossberg Fördertechnik SO-26-0171", "entity": "so-0171", "values": { "order_number": "SO-26-0171", "customer": "Vossberg Fördertechnik", "total": { "amount": 885.00, "currency": "EUR" } } }],
+              "tasks": [{ "title": "Lieferadresse für SO-26-0171 auf Halle 4 ändern", "values": { "state": "open" } }]
+            },
+            "derived": { "sales_orders.order_number": "SO-26-171 is SO-26-0171 (missing leading zero)" },
+            "needsReply": false,
+            "importance": "HIGH",
+            "tags": ["number-typo", "amount-format", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J5-tornilleria-pricelist",
+      "category": "J",
+      "summary": "The Spanish supplier sends the new price list with a rhetorical question and says no answer is needed.",
+      "difficulty": "medium",
+      "editorNotes": "A question mark without a question to answer.",
+      "tags": ["rhetorical-question", "price-increase"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "list", "day": "2026-07-21", "time": "12:10", "from": "p-navarro", "inReplyTo": "C1-tornilleria-po#increase",
+          "facts": ["new price list attached, valid from 1 August", "who would have thought steel gets more expensive, right?", "no need to answer"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Price adjustment from 1 August 2026",
+          "body": "Hi Alex,\n\nas announced, the new price list is attached (valid from 1 August). Who would have thought steel would get even more expensive this year, right? No need to answer, it's just for your files.\n\nUn saludo,\nLucía",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["rhetorical-question"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J6-kranjc-attached",
+      "category": "J",
+      "summary": "A supplier sends a mail that is only 'see attached' and a signature.",
+      "difficulty": "easy",
+      "editorNotes": "Nothing to extract beyond the sender; nothing to answer.",
+      "tags": ["signature-only"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "attached", "day": "2026-07-23", "time": "13:55", "from": "p-lkranjc", "conversation": "kranjc-offer",
+          "facts": ["see attached"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Offer hand tools",
+          "body": "see attached\n\nLuka Kranjc\nSales\nKranjc Orodja d.o.o.\nCelje, Slovenia\n+386 3 5550 5901",
+          "labels": {
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "tasks", "title": null }],
+            "tags": ["signature-only", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "J7-rechnung-subjects",
+      "category": "J",
+      "summary": "Three different issuers send mails with the same subject 'Rechnung'.",
+      "difficulty": "medium",
+      "editorNotes": "Same subject, different topics; each is its own invoice and payment to-do.",
+      "tags": ["same-subject"],
+      "numbers": ["RA-260731", "KHS-R-26-3310", "GW-2026-188"],
+      "beats": [
+        {
+          "key": "rhoenblick", "day": "2026-07-28", "time": "08:05", "from": "p-becker", "conversation": "rhoenblick-ra-260731",
+          "facts": ["Rechnung RA-260731", "412,30 €", "fällig 27.08.2026"],
+          "style": { "lang": "de", "tone": "service", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Rechnung",
+          "body": "Guten Tag,\n\nanbei erhalten Sie unsere Rechnung RA-260731 über 412,30 €, fällig am 27.08.2026.\n\nMit freundlichen Grüßen\nNina Becker\nKundenservice\nRhönblick Arbeitsschutz GmbH\nTel. +49 661 5550 5801",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Rhönblick Arbeitsschutz RA-260731", "values": { "invoice_number": "RA-260731", "issuer": "Rhönblick Arbeitsschutz", "amount": { "amount": 412.30, "currency": "EUR" }, "due_date": "2026-08-27", "state": "open", "direction": "incoming" } }],
+              "tasks": [{ "title": "Rechnung RA-260731 bezahlen", "values": { "state": "open", "due_date": "2026-08-27" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["same-subject"]
+          }
+        },
+        {
+          "key": "glanzwerk", "day": "2026-07-28", "time": "10:30", "from": "p-yilmaz", "conversation": "glanzwerk-gw-2026-188",
+          "facts": ["Rechnung GW-2026-188 Grundreinigung 18.07.", "1.150,00 €", "zahlbar bis 11.08.2026"],
+          "style": { "lang": "de", "tone": "short", "length": "1-3 sentences", "signature": "short" },
+          "subject": "Rechnung",
+          "body": "Guten Tag Herr Morgan,\n\nanbei die Rechnung GW-2026-188 für die Grundreinigung am 18.07. über 1.150,00 €, zahlbar bis 11.08.2026.\n\nGruß\nSerkan Yılmaz\nGlanzwerk Gebäudeservice GmbH",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Glanzwerk Gebäudeservice GW-2026-188", "values": { "invoice_number": "GW-2026-188", "issuer": "Glanzwerk Gebäudeservice", "amount": { "amount": 1150.00, "currency": "EUR" }, "due_date": "2026-08-11", "state": "open", "direction": "incoming" } }],
+              "tasks": [{ "title": "Rechnung GW-2026-188 bezahlen", "values": { "state": "open", "due_date": "2026-08-11" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["same-subject"]
+          }
+        },
+        {
+          "key": "kranhoeft", "day": "2026-07-30", "time": "15:45", "from": "p-wendler", "conversation": "kranhoeft-rechnung-juli",
+          "facts": ["Rechnung KHS-R-26-3310", "Frachten Juli", "2.384,00 €", "zahlbar innerhalb 30 Tagen bis 29.08.2026"],
+          "style": { "lang": "de", "tone": "professional", "length": "1-3 sentences", "signature": "short" },
+          "subject": "Rechnung",
+          "body": "Sehr geehrter Herr Morgan,\n\nanbei unsere Sammelrechnung KHS-R-26-3310 für die Frachten im Juli über 2.384,00 €, zahlbar bis 29.08.2026.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKranhöft Spedition GmbH",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Kranhöft Spedition KHS-R-26-3310", "values": { "invoice_number": "KHS-R-26-3310", "issuer": "Kranhöft Spedition", "amount": { "amount": 2384.00, "currency": "EUR" }, "due_date": "2026-08-29", "state": "open", "direction": "incoming" } }],
+              "tasks": [{ "title": "Rechnung KHS-R-26-3310 bezahlen", "values": { "state": "open", "due_date": "2026-08-29" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["same-subject"]
+          }
+        }
+      ]
+    }
+  ]
+}

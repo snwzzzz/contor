@@ -1,0 +1,27 @@
+{
+  "id": "nothing-en-webinar",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "GrowthLab",
+    "fromAddress": "events@growthlab.io",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Join our free webinar on SEO",
+    "receivedAt": "2026-10-13T10:00:00Z",
+    "body": "Learn how to double your traffic! Our free webinar is coming soon. Register today and get our 50-page guide. No spam, unsubscribe any time."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people"
+    },
+    {
+      "collection": "tasks"
+    }
+  ]
+}

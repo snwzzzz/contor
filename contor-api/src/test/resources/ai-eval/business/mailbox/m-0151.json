@@ -1,0 +1,82 @@
+{
+  "id": "m-0151",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-halvorsen-hv-6120",
+  "cc": [],
+  "storyline": "noise",
+  "beat": "ooo-B4-halvorsen-customs#inform",
+  "kind": "out-of-office",
+  "lang": "en",
+  "inReplyTo": "m-0150",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Ingrid Solberg",
+    "fromAddress": "ingrid.solberg@halvorsen-verksted.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Automatic reply: RE: Purchase order HV-6120 - customs",
+    "receivedAt": "2026-07-16T06:51:00Z",
+    "body": "Thank you for your email. I am out of the office until 3 August 2026 with limited access to email. Your message will not be forwarded.\n\nBest regards\nIngrid Solberg"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "organizations",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "customers",
+      "title": null
+    },
+    {
+      "collection": "suppliers",
+      "title": null
+    },
+    {
+      "collection": "sales_orders",
+      "title": null
+    },
+    {
+      "collection": "purchase_orders",
+      "title": null
+    },
+    {
+      "collection": "shipments",
+      "title": null
+    },
+    {
+      "collection": "complaints",
+      "title": null
+    },
+    {
+      "collection": "invoices",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "noise",
+    "out-of-office"
+  ],
+  "facts": []
+}

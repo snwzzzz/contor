@@ -1,0 +1,4 @@
+# Test-only overrides (merged over classpath:application.yml). Never use this key outside tests.
+app:
+  encryption:
+    key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=

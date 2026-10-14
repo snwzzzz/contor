@@ -1,0 +1,89 @@
+{
+  "id": "m-0085",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-falkenrath-rush",
+  "cc": [],
+  "storyline": "A3-falkenrath-rush",
+  "beat": "arrived",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": "m-0061",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Melanie Kurz",
+    "fromAddress": "melanie.kurz@falkenrath-antriebe.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: AW: DRINGEND: Anlagenstillstand – Lager benötigt",
+    "receivedAt": "2026-07-10T09:05:00Z",
+    "body": "Hallo Herr Morgan,\n\ndie Lager sind da, die Anlage läuft wieder – vielen Dank für den Einsatz! Die restlichen 4 Stück dann bitte wie besprochen am Montag.\n\nGruß\nMelanie Kurz\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 9. Juli 2026 08:30\nAn: Melanie Kurz <melanie.kurz@falkenrath-antriebe.example>\nCc: Jana Petersen <jana.petersen@nordhafen.example>\nBetreff: AW: DRINGEND: Anlagenstillstand – Lager benötigt\n\nwir haben 8 der 12 Lager 6205-2RS und alle 4 UCP 205 am Lager. Die gehen heute per Kiebitz Express raus, Zustellung morgen bis 12 Uhr. Die restlichen 4 Lager liefern wir am Montag nach.\n\nAuftragsnummer: SO-26-0152."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Falkenrath Antriebe SO-26-0152",
+          "entity": "so-0152",
+          "values": {
+            "order_number": "SO-26-0152",
+            "customer": "Falkenrath Antriebe",
+            "state": "shipped"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Restliche 4 Rillenkugellager an Falkenrath liefern",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-13"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Melanie Kurz",
+          "values": {
+            "email": "melanie.kurz@falkenrath-antriebe.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Falkenrath Antriebe GmbH",
+          "values": {
+            "domain": "falkenrath-antriebe.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Melanie Kurz",
+        "to": "organizations:Falkenrath Antriebe GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "partial-delivery"
+  ],
+  "storylineTags": [
+    "rush-order"
+  ],
+  "facts": [
+    "Lager sind da, Anlage läuft wieder",
+    "Dank",
+    "restliche 4 bitte wie besprochen Montag"
+  ],
+  "derived": {
+    "tasks.due_date": "Montag = 13.07.2026"
+  }
+}

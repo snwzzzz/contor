@@ -1,0 +1,106 @@
+{
+  "id": "m-0135",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kranhoeft-halvorsen",
+  "cc": [],
+  "storyline": "B4-halvorsen-customs",
+  "beat": "hold",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Claudia Wendler",
+    "fromAddress": "c.wendler@kranhoeft-spedition.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Zollaufenthalt KHS-HH-26066 Halvorsen / SO-26-0145",
+    "receivedAt": "2026-07-15T08:05:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\ndie Sendung KHS-HH-26066 für Halvorsen Verkstedservice, Stavanger (Ihr Auftrag SO-26-0145), wird vom norwegischen Zoll festgehalten. Es fehlen eine Proforma-Rechnung mit Werten in NOK sowie die Ursprungserklärung.\n\nBitte reichen Sie beides bis zum 17.07. nach, damit die Ware freigegeben werden kann.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKundenservice Export\nKranhöft Spedition GmbH\nTel. +49 40 5550 6701"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kranhöft KHS-HH-26066",
+          "values": {
+            "tracking_number": "KHS-HH-26066",
+            "carrier": "Kranhöft Spedition",
+            "direction": "outbound",
+            "order_ref": "SO-26-0145",
+            "state": "delayed"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Halvorsen Verkstedservice SO-26-0145",
+          "entity": "so-0145",
+          "values": {
+            "order_number": "SO-26-0145",
+            "customer": "Halvorsen Verkstedservice",
+            "state": "shipped"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Proforma-Rechnung in NOK und Ursprungserklärung für KHS-HH-26066 an Kranhöft senden",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-17"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Claudia Wendler",
+          "values": {
+            "email": "c.wendler@kranhoeft-spedition.example",
+            "phone": "+49 40 5550 6701",
+            "role_title": "Kundenservice Export"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kranhöft Spedition GmbH",
+          "values": {
+            "domain": "kranhoeft-spedition.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Claudia Wendler",
+        "to": "organizations:Kranhöft Spedition GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0140"
+  },
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "customs-hold"
+  ],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "Sendung KHS-HH-26066 für Halvorsen, Stavanger",
+    "norwegischer Zoll hält die Ware fest",
+    "Proforma-Rechnung mit NOK-Werten und Ursprungserklärung fehlen",
+    "bis 17.07. nachreichen",
+    "Ihr Auftrag SO-26-0145"
+  ]
+}

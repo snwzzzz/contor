@@ -1,0 +1,88 @@
+{
+  "id": "m-0067",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-jensen-july",
+  "cc": [],
+  "storyline": "E2-jensen-shrinking",
+  "beat": "order",
+  "category": "E2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mads Kjær",
+    "fromAddress": "mads.kjaer@jensen-maskinfabrik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "July order",
+    "receivedAt": "2026-07-09T08:10:00Z",
+    "body": "Hi Alex,\n\nonly a small order this month: 15 bearing units UCP 205, delivery in week 30. Times are slow here.\n\nMads Kjær\nBuyer\nJensen Maskinfabrik A/S\n+45 5550 3301"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Jensen Maskinfabrik July order",
+          "entity": "so-0154",
+          "values": {
+            "customer": "Jensen Maskinfabrik",
+            "state": "received",
+            "requested_delivery": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Mads Kjær",
+          "values": {
+            "email": "mads.kjaer@jensen-maskinfabrik.example",
+            "phone": "+45 5550 3301",
+            "role_title": "Buyer"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Jensen Maskinfabrik A/S",
+          "values": {
+            "domain": "jensen-maskinfabrik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Mads Kjær",
+        "to": "organizations:Jensen Maskinfabrik A/S"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0072"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "churn-signal",
+    "calendar-week"
+  ],
+  "storylineTags": [
+    "churn-signal"
+  ],
+  "facts": [
+    "only a small order this month",
+    "15 bearing units UCP 205",
+    "delivery in week 30",
+    "times are slow"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "week 30 -> Monday 20.07.2026"
+  }
+}

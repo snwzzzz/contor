@@ -1,0 +1,15 @@
+{
+  "id": "reply-en-fyi",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Elena Petrova",
+    "fromAddress": "elena.petrova@acme.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "FYI: office closed on Friday",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hi all,\njust a heads-up that the office will be closed this Friday for maintenance. No action needed.\nElena"
+  }
+}

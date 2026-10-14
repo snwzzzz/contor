@@ -1,0 +1,87 @@
+{
+  "id": "m-0124",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "A4-dijkstra-change",
+  "beat": "change2",
+  "category": "A4",
+  "lang": "en",
+  "inReplyTo": "m-0068",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Femke de Wit",
+    "fromAddress": "f.dewit@dijkstra-werktuigen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: PO DW-2291",
+    "receivedAt": "2026-07-14T14:30:00Z",
+    "body": "Hi Alex,\n\nsorry for the back and forth - we go back to 200 rods after all (the extra project was postponed). And could you deliver on 23 July instead of 21 July? Our goods receipt is closed on the 21st.\n\nThanks!\nFemke\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Thursday, July 9, 2026 11:00 AM\nTo: Femke de Wit <f.dewit@dijkstra-werktuigen.example>\nSubject: RE: PO DW-2291\n\ndone: 250 rods, new total 2,452.50 EUR, still delivered on 21 July."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Dijkstra Werktuigen DW-2291",
+          "entity": "so-0147",
+          "values": {
+            "customer": "Dijkstra Werktuigen",
+            "requested_delivery": "2026-07-23"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Femke de Wit",
+          "values": {
+            "email": "f.dewit@dijkstra-werktuigen.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Dijkstra Werktuigen B.V.",
+          "values": {
+            "domain": "dijkstra-werktuigen.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Femke de Wit",
+        "to": "organizations:Dijkstra Werktuigen B.V."
+      }
+    ]
+  },
+  "mustNotProduce": [
+    {
+      "collection": "sales_orders",
+      "title": "250 rods"
+    }
+  ],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Could you deliver on 23 July instead of 21 July?"
+    ],
+    "answeredBy": "m-0129"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "contradicting-change"
+  ],
+  "storylineTags": [
+    "contradicting-change"
+  ],
+  "facts": [
+    "sorry, back to 200 rods",
+    "deliver on 23 July instead of 21 July",
+    "goods receipt closed on the 21st"
+  ]
+}

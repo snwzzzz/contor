@@ -1,0 +1,68 @@
+{
+  "id": "m-0255",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-zahllauf-0728",
+  "cc": [],
+  "storyline": "G3-tobias-zahllauf",
+  "beat": "ask",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Freigaben für Zahllauf",
+    "receivedAt": "2026-07-24T14:30:00Z",
+    "body": "Hi Alex,\n\nkannst du mir bis Montag die freigegebenen Eingangsrechnungen von Anadolu und Bassano geben? Ich mache Dienstag den Zahllauf.\n\nSchönes Wochenende\nTobias"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Eingangsrechnungen Anadolu und Bassano für den Zahllauf freigeben",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-27"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [
+      "Kannst du mir bis Montag die freigegebenen Eingangsrechnungen geben?"
+    ]
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "relative-date"
+  ],
+  "storylineTags": [
+    "relative-date"
+  ],
+  "facts": [
+    "bis Montag die freigegebenen Eingangsrechnungen von Anadolu und Bassano",
+    "Zahllauf Dienstag"
+  ],
+  "derived": {
+    "tasks.due_date": "bis Montag after Friday 24.07. = 27.07.2026"
+  }
+}

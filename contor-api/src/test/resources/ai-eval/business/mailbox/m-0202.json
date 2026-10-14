@@ -1,0 +1,104 @@
+{
+  "id": "m-0202",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kessler-km-26-0712",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "wrong",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": "m-0051",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sabine Wendt",
+    "fromAddress": "s.wendt@kessler-maschinenbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bestellung KM-26-0712 – falsche Ware",
+    "receivedAt": "2026-07-21T07:40:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nin der Lieferung zu SO-26-0155 waren Trennscheiben 125x2,5 statt 125x1,0. Bitte tauschen Sie die 5 Pack zeitnah aus.\n\nMit freundlichen Grüßen\nSabine Wendt"
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "Kessler Maschinenbau wrong item SO-26-0155",
+          "entity": "rma-044",
+          "values": {
+            "customer": "Kessler Maschinenbau",
+            "topic": "wrong_item",
+            "severity": "low",
+            "state": "open",
+            "opened_on": "2026-07-21"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Kessler Maschinenbau SO-26-0155",
+          "entity": "so-0155",
+          "values": {
+            "order_number": "SO-26-0155",
+            "state": "delivered"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "5 Pack Trennscheiben 125x1,0 bei Kessler austauschen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sabine Wendt",
+          "values": {
+            "email": "s.wendt@kessler-maschinenbau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kessler Maschinenbau GmbH",
+          "values": {
+            "domain": "kessler-maschinenbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Sabine Wendt",
+        "to": "organizations:Kessler Maschinenbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0207"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "wrong-item"
+  ],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "in Lieferung SO-26-0155 Trennscheiben 125x2,5 statt 125x1,0",
+    "bitte tauschen"
+  ],
+  "derived": {
+    "complaints.opened_on": "date of the mail"
+  }
+}

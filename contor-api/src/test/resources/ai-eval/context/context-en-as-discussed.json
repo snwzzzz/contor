@@ -1,0 +1,41 @@
+{
+  "id": "context-en-as-discussed",
+  "needsReply": false,
+  "context": {
+    "fromSender": [
+      {
+        "mailbox": "me@example.com",
+        "fromName": "Chris Lawson",
+        "fromAddress": "chris.lawson@pixelworks.dev",
+        "to": ["me@example.com"],
+        "subject": "Checkout redesign",
+        "receivedAt": "2026-10-01T09:00:00Z",
+        "body": "Hi Alex,\nas mentioned in the call: the design doc for the checkout redesign is in the shared folder. We will go through it in a review meeting on Wednesday, 14 October at 15:00 in room Atlas.\nChris"
+      }
+    ],
+    "records": ["events: Checkout redesign review"]
+  },
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Chris Lawson",
+    "fromAddress": "chris.lawson@pixelworks.dev",
+    "to": ["me@example.com"],
+    "subject": "Updated doc",
+    "receivedAt": "2026-10-07T09:00:00Z",
+    "body": "Hi Alex,\nas discussed I have updated the doc with the payment flow. Could you add your comments before our meeting?\nThanks\nChris"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Comment on the checkout redesign doc",
+          "values": {
+            "due_date": "2026-10-14"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": []
+}

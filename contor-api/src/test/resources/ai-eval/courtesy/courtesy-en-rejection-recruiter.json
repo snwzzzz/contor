@@ -1,0 +1,13 @@
+{
+  "id": "courtesy-en-rejection-recruiter",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Lisa Meyer",
+    "fromAddress": "lisa.meyer@brightwave.io",
+    "to": ["me@example.com"],
+    "subject": "Your application as Product Designer",
+    "receivedAt": "2026-10-08T15:00:00Z",
+    "body": "Dear Alex,\nthank you for taking the time to interview with us last week. It was a close decision, but we have decided to move forward with another candidate whose experience matches the role a bit more closely.\nWe enjoyed our conversations and wish you all the best for your search.\nKind regards\nLisa Meyer\nTalent Lead, Brightwave"
+  }
+}

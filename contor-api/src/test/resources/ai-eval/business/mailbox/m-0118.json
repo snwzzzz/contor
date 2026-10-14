@@ -1,0 +1,95 @@
+{
+  "id": "m-0118",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-gruber-revision",
+  "cc": [],
+  "storyline": "A3-gruber-rush",
+  "beat": "ok",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": "m-0111",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Andrea Caduff",
+    "fromAddress": "andrea.caduff@gruber-seilbahntechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Eilbedarf Revision – bis Donnerstag",
+    "receivedAt": "2026-07-14T09:40:00Z",
+    "body": "Dann bitte den Kurier bis Freitag, die Mehrkosten sind ok. Senden Sie mir die Proforma für die Vorkasse, wir überweisen sofort.\n\nGruss A. Caduff"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Gruber Seilbahntechnik Eilauftrag Revision",
+          "entity": "so-0162",
+          "values": {
+            "customer": "Gruber Seilbahntechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-17"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Proforma für Vorkasse an Gruber Seilbahntechnik senden",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-14"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Andrea Caduff",
+          "values": {
+            "email": "andrea.caduff@gruber-seilbahntechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Gruber Seilbahntechnik AG",
+          "values": {
+            "domain": "gruber-seilbahntechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Andrea Caduff",
+        "to": "organizations:Gruber Seilbahntechnik AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0122"
+  },
+  "importance": "HIGH",
+  "dependsOn": [
+    "m-0111"
+  ],
+  "tags": [],
+  "storylineTags": [
+    "rush-order",
+    "currency"
+  ],
+  "facts": [
+    "Kurier bis Freitag",
+    "Mehrkosten ok",
+    "Proforma für Vorkasse an sie"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "Freitag from the previous mail = 17.07.2026",
+    "tasks.due_date": "sofort = same day"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "m-0248",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-brandauer-ba-2026-07",
+  "cc": [],
+  "storyline": "B1-brandauer-consolidated",
+  "beat": "where",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Martina Hofer",
+    "fromAddress": "m.hofer@brandauer-anlagentechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Lieferung BA-2026-07?",
+    "receivedAt": "2026-07-24T08:15:00Z",
+    "body": "Lieber Herr Morgan,\n\nwo bleibt denn unsere Lieferung zu BA-2026-07? Vereinbart war heute, der 24.07., bisher ist nichts da. Bitte um kurze Info, die Montage wartet.\n\nMartina Hofer"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Brandauer Anlagentechnik BA-2026-07",
+          "entity": "so-0158",
+          "values": {
+            "customer": "Brandauer Anlagentechnik"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Martina Hofer",
+          "values": {
+            "email": "m.hofer@brandauer-anlagentechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Brandauer Anlagentechnik GmbH",
+          "values": {
+            "domain": "brandauer-anlagentechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Martina Hofer",
+        "to": "organizations:Brandauer Anlagentechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Wo bleibt unsere Lieferung zu BA-2026-07?"
+    ],
+    "answeredBy": "m-0249"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "delay",
+    "thread-split"
+  ],
+  "storylineTags": [
+    "one-shipment-two-orders",
+    "second-delay"
+  ],
+  "facts": [
+    "wo bleibt die Lieferung",
+    "vereinbart war heute, 24.07.",
+    "bisher nichts da"
+  ]
+}

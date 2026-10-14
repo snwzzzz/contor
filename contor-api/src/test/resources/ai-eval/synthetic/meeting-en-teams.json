@@ -1,0 +1,44 @@
+{
+  "id": "meeting-en-teams",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Ravi Patel",
+    "fromAddress": "ravi.patel@northwind.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Weekly planning (Teams)",
+    "receivedAt": "2026-10-12T07:30:00Z",
+    "body": "Hi Alex, I scheduled our weekly planning on Wednesday, October 14 at 11:00. Join via Microsoft Teams: https://teams.microsoft.com/l/meetup-join/abc123"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Ravi Patel",
+          "values": {
+            "email": "ravi.patel@northwind.com"
+          }
+        }
+      ],
+      "events": [
+        {
+          "title": "Weekly planning",
+          "values": {
+            "starts_at": "2026-10-14T11:00:00+02:00",
+            "location": "https://teams.microsoft.com/l/meetup-join/abc123"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "attends",
+        "from": "people:Ravi Patel",
+        "to": "events:Weekly planning"
+      }
+    ]
+  },
+  "mustNotProduce": []
+}

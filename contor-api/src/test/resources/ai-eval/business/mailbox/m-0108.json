@@ -1,0 +1,89 @@
+{
+  "id": "m-0108",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-gruber-revision",
+  "cc": [],
+  "storyline": "A3-gruber-rush",
+  "beat": "rush",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Andrea Caduff",
+    "fromAddress": "andrea.caduff@gruber-seilbahntechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Eilbedarf Revision – bis Donnerstag",
+    "receivedAt": "2026-07-14T04:50:00Z",
+    "body": "Guten Morgen Herr Morgan\n\nWir sind mitten in der Revision einer Bahn und brauchen bis Donnerstag, 16.07., in Chur:\n- 30 Stk. Maschinengewindebohrer M10\n- 10 Stk. Schaftfräser VHM 12 mm\n\nGeht das inkl. Verzollung? Bitte um rasche Antwort.\n\nFreundliche Grüsse\nAndrea Caduff\nTechnischer Einkauf\nGruber Seilbahntechnik AG\nTel. +41 81 5550 4201"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Gruber Seilbahntechnik Eilauftrag Revision",
+          "entity": "so-0162",
+          "values": {
+            "customer": "Gruber Seilbahntechnik",
+            "state": "received",
+            "requested_delivery": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Andrea Caduff",
+          "values": {
+            "email": "andrea.caduff@gruber-seilbahntechnik.example",
+            "phone": "+41 81 5550 4201",
+            "role_title": "Technischer Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Gruber Seilbahntechnik AG",
+          "values": {
+            "domain": "gruber-seilbahntechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Andrea Caduff",
+        "to": "organizations:Gruber Seilbahntechnik AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Ist eine Lieferung bis Donnerstag, 16.07., in Chur möglich?",
+      "Geht das inkl. Verzollung?"
+    ],
+    "answeredBy": "m-0111"
+  },
+  "importance": "URGENT",
+  "dependsOn": [],
+  "tags": [
+    "rush-order"
+  ],
+  "storylineTags": [
+    "rush-order",
+    "currency"
+  ],
+  "facts": [
+    "Notfall Revision",
+    "30 Maschinengewindebohrer M10",
+    "10 Schaftfräser 12 mm",
+    "bis Donnerstag 16.07. in Chur",
+    "Frage: inkl. Verzollung möglich?"
+  ]
+}

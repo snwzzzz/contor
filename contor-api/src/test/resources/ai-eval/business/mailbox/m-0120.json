@@ -1,0 +1,69 @@
+{
+  "id": "m-0120",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-daniel-hs-codes",
+  "cc": [],
+  "storyline": "G1-daniel-hs-codes",
+  "beat": "ask",
+  "category": "G",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Daniel Okafor",
+    "fromAddress": "daniel.okafor@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "HS-Codes Top 20",
+    "receivedAt": "2026-07-14T11:20:00Z",
+    "body": "Hi Alex,\n\nfür das neue Export-Datasheet brauche ich bitte bis Donnerstag die Zolltarifnummern unserer Top-20-Artikel. Hast du die irgendwo als Liste?\n\nThanks\nDaniel"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Zolltarifnummern der Top-20-Artikel an Daniel schicken",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-16"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Daniel Okafor",
+          "values": {
+            "email": "daniel.okafor@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [
+      "Hast du die Zolltarifnummern als Liste?"
+    ],
+    "answeredBy": "m-0157"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "relative-date"
+  ],
+  "storylineTags": [
+    "todo-done"
+  ],
+  "facts": [
+    "neues Exportdatenblatt",
+    "bitte bis Donnerstag die Zolltarifnummern der Top-20-Artikel"
+  ],
+  "derived": {
+    "tasks.due_date": "bis Donnerstag after Tuesday 14.07. = 16.07.2026"
+  }
+}

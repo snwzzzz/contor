@@ -1,0 +1,15 @@
+{
+  "id": "reply-en-shipping",
+  "needsReply": false,
+  "email": {
+    "mailbox": "me@example.com",
+    "fromName": "Shop Team",
+    "fromAddress": "orders@gadgetshop.com",
+    "to": [
+      "me@example.com"
+    ],
+    "subject": "Your order has shipped",
+    "receivedAt": "2026-10-06T08:00:00Z",
+    "body": "Hello,\nyour order #88123 has shipped and will arrive on Tuesday. Track it in your account.\nYour Gadget Shop team"
+  }
+}
