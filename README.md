@@ -17,7 +17,7 @@ Personal, self-hosted management platform: dynamic collections (Deliveries, Orde
 
 ## Prerequisites
 
-- Java 21 (no Maven install needed, use `./mvnw`)
+- Java 21 or newer, with `JAVA_HOME` set (no Maven install needed, use `./mvnw`; IntelliJ users see *Code generation → IntelliJ setup*)
 - Node.js 24+ and npm 11+
 - Docker (Docker Desktop or compatible): Postgres for dev, Testcontainers for backend tests
 - [Ollama](https://ollama.com) running natively on the host (bound to localhost, the default) for the AI assistant; see *Local AI*
@@ -388,7 +388,22 @@ The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagg
 | Backend | openapi-generator-maven-plugin (`spring`, interface only) | `contor-api/target/generated-sources/openapi` (`com.example.contor.api`, `.api.model`) | runs on every Maven build, e.g. `./mvnw compile` |
 | Frontend | orval (TanStack Query hooks + fetch) | `contor-web/src/lib/api/generated/` | `npm run generate:api` (also runs before `dev`, `build`, `test`, `typecheck`) |
 
-IntelliJ: if `com.example.contor.api` shows as unresolved, run *Maven → Generate Sources and Update Folders* (or `./mvnw generate-sources`) and reload the Maven project; `build-helper-maven-plugin` registers `target/generated-sources/openapi/src/main/java` as a source root.
+### IntelliJ setup
+
+The generated classes only exist after a Maven build, and they go stale when the spec changes (e.g. after a `git pull`). IntelliJ does not regenerate them on its own. Typical symptoms:
+
+- fresh checkout: `NewXCommand`, `XDto`, `XApi` and `com.example.contor.api` shown red/unresolved
+- after a pull: *Cannot resolve method 'ownerProfile' in 'AiSettingsDto'*, i.e. the class exists but lacks a property the spec now has
+
+Fix: in the Maven tool window, click *Generate Sources and Update Folders For All Projects* (or run `./mvnw generate-sources` in `contor-api`), then *Reload All Maven Projects*. `build-helper-maven-plugin` registers `target/generated-sources/openapi/src/main/java` as a source root.
+
+So you never have to think about it again, let IntelliJ regenerate automatically: Maven tool window → *contor-api → Lifecycle*, right-click `generate-sources` and tick both *Execute After Reload* and *Execute Before Build*.
+
+Project JDK: *File → Project Structure → Project → SDK* must be a JDK 21 or newer (an IntelliJ-downloaded JDK under `~/.jdks` is fine). For `./mvnw` in a terminal, `JAVA_HOME` must point at a JDK too; on Windows, set it once and open a new terminal:
+
+```powershell
+[Environment]::SetEnvironmentVariable("JAVA_HOME", "$env:USERPROFILE\.jdks\<jdk-folder>", "User")
+```
 
 To change the API: edit the spec, regenerate both sides, then implement. See `docs/decisions/0001-frontend-api-client-orval.md` for the generator choice.
 
