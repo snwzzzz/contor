@@ -175,8 +175,9 @@ paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md).
   `[P2.1]`.
 - **Fact check:** every drafted sentence is checked deterministically (`ai/ClaimChecks`: it cites existing sources, quotes
   are verbatim in their paragraph, every date and every number with more than one digit appears in its cited sources in
-  any notation, or is the number of days between two cited dates), then by a separate model call that sees only that
-  sentence and its sources. Failed sentences get one rewrite that is checked again; what still fails is removed (listed
+  any notation — a date without a year takes the year of its email —, or is the number of days between two cited dates),
+  then by a separate model call that sees only that sentence and its sources and must quote a source word for word for
+  every fact it accepts (the quotes are checked in code). Failed sentences get one rewrite that is checked again; what still fails is removed (listed
   under *Fact check*), sources that disagree become a *Sources disagree* finding. The timeline is built from dated fields
   and emails without the model. Prompts: `report-v1`, verification and repair in `ReportModelService`.
 - **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): executive summary, key findings (went

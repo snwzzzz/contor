@@ -106,6 +106,8 @@ public class ReportGenerator {
         ClaimVerification state;
         String note;
         String reason;
+        /** The verifier (not a deterministic check) rejected the drafted sentence. */
+        boolean rejectedByVerifier;
 
         Work(ReportSectionKind kind, String sectionTitle, int finding, ReportDraft.Claim claim) {
             this.kind = kind;
@@ -137,11 +139,11 @@ public class ReportGenerator {
             update(reportId, report -> report.setStatus(ReportStatus.FACT_CHECKING));
 
             List<Work> work = work(draft);
-            List<Conflict> conflicts = factCheck(work, pack);
             Map<Integer, List<ClaimChecks.Quote>> quotes = new HashMap<>();
             for (int i = 0; i < draft.findings().size(); i++) {
                 quotes.put(i, ClaimChecks.check("quotes", List.of(), draft.findings().get(i).quotes(), pack).quotes());
             }
+            List<Conflict> conflicts = factCheck(work, quotes, pack);
             transactions.executeWithoutResult(status -> store(reportId, job, draft, work, conflicts, quotes, pack));
         } catch (RuntimeException e) {
             log.warn("Report {} failed: {}", reportId, e.getClass().getSimpleName());
@@ -172,12 +174,22 @@ public class ReportGenerator {
     }
 
     /** Sets every sentence's state: SUPPORTED, REPAIRED or REMOVED; returns the conflicts the verifier found. */
-    private List<Conflict> factCheck(List<Work> work, EvidencePack pack) {
+    private List<Conflict> factCheck(List<Work> work, Map<Integer, List<ClaimChecks.Quote>> quotes, EvidencePack pack) {
         List<ClaimToVerify> toVerify = new ArrayList<>();
         List<Integer> toRepair = new ArrayList<>();
         for (int id = 0; id < work.size(); id++) {
             Work sentence = work.get(id);
             ClaimChecks.Result result = ClaimChecks.check(sentence.text, sentence.refs, List.of(), pack);
+            List<ClaimChecks.Quote> findingQuotes = quotes.getOrDefault(sentence.finding, List.of());
+            if (!result.passed() && !findingQuotes.isEmpty()) {
+                // The finding quotes the paragraph the sentence is based on, but the sentence forgot to cite it.
+                List<String> withQuotes = new ArrayList<>(sentence.refs);
+                findingQuotes.forEach(quote -> withQuotes.add(quote.token()));
+                ClaimChecks.Result withQuoted = ClaimChecks.check(sentence.text, withQuotes, List.of(), pack);
+                if (withQuoted.passed()) {
+                    result = withQuoted;
+                }
+            }
             sentence.validRefs = result.refs();
             if (result.passed()) {
                 toVerify.add(new ClaimToVerify(id, sentence.text, sources(result.refs(), pack)));
@@ -200,6 +212,7 @@ public class ReportGenerator {
                         : "The sources cited here disagree with each other.", verdict.conflictingRefs()));
             } else {
                 sentence.reason = verdict.reason().isBlank() ? "not supported by its sources" : verdict.reason();
+                sentence.rejectedByVerifier = true;
                 toRepair.add(verdict.id());
             }
         }
@@ -213,7 +226,12 @@ public class ReportGenerator {
             ClaimChecks.Result result = repaired == null ? null : ClaimChecks.check(repaired.text(),
                     repaired.refs().isEmpty() ? sentence.refs : repaired.refs().subList(0, Math.min(MAX_REPAIR_REFS, repaired.refs().size())),
                     List.of(), pack);
-            if (result != null && result.passed()) {
+            boolean unchanged = repaired != null && sentence.rejectedByVerifier
+                    && EmailParagraphs.normalize(repaired.text()).equals(EmailParagraphs.normalize(sentence.original));
+            if (unchanged) {
+                sentence.state = ClaimVerification.REMOVED;
+                sentence.note = sentence.reason + "; the rewrite changed nothing";
+            } else if (result != null && result.passed()) {
                 sentence.text = repaired.text();
                 sentence.validRefs = result.refs();
                 recheck.add(new ClaimToVerify(id, repaired.text(), sources(result.refs(), pack)));

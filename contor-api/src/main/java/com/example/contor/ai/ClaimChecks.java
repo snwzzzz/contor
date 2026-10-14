@@ -43,6 +43,10 @@ public final class ClaimChecks {
     private static final Pattern ISO_DATE = Pattern.compile("\\b(\\d{4})-(\\d{1,2})-(\\d{1,2})\\b");
     private static final Pattern DOTTED_DATE = Pattern.compile("\\b(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\b");
     private static final Pattern MONTH_FIRST = Pattern.compile("(?iu)\\b(" + MONTH + ")\\.? (\\d{1,2})(?:st|nd|rd|th)?,? (\\d{4})\\b");
+    /** Without a year ({@code 29.07.}, {@code 24 July}, {@code July 31}): read with the year of the email the text is from. */
+    private static final Pattern DOTTED_NO_YEAR = Pattern.compile("\\b(\\d{1,2})\\.(\\d{1,2})\\.(?!\\d)");
+    private static final Pattern MONTH_FIRST_NO_YEAR = Pattern.compile("(?iu)\\b(" + MONTH + ")\\.? (\\d{1,2})(?:st|nd|rd|th)?\\b");
+    private static final Pattern DAY_FIRST_NO_YEAR = Pattern.compile("(?iu)\\b(\\d{1,2})(?:\\.|st|nd|rd|th)? (" + MONTH + ")\\b");
     private static final Pattern DAY_FIRST = Pattern.compile("(?iu)\\b(\\d{1,2})(?:\\.|st|nd|rd|th)? (" + MONTH + ")\\.?,? (\\d{4})\\b");
 
     private ClaimChecks() {
@@ -92,8 +96,13 @@ public final class ClaimChecks {
         List<Source> cited = valid.stream().map(token -> pack.source(token).orElseThrow()).toList();
         String citedText = cited.stream().map(source -> source.text() + " " + source.label()).collect(Collectors.joining(" \n "));
         Set<LocalDate> citedDates = new HashSet<>();
-        dates(citedText).forEach(found -> citedDates.add(found.date()));
-        cited.stream().map(Source::date).filter(date -> date != null).forEach(citedDates::add);
+        for (Source source : cited) {
+            Integer year = source.date() != null ? source.date().getYear() : null;
+            dates(source.text() + " " + source.label(), year).forEach(found -> citedDates.add(found.date()));
+            if (source.date() != null) {
+                citedDates.add(source.date());
+            }
+        }
         Set<String> citedNumbers = new HashSet<>(sourceNumbers(citedText));
         for (LocalDate a : citedDates) {
             for (LocalDate b : citedDates) {
@@ -103,7 +112,7 @@ public final class ClaimChecks {
 
         String claim = INLINE_TOKEN.matcher(text).replaceAll(" ");
         StringBuilder withoutDates = new StringBuilder(claim);
-        List<FoundDate> claimDates = dates(claim);
+        List<FoundDate> claimDates = dates(claim, null);
         claimDates.stream().sorted(Comparator.comparingInt(FoundDate::start).reversed())
                 .forEach(found -> withoutDates.replace(found.start(), found.end(), " "));
         for (FoundDate found : claimDates) {
@@ -126,13 +135,22 @@ public final class ClaimChecks {
 
     private record FoundDate(LocalDate date, int start, int end, String raw) {}
 
-    /** Dates written in {@code text}, without overlaps (the first pattern that matches a span wins). */
-    private static List<FoundDate> dates(String text) {
+    /**
+     * Dates written in {@code text}, without overlaps (the first pattern that matches a span wins). Dates without a year
+     * are only read with a {@code year} (the year of the email they are from).
+     */
+    private static List<FoundDate> dates(String text, Integer year) {
         List<FoundDate> found = new ArrayList<>();
         collect(found, ISO_DATE.matcher(text), m -> date(m.group(1), m.group(2), m.group(3)));
         collect(found, DOTTED_DATE.matcher(text), m -> date(m.group(3), m.group(2), m.group(1)));
         collect(found, MONTH_FIRST.matcher(text), m -> date(m.group(3), month(m.group(1)), m.group(2)));
         collect(found, DAY_FIRST.matcher(text), m -> date(m.group(3), month(m.group(2)), m.group(1)));
+        if (year != null) {
+            String y = String.valueOf(year);
+            collect(found, DOTTED_NO_YEAR.matcher(text), m -> date(y, m.group(2), m.group(1)));
+            collect(found, MONTH_FIRST_NO_YEAR.matcher(text), m -> date(y, month(m.group(1)), m.group(2)));
+            collect(found, DAY_FIRST_NO_YEAR.matcher(text), m -> date(y, month(m.group(2)), m.group(1)));
+        }
         return found;
     }
 

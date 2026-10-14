@@ -91,7 +91,8 @@ class ReportModelServiceTest {
                 .mapToObj(i -> new ClaimToVerify(i, "Sentence " + i, List.of(PACK.source(i == 0 ? "P1.1" : "F1").orElseThrow())))
                 .toList();
         answers.add("""
-                {"verdicts": [{"id": 0, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": []},
+                {"verdicts": [{"id": 0, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": [],
+                               "facts": [{"fact": "held", "ref": "P1.1", "quote": "Held at customs."}]},
                               {"id": 1, "verdict": "CONTRADICTED", "reason": "differs", "conflictingRefs": ["F1", "x"]},
                               {"id": 99, "verdict": "SUPPORTED", "reason": "unknown id", "conflictingRefs": []}]}""");
         answers.add("""
@@ -108,6 +109,34 @@ class ReportModelServiceTest {
         assertThat(verdicts.get(1).conflictingRefs()).containsExactly("F1");
         assertThat(verdicts.get(2).kind()).as("no verdict = not verified").isEqualTo(Verdict.Kind.UNSUPPORTED);
         assertThat(verdicts.get(6).kind()).isEqualTo(Verdict.Kind.PARTIAL);
+    }
+
+    @Test
+    void verify_ASupportedVerdictNeedsAVerbatimQuoteForEveryFact() {
+        List<ClaimToVerify> claims = List.of(
+                new ClaimToVerify(0, "It was held at customs.", List.of(PACK.source("P1.1").orElseThrow())),
+                new ClaimToVerify(1, "It was held at customs, as agreed.", List.of(PACK.source("P1.1").orElseThrow())),
+                new ClaimToVerify(2, "It was due on 2026-09-02.", List.of(PACK.source("F1").orElseThrow())),
+                new ClaimToVerify(3, "It was due on 2026-09-02.", List.of(PACK.source("F1").orElseThrow())));
+        answers.add("""
+                {"verdicts": [
+                  {"id": 0, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": [],
+                   "facts": [{"fact": "held at customs", "ref": "P1.1", "quote": "held at  CUSTOMS"}]},
+                  {"id": 1, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": [],
+                   "facts": [{"fact": "held at customs", "ref": "P1.1", "quote": "Held at customs."},
+                             {"fact": "as agreed", "ref": "P1.1", "quote": "as agreed with the customer"}]},
+                  {"id": 2, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": [], "facts": []},
+                  {"id": 3, "verdict": "SUPPORTED", "reason": "ok", "conflictingRefs": [],
+                   "facts": [{"fact": "due date", "ref": "P1.1", "quote": "Held at customs."}]}]}""");
+
+        List<Verdict> verdicts = service.verify(claims);
+
+        assertThat(verdicts).extracting(Verdict::kind).containsExactly(Verdict.Kind.SUPPORTED, Verdict.Kind.UNSUPPORTED,
+                Verdict.Kind.UNSUPPORTED, Verdict.Kind.UNSUPPORTED);
+        assertThat(verdicts.get(1).reason()).contains("as agreed");
+        assertThat(verdicts.get(2).reason()).contains("no quote");
+        assertThat(verdicts.get(3).reason()).as("the quote must come from one of the sentence's own sources").contains("due date");
+        assertThat(calls.getFirst()[1]).contains("quote", "character for character");
     }
 
     @Test

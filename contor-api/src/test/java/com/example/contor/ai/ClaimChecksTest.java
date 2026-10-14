@@ -86,6 +86,30 @@ class ClaimChecksTest {
     }
 
     @Test
+    void a_date_written_without_a_year_takes_the_year_of_its_email() {
+        var pack = EvidencePack.builder()
+                .email(new EmailInput(9L, LocalDate.of(2026, 9, 4), "Dispatch", "dispatch@carrier.example", false, "Delivery",
+                        EmailParagraphs.split("Arrival Wednesday 29.07. 09:00.\n\nThe rest follows by 24 July, the latest on July 31.", null)))
+                .build("", EvidencePack.DEFAULT_BUDGET);
+
+        assertThat(ClaimChecks.check("It arrived on 2026-07-29.", List.of("P1.1"), List.of(), pack).passed()).isTrue();
+        assertThat(ClaimChecks.check("The rest was due by 2026-07-24.", List.of("P1.2"), List.of(), pack).passed()).isTrue();
+        assertThat(ClaimChecks.check("The rest was due by 2026-07-31 at the latest.", List.of("P1.2"), List.of(), pack).passed()).isTrue();
+        assertThat(ClaimChecks.check("It arrived on 2025-07-29.", List.of("P1.1"), List.of(), pack).passed()).isFalse();
+        assertThat(ClaimChecks.check("It arrived on 2026-07-30.", List.of("P1.1"), List.of(), pack).passed()).isFalse();
+    }
+
+    @Test
+    void a_time_of_day_is_not_a_date() {
+        var pack = EvidencePack.builder()
+                .email(new EmailInput(9L, LocalDate.of(2026, 9, 4), "Dispatch", "dispatch@carrier.example", false, "Delivery",
+                        EmailParagraphs.split("Arrival at 11.30. Gate 2.", null)))
+                .build("", EvidencePack.DEFAULT_BUDGET);
+
+        assertThat(ClaimChecks.check("It arrived on 2026-11-30.", List.of("P1.1"), List.of(), pack).passed()).isFalse();
+    }
+
+    @Test
     void a_number_of_days_between_two_cited_dates_is_allowed() {
         assertThat(ClaimChecks.check("It arrived 5 days late.", List.of("F1", "F3"), List.of(), PACK).passed()).isTrue();
         assertThat(ClaimChecks.check("It arrived 15 days late.", List.of("F1", "F3"), List.of(), PACK).passed()).isFalse();

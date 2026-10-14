@@ -25,6 +25,13 @@
 >   `EvidencePack.normalizeToken` takes the most specific token in a reference, and the prompt says to write tokens
 >   alone. A sentence that cited nothing is offered the record facts in the repair (refs returned, at most 3 kept); a
 >   sentence that repeats an earlier one is removed. Before these fixes 10 of 12 sentences were removed, after them 0 of 6.
+> - Live run with emails (demo PO-26-1083, 10 emails, ~2 min): the same draft went from 10 of 18 sentences verified to 15
+>   of 18 after three changes: dates without a year ("29.07.", "24 July") in a source take the year of its email; a
+>   finding's sentence may rely on the paragraph its finding quotes; a rewrite that changes nothing after the verifier
+>   rejected the sentence is removed. The verifier must list every fact of a SUPPORTED sentence with a verbatim quote
+>   from one of the sentence's own sources (checked in code), else the verdict becomes UNSUPPORTED. Known limit of the 9B
+>   model: a wrong conclusion built from correctly quoted parts ("by 2026-07-24, as agreed" while the rest arrived on
+>   29.07.) still passes, and a paraphrased verifier quote removes a correct sentence now and then. R7 should measure both.
 > - R8/R10: `components/app/reports/` (`RecordReports`, `ReportPrompt`, `ReportView`, `ReportBody`, `CitationMarker`,
 >   `SourcePanel`, `FactCheck`), `lib/report.ts`. The sources panel shows the cited email paragraph with its neighbours
 >   (`GET /api/emails/{id}/paragraphs`) and the quote marked; source links already carry `?tab=…&field=…` /

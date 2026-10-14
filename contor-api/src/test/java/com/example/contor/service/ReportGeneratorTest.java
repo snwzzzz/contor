@@ -224,6 +224,38 @@ class ReportGeneratorTest {
     }
 
     @Test
+    void generate_AFindingSentenceMayRelyOnTheParagraphItsFindingQuotes() {
+        draft(new ReportDraft("", List.of(), List.of(new ReportDraft.Finding("Delivery", FindingSeverity.PROBLEM,
+                List.of(claim("The carrier delivered it on 2026-09-06.", "R2")),
+                List.of(new ClaimChecks.Quote("P1.2", "We delivered it on 2026-09-06.")))), List.of(), List.of(), List.of()));
+        verdicts(Map.of());
+
+        generator.generate(5L);
+
+        ReportClaim claim = report.getSections().getFirst().getFindings().getFirst().getClaims().getFirst();
+        assertThat(claim.getVerification()).isEqualTo(ClaimVerification.SUPPORTED);
+        assertThat(claim.getCitations()).filteredOn(citation -> !citation.isSupportingQuote())
+                .extracting(ReportCitation::getType).containsExactly(CitationType.RECORD, CitationType.EMAIL_PARAGRAPH);
+        verify(reportModelService, never()).repair(anyList());
+    }
+
+    @Test
+    void generate_ARewriteThatChangesNothingAfterAFailedVerificationIsRemoved() {
+        draft(new ReportDraft("", List.of(claim("The carrier apologised for the delay.", "P1.1")), List.of(), List.of(), List.of(), List.of()));
+        when(reportModelService.verify(anyList())).thenReturn(
+                List.of(new Verdict(0, Verdict.Kind.UNSUPPORTED, "no apology", List.of())),
+                List.of(new Verdict(0, Verdict.Kind.SUPPORTED, "ok", List.of())));
+        when(reportModelService.repair(anyList())).thenReturn(Map.of(0, new ReportModelService.Repaired("The carrier  apologised for the delay.",
+                List.of("P1.1"))));
+
+        generator.generate(5L);
+
+        ReportClaim claim = report.getSections().getFirst().getClaims().getFirst();
+        assertThat(claim.getVerification()).isEqualTo(ClaimVerification.REMOVED);
+        assertThat(claim.getVerifierNote()).contains("no apology", "the rewrite changed nothing");
+    }
+
+    @Test
     void generate_UnsupportedSentenceIsRemovedWhenTheRepairFails() {
         draft(new ReportDraft("", List.of(claim("The carrier apologised for the delay.", "P1.1")), List.of(), List.of(), List.of(), List.of()));
         verdicts(Map.of(0, new Verdict(0, Verdict.Kind.UNSUPPORTED, "no apology in the source", List.of())));
