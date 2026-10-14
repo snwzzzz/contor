@@ -1,0 +1,40 @@
+{
+  "id": "m-0225",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "B1-dijkstra-split",
+  "beat": "notify",
+  "category": "B1",
+  "lang": "en",
+  "inReplyTo": "m-0129",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "f.dewit@dijkstra-werktuigen.example"
+    ],
+    "subject": "RE: PO DW-2291 - shipping info",
+    "receivedAt": "2026-07-22T09:05:00Z",
+    "body": "Hi Femke,\n\nFYI: SO-26-0147 travels in two consignments because of the pallet weight, KHS-HH-26071 (threaded rods) and KHS-HH-26072 (nuts). Both are due on Thursday, 23 July.\n\nBest regards\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "split-shipment"
+  ],
+  "facts": [
+    "SO-26-0147 in two consignments KHS-HH-26071 and KHS-HH-26072",
+    "both arrive Thursday 23 July"
+  ]
+}

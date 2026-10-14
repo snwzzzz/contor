@@ -1,0 +1,45 @@
+{
+  "id": "m-0048",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-steiner-rfq",
+  "cc": [],
+  "storyline": "A1-steiner-rfq",
+  "beat": "quote",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": "m-0035",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "reto.baumann@steiner-praezision.example"
+    ],
+    "subject": "AW: Offertanfrage Gewindestangen / Bohrer",
+    "receivedAt": "2026-07-08T13:00:00Z",
+    "body": "Guten Tag Herr Baumann\n\ngern offeriere ich Ihnen (Offerte Q-26-0315):\n- 500 Stk. Gewindestange M12x1000 (NH-20530) à CHF 3.70 = CHF 1'850.00\n- 20 Pack Spiralbohrer HSS-E 8,5 mm (NH-31020) à CHF 40.90 = CHF 818.00\n\nTotal CHF 2'668.00 netto, Lieferung DAP Winterthur. Die Verzollung übernimmt unser Spediteur Alpen-Sammelgut, die Kosten gehen zu Ihren Lasten. KW 31 schaffen wir, wenn Ihre Bestellung bis 15.07. bei uns ist.\n\nFreundliche Grüsse\nAlex Morgan\nNordhafen Industriebedarf GmbH"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "calendar-week",
+    "currency"
+  ],
+  "facts": [
+    "Offerte Q-26-0315",
+    "500 × CHF 3.70 = CHF 1'850.00",
+    "20 × CHF 40.90 = CHF 818.00",
+    "Total CHF 2'668.00 netto, DAP Winterthur",
+    "Verzollung durch Alpen-Sammelgut auf Kosten des Kunden",
+    "KW 31 möglich bei Bestellung bis 15.07."
+  ]
+}

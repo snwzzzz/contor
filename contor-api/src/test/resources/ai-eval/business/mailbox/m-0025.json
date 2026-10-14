@@ -1,0 +1,75 @@
+{
+  "id": "m-0025",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-pichler-re-0377",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "H1-pichler-dunning",
+  "beat": "dunning1",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "g.pichler@pichler-metallbau.example"
+    ],
+    "subject": "Zahlungserinnerung RE-2026-0377",
+    "receivedAt": "2026-07-07T08:00:00Z",
+    "body": "Sehr geehrter Herr Pichler,\n\nsicher haben Sie es nur übersehen: Unsere Rechnung RE-2026-0377 über 2.214,60 € war am 30.06.2026 fällig. Bitte überweisen Sie den Betrag bis zum 14.07.2026.\n\nMit freundlichen Grüßen\nTobias Krüger\nBuchhaltung\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1021"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Nordhafen RE-2026-0377 Pichler",
+          "values": {
+            "invoice_number": "RE-2026-0377",
+            "issuer": "Nordhafen",
+            "amount": {
+              "amount": 2214.6,
+              "currency": "EUR"
+            },
+            "due_date": "2026-07-14",
+            "state": "open",
+            "direction": "outgoing"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example",
+            "phone": "+49 40 5550 1021",
+            "role_title": "Buchhaltung"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "cc-only",
+    "dunning"
+  ],
+  "storylineTags": [
+    "cc-only",
+    "dunning"
+  ],
+  "facts": [
+    "Zahlungserinnerung RE-2026-0377",
+    "2.214,60 €",
+    "fällig seit 30.06.2026",
+    "bitte bis 14.07.2026 überweisen"
+  ]
+}

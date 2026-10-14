@@ -1,0 +1,85 @@
+{
+  "id": "m-0194",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ferraro-hamburg",
+  "cc": [],
+  "storyline": "F6-ferraro-dinner",
+  "beat": "invite",
+  "category": "F",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marco Ferraro",
+    "fromAddress": "m.ferraro@utensileria-bassano.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Hamburg 28 July - dinner?",
+    "receivedAt": "2026-07-20T10:30:00Z",
+    "body": "Ciao Alex,\n\nI'll be in Hamburg on 28 July for a customer visit. Would you join me for dinner at 19:30? I'd love to try a restaurant at the harbour.\n\nMarco"
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Dinner with Marco Ferraro",
+          "entity": "ferraro-dinner",
+          "values": {
+            "starts_at": "2026-07-28T19:30:00+02:00"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marco Ferraro",
+          "values": {
+            "email": "m.ferraro@utensileria-bassano.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Utensileria Bassano S.r.l.",
+          "values": {
+            "domain": "utensileria-bassano.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marco Ferraro",
+        "to": "organizations:Utensileria Bassano S.r.l."
+      },
+      {
+        "type": "attends",
+        "from": "people:Marco Ferraro",
+        "to": "events:Dinner with Marco Ferraro"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Would you join me for dinner on 28 July at 19:30?"
+    ],
+    "scheduleFrom": "2026-07-28",
+    "scheduleTo": "2026-07-28",
+    "timeOfDay": "EVENING",
+    "answeredBy": "m-0195"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [],
+  "facts": [
+    "in Hamburg on 28 July for a customer visit",
+    "dinner at 19:30?",
+    "a restaurant at the harbour"
+  ]
+}

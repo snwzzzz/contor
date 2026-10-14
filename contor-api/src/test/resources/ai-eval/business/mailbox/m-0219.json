@@ -1,0 +1,79 @@
+{
+  "id": "m-0219",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-pichler-mahnung",
+  "cc": [],
+  "storyline": "H1-pichler-dunning",
+  "beat": "never",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Gerhard Pichler",
+    "fromAddress": "g.pichler@pichler-metallbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Mahnung??",
+    "receivedAt": "2026-07-22T06:45:00Z",
+    "body": "Servus Alex,\n\neuer Tobias schickt mir Mahnungen für die RE-2026-0377 – die Rechnung hab ich nie bekommen! Schick's mir halt nochmal, dann zahl ich sofort.\n\nGerhard"
+  },
+  "expected": {
+    "records": {
+      "tasks": [
+        {
+          "title": "Rechnung RE-2026-0377 erneut an Pichler senden",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Gerhard Pichler",
+          "values": {
+            "email": "g.pichler@pichler-metallbau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Pichler Metallbau GmbH",
+          "values": {
+            "domain": "pichler-metallbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Gerhard Pichler",
+        "to": "organizations:Pichler Metallbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0221"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "thread-split"
+  ],
+  "storylineTags": [
+    "cc-only",
+    "dunning"
+  ],
+  "facts": [
+    "euer Tobias schickt Mahnungen",
+    "Rechnung nie bekommen",
+    "nochmal schicken, dann zahlt er sofort"
+  ]
+}

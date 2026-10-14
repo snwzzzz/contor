@@ -1,0 +1,41 @@
+{
+  "id": "m-0129",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "A4-dijkstra-change",
+  "beat": "ok2",
+  "category": "A4",
+  "lang": "en",
+  "inReplyTo": "m-0124",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "f.dewit@dijkstra-werktuigen.example"
+    ],
+    "subject": "RE: PO DW-2291",
+    "receivedAt": "2026-07-15T06:45:00Z",
+    "body": "Hi Femke,\n\nno problem: back to 200 rods, total 2,260.00 EUR again, delivery on Thursday, 23 July.\n\nAlex"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "contradicting-change"
+  ],
+  "facts": [
+    "back to 200 rods",
+    "total 2,260.00 EUR",
+    "delivery Thursday 23 July"
+  ]
+}

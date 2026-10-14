@@ -1,0 +1,83 @@
+{
+  "id": "m-0183",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-cierzo-40713",
+  "cc": [],
+  "storyline": "C1-tornilleria-po",
+  "beat": "arrival",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0125",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Javier Ortega",
+    "fromAddress": "trafico@transportes-cierzo.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: TC-26-40713 loaded",
+    "receivedAt": "2026-07-20T04:10:00Z",
+    "body": "Good morning, TC-26-40713 will arrive at your warehouse at 08:30 today. Please confirm unloading.\nJavier Ortega"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Transportes Cierzo TC-26-40713",
+          "values": {
+            "tracking_number": "TC-26-40713",
+            "state": "in_transit",
+            "eta": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Javier Ortega",
+          "values": {
+            "email": "trafico@transportes-cierzo.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Transportes Cierzo S.L.",
+          "values": {
+            "domain": "transportes-cierzo.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Javier Ortega",
+        "to": "organizations:Transportes Cierzo S.L."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0185"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "slot-booking"
+  ],
+  "storylineTags": [
+    "date-format",
+    "price-increase"
+  ],
+  "facts": [
+    "TC-26-40713 arrives at 08:30 today",
+    "please confirm unloading"
+  ],
+  "derived": {
+    "shipments.eta": "today = 20.07.2026"
+  }
+}

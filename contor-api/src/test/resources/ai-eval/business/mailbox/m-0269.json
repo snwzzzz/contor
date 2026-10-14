@@ -1,0 +1,71 @@
+{
+  "id": "m-0269",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moellenhoff-feedback",
+  "cc": [],
+  "storyline": "E6-moellenhoff-feedback",
+  "beat": "praise",
+  "category": "E6",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Uwe Rademacher",
+    "fromAddress": "u.rademacher@moellenhoff-stahlbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rückmeldung Lieferungen Juli",
+    "receivedAt": "2026-07-27T09:20:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nich möchte Ihnen und Ihrem Lagerteam einmal ausdrücklich danken: Ihre Lieferungen im Juli kamen durchweg pünktlich und vollständig, was bei unseren Montageplänen keine Selbstverständlichkeit ist. Bitte behalten Sie das Zeitfenster 7–12 Uhr auch im August bei.\n\nMit freundlichen Grüßen\nUwe Rademacher\nArbeitsvorbereitung\nMöllenhoff Stahlbau GmbH & Co. KG\nTel. +49 231 5550 2501"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Uwe Rademacher",
+          "values": {
+            "email": "u.rademacher@moellenhoff-stahlbau.example",
+            "phone": "+49 231 5550 2501",
+            "role_title": "Arbeitsvorbereitung"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Möllenhoff Stahlbau GmbH & Co. KG",
+          "values": {
+            "domain": "moellenhoff-stahlbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Uwe Rademacher",
+        "to": "organizations:Möllenhoff Stahlbau GmbH & Co. KG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "THANK_YOU"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "Lieferungen im Juli pünktlich und vollständig",
+    "Dank an das Lager",
+    "Zeitfenster 7-12 Uhr auch im August beibehalten"
+  ]
+}

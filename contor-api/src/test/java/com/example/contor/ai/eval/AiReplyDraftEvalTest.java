@@ -26,6 +26,7 @@ import java.time.format.TextStyle;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,6 +106,53 @@ class AiReplyDraftEvalTest {
                 + "%d of %d scheduling drafts name an offered day%n", model, cases.size(), drafts, questions, answered, open,
                 schedulingNamingADay, scheduling);
         System.out.println("[ai-eval] " + client.summary());
+        assertThat(drafts).as("drafts written (Ollama running? model pulled?)").isPositive();
+    }
+
+    /**
+     * Drafts for business mail that needs a reply, with the conversation so far as the thread: prints each draft and
+     * counts drafts, intents as labelled and questions found (the thread ends at the mail, so the owner's later answer
+     * is not visible). {@code -Dai.eval.business.drafts=n} (default 15) caps the number of drafts.
+     */
+    @Test
+    void business_drafts_answer_the_labelled_questions() {
+        String model = System.getProperty("ai.eval.model", DEFAULT_MODEL);
+        int cap = Integer.parseInt(System.getProperty("ai.eval.business.drafts", "15"));
+        AiProperties properties = new AiProperties(
+                new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(5), 16384, "30m"),
+                new AiProperties.Models(model, model, "nomic-embed-text"),
+                new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
+        JsonMapper mapper = JsonMapper.builder().build();
+        OllamaClient client = new OllamaClient(properties, mapper);
+        ReplyTriageService triageService = new ReplyTriageService(client, properties, mapper);
+        List<BusinessMessage> all = BusinessCorpus.messages();
+        List<BusinessMessage> cases = all.stream().filter(BusinessMessage::labelled).filter(message -> Boolean.TRUE.equals(message.needsReply()))
+                .limit(cap).toList();
+
+        int drafts = 0;
+        int intentAsLabelled = 0;
+        int questions = 0;
+        int questionsFound = 0;
+        for (BusinessMessage message : cases) {
+            EmailContent email = message.email();
+            ReplyThread thread = new ReplyThread("Alex Morgan", email.mailbox(), AiReplyTriageEvalTest.threadOf(message, all));
+            ReplyTriageService.Triage triage = triageService.triage(thread);
+            List<String> labelledQuestions = message.reply() != null ? message.reply().questions() : List.of();
+            questions += labelledQuestions.size();
+            questionsFound += QuestionMatch.found(labelledQuestions, triage.questions());
+            intentAsLabelled += message.reply() != null && Objects.equals(message.reply().intent(), triage.intent()) ? 1 : 0;
+            Optional<ReplyComposerService.ComposedReply> reply = new ReplyComposerService(client, properties, mapper,
+                    Clock.fixed(email.receivedAt(), ZONE)).compose(thread, List.of(),
+                    new ReplyComposerService.Brief(triage.intent(), triage.questions(), List.of(), ""));
+            System.out.printf("[ai-eval] business %s (%s): intent %s (labelled %s), questions %s%n", message.id(), message.storyline(),
+                    triage.intent(), message.reply() != null ? message.reply().intent() : null, triage.questions());
+            if (reply.isPresent()) {
+                drafts++;
+                System.out.println(reply.get().body().indent(4));
+            }
+        }
+        System.out.printf("[ai-eval] business drafts (%s, %d mails): %d drafts, intent as labelled %d, questions found %d/%d%n", model,
+                cases.size(), drafts, intentAsLabelled, questionsFound, questions);
         assertThat(drafts).as("drafts written (Ollama running? model pulled?)").isPositive();
     }
 

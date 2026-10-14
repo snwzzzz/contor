@@ -1,0 +1,87 @@
+{
+  "id": "m-0276",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-ostrowski-142",
+  "cc": [],
+  "storyline": "A2-ostrowski-repeat",
+  "beat": "order",
+  "category": "A2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Marek Kowalczyk",
+    "fromAddress": "marek.kowalczyk@ostrowski-serwis.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Order 2026/OS/142",
+    "receivedAt": "2026-07-28T07:10:00Z",
+    "body": "Alex, please the same as our order 2026/OS/118 again, new number 2026/OS/142, delivery by 7 August. Thanks!\nMarek"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ostrowski Serwis 2026/OS/142",
+          "entity": "so-0173",
+          "values": {
+            "customer": "Ostrowski Serwis",
+            "state": "received",
+            "requested_delivery": "2026-08-07"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Marek Kowalczyk",
+          "values": {
+            "email": "marek.kowalczyk@ostrowski-serwis.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ostrowski Serwis Sp. z o.o.",
+          "values": {
+            "domain": "ostrowski-serwis.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Marek Kowalczyk",
+        "to": "organizations:Ostrowski Serwis Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0284"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0040"
+  ],
+  "tags": [
+    "terse-repeat-order",
+    "context-needed",
+    "different-marek"
+  ],
+  "storylineTags": [
+    "terse-repeat-order",
+    "context-needed",
+    "different-marek"
+  ],
+  "facts": [
+    "same as order 2026/OS/118",
+    "our order 2026/OS/142",
+    "delivery by 7 August"
+  ]
+}

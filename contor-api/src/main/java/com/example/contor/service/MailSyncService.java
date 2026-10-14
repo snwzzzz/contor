@@ -6,6 +6,7 @@ import com.example.contor.domain.ContactPhoto;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.MailAccountStatus;
+import com.example.contor.domain.MailProvider;
 import com.example.contor.domain.ProcessingState;
 import com.example.contor.persistence.ContactPhotoRepository;
 import com.example.contor.persistence.EmailMessageRepository;
@@ -42,6 +43,11 @@ public class MailSyncService {
 
     @Transactional
     public MailSyncStatusDto syncAccount(MailAccount account) {
+        if (account.getProvider() == MailProvider.DEMO) {
+            // the demo mailbox is imported once and has no Microsoft account behind it
+            return new MailSyncStatusDto(account.getId().id(), MailAccountState.ACTIVE).messagesSynced(0)
+                    .lastSyncedAt(account.getLastSyncedAt() != null ? account.getLastSyncedAt().atOffset(ZoneOffset.UTC) : null);
+        }
         String token;
         try {
             token = ensureValidToken(account);
@@ -252,6 +258,9 @@ public class MailSyncService {
     public void syncAllActiveAccounts() {
         List<MailAccount> accounts = mailAccountRepository.findByStatus(MailAccountStatus.ACTIVE);
         for (MailAccount account : accounts) {
+            if (account.getProvider() == MailProvider.DEMO) {
+                continue;
+            }
             try {
                 syncAccount(account);
             } catch (Exception e) {

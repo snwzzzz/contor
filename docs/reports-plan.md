@@ -5,7 +5,7 @@
 > endpoint); R4–R12 open. Branch: `feature/report-section`.
 >
 > Implementation notes (where it differs from or refines the text below):
-> - R1: only `report` has a sequence; the four child tables use identity IDs (detail tables, CLAUDE.md §2).
+> - R1: the migration is `V1_0_29` (1.0.27 and 1.0.28 came with the business workflows on `developer`). Only `report` has a sequence; the four child tables use identity IDs (detail tables, CLAUDE.md §2).
 >   `ck_report_citation_target` does not require `email_id` for EMAIL_PARAGRAPH (a deleted email sets it null; the
 >   quote, hash and index stay). Sentences of a finding live in `ReportFinding.claims`; `ReportSection.claims` holds
 >   only the sentences outside findings (`@SQLRestriction("finding_id is null")`).
@@ -115,7 +115,7 @@ for ("Delivery problems", "Payment history"). Sections the evidence cannot fill 
 
 ## Part A — Backend
 
-### R1. Migration `V1_0_27__reports.sql`
+### R1. Migration `V1_0_29__reports.sql`
 Quoted tables, `<table>_seq` increment 50 for the two aggregate roots, `timestamptz`, named constraints, FK indexes,
 `text + CHECK` enums, a comment per table.
 

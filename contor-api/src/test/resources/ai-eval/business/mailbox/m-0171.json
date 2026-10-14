@@ -1,0 +1,87 @@
+{
+  "id": "m-0171",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-eskalation",
+  "cc": [],
+  "storyline": "E1-hartmann-escalation",
+  "beat": "resolved",
+  "category": "E1",
+  "lang": "de",
+  "inReplyTo": "m-0156",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Thomas Reuter",
+    "fromAddress": "thomas.reuter@hartmann-hydraulik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: AW: Beschwerde: Lieferverzug SO-26-0149",
+    "receivedAt": "2026-07-17T11:20:00Z",
+    "body": "Herr Morgan,\n\ndie Ware ist da, die Anlage läuft wieder. Die 5 % nehmen wir an. Trotzdem: So etwas darf nicht noch einmal passieren.\n\nT. Reuter\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Donnerstag, 16. Juli 2026 10:45\nAn: Thomas Reuter <thomas.reuter@hartmann-hydraulik.example>\nCc: Dr. Helga Sommerfeld <helga.sommerfeld@nordhafen.example>\nBetreff: AW: Beschwerde: Lieferverzug SO-26-0149\n\nwie telefonisch besprochen: SO-26-0149 geht heute per Express raus, Zustellung morgen, 17.07., bis 10 Uhr. Als Entschuldigung übernehmen wir die Expresskosten und gewähren 5 % Nachlass auf die Rechnung. Ihre Reklamation führen wir unter RMA-26-043."
+  },
+  "expected": {
+    "records": {
+      "complaints": [
+        {
+          "title": "RMA-26-043 Hartmann Hydraulik delay",
+          "entity": "rma-043",
+          "values": {
+            "reference": "RMA-26-043",
+            "customer": "Hartmann Hydraulik",
+            "state": "resolved"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Hartmann Hydraulik SO-26-0149",
+          "values": {
+            "order_number": "SO-26-0149",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Thomas Reuter",
+          "values": {
+            "email": "thomas.reuter@hartmann-hydraulik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Hartmann Hydraulik GmbH",
+          "values": {
+            "domain": "hartmann-hydraulik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Thomas Reuter",
+        "to": "organizations:Hartmann Hydraulik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "churn-signal"
+  ],
+  "storylineTags": [
+    "escalation",
+    "churn-signal"
+  ],
+  "facts": [
+    "Ware ist da, Anlage läuft wieder",
+    "5 % angenommen",
+    "darf nicht noch einmal passieren"
+  ]
+}

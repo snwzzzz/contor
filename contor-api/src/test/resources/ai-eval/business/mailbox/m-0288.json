@@ -1,0 +1,65 @@
+{
+  "id": "m-0288",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-elbufer-0729",
+  "cc": [],
+  "storyline": "H1-pichler-dunning",
+  "beat": "paid",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Elbufer Bank",
+    "fromAddress": "noreply@elbufer-bank.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Zahlungseingang auf Ihrem Geschäftskonto",
+    "receivedAt": "2026-07-29T04:12:00Z",
+    "body": "Guten Tag,\n\nauf Ihrem Geschäftskonto ist eine Gutschrift eingegangen:\n\nBetrag: 2.214,60 EUR\nAuftraggeber: Pichler Metallbau GmbH\nVerwendungszweck: RE-2026-0377\nBuchungstag: 29.07.2026\n\nDiese Nachricht wurde automatisch erstellt. Ihre Elbufer Bank AG"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Nordhafen RE-2026-0377 Pichler",
+          "values": {
+            "invoice_number": "RE-2026-0377",
+            "amount": {
+              "amount": 2214.6,
+              "currency": "EUR"
+            },
+            "state": "paid"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "cc-only",
+    "dunning"
+  ],
+  "facts": [
+    "Zahlungseingang 2.214,60 EUR",
+    "Auftraggeber Pichler Metallbau GmbH",
+    "Verwendungszweck RE-2026-0377"
+  ]
+}

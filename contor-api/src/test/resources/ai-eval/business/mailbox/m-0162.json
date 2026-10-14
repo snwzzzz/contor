@@ -1,0 +1,114 @@
+{
+  "id": "m-0162",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-dijkstra-three",
+  "cc": [],
+  "storyline": "J1-dijkstra-three-topics",
+  "beat": "three",
+  "category": "J",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Femke de Wit",
+    "fromAddress": "f.dewit@dijkstra-werktuigen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Three things",
+    "receivedAt": "2026-07-16T13:20:00Z",
+    "body": "Hi Alex,\n\nthree things before my holiday:\n\n1. New order DW-2310: 50 packs HSS-E drill bits 8.5 mm, delivery 30 July.\n2. In the last delivery of hex nuts M8 we found 2 boxes with M10 nuts. Please replace them.\n3. Our managing director, Pieter Dijkstra, would like to visit you in Hamburg. Would 10 or 11 September work for you?\n\nThanks!\nFemke de Wit\nPurchasing\nDijkstra Werktuigen B.V.\n+31 40 5550 2301"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Dijkstra Werktuigen DW-2310",
+          "entity": "so-0166",
+          "values": {
+            "customer": "Dijkstra Werktuigen",
+            "state": "received",
+            "requested_delivery": "2026-07-30"
+          }
+        }
+      ],
+      "complaints": [
+        {
+          "title": "Dijkstra Werktuigen wrong item hex nuts",
+          "entity": "rma-045",
+          "values": {
+            "customer": "Dijkstra Werktuigen",
+            "topic": "wrong_item",
+            "severity": "low",
+            "state": "open",
+            "opened_on": "2026-07-16"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "2 Kartons M8-Muttern für Dijkstra Werktuigen ersetzen",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Femke de Wit",
+          "values": {
+            "email": "f.dewit@dijkstra-werktuigen.example",
+            "phone": "+31 40 5550 2301",
+            "role_title": "Purchasing"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Dijkstra Werktuigen B.V.",
+          "values": {
+            "domain": "dijkstra-werktuigen.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Femke de Wit",
+        "to": "organizations:Dijkstra Werktuigen B.V."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Can you confirm order DW-2310?",
+      "Can you replace the 2 boxes of M10 nuts?",
+      "Would 10 or 11 September work for a visit?"
+    ],
+    "scheduleFrom": "2026-09-10",
+    "scheduleTo": "2026-09-11",
+    "timeOfDay": "ANY",
+    "answeredBy": "m-0163"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "several-topics"
+  ],
+  "storylineTags": [
+    "several-topics"
+  ],
+  "facts": [
+    "1) new order DW-2310: 50 packs drill bits 8.5 mm, delivery 30 July",
+    "2) last delivery of hex nuts: 2 boxes M10 instead of M8, please replace",
+    "3) MD Pieter Dijkstra wants to visit Hamburg: 10 or 11 September?"
+  ],
+  "derived": {
+    "complaints.opened_on": "date of the mail"
+  }
+}

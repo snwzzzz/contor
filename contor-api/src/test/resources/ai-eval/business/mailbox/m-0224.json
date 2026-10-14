@@ -1,0 +1,114 @@
+{
+  "id": "m-0224",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kranhoeft-dijkstra",
+  "cc": [],
+  "storyline": "B1-dijkstra-split",
+  "beat": "split",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Claudia Wendler",
+    "fromAddress": "c.wendler@kranhoeft-spedition.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Sendungsaufteilung Dijkstra Werktuigen / SO-26-0147",
+    "receivedAt": "2026-07-22T08:30:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nwegen des Palettengewichts haben wir Ihre Sendung für Dijkstra Werktuigen, Eindhoven (Ihr Auftrag SO-26-0147), auf zwei Sendungen aufgeteilt:\n\n- KHS-HH-26071: Gewindestangen, 1 Palette\n- KHS-HH-26072: Muttern, 1 Palette\n\nDie Zustellung beider Sendungen ist für Donnerstag, 23.07., geplant.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKundenservice Export\nKranhöft Spedition GmbH\nTel. +49 40 5550 6701"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kranhöft KHS-HH-26071",
+          "values": {
+            "tracking_number": "KHS-HH-26071",
+            "carrier": "Kranhöft Spedition",
+            "direction": "outbound",
+            "order_ref": "SO-26-0147",
+            "state": "in_transit",
+            "eta": "2026-07-23"
+          }
+        },
+        {
+          "title": "Kranhöft KHS-HH-26072",
+          "values": {
+            "tracking_number": "KHS-HH-26072",
+            "carrier": "Kranhöft Spedition",
+            "direction": "outbound",
+            "order_ref": "SO-26-0147",
+            "state": "in_transit",
+            "eta": "2026-07-23"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Dijkstra Werktuigen SO-26-0147",
+          "entity": "so-0147",
+          "values": {
+            "order_number": "SO-26-0147",
+            "state": "shipped"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Claudia Wendler",
+          "values": {
+            "email": "c.wendler@kranhoeft-spedition.example",
+            "phone": "+49 40 5550 6701",
+            "role_title": "Kundenservice Export"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kranhöft Spedition GmbH",
+          "values": {
+            "domain": "kranhoeft-spedition.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Claudia Wendler",
+        "to": "organizations:Kranhöft Spedition GmbH"
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Kranhöft KHS-HH-26071",
+        "to": "sales_orders:Dijkstra Werktuigen SO-26-0147"
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Kranhöft KHS-HH-26072",
+        "to": "sales_orders:Dijkstra Werktuigen SO-26-0147"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "split-shipment"
+  ],
+  "storylineTags": [
+    "split-shipment"
+  ],
+  "facts": [
+    "Sendung für Dijkstra Werktuigen, Eindhoven, auf zwei Sendungen aufgeteilt",
+    "KHS-HH-26071 Gewindestangen, 1 Palette",
+    "KHS-HH-26072 Muttern, 1 Palette",
+    "Ihr Auftrag SO-26-0147",
+    "Zustellung beider Do 23.07."
+  ]
+}

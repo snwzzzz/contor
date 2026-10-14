@@ -171,7 +171,7 @@ class AiExtractionEvalTest {
     }
 
     /** The relation drafts, with their {@code {"ref": x}} ends named by the collection and title of the draft with that ref. */
-    private static List<ProducedRelation> relations(List<ProposalDraft> drafts, Map<Long, String> slugById, Map<Long, String> typeById) {
+    static List<ProducedRelation> relations(List<ProposalDraft> drafts, Map<Long, String> slugById, Map<Long, String> typeById) {
         Map<String, ProducedRecord> byRef = new HashMap<>();
         drafts.stream().filter(draft -> draft.kind() != ProposalKind.CREATE_RELATION && draft.ref() != null)
                 .forEach(draft -> byRef.put(draft.ref(), produced(draft, slugById)));

@@ -1,0 +1,81 @@
+{
+  "id": "m-0172",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-gruber-revision",
+  "cc": [],
+  "storyline": "A3-gruber-rush",
+  "beat": "arrived",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": "m-0122",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Andrea Caduff",
+    "fromAddress": "andrea.caduff@gruber-seilbahntechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Proforma SO-26-0162",
+    "receivedAt": "2026-07-17T12:20:00Z",
+    "body": "Grüezi Herr Morgan\n\nDie Ware zu SO-26-0162 ist heute Mittag angekommen, die Revision läuft. Merci für die schnelle Hilfe!\n\nAndrea Caduff"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Gruber Seilbahntechnik SO-26-0162",
+          "entity": "so-0162",
+          "values": {
+            "order_number": "SO-26-0162",
+            "customer": "Gruber Seilbahntechnik",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Andrea Caduff",
+          "values": {
+            "email": "andrea.caduff@gruber-seilbahntechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Gruber Seilbahntechnik AG",
+          "values": {
+            "domain": "gruber-seilbahntechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Andrea Caduff",
+        "to": "organizations:Gruber Seilbahntechnik AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": {
+    "intent": "COURTESY",
+    "courtesyKind": "THANK_YOU"
+  },
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "rush-order",
+    "currency"
+  ],
+  "facts": [
+    "Ware zu SO-26-0162 heute Mittag angekommen",
+    "Revision läuft",
+    "Dank"
+  ]
+}

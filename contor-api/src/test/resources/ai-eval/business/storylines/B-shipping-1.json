@@ -1,0 +1,399 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "B1-brandauer-consolidated",
+      "category": "B1",
+      "summary": "One groupage consignment carries two orders to Austria and is delayed twice; the customer asks where the goods are.",
+      "difficulty": "hard",
+      "editorNotes": "One shipment, two orders; first delay, customer chases, second delay; the final delivery mail names neither number in the new text.",
+      "tags": ["one-shipment-two-orders", "second-delay"],
+      "numbers": ["ASG-2607221"],
+      "insights": [
+        { "id": "insight-alpensammel-late", "title": "Alpen-Sammelgut delivered late twice for the same consignment", "evidence": ["#delay1", "#delay2"], "asOf": "2026-07-27" }
+      ],
+      "beats": [
+        {
+          "key": "pickup", "day": "2026-07-22", "time": "14:05", "from": "p-moser", "conversation": "asg-2607221",
+          "facts": ["Abholung heute", "Sendung ASG-2607221, 2 Paletten", "Aufträge SO-26-0158 und SO-26-0161", "Zustellung Linz Fr 24.07."],
+          "style": { "lang": "de", "tone": "routine", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Abholbestätigung ASG-2607221",
+          "body": "Grüß Gott,\n\nheute bei Ihnen abgeholt: Sendung ASG-2607221, 2 Paletten für Brandauer Anlagentechnik, Linz (Ihre Aufträge SO-26-0158 und SO-26-0161). Zustellung voraussichtlich Freitag, 24.07.\n\nMit freundlichen Grüßen\nStefan Moser\nDisposition\nAlpen-Sammelgut Spedition GmbH\nTel. +43 512 5550 6301",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607221", "values": { "tracking_number": "ASG-2607221", "carrier": "Alpen-Sammelgut", "direction": "outbound", "order_ref": "SO-26-0158, SO-26-0161", "state": "picked_up", "eta": "2026-07-24" } }],
+              "sales_orders": [
+                { "title": "Brandauer Anlagentechnik SO-26-0158", "entity": "so-0158", "values": { "order_number": "SO-26-0158", "state": "shipped" } },
+                { "title": "Brandauer Anlagentechnik SO-26-0161", "entity": "so-0161", "values": { "order_number": "SO-26-0161", "state": "shipped" } }
+              ]
+            },
+            "relations": [
+              { "type": "ships", "from": "shipments:Alpen-Sammelgut ASG-2607221", "to": "sales_orders:Brandauer Anlagentechnik SO-26-0158" },
+              { "type": "ships", "from": "shipments:Alpen-Sammelgut ASG-2607221", "to": "sales_orders:Brandauer Anlagentechnik SO-26-0161" }
+            ],
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["one-shipment-two-orders"]
+          }
+        },
+        {
+          "key": "delay1", "day": "2026-07-23", "time": "16:20", "from": "p-moser", "inReplyTo": "#pickup",
+          "facts": ["Verzögerung ASG-2607221", "LKW-Panne bei Rosenheim", "Zustellung erst Montag 27.07."],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Abholbestätigung ASG-2607221 – Verzögerung",
+          "body": "Grüß Gott,\n\nleider hat unser LKW eine Panne bei Rosenheim. Die Sendung ASG-2607221 kann erst am Montag, 27.07., in Linz zugestellt werden. Wir bitten um Entschuldigung.\n\nStefan Moser",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607221", "values": { "tracking_number": "ASG-2607221", "state": "delayed", "eta": "2026-07-27" } }]
+            },
+            "needsReply": false,
+            "importance": "HIGH",
+            "tags": ["delay"]
+          }
+        },
+        {
+          "key": "where", "day": "2026-07-24", "time": "10:15", "from": "p-hofer", "conversation": "brandauer-ba-2026-07",
+          "facts": ["wo bleibt die Lieferung", "vereinbart war heute, 24.07.", "bisher nichts da"],
+          "style": { "lang": "de", "tone": "impatient", "length": "1-3 sentences" },
+          "subject": "Lieferung BA-2026-07?",
+          "body": "Lieber Herr Morgan,\n\nwo bleibt denn unsere Lieferung zu BA-2026-07? Vereinbart war heute, der 24.07., bisher ist nichts da. Bitte um kurze Info, die Montage wartet.\n\nMartina Hofer",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Brandauer Anlagentechnik BA-2026-07", "entity": "so-0158", "values": { "customer": "Brandauer Anlagentechnik" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Wo bleibt unsere Lieferung zu BA-2026-07?"], "answeredBy": "#info1" },
+            "importance": "HIGH",
+            "tags": ["delay", "thread-split"]
+          }
+        },
+        {
+          "key": "info1", "day": "2026-07-24", "time": "11:00", "direction": "sent", "to": ["p-hofer"], "inReplyTo": "#where",
+          "facts": ["Panne bei Rosenheim", "neue Zustellung Montag 27.07.", "beide Aufträge in einer Sendung ASG-2607221"],
+          "style": { "lang": "de", "tone": "apologetic", "length": "short" },
+          "subject": "AW: Lieferung BA-2026-07?",
+          "body": "Liebe Frau Hofer,\n\nentschuldigen Sie bitte, ich hätte Sie gestern schon informieren sollen: Der LKW unserer Spedition hatte eine Panne bei Rosenheim. Neue Zustellung ist Montag, 27.07. – beide Aufträge kommen zusammen in der Sendung ASG-2607221.\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "delay2", "day": "2026-07-27", "time": "08:10", "from": "p-moser", "inReplyTo": "#delay1",
+          "facts": ["leider neuer Termin Di 28.07.", "Fahrerausfall"],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Abholbestätigung ASG-2607221 – Verzögerung",
+          "body": "Guten Morgen,\n\nes tut mir leid, wir haben heute einen Fahrerausfall. ASG-2607221 wird erst am Dienstag, 28.07., zugestellt.\n\nStefan Moser",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607221", "values": { "tracking_number": "ASG-2607221", "state": "delayed", "eta": "2026-07-28" } }]
+            },
+            "needsReply": false,
+            "importance": "HIGH",
+            "tags": ["second-delay"]
+          }
+        },
+        {
+          "key": "info2", "day": "2026-07-27", "time": "08:40", "direction": "sent", "to": ["p-hofer"], "inReplyTo": "#info1",
+          "facts": ["noch ein Tag Verzug", "Zustellung Dienstag 28.07."],
+          "style": { "lang": "de", "tone": "apologetic", "length": "1-3 sentences" },
+          "subject": "AW: Lieferung BA-2026-07?",
+          "body": "Liebe Frau Hofer,\n\nleider noch ein Tag Verzug: Die Spedition stellt erst am Dienstag, 28.07., zu. Ich entschuldige mich ausdrücklich dafür und habe mit der Spedition gesprochen.\n\nViele Grüße\nAlex Morgan\n\nVon: Alex Morgan\nGesendet: Freitag, 24. Juli 2026 11:00\nAn: Martina Hofer <m.hofer@brandauer-anlagentechnik.example>\nBetreff: AW: Lieferung BA-2026-07?\n\nNeue Zustellung ist Montag, 27.07. – beide Aufträge kommen zusammen in der Sendung ASG-2607221."
+        },
+        {
+          "key": "arrived", "day": "2026-07-28", "time": "13:30", "from": "p-hofer", "inReplyTo": "#info2",
+          "facts": ["heute gekommen, vollständig", "soll nicht zur Regel werden"],
+          "style": { "lang": "de", "tone": "cool", "length": "1-3 sentences", "quoting": "full" },
+          "subject": "AW: Lieferung BA-2026-07?",
+          "body": "Herr Morgan,\n\nist heute gekommen, alles vollständig. Bitte schauen Sie, dass das nicht zur Regel wird.\n\nM. Hofer\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Montag, 27. Juli 2026 08:40\nAn: Martina Hofer <m.hofer@brandauer-anlagentechnik.example>\nBetreff: AW: Lieferung BA-2026-07?\n\nleider noch ein Tag Verzug: Die Spedition stellt erst am Dienstag, 28.07., zu.\n\nVon: Alex Morgan\nGesendet: Freitag, 24. Juli 2026 11:00\nBetreff: AW: Lieferung BA-2026-07?\n\nNeue Zustellung ist Montag, 27.07. – beide Aufträge kommen zusammen in der Sendung ASG-2607221.",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607221", "values": { "tracking_number": "ASG-2607221", "state": "delivered" } }],
+              "sales_orders": [{ "title": "Brandauer Anlagentechnik BA-2026-07", "entity": "so-0158", "values": { "customer": "Brandauer Anlagentechnik", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["churn-signal"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B1-dijkstra-split",
+      "category": "B1",
+      "summary": "One order to the Netherlands is split into two consignments; one arrives on time, the other a day late.",
+      "difficulty": "medium",
+      "editorNotes": "Two tracking numbers for one order; the customer contact is on holiday, so the owner's notice gets an automatic reply.",
+      "tags": ["split-shipment"],
+      "numbers": ["KHS-HH-26071", "KHS-HH-26072"],
+      "beats": [
+        {
+          "key": "split", "day": "2026-07-22", "time": "10:30", "from": "p-wendler", "conversation": "kranhoeft-dijkstra",
+          "facts": ["Sendung für Dijkstra Werktuigen, Eindhoven, auf zwei Sendungen aufgeteilt", "KHS-HH-26071 Gewindestangen, 1 Palette", "KHS-HH-26072 Muttern, 1 Palette", "Ihr Auftrag SO-26-0147", "Zustellung beider Do 23.07."],
+          "style": { "lang": "de", "tone": "professional", "length": "short", "signature": "full" },
+          "subject": "Sendungsaufteilung Dijkstra Werktuigen / SO-26-0147",
+          "body": "Sehr geehrter Herr Morgan,\n\nwegen des Palettengewichts haben wir Ihre Sendung für Dijkstra Werktuigen, Eindhoven (Ihr Auftrag SO-26-0147), auf zwei Sendungen aufgeteilt:\n\n- KHS-HH-26071: Gewindestangen, 1 Palette\n- KHS-HH-26072: Muttern, 1 Palette\n\nDie Zustellung beider Sendungen ist für Donnerstag, 23.07., geplant.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKundenservice Export\nKranhöft Spedition GmbH\nTel. +49 40 5550 6701",
+          "labels": {
+            "records": {
+              "shipments": [
+                { "title": "Kranhöft KHS-HH-26071", "values": { "tracking_number": "KHS-HH-26071", "carrier": "Kranhöft Spedition", "direction": "outbound", "order_ref": "SO-26-0147", "state": "in_transit", "eta": "2026-07-23" } },
+                { "title": "Kranhöft KHS-HH-26072", "values": { "tracking_number": "KHS-HH-26072", "carrier": "Kranhöft Spedition", "direction": "outbound", "order_ref": "SO-26-0147", "state": "in_transit", "eta": "2026-07-23" } }
+              ],
+              "sales_orders": [{ "title": "Dijkstra Werktuigen SO-26-0147", "entity": "so-0147", "values": { "order_number": "SO-26-0147", "state": "shipped" } }]
+            },
+            "relations": [
+              { "type": "ships", "from": "shipments:Kranhöft KHS-HH-26071", "to": "sales_orders:Dijkstra Werktuigen SO-26-0147" },
+              { "type": "ships", "from": "shipments:Kranhöft KHS-HH-26072", "to": "sales_orders:Dijkstra Werktuigen SO-26-0147" }
+            ],
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["split-shipment"]
+          }
+        },
+        {
+          "key": "notify", "day": "2026-07-22", "time": "11:05", "direction": "sent", "to": ["p-dewit"], "conversation": "dijkstra-dw-2291", "inReplyTo": "A4-dijkstra-change#ok2",
+          "facts": ["SO-26-0147 in two consignments KHS-HH-26071 and KHS-HH-26072", "both arrive Thursday 23 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: PO DW-2291 - shipping info",
+          "body": "Hi Femke,\n\nFYI: SO-26-0147 travels in two consignments because of the pallet weight, KHS-HH-26071 (threaded rods) and KHS-HH-26072 (nuts). Both are due on Thursday, 23 July.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "partly", "day": "2026-07-23", "time": "17:15", "from": "p-wendler", "inReplyTo": "#split",
+          "facts": ["KHS-HH-26071 zugestellt", "KHS-HH-26072 verspätet sich auf Fr 24.07.", "Rangierfehler im Hub"],
+          "style": { "lang": "de", "tone": "professional", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Sendungsaufteilung Dijkstra Werktuigen / SO-26-0147",
+          "body": "Sehr geehrter Herr Morgan,\n\nKHS-HH-26071 wurde heute zugestellt. KHS-HH-26072 wurde in unserem Hub leider falsch verladen und kommt erst am Freitag, 24.07., in Eindhoven an.\n\nMit freundlichen Grüßen\nClaudia Wendler",
+          "labels": {
+            "records": {
+              "shipments": [
+                { "title": "Kranhöft KHS-HH-26071", "values": { "tracking_number": "KHS-HH-26071", "state": "delivered" } },
+                { "title": "Kranhöft KHS-HH-26072", "values": { "tracking_number": "KHS-HH-26072", "state": "delayed", "eta": "2026-07-24" } }
+              ]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["split-shipment", "delay"]
+          }
+        },
+        {
+          "key": "pod", "day": "2026-07-24", "time": "15:40", "from": "p-wendler", "inReplyTo": "#partly",
+          "facts": ["KHS-HH-26072 heute zugestellt", "Ablieferbeleg anbei"],
+          "style": { "lang": "de", "tone": "professional", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Sendungsaufteilung Dijkstra Werktuigen / SO-26-0147",
+          "body": "Sehr geehrter Herr Morgan,\n\nKHS-HH-26072 ist heute zugestellt worden, der Ablieferbeleg hängt an.\n\nMit freundlichen Grüßen\nClaudia Wendler",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kranhöft KHS-HH-26072", "values": { "tracking_number": "KHS-HH-26072", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B2-wislatrans-delay",
+      "category": "B2",
+      "summary": "The Polish groupage shipment that was nearly cancelled is delayed by a traffic jam and delivered a day later.",
+      "difficulty": "easy",
+      "editorNotes": "Short dispatcher status updates; the order number is only in the pickup mail of another storyline.",
+      "tags": ["delay"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "late", "day": "2026-07-16", "time": "12:10", "from": "p-lewandowska", "conversation": "wislatrans-260714", "inReplyTo": "A5-ostrowski-cancel#pickup",
+          "facts": ["WTS-PL-260714 delayed", "traffic jam on the A4 near Görlitz", "delivery tomorrow 17.07."],
+          "style": { "lang": "en", "tone": "dispatcher shorthand", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Pickup confirmation WTS-PL-260714",
+          "body": "Hello,\n\nWTS-PL-260714 delayed - long traffic jam on A4 near Görlitz, truck will not reach Poznań today. New delivery tomorrow 17.07. morning.\n\nK. Lewandowska",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260714", "values": { "tracking_number": "WTS-PL-260714", "state": "delayed", "eta": "2026-07-17" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["delay"]
+          }
+        },
+        {
+          "key": "pod", "day": "2026-07-17", "time": "10:45", "from": "p-lewandowska", "inReplyTo": "#late",
+          "facts": ["WTS-PL-260714 delivered", "POD signed by P. Zieliński"],
+          "style": { "lang": "en", "tone": "dispatcher shorthand", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Pickup confirmation WTS-PL-260714",
+          "body": "Hello,\n\nWTS-PL-260714 delivered 10:20, POD signed by P. Zieliński.\n\nK. Lewandowska",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260714", "values": { "tracking_number": "WTS-PL-260714", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B3-moreau-damage",
+      "category": "B3",
+      "summary": "Three end mills arrive broken in a crushed box; a complaint is opened and replacements are sent by parcel.",
+      "difficulty": "medium",
+      "editorNotes": "The customer has no complaint number at first; the RMA number appears in the owner's reply and the customer's final thanks.",
+      "tags": ["damage"],
+      "numbers": ["RMA-26-041", "KP402611870411"],
+      "beats": [
+        {
+          "key": "report", "day": "2026-07-17", "time": "14:50", "from": "p-rousseau", "conversation": "moreau-damage",
+          "facts": ["delivery SO-26-0156 arrived today", "box crushed", "3 end mills with broken tips", "photos attached", "question: how do we proceed?"],
+          "style": { "lang": "en", "tone": "disappointed", "length": "short", "signature": "short" },
+          "subject": "Damaged goods SO-26-0156",
+          "body": "Hi Alex,\n\nyour delivery SO-26-0156 arrived today, but the box was crushed and 3 of the end mills have broken tips. Photos are attached. How do we proceed? We need them for a job next week.\n\nCamille",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "Ateliers Moreau damage SO-26-0156", "entity": "rma-041", "values": { "customer": "Ateliers Moreau", "topic": "damage", "severity": "medium", "state": "open", "opened_on": "2026-07-17" } }],
+              "sales_orders": [{ "title": "Ateliers Moreau SO-26-0156", "entity": "so-0156", "values": { "order_number": "SO-26-0156", "state": "delivered" } }]
+            },
+            "derived": { "complaints.opened_on": "date of the mail" },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["How do we proceed with the 3 damaged end mills?"], "answeredBy": "#reply" },
+            "importance": "HIGH",
+            "tags": ["damage"]
+          }
+        },
+        {
+          "key": "reply", "day": "2026-07-17", "time": "16:30", "direction": "sent", "to": ["p-rousseau"], "inReplyTo": "#report",
+          "facts": ["complaint RMA-26-041 opened", "3 replacement end mills ship Monday 20 July by parcel", "no need to return the broken ones"],
+          "style": { "lang": "en", "tone": "apologetic", "length": "short" },
+          "subject": "RE: Damaged goods SO-26-0156",
+          "body": "Hi Camille,\n\nI'm sorry about that. I opened complaint RMA-26-041; 3 replacement end mills ship on Monday, 20 July, by parcel, so you will have them in time. No need to send the broken ones back.\n\nBest regards\nAlex"
+        },
+        {
+          "key": "parcel", "day": "2026-07-20", "time": "17:30", "from": "p-kiebitz", "conversation": "kiebitz-KP402611870411",
+          "facts": ["Sendung KP402611870411 an Ateliers Moreau SARL, Lyon (FR)", "übernommen", "voraussichtliche Zustellung Mi, 22.07.2026"],
+          "style": { "lang": "de", "tone": "automated", "length": "short" },
+          "subject": "Ihre Sendung KP402611870411 wurde übernommen",
+          "body": "Guten Tag,\n\nIhre Sendung KP402611870411 an Ateliers Moreau SARL, 69007 Lyon (FR), wurde heute von uns übernommen.\n\nVoraussichtliche Zustellung: Mi, 22.07.2026\n\nSendungsverfolgung: https://track.kiebitz-paket.example/KP402611870411\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kiebitz Paket KP402611870411", "values": { "tracking_number": "KP402611870411", "carrier": "Kiebitz Paket", "direction": "outbound", "state": "picked_up", "eta": "2026-07-22" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "people", "title": null }, { "collection": "tasks", "title": null }]
+          }
+        },
+        {
+          "key": "resolved", "day": "2026-07-22", "time": "11:20", "from": "p-rousseau", "inReplyTo": "#reply",
+          "facts": ["replacement for RMA-26-041 received", "all good", "thanks"],
+          "style": { "lang": "en", "tone": "warm", "length": "1-3 sentences" },
+          "subject": "RE: Damaged goods SO-26-0156",
+          "body": "Hi Alex,\n\nthe replacement for RMA-26-041 arrived this morning, all good. Thank you for the quick help!\n\nCamille",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "RMA-26-041 Ateliers Moreau damage", "entity": "rma-041", "values": { "reference": "RMA-26-041", "customer": "Ateliers Moreau", "state": "resolved" } }]
+            },
+            "needsReply": false,
+            "reply": { "intent": "COURTESY", "courtesyKind": "THANK_YOU" },
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B3-vossberg-damage",
+      "category": "B3",
+      "summary": "A pallet arrives tipped over; the owner opens a complaint, files a transport insurance claim and ships a replacement.",
+      "difficulty": "medium",
+      "editorNotes": "Insurer claim number with a document deadline (to-do); the customer's final 'Passt.' closes the complaint.",
+      "tags": ["damage", "insurer"],
+      "numbers": ["PRN-26070931", "RMA-26-042", "NL-TS-26-0418"],
+      "beats": [
+        {
+          "key": "pickup", "day": "2026-07-08", "time": "15:20", "from": "p-brandes", "conversation": "prn-26070931",
+          "facts": ["Abholung morgen 7 Uhr", "Sendung PRN-26070931, 1 Palette für Vossberg Fördertechnik, Bremen", "Zustellung morgen Nachmittag"],
+          "style": { "lang": "de", "tone": "short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Avis PRN-26070931",
+          "body": "Moin,\n\nAbholung morgen 7 Uhr bei Ihnen, Sendung PRN-26070931, 1 Palette für Vossberg Fördertechnik, Bremen. Zustellung morgen Nachmittag.\n\nGruß\nHolger Brandes\nDisposition\nPalettenring Nord GmbH\nTel. +49 40 5550 6501",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Palettenring PRN-26070931", "values": { "tracking_number": "PRN-26070931", "carrier": "Palettenring Nord", "direction": "outbound", "state": "booked", "eta": "2026-07-09" } }]
+            },
+            "derived": { "shipments.eta": "morgen = 09.07.2026" },
+            "needsReply": false,
+            "importance": "LOW"
+          }
+        },
+        {
+          "key": "report", "day": "2026-07-09", "time": "15:30", "from": "p-albers", "conversation": "vossberg-damage",
+          "facts": ["Palette kam umgekippt an", "6 Kartons Schrauben aufgeplatzt", "Fahrer hat es auf dem Lieferschein vermerkt", "Fotos anbei", "brauchen Ersatz"],
+          "style": { "lang": "de", "tone": "curt", "length": "1-3 sentences", "signature": "none", "typos": 1 },
+          "subject": "Lieferung heute – Schaden",
+          "body": "Alex,\n\nPalette kam umgekippt an, 6 Kartons Schrauben sind aufgeplatzt. Fahrer hats auf dem Lieferschein vermerkt, Fotos anbei. Brauchen Ersatz bis Mitte nächster Woche.\n\nJens",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "Vossberg Fördertechnik Transportschaden", "entity": "rma-042", "values": { "customer": "Vossberg Fördertechnik", "topic": "damage", "severity": "medium", "state": "open", "opened_on": "2026-07-09" } }],
+              "tasks": [{ "title": "Ersatz für 6 Kartons Schrauben an Vossberg liefern", "values": { "state": "open", "due_date": "2026-07-15" } }]
+            },
+            "derived": { "complaints.opened_on": "date of the mail", "tasks.due_date": "Mitte nächster Woche = Wednesday 15.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#reply" },
+            "importance": "HIGH",
+            "tags": ["damage"]
+          }
+        },
+        {
+          "key": "reply", "day": "2026-07-09", "time": "16:15", "direction": "sent", "to": ["p-albers"], "inReplyTo": "#report",
+          "facts": ["Reklamation RMA-26-042", "Ersatz 6 Kartons geht Montag 13.07. raus"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "AW: Lieferung heute – Schaden",
+          "body": "Moin Jens,\n\nsorry dafür. Läuft unter RMA-26-042, die 6 Kartons Ersatz gehen Montag, 13.07., raus. Den Schaden regel ich mit der Versicherung.\n\nGruß\nAlex"
+        },
+        {
+          "key": "claim", "day": "2026-07-10", "time": "09:00", "direction": "sent", "to": ["p-koenig"], "conversation": "nordlicht-schaden-prn",
+          "facts": ["Schadenmeldung Transportschaden", "Sendung PRN-26070931, Palettenring Nord", "6 Kartons NH-20410", "Schaden 110,40 €"],
+          "style": { "lang": "de", "tone": "formal", "length": "short" },
+          "subject": "Schadenmeldung Transportschaden PRN-26070931",
+          "body": "Sehr geehrter Herr König,\n\nhiermit melde ich einen Transportschaden: Sendung PRN-26070931 (Palettenring Nord) an unseren Kunden Vossberg Fördertechnik, Bremen, zugestellt am 09.07.2026. Die Palette kam umgekippt an, 6 Kartons NH-20410 sind unbrauchbar. Schadenhöhe: 110,40 € netto. Der Schaden ist auf dem Lieferschein vermerkt.\n\nMit freundlichen Grüßen\nAlex Morgan\nNordhafen Industriebedarf GmbH"
+        },
+        {
+          "key": "insurer", "day": "2026-07-13", "time": "11:25", "from": "p-koenig", "inReplyTo": "#claim",
+          "facts": ["Schaden unter NL-TS-26-0418 erfasst", "bitte Fotos und Lieferschein mit Vermerk bis 24.07.2026 einreichen"],
+          "style": { "lang": "de", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Ihre Schadenmeldung – Schaden-Nr. NL-TS-26-0418",
+          "body": "Sehr geehrter Herr Morgan,\n\nwir bestätigen den Eingang Ihrer Schadenmeldung vom 10.07.2026 zur Sendung PRN-26070931. Der Schaden ist unter der Nummer NL-TS-26-0418 erfasst.\n\nZur weiteren Bearbeitung benötigen wir bis zum 24.07.2026 Fotos der beschädigten Ware sowie eine Kopie des Lieferscheins mit dem Schadensvermerk. Bitte geben Sie bei jeder Korrespondenz die Schadennummer an.\n\nMit freundlichen Grüßen\nAndreas König\nSchadenregulierung\nNordlicht Transportversicherung AG\nTel. +49 40 5550 7201",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "Fotos und Lieferschein zu Schaden NL-TS-26-0418 an Nordlicht senden", "values": { "state": "open", "due_date": "2026-07-24" } }],
+              "shipments": [{ "title": "Palettenring PRN-26070931", "values": { "tracking_number": "PRN-26070931", "state": "damaged" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": [], "answeredBy": "#docs" },
+            "importance": "NORMAL",
+            "tags": ["insurer"]
+          }
+        },
+        {
+          "key": "docs", "day": "2026-07-14", "time": "10:10", "direction": "sent", "to": ["p-koenig"], "inReplyTo": "#insurer",
+          "facts": ["Fotos und Lieferschein zu NL-TS-26-0418 anbei"],
+          "style": { "lang": "de", "tone": "formal", "length": "1-3 sentences" },
+          "subject": "AW: Ihre Schadenmeldung – Schaden-Nr. NL-TS-26-0418",
+          "body": "Sehr geehrter Herr König,\n\nanbei die Fotos und der Lieferschein mit Vermerk zu Schaden NL-TS-26-0418.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "ok", "day": "2026-07-14", "time": "14:02", "from": "p-albers", "inReplyTo": "#reply",
+          "facts": ["Ersatz ist da", "passt"],
+          "style": { "lang": "de", "tone": "curt", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: Lieferung heute – Schaden",
+          "body": "Ersatz ist da. Passt.\nJens",
+          "labels": {
+            "records": {
+              "complaints": [{ "title": "Vossberg Fördertechnik Transportschaden", "entity": "rma-042", "values": { "customer": "Vossberg Fördertechnik", "state": "resolved" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "dependsOn": ["#reply"],
+            "tags": ["very-short", "smooth"]
+          }
+        }
+      ]
+    }
+  ]
+}

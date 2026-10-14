@@ -1,0 +1,44 @@
+{
+  "id": "m-0013",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-anadolu-po-1088",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "po",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "m.arslan@anadolu-dovme.example"
+    ],
+    "subject": "Purchase order PO-26-1088 - forged flanges DN100",
+    "receivedAt": "2026-07-06T09:00:00Z",
+    "body": "Dear Mr Arslan,\n\nplease find our purchase order PO-26-1088:\n1,200 pcs forged flange DN100 PN16 at 14.80 EUR = 17,760.00 EUR\nTerms: FCA Bursa, ready for loading on 17 July 2026, payment as agreed (30 % advance, 70 % against CMR copy).\n\nKind regards\nAlex Morgan\nHead of Operations\nNordhafen Industriebedarf GmbH"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "PO-26-1088",
+    "1,200 forged flanges DN100 PN16 at 14.80 EUR = 17,760.00 EUR",
+    "FCA Bursa",
+    "ready for loading 17 July"
+  ]
+}

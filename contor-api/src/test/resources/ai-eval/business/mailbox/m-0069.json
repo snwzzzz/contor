@@ -1,0 +1,86 @@
+{
+  "id": "m-0069",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-tornilleria-po-1091",
+  "cc": [],
+  "storyline": "C1-tornilleria-po",
+  "beat": "confirm",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0039",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Lucía Navarro",
+    "fromAddress": "lucia.navarro@tornilleria-ebro.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: PO-26-1091 hex bolts M8x40",
+    "receivedAt": "2026-07-09T10:45:00Z",
+    "body": "Hi Alex,\n\nPO-26-1091 is confirmed: 600 cartons M8x40, total 6,720.00 EUR. We dispatch on 14/07 with Transportes Cierzo, transit time 4 days via France, so arrival in Hamburg on 20/07.\n\nUn saludo,\nLucía Navarro\nExport Department\nTornillería del Ebro S.L.\nTel. +34 976 5550 5201"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Tornillería del Ebro PO-26-1091",
+          "values": {
+            "po_number": "PO-26-1091",
+            "supplier": "Tornillería del Ebro",
+            "total": {
+              "amount": 6720,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "expected_arrival": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Lucía Navarro",
+          "values": {
+            "email": "lucia.navarro@tornilleria-ebro.example",
+            "phone": "+34 976 5550 5201",
+            "role_title": "Export Department"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Tornillería del Ebro S.L.",
+          "values": {
+            "domain": "tornilleria-ebro.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Lucía Navarro",
+        "to": "organizations:Tornillería del Ebro S.L."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "date-format"
+  ],
+  "storylineTags": [
+    "date-format",
+    "price-increase"
+  ],
+  "facts": [
+    "PO-26-1091 confirmed",
+    "6,720.00 EUR",
+    "dispatch 14/07",
+    "4 days via France",
+    "arrival 20/07"
+  ]
+}

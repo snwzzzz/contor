@@ -1,0 +1,94 @@
+{
+  "id": "m-0023",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-anadolu-po-1088",
+  "cc": [],
+  "storyline": "C1-anadolu-po",
+  "beat": "confirm",
+  "category": "C1",
+  "lang": "en",
+  "inReplyTo": "m-0013",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Mehmet Arslan",
+    "fromAddress": "m.arslan@anadolu-dovme.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Purchase order PO-26-1088 - forged flanges DN100",
+    "receivedAt": "2026-07-07T07:30:00Z",
+    "body": "Dear Mr Morgan,\n\nThank you very much for your valuable order. We are pleased to confirm your purchase order PO-26-1088 for 1,200 pcs forged flange DN100 PN16, total amount EUR 17,760.00, FCA Bursa.\n\nThe goods will be ready for loading on 17/07/2026. To start production we kindly ask for the 30 % advance payment of EUR 5,328.00 until 10/07/2026.\n\nWe thank you for your trust and remain at your disposal.\n\nBest regards,\nMehmet Arslan\nExport Manager\nAnadolu Dövme Sanayi A.Ş.\nBursa / Türkiye\nTel: +90 224 5550 5501"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Anadolu Dövme PO-26-1088",
+          "values": {
+            "po_number": "PO-26-1088",
+            "supplier": "Anadolu Dövme",
+            "total": {
+              "amount": 17760,
+              "currency": "EUR"
+            },
+            "state": "confirmed"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Anzahlung 5.328,00 EUR für PO-26-1088 an Anadolu überweisen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-07-10"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Mehmet Arslan",
+          "values": {
+            "email": "m.arslan@anadolu-dovme.example",
+            "phone": "+90 224 5550 5501",
+            "role_title": "Export Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Anadolu Dövme Sanayi A.Ş.",
+          "values": {
+            "domain": "anadolu-dovme.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Mehmet Arslan",
+        "to": "organizations:Anadolu Dövme Sanayi A.Ş."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "date-format"
+  ],
+  "storylineTags": [
+    "time-zone",
+    "date-format",
+    "slot-booking"
+  ],
+  "facts": [
+    "order confirmation PO-26-1088",
+    "1,200 pcs, EUR 17,760.00",
+    "ready for loading 17/07/2026",
+    "30 % advance EUR 5,328.00 by 10/07/2026"
+  ]
+}

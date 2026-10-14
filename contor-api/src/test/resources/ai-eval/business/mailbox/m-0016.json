@@ -1,0 +1,88 @@
+{
+  "id": "m-0016",
+  "account": "orders",
+  "folder": "inbox",
+  "conversationId": "c-halvorsen-hv-6120",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "A6-halvorsen-orders",
+  "beat": "order",
+  "category": "A6",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "orders@nordhafen.example",
+    "fromName": "Ingrid Solberg",
+    "fromAddress": "ingrid.solberg@halvorsen-verksted.example",
+    "to": [
+      "orders@nordhafen.example"
+    ],
+    "subject": "Purchase order HV-6120",
+    "receivedAt": "2026-07-06T11:40:00Z",
+    "body": "Dear Nordhafen team,\n\nplease find our purchase order HV-6120:\n- 80 packs cut-off wheel 125x1.0 Inox\n- 40 packs HSS-E drill bit 8.5 mm\nPrices in NOK as per our price agreement. Delivery to Stavanger by 20 July at the latest.\n\nPlease confirm.\n\nKind regards\nIngrid Solberg\nPurchasing Manager\nHalvorsen Verkstedservice AS\n+47 5550 2401"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Halvorsen Verkstedservice HV-6120",
+          "entity": "so-0145",
+          "values": {
+            "customer": "Halvorsen Verkstedservice",
+            "state": "received",
+            "requested_delivery": "2026-07-20"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Ingrid Solberg",
+          "values": {
+            "email": "ingrid.solberg@halvorsen-verksted.example",
+            "phone": "+47 5550 2401",
+            "role_title": "Purchasing Manager"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Halvorsen Verkstedservice AS",
+          "values": {
+            "domain": "halvorsen-verksted.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Ingrid Solberg",
+        "to": "organizations:Halvorsen Verkstedservice AS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0021"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "duplicate-account"
+  ],
+  "storylineTags": [
+    "duplicate-account",
+    "currency"
+  ],
+  "facts": [
+    "PO HV-6120",
+    "80 packs cut-off wheels 125x1.0",
+    "40 packs drill bits 8.5 mm",
+    "NOK prices as per price agreement",
+    "delivery to Stavanger by 20 July"
+  ]
+}

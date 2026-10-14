@@ -1,0 +1,272 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "C2-odlewnia-partial",
+      "category": "C2",
+      "summary": "The Polish foundry confirms 1,000 housings, then can only deliver 600 now and the rest within two weeks.",
+      "difficulty": "medium",
+      "editorNotes": "'within two weeks (approx. 24.07.)' is a soft date; the PO stays open after the first delivery.",
+      "tags": ["partial-delivery"],
+      "numbers": ["PO-26-1083"],
+      "beats": [
+        {
+          "key": "confirm", "day": "2026-07-06", "time": "08:20", "from": "p-mazur", "conversation": "odlewnia-po-1083",
+          "facts": ["order confirmation PO-26-1083", "1,000 pcs housing GG25 type B at 31.50 EUR = 31,500.00 EUR", "delivery 10.07.2026 via Wisła-Trans"],
+          "style": { "lang": "en", "tone": "formal", "length": "short", "signature": "full" },
+          "subject": "Order confirmation PO-26-1083",
+          "body": "Dear Mr Morgan,\n\nwe confirm your order PO-26-1083: 1,000 pcs housing GG25 type B at 31.50 EUR, total 31,500.00 EUR. Delivery date 10.07.2026 to Hamburg via Wisła-Trans.\n\nYours faithfully\nAgnieszka Mazur\nExport Sales\nOdlewnia Wiślana Sp. z o.o.\nGliwice, Poland\nTel. +48 32 5550 5101",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Odlewnia Wiślana PO-26-1083", "values": { "po_number": "PO-26-1083", "supplier": "Odlewnia Wiślana", "total": { "amount": 31500.00, "currency": "EUR" }, "state": "confirmed", "expected_arrival": "2026-07-10" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "partial", "day": "2026-07-08", "time": "13:30", "from": "p-mazur", "inReplyTo": "#confirm",
+          "facts": ["only 600 pcs on 10.07.", "remaining 400 pcs within two weeks (approx. 24.07.)", "mould repair", "please confirm partial delivery is acceptable"],
+          "style": { "lang": "en", "tone": "formal, apologetic", "length": "short", "signature": "short" },
+          "subject": "RE: Order confirmation PO-26-1083 - partial delivery",
+          "body": "Dear Mr Morgan,\n\nunfortunately one of our moulds needs repair. We can deliver only 600 pcs of PO-26-1083 on 10.07.; the remaining 400 pcs will follow within two weeks (approx. 24.07.).\n\nPlease confirm if the partial delivery is acceptable for you.\n\nYours faithfully\nAgnieszka Mazur",
+          "labels": {
+            "records": {
+              "purchase_orders": [{ "title": "Odlewnia Wiślana PO-26-1083", "values": { "po_number": "PO-26-1083", "state": "confirmed", "expected_arrival": "2026-07-24" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Is the partial delivery acceptable for you?"], "answeredBy": "#accept" },
+            "importance": "HIGH",
+            "tags": ["partial-delivery"]
+          }
+        },
+        {
+          "key": "accept", "day": "2026-07-08", "time": "14:10", "direction": "sent", "to": ["p-mazur"], "inReplyTo": "#partial",
+          "facts": ["partial delivery accepted", "rest by 24.07. at the latest"],
+          "style": { "lang": "en", "tone": "polite, firm", "length": "1-3 sentences" },
+          "subject": "RE: Order confirmation PO-26-1083 - partial delivery",
+          "body": "Dear Ms Mazur,\n\nthe partial delivery is acceptable. Please make sure that the remaining 400 pcs arrive by 24.07. at the latest - we have customer orders waiting.\n\nKind regards\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "D-wislatrans-marek",
+      "category": "D",
+      "summary": "The Polish carrier announces 'driver Marek W.' with his mobile for the partial delivery; the driver himself writes from a private address that he is stuck in a jam.",
+      "difficulty": "hard",
+      "editorNotes": "Entity resolution: 'Marek W.' (dispatcher, phone only) and 'Marek Wiśniewski' (private address, same phone) are one person who drives for Wisła-Trans.",
+      "tags": ["shared-driver"],
+      "numbers": ["WTS-PL-260709"],
+      "beats": [
+        {
+          "key": "announce", "day": "2026-07-08", "time": "15:00", "from": "p-lewandowska", "conversation": "wislatrans-260709",
+          "facts": ["delivery PO-26-1083: 600 pcs, 3 pallets", "Friday 10.07. 11:00", "consignment WTS-PL-260709", "driver Marek W., mobile +48 5550 4171", "please confirm slot 11:00"],
+          "style": { "lang": "en", "tone": "dispatcher shorthand", "length": "short", "signature": "full" },
+          "subject": "Delivery WTS-PL-260709 / PO-26-1083",
+          "body": "Hello,\n\ndelivery for PO-26-1083 (Odlewnia Wiślana): 600 pcs, 3 pallets, consignment WTS-PL-260709.\nArrival at your warehouse Friday 10.07. 11:00.\nDriver: Marek W., mobile +48 5550 4171\n\nPlease confirm unloading slot 11:00.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260709", "values": { "tracking_number": "WTS-PL-260709", "carrier": "Wisła-Trans", "direction": "inbound", "order_ref": "PO-26-1083", "state": "booked", "eta": "2026-07-10", "driver": "Marek W." } }],
+              "people": [{ "title": "Marek W.", "values": { "full_name": "Marek W.", "phone": "+48 5550 4171", "role_title": "Driver" } }],
+              "events": [{ "title": "Anlieferung Wisła-Trans PO-26-1083", "entity": "slot-260709", "values": { "starts_at": "2026-07-10T11:00:00+02:00" } }]
+            },
+            "relations": [{ "type": "drives_for", "from": "people:Marek W.", "to": "organizations:Wisła-Trans Spedycja Sp. z o.o." }],
+            "derived": { "people.role_title": "'Driver:' label in the mail" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Can you confirm the unloading slot Friday 10.07. 11:00?"], "answeredBy": "#slot-ok" },
+            "importance": "NORMAL",
+            "tags": ["shared-driver", "slot-booking"]
+          }
+        },
+        {
+          "key": "slot-ok", "day": "2026-07-08", "time": "15:40", "direction": "sent", "to": ["p-lewandowska"], "inReplyTo": "#announce",
+          "facts": ["slot Friday 11:00 confirmed, gate 2"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences" },
+          "subject": "RE: Delivery WTS-PL-260709 / PO-26-1083",
+          "body": "Hello Ms Lewandowska,\n\nslot Friday 10.07. 11:00 is confirmed, gate 2.\n\nBest regards\nAlex Morgan"
+        },
+        {
+          "key": "jam", "day": "2026-07-10", "time": "09:12", "from": "p-marek", "fromAddress": "private", "conversation": "marek-private-0710",
+          "facts": ["hier Marek, Fahrer von Wisla-Trans", "Stau auf der A2 bei Hannover", "komme 14:30 statt 11 Uhr", "Tel. +48 5550 4171"],
+          "style": { "lang": "de", "tone": "broken German, phone typing", "length": "1-3 sentences", "typos": 3, "signature": "none" },
+          "subject": "Lieferung heute",
+          "body": "Hallo, hier Marek, Fahrer von Wisla-Trans mit Gusteile für Nordhafen. Stehe A2 Stau bei Hannover, komme 14:30 statt 11 uhr. Entschuldigung\nMarek Wiśniewski\n+48 5550 4171",
+          "labels": {
+            "records": {
+              "people": [{ "title": "Marek Wiśniewski", "values": { "full_name": "Marek Wiśniewski", "email": "marek.w84@pocztamail.example", "phone": "+48 5550 4171" } }],
+              "organizations": [{ "title": "Wisła-Trans Spedycja Sp. z o.o.", "values": { "name": "Wisła-Trans" } }],
+              "events": [{ "title": "Anlieferung Wisła-Trans PO-26-1083", "entity": "slot-260709", "values": { "starts_at": "2026-07-10T14:30:00+02:00" } }]
+            },
+            "relations": [{ "type": "drives_for", "from": "people:Marek Wiśniewski", "to": "organizations:Wisła-Trans Spedycja Sp. z o.o." }],
+            "derived": { "events.starts_at": "heute 14:30 = 10.07.2026 14:30 CEST" },
+            "needsReply": false,
+            "importance": "HIGH",
+            "tags": ["shared-driver", "name-typo", "relative-date"]
+          }
+        },
+        {
+          "key": "unloaded", "day": "2026-07-10", "time": "15:05", "from": "p-jana", "conversation": "jana-odlewnia-we1",
+          "facts": ["Pole ist da", "600 Gehäuse, 3 Paletten, WTS-PL-260709", "Wareneingang gebucht"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "WE Odlewnia",
+          "body": "Der Pole ist da, 600 Gehäuse auf 3 Paletten (WTS-PL-260709). WE ist gebucht, Prüfung mach ich Montag.\nJana",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260709", "values": { "tracking_number": "WTS-PL-260709", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW"
+          }
+        }
+      ]
+    },
+    {
+      "id": "C5-odlewnia-quality",
+      "category": "C5",
+      "summary": "Incoming inspection finds porosity in 38 of 600 housings; the owner asks for an 8D report and replacement, the foundry answers with a long report.",
+      "difficulty": "medium",
+      "editorNotes": "Supplier quality issue (not a customer complaint); the 8D mail is very long and asks for acceptance.",
+      "tags": ["quality", "very-long"],
+      "numbers": [],
+      "beats": [
+        {
+          "key": "inspection", "day": "2026-07-13", "time": "11:30", "from": "p-jana", "conversation": "jana-odlewnia-pruefung",
+          "facts": ["Eingangsprüfung Odlewnia", "38 von 600 Gehäusen mit Lunkern (Porosität)", "gesperrt"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Prüfung Gussgehäuse",
+          "body": "Eingangsprüfung Odlewnia durch: 38 von 600 Gehäusen haben Lunker, sieht nach Porosität aus. Hab die 38 gesperrt. Reklamierst du?\nJana",
+          "labels": {
+            "records": {
+              "tasks": [{ "title": "38 Gussgehäuse mit Lunkern bei Odlewnia reklamieren", "values": { "state": "open" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Reklamierst du?"], "answeredBy": "#complain" },
+            "importance": "HIGH",
+            "tags": ["quality"]
+          }
+        },
+        {
+          "key": "complain", "day": "2026-07-13", "time": "13:00", "direction": "sent", "to": ["p-mazur"], "cc": ["p-jana"], "conversation": "odlewnia-quality",
+          "facts": ["38 of 600 housings from PO-26-1083 show porosity", "8D report by 24.07.", "replace the 38 pcs with the remaining delivery"],
+          "style": { "lang": "en", "tone": "firm", "length": "short" },
+          "subject": "Quality complaint PO-26-1083 - porosity",
+          "body": "Dear Ms Mazur,\n\nour incoming inspection found porosity (shrinkage cavities) in 38 of the 600 housings delivered under PO-26-1083. The parts are blocked. Please send us an 8D report by 24.07. and replace the 38 pcs with the remaining delivery.\n\nPhotos are attached.\n\nKind regards\nAlex Morgan"
+        },
+        {
+          "key": "ack", "day": "2026-07-15", "time": "10:40", "from": "p-mazur", "inReplyTo": "#complain",
+          "facts": ["complaint received", "8D report by 22.07.", "38 pcs replaced with the remaining 400 pcs"],
+          "style": { "lang": "en", "tone": "formal", "length": "1-3 sentences", "signature": "short" },
+          "subject": "RE: Quality complaint PO-26-1083 - porosity",
+          "body": "Dear Mr Morgan,\n\nwe received your complaint and apologise. You will receive the 8D report by 22.07.; the 38 pcs will be replaced together with the remaining 400 pcs.\n\nYours faithfully\nAgnieszka Mazur",
+          "labels": {
+            "needsReply": false,
+            "importance": "NORMAL",
+            "tags": ["quality"]
+          }
+        },
+        {
+          "key": "report", "day": "2026-07-22", "time": "14:15", "from": "p-mazur", "inReplyTo": "#ack",
+          "facts": ["8D report for PO-26-1083", "D1-D8 summary", "root cause: insufficient venting of mould no. 4 after repair", "containment: 100 % X-ray of the remaining 438 pcs", "please confirm acceptance of the report"],
+          "style": { "lang": "en", "tone": "formal", "length": "long", "signature": "full" },
+          "subject": "RE: Quality complaint PO-26-1083 - 8D report",
+          "body": "Dear Mr Morgan,\n\nplease find below the summary of our 8D report concerning the porosity found in housings GG25 type B (PO-26-1083). The full report with photos and X-ray images is attached.\n\nD1 - Team: quality manager, foundry master, moulding line supervisor, export sales.\n\nD2 - Problem description: 38 of 600 delivered housings show shrinkage porosity in the area of the bearing seat. The defect was detected by the customer during incoming inspection on 13.07.2026.\n\nD3 - Containment actions: all housings of the same casting batch still in our warehouse were blocked. The remaining 438 pcs (400 pcs open quantity plus 38 pcs replacement) were checked 100 % by X-ray before dispatch. No further defective parts were found.\n\nD4 - Root cause: after the repair of mould no. 4, two venting channels were not reopened completely. Air trapped during pouring led to shrinkage cavities in the thickest wall section. The pouring temperature was within tolerance.\n\nD5 - Corrective actions: venting channels reopened and checked; a venting check was added to the release procedure after each mould repair.\n\nD6 - Implementation and verification: the corrective actions were implemented on 17.07.2026. Three trial batches were cast and X-rayed without findings.\n\nD7 - Prevention: the work instruction for mould maintenance was updated; all moulders were trained on 20.07.2026. The same check was introduced for the moulds of comparable housings.\n\nD8 - Closure: we consider the complaint closed after your confirmation. We thank you for your patience and apologise again for the inconvenience caused.\n\nPlease confirm the acceptance of the report.\n\nYours faithfully\nAgnieszka Mazur\nExport Sales\nOdlewnia Wiślana Sp. z o.o.\nGliwice, Poland\nTel. +48 32 5550 5101",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Please confirm the acceptance of the 8D report."] },
+            "importance": "NORMAL",
+            "tags": ["very-long", "quality"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "D-palettenring-marek",
+      "category": "D",
+      "summary": "The pallet network announces the same driver, with full name and the same mobile number, for a customer delivery.",
+      "difficulty": "hard",
+      "editorNotes": "Same person as in D-wislatrans-marek (same phone), now driving for Palettenring Nord: one person, two drives_for relations.",
+      "tags": ["shared-driver"],
+      "numbers": ["PRN-26072201"],
+      "beats": [
+        {
+          "key": "announce", "day": "2026-07-21", "time": "14:30", "from": "p-brandes", "conversation": "prn-26072201",
+          "facts": ["morgen Zustellung Möllenhoff Dortmund", "Sendung PRN-26072201, 3 Paletten, SO-26-0164", "Fahrer Marek Wiśniewski, Tel. +48 5550 4171", "Ankunft ca. 8 Uhr, Zeitfenster 7-12, Tor 3"],
+          "style": { "lang": "de", "tone": "short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "Avis PRN-26072201 Möllenhoff",
+          "body": "Moin,\n\nmorgen Zustellung bei Möllenhoff in Dortmund, Sendung PRN-26072201, 3 Paletten (Ihr Auftrag SO-26-0164). Fahrer: Marek Wiśniewski, Tel. +48 5550 4171, Ankunft ca. 8 Uhr (Zeitfenster 7–12 Uhr, Tor 3).\n\nGruß\nHolger Brandes\nDisposition\nPalettenring Nord GmbH\nTel. +49 40 5550 6501",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Palettenring PRN-26072201", "values": { "tracking_number": "PRN-26072201", "carrier": "Palettenring Nord", "direction": "outbound", "order_ref": "SO-26-0164", "state": "booked", "eta": "2026-07-22", "driver": "Marek Wiśniewski" } }],
+              "people": [{ "title": "Marek Wiśniewski", "values": { "full_name": "Marek Wiśniewski", "phone": "+48 5550 4171" } }],
+              "sales_orders": [{ "title": "Möllenhoff Stahlbau SO-26-0164", "entity": "so-0164", "values": { "order_number": "SO-26-0164", "state": "shipped" } }]
+            },
+            "relations": [
+              { "type": "drives_for", "from": "people:Marek Wiśniewski", "to": "organizations:Palettenring Nord GmbH" },
+              { "type": "ships", "from": "shipments:Palettenring PRN-26072201", "to": "sales_orders:Möllenhoff Stahlbau SO-26-0164" }
+            ],
+            "derived": { "shipments.eta": "morgen = 22.07.2026" },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["shared-driver"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "D-wislatrans-rest",
+      "category": "D",
+      "summary": "The remaining housings are announced with the driver's name misspelled without diacritics; slot confirmed, goods arrive.",
+      "difficulty": "hard",
+      "editorNotes": "'Marek Wisniewski' (typo) with the same mobile must merge into the one driver.",
+      "tags": ["shared-driver", "name-typo"],
+      "numbers": ["WTS-PL-260728"],
+      "beats": [
+        {
+          "key": "announce", "day": "2026-07-27", "time": "10:00", "from": "p-lewandowska", "conversation": "wislatrans-260728",
+          "facts": ["remaining delivery PO-26-1083: 438 pcs incl. replacement", "consignment WTS-PL-260728", "Wednesday 29.07. 09:00", "driver Marek Wisniewski (same as last time), mobile +48 5550 4171", "please confirm slot"],
+          "style": { "lang": "en", "tone": "dispatcher shorthand", "length": "short", "signature": "full" },
+          "subject": "Delivery WTS-PL-260728 / PO-26-1083 rest",
+          "body": "Hello,\n\nremaining delivery for PO-26-1083: 438 pcs incl. replacement parts, 2 pallets, consignment WTS-PL-260728.\nArrival Wednesday 29.07. 09:00.\nDriver: Marek Wisniewski (same as last time), mobile +48 5550 4171\n\nPlease confirm the slot.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260728", "values": { "tracking_number": "WTS-PL-260728", "carrier": "Wisła-Trans", "direction": "inbound", "order_ref": "PO-26-1083", "state": "booked", "eta": "2026-07-29", "driver": "Marek Wisniewski" } }],
+              "people": [{ "title": "Marek Wisniewski", "values": { "full_name": "Marek Wisniewski", "phone": "+48 5550 4171", "role_title": "Driver" } }],
+              "purchase_orders": [{ "title": "Odlewnia Wiślana PO-26-1083", "values": { "po_number": "PO-26-1083", "state": "shipped", "expected_arrival": "2026-07-29" } }],
+              "events": [{ "title": "Anlieferung Wisła-Trans PO-26-1083 Rest", "values": { "starts_at": "2026-07-29T09:00:00+02:00" } }]
+            },
+            "relations": [{ "type": "drives_for", "from": "people:Marek Wisniewski", "to": "organizations:Wisła-Trans Spedycja Sp. z o.o." }],
+            "derived": { "people.role_title": "'Driver:' label in the mail" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": ["Can you confirm the slot Wednesday 29.07. 09:00?"], "answeredBy": "#slot-ok" },
+            "importance": "NORMAL",
+            "tags": ["shared-driver", "name-typo", "slot-booking"]
+          }
+        },
+        {
+          "key": "slot-ok", "day": "2026-07-27", "time": "10:30", "direction": "sent", "to": ["p-lewandowska"], "inReplyTo": "#announce",
+          "facts": ["slot Wednesday 29.07. 09:00 confirmed, gate 2"],
+          "style": { "lang": "en", "tone": "short", "length": "1-3 sentences" },
+          "subject": "RE: Delivery WTS-PL-260728 / PO-26-1083 rest",
+          "body": "Hello Ms Lewandowska,\n\nWednesday 29.07. 09:00 at gate 2 is confirmed.\n\nBest regards\nAlex Morgan"
+        },
+        {
+          "key": "unloaded", "day": "2026-07-29", "time": "10:20", "from": "p-jana", "conversation": "jana-odlewnia-we2",
+          "facts": ["Rest von Odlewnia da (WTS-PL-260728)", "438 Stück", "Stichprobe gut", "PO-26-1083 komplett"],
+          "style": { "lang": "de", "tone": "terse", "length": "1-3 sentences", "signature": "none" },
+          "subject": "Odlewnia Rest",
+          "body": "Rest von Odlewnia ist da (WTS-PL-260728), 438 Stück. Stichprobe sieht gut aus, PO-26-1083 ist damit komplett.\nJana",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Wisła-Trans WTS-PL-260728", "values": { "tracking_number": "WTS-PL-260728", "state": "delivered" } }],
+              "purchase_orders": [{ "title": "Odlewnia Wiślana PO-26-1083", "values": { "po_number": "PO-26-1083", "state": "received" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    }
+  ]
+}

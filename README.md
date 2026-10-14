@@ -17,7 +17,7 @@ Personal, self-hosted management platform: dynamic collections (Deliveries, Orde
 
 ## Prerequisites
 
-- Java 21 (no Maven install needed, use `./mvnw`)
+- Java 21 or newer, with `JAVA_HOME` set (no Maven install needed, use `./mvnw`; IntelliJ users see *Code generation → IntelliJ setup*)
 - Node.js 24+ and npm 11+
 - Docker (Docker Desktop or compatible): Postgres for dev, Testcontainers for backend tests
 - [Ollama](https://ollama.com) running natively on the host (bound to localhost, the default) for the AI assistant; see *Local AI*
@@ -96,6 +96,20 @@ Use it once to create the owner account (the setup page in the web app follows i
 ### Dev account
 
 With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD` (same password rules) and optionally `DEV_ACCOUNT_EMAIL` in `.env`. On every start it is created as OWNER if missing, otherwise its password is reset to the configured one and any lockout cleared. First-run setup is then skipped, and the web app signs in as this account by itself: the login page asks the backend (`GET /api/auth/dev-login`, server-side) and calls `POST /api/auth/dev-login`, which exists only with the `dev` profile and answers loopback requests only. Log out to see the login page again (it signs you straight back in). Never set these outside local development.
+
+**Demo mailbox.** To try contor on realistic business mail without connecting Outlook, set `DEMO_MAILBOX_ENABLED=true`
+(dev profile, needs the dev account above). On the next start the backend imports the fictional wholesaler mailbox of
+the AI evaluation (`ai-eval/business`, see *Business mail dataset*) into the dev login once: two accounts
+`alex.morgan@nordhafen.example` and `orders@nordhafen.example` (shown as **Demo** under Settings → Mail accounts, never
+synced), 305 messages with their threads, and the business categories (customers, suppliers, sales/purchase orders,
+shipments, complaints, invoices). Then run the AI setup as usual and the background processing analyses the mails.
+
+- The mails are from July 2026. In the AI setup pick **1 year** of history; with the default 90 days the first week is
+  skipped. Reply drafts are only suggested for mail of the last 14 days: set `DEMO_MAILBOX_SHIFT_TO_TODAY=true` to move
+  all dates by whole weeks so the newest mail is recent (dates written inside the mails keep their July values).
+- To start over, disconnect the two demo accounts and delete them in the database, or reset the database; the import
+  runs again for a dev login without demo accounts. `DEMO_MAILBOX_PATH` points to another generated mailbox folder.
+
 ### Dev AI cache
 
 Re-analyzing mail during development (after a database reset, or to try a backend change on real mail) normally waits
@@ -150,7 +164,7 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 Fact-checked AI reports on any record and the connections you pick, with every sentence cited down to a record field
 or an email paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md). Built so far (R1–R3):
 
-- Tables (`V1_0_27__reports.sql`): `report` (anchor record, prompt, scope, status, fact-check counts; follow-up questions
+- Tables (`V1_0_29__reports.sql`): `report` (anchor record, prompt, scope, status, fact-check counts; follow-up questions
   are reports with `parent_report_id`), `report_section`, `report_finding`, `report_claim` (one sentence and its
   fact-check result) and `report_citation` (record, field with value snapshot, email paragraph with verbatim quote, or
   relation). Deleting a report deletes its sections, sentences, citations and follow-ups.
@@ -182,7 +196,12 @@ bar (or Settings → AI Models). The wizard walks through:
 2. **Model** – checks that Ollama runs and the models are installed, downloads missing ones.
 3. **Permissions** – read the mailboxes (off until you allow it), how far back (30/90/365 days or everything), and
    *Off / Ask me / Automatic* for new categories, contacts & records, calendar and to-dos, and *Off / Ask me* for
-   **reply drafts** (default off; there is no *Automatic*: drafts are never sent).
+   **reply drafts** (default off; there is no *Automatic*: drafts are never sent), and optionally **About you and your
+   business** (`ownerProfile`, also under Settings → Autonomy): a few sentences such as "Head of Operations at a
+   wholesaler; customers order from us, we buy from suppliers". With a profile the extraction uses its business rules
+   (`extract-v7`: whose side an email is on — a customer's "PO" is an order you receive —, deliveries belong to orders and
+   shipments, deadlines become to-dos, follow-ups update existing records); without one it keeps the personal rules.
+   The demo mailbox fills it in.
 4. **Start** – saves the permissions and starts the analysis.
 5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
    each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
@@ -340,6 +359,62 @@ the reply cases in `contor-api/src/test/resources/ai-eval/replies/` and your pri
 by hand). It prints the score and the wrongly decided cases; `-Dai.eval.reply.minPrecision=0.8` /
 `-Dai.eval.reply.minRecall=0.8` turn it into a gate. The drafts themselves are judged by reading them.
 
+### Business mail dataset
+
+A fully fictional wholesaler's mailbox (Nordhafen Industriebedarf GmbH, Hamburg; only `*.example` domains, phone numbers
+in a `5550` pattern, no bank details) for evaluating contor on business mail: orders, shipments across Europe, a driver
+shared by two carriers, escalations, churn, meetings, to-dos, finance and noise. The first slice covers four weeks
+(6–31 July 2026): 305 messages in 167 threads, 66 % German / 34 % English, 164 labelled business mails, 63 noise mails.
+Plan and generator prompts: `docs/business-dataset-plan.md`, `docs/business-dataset-prompts.md`; why it is built this
+way: ADR 0010.
+
+```
+contor-api/src/test/resources/ai-eval/business/
+  world.json          fictional companies, people, number formats, deny list of real brands
+  storylines/*.json   the source of truth: storylines of beats with facts, labels and the rendered mail
+  noise/*.json        newsletters, notifications, a phishing mail, …
+  mailbox/m-*.json    generated: one message each (an eval case plus account, folder, thread, reply/importance labels)
+  expected/           generated: end state of every collection after the mailbox, expected insights
+  audit.json          result of the independent label audit; manifest.json: generated, counts and checksums
+```
+
+Change a storyline, never a generated file, and rebuild (Node 24, no dependencies):
+
+```bash
+node scripts/business-dataset/build.mjs
+```
+
+`--check` only runs the validators (fictional data, declared numbers, time order, every labelled value stated in the mail
+or a mail it depends on, language, schema); `build.mjs` refuses to write while one fails. The generator's own tests run
+with `node --test scripts/business-dataset/test/`, and `BusinessCorpusTest` (part of `./mvnw test`) guards the committed
+mailbox. `scripts/business-dataset/audit.mjs prepare|compare` runs the label audit (inputs without labels for a separate
+labelling pass, then the agreement rates).
+
+To judge a **running instance** that analysed the demo mailbox (see *Demo mailbox*), dump its database and compare it
+with the labels — per collection (expected / got / matched / duplicates), field accuracy, the records each mail should
+have produced, reply drafts (also on noise) and insights; a date shift of the demo import is detected and allowed for:
+
+```bash
+scripts/business-dataset/dump-live.sh /tmp/live && node scripts/business-dataset/live-compare.mjs /tmp/live
+```
+
+Evaluations on it (all `-Pai-eval`, report only unless noted):
+
+| Test | What | Time (RTX 3060) |
+|---|---|---|
+| `AiBusinessExtractionEvalTest` | extraction with the business schema, earlier mail as context; per category and edge-case tag; gate against `ai-eval/business-baseline.json` | ≈ 35 min |
+| `AiReplyTriageEvalTest#business_mailbox_triage…` | needsReply precision/recall, intent, courtesy kinds, questions found | ≈ 10 min |
+| `AiReplyDraftEvalTest#business_drafts…` | drafts for business mail, printed to be read | ≈ 5 min |
+| `AiImportanceEvalTest` | the importance rules against the labelled bands (no model) | seconds |
+| `AiMailboxReplayEvalTest` | the whole mailbox through the real pipeline in time order (Docker + Ollama), compared with the expected end state, insights and reply labels | ≈ 45 min |
+
+| Option | Meaning |
+|---|---|
+| `-Dai.eval.business.limit=n` | extraction eval on the first n mails only (no baseline comparison) |
+| `-Dai.eval.business.baseline=<file>` | other business baseline file |
+| `-Dai.eval.business.drafts=n` | number of business drafts (default 15) |
+| `-Dai.eval.replay.limit=n` | replay only the first n days |
+
 ## Other resources (API overview)
 
 | Area | Endpoints | Notes |
@@ -363,7 +438,22 @@ The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagg
 | Backend | openapi-generator-maven-plugin (`spring`, interface only) | `contor-api/target/generated-sources/openapi` (`com.example.contor.api`, `.api.model`) | runs on every Maven build, e.g. `./mvnw compile` |
 | Frontend | orval (TanStack Query hooks + fetch) | `contor-web/src/lib/api/generated/` | `npm run generate:api` (also runs before `dev`, `build`, `test`, `typecheck`) |
 
-IntelliJ: if `com.example.contor.api` shows as unresolved, run *Maven → Generate Sources and Update Folders* (or `./mvnw generate-sources`) and reload the Maven project; `build-helper-maven-plugin` registers `target/generated-sources/openapi/src/main/java` as a source root.
+### IntelliJ setup
+
+The generated classes only exist after a Maven build, and they go stale when the spec changes (e.g. after a `git pull`). IntelliJ does not regenerate them on its own. Typical symptoms:
+
+- fresh checkout: `NewXCommand`, `XDto`, `XApi` and `com.example.contor.api` shown red/unresolved
+- after a pull: *Cannot resolve method 'ownerProfile' in 'AiSettingsDto'*, i.e. the class exists but lacks a property the spec now has
+
+Fix: in the Maven tool window, click *Generate Sources and Update Folders For All Projects* (or run `./mvnw generate-sources` in `contor-api`), then *Reload All Maven Projects*. `build-helper-maven-plugin` registers `target/generated-sources/openapi/src/main/java` as a source root.
+
+So you never have to think about it again, let IntelliJ regenerate automatically: Maven tool window → *contor-api → Lifecycle*, right-click `generate-sources` and tick both *Execute After Reload* and *Execute Before Build*.
+
+Project JDK: *File → Project Structure → Project → SDK* must be a JDK 21 or newer (an IntelliJ-downloaded JDK under `~/.jdks` is fine). For `./mvnw` in a terminal, `JAVA_HOME` must point at a JDK too; on Windows, set it once and open a new terminal:
+
+```powershell
+[Environment]::SetEnvironmentVariable("JAVA_HOME", "$env:USERPROFILE\.jdks\<jdk-folder>", "User")
+```
 
 To change the API: edit the spec, regenerate both sides, then implement. See `docs/decisions/0001-frontend-api-client-orval.md` for the generator choice.
 
@@ -375,6 +465,9 @@ cd contor-api && ./mvnw test
 
 # Backend: extraction quality against the real local Ollama (not part of the default run; see "AI evaluation")
 cd contor-api && ./mvnw verify -Pai-eval
+
+# Business mail dataset: rebuild and validate the generated mailbox, test the generator (see "Business mail dataset")
+node scripts/business-dataset/build.mjs && node --test scripts/business-dataset/test/
 
 # Frontend: unit/component tests, lint, type check
 cd contor-web && npm test && npm run lint && npm run typecheck
@@ -434,6 +527,9 @@ All variables are listed in `.env.example`.
 | `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
 | `AI_CACHE` | backend (dev profile) | `off` | `on` answers unchanged prompts from disk instead of the model, `refresh` asks again and overwrites (see *Dev AI cache*); ignored outside dev |
 | `AI_CACHE_DIR` | backend (dev profile) | `../.ai-cache` | where those answers are stored (relative to `contor-api`; gitignored, plain text about your mail) |
+| `DEMO_MAILBOX_ENABLED` | backend (dev profile) | `false` | import the fictional business mailbox into the dev login once (see *Demo mailbox*) |
+| `DEMO_MAILBOX_PATH` | backend (dev profile) | `src/test/resources/ai-eval/business/mailbox` | folder of the generated messages, relative to `contor-api` |
+| `DEMO_MAILBOX_SHIFT_TO_TODAY` | backend (dev profile) | `false` | move the demo mail by whole weeks so the newest mail is recent |
 | `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the Microsoft OAuth callback (`/settings/accounts?connected=true`) |
 | `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
 | `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,Contacts.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (refresh token); `Contacts.Read` gives sender photos from your Outlook contacts |

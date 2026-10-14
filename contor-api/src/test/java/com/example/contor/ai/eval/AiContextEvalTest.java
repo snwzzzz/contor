@@ -108,7 +108,7 @@ class AiContextEvalTest {
     }
 
     /** The case's earlier emails as the app renders them; mail from the case's mailbox is the user's own. */
-    private static String contextText(EvalCase evalCase) {
+    static String contextText(EvalCase evalCase) {
         EvalCase.Context context = evalCase.context() != null ? evalCase.context() : new EvalCase.Context(null, null, null, null);
         String mailbox = evalCase.email().mailbox();
         Function<EmailContent, ReplyThread.Message> message = email -> new ReplyThread.Message(

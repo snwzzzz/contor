@@ -1,0 +1,42 @@
+{
+  "id": "m-0207",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-kessler-km-26-0712",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "swap",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": "m-0202",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "s.wendt@kessler-maschinenbau.example"
+    ],
+    "subject": "AW: Bestellung KM-26-0712 – falsche Ware",
+    "receivedAt": "2026-07-21T09:15:00Z",
+    "body": "Guten Tag Frau Wendt,\n\nentschuldigen Sie bitte die Verwechslung. Unter RMA-26-044 liefern wir am Donnerstag, 23.07., die richtigen Scheiben; die falschen holt Kiebitz bei der Zustellung gleich mit ab.\n\nViele Grüße\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "RMA-26-044",
+    "Austausch Donnerstag 23.07.",
+    "falsche Scheiben holt Kiebitz ab"
+  ]
+}

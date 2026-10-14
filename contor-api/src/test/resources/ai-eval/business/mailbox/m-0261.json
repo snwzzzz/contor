@@ -1,0 +1,88 @@
+{
+  "id": "m-0261",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-vossberg-0727",
+  "cc": [],
+  "storyline": "A2-vossberg-repeat",
+  "beat": "order2",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Jens Albers",
+    "fromAddress": "jens.albers@vossberg-foerdertechnik.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Nachbestellung",
+    "receivedAt": "2026-07-27T06:03:00Z",
+    "body": "Moin, nochmal dasselbe wie letztes Mal, diesmal KW 32.\nJens"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Vossberg Fördertechnik Nachbestellung KW 32",
+          "entity": "so-0171",
+          "values": {
+            "customer": "Vossberg Fördertechnik",
+            "state": "received",
+            "requested_delivery": "2026-08-03"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Jens Albers",
+          "values": {
+            "email": "jens.albers@vossberg-foerdertechnik.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Vossberg Fördertechnik GmbH",
+          "values": {
+            "domain": "vossberg-foerdertechnik.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Jens Albers",
+        "to": "organizations:Vossberg Fördertechnik GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0268"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0007"
+  ],
+  "tags": [
+    "terse-repeat-order",
+    "calendar-week",
+    "very-short"
+  ],
+  "storylineTags": [
+    "terse-repeat-order",
+    "context-needed"
+  ],
+  "facts": [
+    "dasselbe wie letztes Mal",
+    "Lieferung KW 32"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "KW 32 -> Monday 03.08.2026"
+  }
+}

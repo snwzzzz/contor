@@ -1,0 +1,92 @@
+{
+  "id": "m-0098",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-steiner-rfq",
+  "cc": [],
+  "storyline": "A1-steiner-rfq",
+  "beat": "order",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": "m-0048",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Reto Baumann",
+    "fromAddress": "reto.baumann@steiner-praezision.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Offertanfrage Gewindestangen / Bohrer",
+    "receivedAt": "2026-07-13T08:15:00Z",
+    "body": "Guten Tag Herr Morgan\n\nWir bestellen gemäss Ihrer Offerte Q-26-0315, Lieferung wie besprochen in KW 31. Unsere Bestellnummer: BE-77810.\n\nFreundliche Grüsse\nReto Baumann\n\nVon: Alex Morgan <alex.morgan@nordhafen.example>\nGesendet: Mittwoch, 8. Juli 2026 15:00\nAn: Reto Baumann <reto.baumann@steiner-praezision.example>\nBetreff: AW: Offertanfrage Gewindestangen / Bohrer\n\nGuten Tag Herr Baumann\n\ngern offeriere ich Ihnen (Offerte Q-26-0315):\n- 500 Stk. Gewindestange M12x1000 (NH-20530) à CHF 3.70 = CHF 1'850.00\n- 20 Pack Spiralbohrer HSS-E 8,5 mm (NH-31020) à CHF 40.90 = CHF 818.00\n\nTotal CHF 2'668.00 netto, Lieferung DAP Winterthur."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Steiner Präzisionsteile Bestellung BE-77810",
+          "entity": "so-0160",
+          "values": {
+            "customer": "Steiner Präzisionsteile",
+            "total": {
+              "amount": 2668,
+              "currency": "CHF"
+            },
+            "state": "received",
+            "requested_delivery": "2026-07-27"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Reto Baumann",
+          "values": {
+            "email": "reto.baumann@steiner-praezision.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Steiner Präzisionsteile AG",
+          "values": {
+            "domain": "steiner-praezision.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Reto Baumann",
+        "to": "organizations:Steiner Präzisionsteile AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0104"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0048"
+  ],
+  "tags": [
+    "calendar-week",
+    "context-needed"
+  ],
+  "storylineTags": [
+    "calendar-week",
+    "currency"
+  ],
+  "facts": [
+    "Bestellung gemäss Offerte Q-26-0315",
+    "Lieferung KW 31",
+    "interne Bestellnummer BE-77810"
+  ],
+  "derived": {
+    "sales_orders.requested_delivery": "KW 31 -> Monday 27.07.2026"
+  }
+}

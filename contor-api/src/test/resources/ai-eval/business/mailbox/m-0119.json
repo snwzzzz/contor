@@ -1,0 +1,97 @@
+{
+  "id": "m-0119",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wislatrans-260714",
+  "cc": [],
+  "storyline": "A5-ostrowski-cancel",
+  "beat": "pickup",
+  "category": "A5",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katarzyna Lewandowska",
+    "fromAddress": "k.lewandowska@wislatrans.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Pickup confirmation WTS-PL-260714",
+    "receivedAt": "2026-07-14T11:00:00Z",
+    "body": "Hello,\n\npickup done today in Hamburg for Ostrowski Serwis, Poznań - consignment WTS-PL-260714, 2 pallets, your ref SO-26-0153. Delivery planned 16.07.\n\nBest regards\nKatarzyna Lewandowska\nDispatcher\nWisła-Trans Spedycja Sp. z o.o.\n+48 71 5550 6101"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260714",
+          "values": {
+            "tracking_number": "WTS-PL-260714",
+            "carrier": "Wisła-Trans",
+            "direction": "outbound",
+            "order_ref": "SO-26-0153",
+            "state": "picked_up",
+            "eta": "2026-07-16"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Ostrowski Serwis SO-26-0153",
+          "entity": "so-0153",
+          "values": {
+            "order_number": "SO-26-0153",
+            "state": "shipped"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katarzyna Lewandowska",
+          "values": {
+            "email": "k.lewandowska@wislatrans.example",
+            "phone": "+48 71 5550 6101",
+            "role_title": "Dispatcher"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "domain": "wislatrans.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katarzyna Lewandowska",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Wisła-Trans WTS-PL-260714",
+        "to": "sales_orders:Ostrowski Serwis SO-26-0153"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "cancel-after-shipment",
+    "different-marek"
+  ],
+  "facts": [
+    "pickup done for Ostrowski Serwis, Poznań",
+    "consignment WTS-PL-260714",
+    "2 pallets",
+    "your ref SO-26-0153",
+    "delivery 16.07."
+  ]
+}

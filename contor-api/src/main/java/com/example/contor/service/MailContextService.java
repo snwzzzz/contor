@@ -2,10 +2,13 @@ package com.example.contor.service;
 
 import com.example.contor.ai.MailContext;
 import com.example.contor.ai.MailContextPrompt;
+import com.example.contor.api.model.RecordDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
+import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.FieldType;
 import com.example.contor.domain.RecordSource;
 import com.example.contor.persistence.EmailEmbeddingRepository;
 import com.example.contor.persistence.EmailMessageRepository;
@@ -24,7 +27,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Collects what the user's other mail says about an email (ADR 0009): the conversation before it, earlier emails from the
@@ -115,7 +120,10 @@ public class MailContextService {
                 .toList();
     }
 
-    /** "collection: title" of the records created from the emails; records that cannot be read are left out. */
+    /**
+     * "collection: title (key: value, status: value)" of the records created from the emails, so that a follow-up
+     * ("arrived", "please change the date") can name the record it updates; records that cannot be read are left out.
+     */
     private List<String> records(List<EmailMessage> emails) {
         if (emails.isEmpty()) {
             return List.of();
@@ -123,13 +131,31 @@ public class MailContextService {
         Set<String> lines = new LinkedHashSet<>();
         for (RecordSource source : recordSourceRepository.findByEmail_IdIn(emails.stream().map(EmailMessage::getId).toList())) {
             try {
-                String title = recordService.getRecord(source.getCollection().getId().id(), source.getRecordId()).getTitle();
-                lines.add(source.getCollection().getSlug().value() + ": " + title);
+                RecordDto record = recordService.getRecord(source.getCollection().getId().id(), source.getRecordId());
+                lines.add(source.getCollection().getSlug().value() + ": " + record.getTitle() + details(source.getCollection(), record.getValues()));
             } catch (RuntimeException e) {
                 log.debug("Record {} of collection {} left out of the context: {}", source.getRecordId(),
                         source.getCollection().getId().id(), e.getMessage());
             }
         }
         return List.copyOf(lines);
+    }
+
+    /** The record's match keys and status fields with their current values, e.g. " (order_number: SO-26-0155, state: shipped)". */
+    private static String details(Collection collection, Map<String, Object> values) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+        List<String> fields = new ArrayList<>(Optional.ofNullable(collection.getMatchKeys()).orElse(List.of()));
+        collection.getFields().stream()
+                .filter(field -> field.getType() == FieldType.STATUS && field.getArchivedAt() == null)
+                .map(field -> field.getSlug().value())
+                .filter(slug -> !fields.contains(slug))
+                .forEach(fields::add);
+        String parts = fields.stream()
+                .filter(field -> values.get(field) != null && !String.valueOf(values.get(field)).isBlank())
+                .map(field -> field + ": " + values.get(field))
+                .collect(Collectors.joining(", "));
+        return parts.isEmpty() ? "" : " (" + parts + ")";
     }
 }

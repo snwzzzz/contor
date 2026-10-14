@@ -1,0 +1,80 @@
+{
+  "id": "m-0274",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-halvorsen-hv-6188",
+  "cc": [],
+  "storyline": "A2-halvorsen-deputy",
+  "beat": "order",
+  "category": "A2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kristian Berg",
+    "fromAddress": "kristian.berg@halvorsen-verksted.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "PO HV-6188",
+    "receivedAt": "2026-07-28T06:30:00Z",
+    "body": "Hi,\n\nIngrid asked me to order 30 packs cut-off wheels 125x1.0, same prices as HV-6120. Our PO HV-6188. No rush, August is fine.\n\nKristian"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Halvorsen Verkstedservice HV-6188",
+          "entity": "so-0174",
+          "values": {
+            "customer": "Halvorsen Verkstedservice",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Kristian Berg",
+          "values": {
+            "email": "kristian.berg@halvorsen-verksted.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Halvorsen Verkstedservice AS",
+          "values": {
+            "domain": "halvorsen-verksted.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Kristian Berg",
+        "to": "organizations:Halvorsen Verkstedservice AS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0281"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "context-needed",
+    "currency"
+  ],
+  "facts": [
+    "Ingrid asked to order 30 packs cut-off wheels",
+    "same prices as HV-6120",
+    "PO HV-6188",
+    "no rush, August is fine"
+  ]
+}

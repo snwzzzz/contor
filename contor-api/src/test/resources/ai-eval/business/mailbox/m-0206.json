@@ -1,0 +1,86 @@
+{
+  "id": "m-0206",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-delacroix-rfq",
+  "cc": [],
+  "storyline": "A1-delacroix-rfq",
+  "beat": "order",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": "m-0123",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Julien Marchand",
+    "fromAddress": "j.marchand@delacroix-usinage.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Request for quotation",
+    "receivedAt": "2026-07-21T08:20:00Z",
+    "body": "Dear Mr Morgan,\n\nPlease accept our order DU-26-0098 according to your quotation Q-26-0318.\n\nYours sincerely,\nJulien Marchand"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Delacroix Usinage DU-26-0098",
+          "entity": "so-0167",
+          "values": {
+            "customer": "Delacroix Usinage",
+            "total": {
+              "amount": 3300,
+              "currency": "EUR"
+            },
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Julien Marchand",
+          "values": {
+            "email": "j.marchand@delacroix-usinage.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Delacroix Usinage SAS",
+          "values": {
+            "domain": "delacroix-usinage.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Julien Marchand",
+        "to": "organizations:Delacroix Usinage SAS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0213"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0123"
+  ],
+  "tags": [
+    "context-needed"
+  ],
+  "storylineTags": [
+    "new-customer",
+    "context-needed"
+  ],
+  "facts": [
+    "order according to quotation Q-26-0318",
+    "PO DU-26-0098"
+  ]
+}

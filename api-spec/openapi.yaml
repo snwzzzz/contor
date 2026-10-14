@@ -2836,7 +2836,8 @@ components:
           type: boolean
     MailProviderKind:
       type: string
-      enum: [MICROSOFT_GRAPH]
+      description: MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; DEMO = the dev-only fictional demo mailbox (never synced).
+      enum: [MICROSOFT_GRAPH, DEMO]
     MailAccountState:
       type: string
       enum: [ACTIVE, NEEDS_REAUTH, DISABLED]
@@ -3287,6 +3288,10 @@ components:
         courtesyReplies:
           type: boolean
           description: Also suggest optional polite replies to emails that need no answer (a job rejection, a thank-you); only with replies = SUGGEST
+        ownerProfile:
+          type: string
+          nullable: true
+          description: Who the user is in their own words (role, company, what it buys and sells); tells the AI whose side an email is on
         onboardedAt:
           type: string
           format: date-time
@@ -3314,6 +3319,11 @@ components:
           $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
           type: boolean
+        ownerProfile:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: null = unchanged; blank clears it
         completeOnboarding:
           type: boolean
           description: true marks the setup wizard as completed (sets onboardedAt once)

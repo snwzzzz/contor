@@ -9,8 +9,8 @@ type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies";
 
 /** The editable part of the settings (everything except the onboarding timestamp). */
 export function permissionsOf(settings: AiSettingsDto): AiPermissions {
-  const { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies } = settings;
-  return { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies };
+  const { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile } = settings;
+  return { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile };
 }
 
 export const ACCESS_LABEL: Record<AiAccess, string> = { OFF: "Off", SUGGEST: "Ask me", AUTO: "Automatic" };
@@ -50,6 +50,7 @@ interface AiPermissionsFormProps {
 /** What the AI may do: the mail-access master switch, the history window and Off / Ask me / Automatic per area (reply drafts: Off / Ask me). */
 export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
   const historyId = useId();
+  const profileId = useId();
   return (
     <div className="grid gap-6">
       <label className="flex items-start gap-3 rounded-lg border p-4">
@@ -84,6 +85,23 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={profileId} className="text-sm font-medium">
+          About you and your business
+        </label>
+        <textarea
+          id={profileId}
+          className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"
+          maxLength={2000}
+          placeholder="e.g. Head of Operations at a wholesaler: customers order from us, we buy from suppliers."
+          value={value.ownerProfile ?? ""}
+          onChange={(event) => onChange({ ...value, ownerProfile: event.target.value })}
+        />
+        <span className="text-sm text-muted-foreground">
+          Optional. Tells the assistant whose side an email is on, e.g. that a customer&apos;s order is an order you receive.
+        </span>
       </div>
 
       <div className="grid gap-4">

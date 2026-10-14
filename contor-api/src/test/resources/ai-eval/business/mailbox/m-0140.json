@@ -1,0 +1,39 @@
+{
+  "id": "m-0140",
+  "account": "alex",
+  "folder": "sent",
+  "conversationId": "c-kranhoeft-halvorsen",
+  "cc": [],
+  "storyline": "B4-halvorsen-customs",
+  "beat": "docs",
+  "category": "B4",
+  "lang": "de",
+  "inReplyTo": "m-0135",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Alex Morgan",
+    "fromAddress": "alex.morgan@nordhafen.example",
+    "to": [
+      "c.wendler@kranhoeft-spedition.example"
+    ],
+    "subject": "AW: Zollaufenthalt KHS-HH-26066 Halvorsen / SO-26-0145",
+    "receivedAt": "2026-07-15T11:45:00Z",
+    "body": "Sehr geehrte Frau Wendler,\n\nanbei die Proforma-Rechnung RE-2026-0431 mit den Werten in NOK und die Ursprungserklärung.\n\nMit freundlichen Grüßen\nAlex Morgan"
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": null,
+  "reply": null,
+  "importance": null,
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "customs-hold"
+  ],
+  "facts": [
+    "Proforma RE-2026-0431 mit NOK-Werten und Ursprungserklärung anbei"
+  ]
+}

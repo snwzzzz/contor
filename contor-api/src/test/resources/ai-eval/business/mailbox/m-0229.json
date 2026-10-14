@@ -1,0 +1,111 @@
+{
+  "id": "m-0229",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-asg-2607221",
+  "cc": [],
+  "storyline": "B1-brandauer-consolidated",
+  "beat": "pickup",
+  "category": "B1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Stefan Moser",
+    "fromAddress": "s.moser@alpen-sammelgut.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Abholbestätigung ASG-2607221",
+    "receivedAt": "2026-07-22T12:05:00Z",
+    "body": "Grüß Gott,\n\nheute bei Ihnen abgeholt: Sendung ASG-2607221, 2 Paletten für Brandauer Anlagentechnik, Linz (Ihre Aufträge SO-26-0158 und SO-26-0161). Zustellung voraussichtlich Freitag, 24.07.\n\nMit freundlichen Grüßen\nStefan Moser\nDisposition\nAlpen-Sammelgut Spedition GmbH\nTel. +43 512 5550 6301"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Alpen-Sammelgut ASG-2607221",
+          "values": {
+            "tracking_number": "ASG-2607221",
+            "carrier": "Alpen-Sammelgut",
+            "direction": "outbound",
+            "order_ref": "SO-26-0158, SO-26-0161",
+            "state": "picked_up",
+            "eta": "2026-07-24"
+          }
+        }
+      ],
+      "sales_orders": [
+        {
+          "title": "Brandauer Anlagentechnik SO-26-0158",
+          "entity": "so-0158",
+          "values": {
+            "order_number": "SO-26-0158",
+            "state": "shipped"
+          }
+        },
+        {
+          "title": "Brandauer Anlagentechnik SO-26-0161",
+          "entity": "so-0161",
+          "values": {
+            "order_number": "SO-26-0161",
+            "state": "shipped"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Stefan Moser",
+          "values": {
+            "email": "s.moser@alpen-sammelgut.example",
+            "phone": "+43 512 5550 6301",
+            "role_title": "Disposition"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Alpen-Sammelgut Spedition GmbH",
+          "values": {
+            "domain": "alpen-sammelgut.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Stefan Moser",
+        "to": "organizations:Alpen-Sammelgut Spedition GmbH"
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Alpen-Sammelgut ASG-2607221",
+        "to": "sales_orders:Brandauer Anlagentechnik SO-26-0158"
+      },
+      {
+        "type": "ships",
+        "from": "shipments:Alpen-Sammelgut ASG-2607221",
+        "to": "sales_orders:Brandauer Anlagentechnik SO-26-0161"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "one-shipment-two-orders"
+  ],
+  "storylineTags": [
+    "one-shipment-two-orders",
+    "second-delay"
+  ],
+  "facts": [
+    "Abholung heute",
+    "Sendung ASG-2607221, 2 Paletten",
+    "Aufträge SO-26-0158 und SO-26-0161",
+    "Zustellung Linz Fr 24.07."
+  ]
+}

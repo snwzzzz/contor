@@ -1,0 +1,89 @@
+{
+  "id": "m-0241",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kessler-konditionen",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "competitor",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Klaus Kessler",
+    "fromAddress": "k.kessler@kessler-maschinenbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Konditionen Normteile",
+    "receivedAt": "2026-07-23T14:05:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nuns liegt das Angebot eines Wettbewerbers vor, das bei M8-Schrauben rund 12 % unter Ihren Preisen liegt. Dazu kamen zuletzt Lieferprobleme. Wenn Sie uns hier nicht entgegenkommen, werden wir unsere Bezüge ab September umstellen.\n\nKönnen wir dazu nächste Woche sprechen, Dienstag oder Mittwoch, gern bei uns in Bielefeld?\n\nMit freundlichen Grüßen\nKlaus Kessler\nGeschäftsführer\nKessler Maschinenbau GmbH\nTel. +49 521 5550 3100"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Kessler Maschinenbau",
+          "values": {
+            "name": "Kessler Maschinenbau",
+            "segment": "at_risk"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Klaus Kessler",
+          "values": {
+            "email": "k.kessler@kessler-maschinenbau.example",
+            "phone": "+49 521 5550 3100",
+            "role_title": "Geschäftsführer"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kessler Maschinenbau GmbH",
+          "values": {
+            "domain": "kessler-maschinenbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Klaus Kessler",
+        "to": "organizations:Kessler Maschinenbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "SCHEDULE",
+    "questions": [
+      "Können wir nächste Woche Dienstag oder Mittwoch sprechen?"
+    ],
+    "scheduleFrom": "2026-07-28",
+    "scheduleTo": "2026-07-29",
+    "timeOfDay": "ANY",
+    "answeredBy": "m-0243"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "competitor-mentioned",
+    "churn-signal",
+    "relative-date"
+  ],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "Angebot eines Wettbewerbers rund 12 % unter den Preisen bei M8-Schrauben",
+    "ohne Entgegenkommen Umstellung ab September",
+    "Gespräch nächste Woche, Dienstag oder Mittwoch?"
+  ]
+}

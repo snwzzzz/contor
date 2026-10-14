@@ -1,0 +1,79 @@
+{
+  "id": "m-0035",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-steiner-rfq",
+  "cc": [],
+  "storyline": "A1-steiner-rfq",
+  "beat": "rfq",
+  "category": "A1",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Reto Baumann",
+    "fromAddress": "reto.baumann@steiner-praezision.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Offertanfrage Gewindestangen / Bohrer",
+    "receivedAt": "2026-07-08T06:40:00Z",
+    "body": "Guten Tag Herr Morgan\n\nBitte offerieren Sie uns in CHF:\n- 500 Stk. Gewindestange M12x1000 verzinkt\n- 20 Pack Spiralbohrer HSS-E 8,5 mm\n\nLieferung in KW 31 nach Winterthur. Können Sie den Termin halten, und liefern Sie DAP oder verzollt (DDP)?\n\nFreundliche Grüsse\nReto Baumann\nLeiter Einkauf\nSteiner Präzisionsteile AG\nTel. +41 52 5550 3001"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Reto Baumann",
+          "values": {
+            "email": "reto.baumann@steiner-praezision.example",
+            "phone": "+41 52 5550 3001",
+            "role_title": "Leiter Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Steiner Präzisionsteile AG",
+          "values": {
+            "domain": "steiner-praezision.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Reto Baumann",
+        "to": "organizations:Steiner Präzisionsteile AG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "ANSWER_QUESTIONS",
+    "questions": [
+      "Preise für 500 Gewindestangen M12x1000 und 20 Pack Spiralbohrer in CHF?",
+      "Ist Lieferung in KW 31 möglich?",
+      "DAP oder verzollt (DDP)?"
+    ],
+    "answeredBy": "m-0048"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "calendar-week"
+  ],
+  "storylineTags": [
+    "calendar-week",
+    "currency"
+  ],
+  "facts": [
+    "500 Gewindestangen M12x1000",
+    "20 Pack Spiralbohrer HSS-E 8,5 mm",
+    "Preise in CHF",
+    "Lieferung KW 31 nach Winterthur",
+    "Frage DAP oder verzollt (DDP)"
+  ]
+}

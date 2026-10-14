@@ -1,0 +1,82 @@
+{
+  "id": "m-0065",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-dijkstra-dw-2291",
+  "cc": [],
+  "storyline": "A4-dijkstra-change",
+  "beat": "change1",
+  "category": "A4",
+  "lang": "en",
+  "inReplyTo": "m-0031",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Femke de Wit",
+    "fromAddress": "f.dewit@dijkstra-werktuigen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: PO DW-2291",
+    "receivedAt": "2026-07-09T07:40:00Z",
+    "body": "Hi Alex,\n\nsmall change to SO-26-0147: we need 250 threaded rods instead of 200. Date stays the same. Can you confirm?\n\nFemke"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Dijkstra Werktuigen SO-26-0147",
+          "entity": "so-0147",
+          "values": {
+            "order_number": "SO-26-0147",
+            "customer": "Dijkstra Werktuigen"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Femke de Wit",
+          "values": {
+            "email": "f.dewit@dijkstra-werktuigen.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Dijkstra Werktuigen B.V.",
+          "values": {
+            "domain": "dijkstra-werktuigen.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Femke de Wit",
+        "to": "organizations:Dijkstra Werktuigen B.V."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [
+      "Can you confirm 250 threaded rods instead of 200?"
+    ],
+    "answeredBy": "m-0068"
+  },
+  "importance": "HIGH",
+  "dependsOn": [],
+  "tags": [
+    "contradicting-change"
+  ],
+  "storylineTags": [
+    "contradicting-change"
+  ],
+  "facts": [
+    "change SO-26-0147",
+    "250 threaded rods instead of 200",
+    "same date"
+  ]
+}

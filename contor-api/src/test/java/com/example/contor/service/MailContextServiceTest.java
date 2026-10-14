@@ -7,8 +7,10 @@ import com.example.contor.config.AiProperties;
 import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
+import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.Email;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.FieldType;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.RecordSource;
 import com.example.contor.domain.Slug;
@@ -30,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -123,6 +126,24 @@ class MailContextServiceTest {
         assertThat(ids(context.fromSender())).containsExactly(5L);
         assertThat(ids(context.related())).containsExactly(4L);
         assertThat(context.records()).containsExactly("events: Interview at Acme");
+    }
+
+    @Test
+    void contextFor_RecordsShowTheirKeysAndStatusSoAFollowUpCanReferToThem() {
+        EmailMessage target = email(10L, "c1", "inbox", RECEIVED);
+        EmailMessage earlier = email(8L, "c1", "inbox", RECEIVED.minusSeconds(7200));
+        when(emailMessageRepository.findThread(account.getId(), "c1")).thenReturn(List.of(earlier, target));
+        Collection orders = Collection.builder().id(new Collection.CollectionId(6L)).slug(new Slug("sales_orders"))
+                .matchKeys(List.of("order_number")).build();
+        orders.getFields().add(CollectionField.builder().slug(new Slug("state")).type(FieldType.STATUS).build());
+        orders.getFields().add(CollectionField.builder().slug(new Slug("customer")).type(FieldType.TEXT).build());
+        when(recordSourceRepository.findByEmail_IdIn(anyList()))
+                .thenReturn(List.of(RecordSource.builder().collection(orders).recordId(12L).email(earlier).build()));
+        when(recordService.getRecord(6L, 12L)).thenReturn(new RecordDto(12L, 6L,
+                new LinkedHashMap<>(Map.of("order_number", "SO-26-0155", "state", "shipped", "customer", "Kessler")), new LinkedHashMap<>(),
+                OffsetDateTime.parse("2026-01-01T00:00:00Z"), "AI").title("Kessler SO-26-0155"));
+
+        assertThat(service.contextFor(10L).records()).containsExactly("sales_orders: Kessler SO-26-0155 (order_number: SO-26-0155, state: shipped)");
     }
 
     @Test

@@ -6,6 +6,6 @@ import org.springframework.context.annotation.Profile;
 
 @Profile("dev")
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(DevAccountProperties.class)
+@EnableConfigurationProperties({DevAccountProperties.class, DemoMailboxProperties.class})
 public class DevConfig {
 }

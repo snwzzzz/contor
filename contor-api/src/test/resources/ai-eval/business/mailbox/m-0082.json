@@ -1,0 +1,83 @@
+{
+  "id": "m-0082",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moreau-rfq",
+  "cc": [],
+  "storyline": "A1-moreau-rfq",
+  "beat": "order",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": "m-0032",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@ateliers-moreau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Request for quotation - end mills and taps",
+    "receivedAt": "2026-07-10T07:30:00Z",
+    "body": "Hi Alex,\n\nplease book 45 end mills instead of 30, plus the 20 taps, at the prices of your quotation Q-26-0312. Delivery address as usual.\n\nMerci et bonne journée,\nCamille\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Tuesday, July 7, 2026 4:10 PM\nTo: Camille Rousseau <c.rousseau@ateliers-moreau.example>\nSubject: RE: Request for quotation - end mills and taps\n\nPlease find our quotation Q-26-0312:\n- NH-33110 solid carbide end mill 12 mm Z4: 30 pcs x 64.20 EUR = 1,926.00 EUR\n- NH-31045 machine tap M10: 20 pcs x 18.75 EUR = 375.00 EUR"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ateliers Moreau order Q-26-0312",
+          "entity": "so-0156",
+          "values": {
+            "customer": "Ateliers Moreau",
+            "state": "received"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@ateliers-moreau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0086"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [
+    "m-0032"
+  ],
+  "tags": [
+    "quantity-differs"
+  ],
+  "storylineTags": [
+    "context-needed",
+    "quantity-differs"
+  ],
+  "facts": [
+    "orders 45 end mills instead of 30",
+    "plus the 20 taps",
+    "same prices as Q-26-0312"
+  ]
+}

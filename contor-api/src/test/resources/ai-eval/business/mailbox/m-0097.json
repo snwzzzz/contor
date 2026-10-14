@@ -1,0 +1,89 @@
+{
+  "id": "m-0097",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moreau-rfq",
+  "cc": [],
+  "storyline": "A1-moreau-rfq",
+  "beat": "ack",
+  "category": "A1",
+  "lang": "en",
+  "inReplyTo": "m-0086",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Camille Rousseau",
+    "fromAddress": "c.rousseau@ateliers-moreau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Order confirmation SO-26-0156",
+    "receivedAt": "2026-07-13T07:02:00Z",
+    "body": "Hi Alex,\n\nthanks for the confirmation, SO-26-0156 with 3,264.00 EUR is noted on our side. Could you please send the invoice to comptabilite@ateliers-moreau.example rather than to me?\n\nCamille\n\nFrom: Alex Morgan <alex.morgan@nordhafen.example>\nSent: Friday, July 10, 2026 1:00 PM\nTo: Camille Rousseau <c.rousseau@ateliers-moreau.example>\nSubject: Order confirmation SO-26-0156\n\nthank you for your order, confirmed as SO-26-0156:\n- 45 x NH-33110 end mill 12 mm Z4 at 64.20 EUR\n- 20 x NH-31045 tap M10 at 18.75 EUR\nTotal 3,264.00 EUR net plus 45.00 EUR freight. We ship on 15 July; delivery in Lyon on 17 July."
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Ateliers Moreau SO-26-0156",
+          "entity": "so-0156",
+          "values": {
+            "order_number": "SO-26-0156",
+            "customer": "Ateliers Moreau",
+            "total": {
+              "amount": 3264,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "confirmed_delivery": "2026-07-17"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Send the invoice for SO-26-0156 to comptabilite@ateliers-moreau.example",
+          "values": {
+            "state": "open"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Camille Rousseau",
+          "values": {
+            "email": "c.rousseau@ateliers-moreau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Ateliers Moreau SARL",
+          "values": {
+            "domain": "ateliers-moreau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Camille Rousseau",
+        "to": "organizations:Ateliers Moreau SARL"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "context-needed",
+    "quantity-differs"
+  ],
+  "facts": [
+    "SO-26-0156 noted",
+    "total 3,264.00 EUR",
+    "please send the invoice to comptabilite@ateliers-moreau.example"
+  ]
+}

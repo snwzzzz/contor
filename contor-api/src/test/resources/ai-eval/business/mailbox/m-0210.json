@@ -1,0 +1,67 @@
+{
+  "id": "m-0210",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-tornilleria-price-2026-08",
+  "cc": [],
+  "storyline": "J5-tornilleria-pricelist",
+  "beat": "list",
+  "category": "J",
+  "lang": "en",
+  "inReplyTo": "m-0084",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Lucía Navarro",
+    "fromAddress": "lucia.navarro@tornilleria-ebro.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Price adjustment from 1 August 2026",
+    "receivedAt": "2026-07-21T10:10:00Z",
+    "body": "Hi Alex,\n\nas announced, the new price list is attached (valid from 1 August). Who would have thought steel would get even more expensive this year, right? No need to answer, it's just for your files.\n\nUn saludo,\nLucía"
+  },
+  "expected": {
+    "records": {
+      "people": [
+        {
+          "title": "Lucía Navarro",
+          "values": {
+            "email": "lucia.navarro@tornilleria-ebro.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Tornillería del Ebro S.L.",
+          "values": {
+            "domain": "tornilleria-ebro.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Lucía Navarro",
+        "to": "organizations:Tornillería del Ebro S.L."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "rhetorical-question"
+  ],
+  "storylineTags": [
+    "rhetorical-question",
+    "price-increase"
+  ],
+  "facts": [
+    "new price list attached, valid from 1 August",
+    "who would have thought steel gets more expensive, right?",
+    "no need to answer"
+  ]
+}

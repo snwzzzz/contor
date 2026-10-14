@@ -1,0 +1,55 @@
+{
+  "id": "m-0250",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-weekly",
+  "cc": [],
+  "storyline": "F4-internal-weekly",
+  "beat": "cancelled",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": "m-0176",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dr. Helga Sommerfeld",
+    "fromAddress": "helga.sommerfeld@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example",
+      "jana.petersen@nordhafen.example",
+      "tobias.krueger@nordhafen.example",
+      "sophie.brandt@nordhafen.example",
+      "daniel.okafor@nordhafen.example"
+    ],
+    "subject": "AW: Weekly Leitungsrunde",
+    "receivedAt": "2026-07-24T10:00:00Z",
+    "body": "Die Runde am 27.07. fällt aus. Schönes Wochenende!\nH."
+  },
+  "expected": {
+    "records": {},
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "tasks",
+      "title": null
+    },
+    {
+      "collection": "events",
+      "title": "Weekly Leitungsrunde 27.07."
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "cancelled",
+    "very-short"
+  ],
+  "storylineTags": [
+    "reschedule"
+  ],
+  "facts": [
+    "Runde am 27.07. fällt aus"
+  ]
+}

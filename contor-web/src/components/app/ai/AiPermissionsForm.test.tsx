@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { AiPermissionsForm, type AiPermissions } from "./AiPermissionsForm";
+import { AiPermissionsForm, permissionsOf, type AiPermissions } from "./AiPermissionsForm";
 
 const initial: AiPermissions = {
   mailAccess: false,
@@ -29,6 +29,23 @@ function Harness({ onChange }: { onChange: (value: AiPermissions) => void }) {
 }
 
 describe("AiPermissionsForm", () => {
+  it("lets the user describe themselves and their business for the AI", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.type(screen.getByRole("textbox", { name: /about you and your business/i }), "Wholesaler");
+
+    expect(onChange).toHaveBeenLastCalledWith({ ...initial, ownerProfile: "Wholesaler" });
+  });
+
+  it("keeps the owner profile when reading the saved settings", () => {
+    expect(permissionsOf({ ...initial, ownerProfile: "Head of Operations", onboardedAt: "2026-10-13T08:00:00Z" })).toEqual({
+      ...initial,
+      ownerProfile: "Head of Operations",
+    });
+  });
+
   it("asks for every area with off, ask-me and automatic choices", () => {
     render(<AiPermissionsForm value={initial} onChange={() => {}} />);
 

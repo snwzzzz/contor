@@ -1,0 +1,83 @@
+{
+  "id": "m-0036",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wupperthal-po-1090",
+  "cc": [],
+  "storyline": "C1-wupperthal-abrasives",
+  "beat": "confirm",
+  "category": "C1",
+  "lang": "de",
+  "inReplyTo": "m-0030",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dirk Hollmann",
+    "fromAddress": "d.hollmann@wupperthal-schleifmittel.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bestellung PO-26-1090",
+    "receivedAt": "2026-07-08T06:40:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\nwir bestätigen Ihre Bestellung PO-26-1090 über 1.876,40 €. Liefertermin: 10.07.2026.\n\nMit freundlichen Grüßen\nDirk Hollmann\nVertriebsinnendienst\nWupperthal Schleifmittel GmbH\nTel. +49 202 5550 5601"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Wupperthal Schleifmittel PO-26-1090",
+          "values": {
+            "po_number": "PO-26-1090",
+            "supplier": "Wupperthal Schleifmittel",
+            "total": {
+              "amount": 1876.4,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "expected_arrival": "2026-07-10"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dirk Hollmann",
+          "values": {
+            "email": "d.hollmann@wupperthal-schleifmittel.example",
+            "phone": "+49 202 5550 5601",
+            "role_title": "Vertriebsinnendienst"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wupperthal Schleifmittel GmbH",
+          "values": {
+            "domain": "wupperthal-schleifmittel.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Dirk Hollmann",
+        "to": "organizations:Wupperthal Schleifmittel GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "AB zu PO-26-1090",
+    "1.876,40 €",
+    "Lieferung 10.07.2026"
+  ]
+}

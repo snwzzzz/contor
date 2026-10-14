@@ -264,7 +264,7 @@ public class AiAnalysisWorker {
             Map<String, Long> proposalIds = new HashMap<>();
             timings.stage("embed", () -> embed(emailId));
             EmailContent read = targets.isEmpty() ? content : content.withContext(timings.stage("context", () -> context(emailId)));
-            List<ProposalDraft> drafts = timings.stage("extract", () -> extractionService.analyze(read, targets));
+            List<ProposalDraft> drafts = timings.stage("extract", () -> extractionService.analyze(read, targets, settings.getOwnerProfile()));
             ImportanceSignals signals = drafts.isEmpty() ? ImportanceSignals.NONE : signals(emailId);
             for (ProposalDraft draft : drafts) {
                 // relations follow the records permission; a draft pointing at something that was not stored is dropped

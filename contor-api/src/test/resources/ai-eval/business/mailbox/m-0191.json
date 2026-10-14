@@ -1,0 +1,71 @@
+{
+  "id": "m-0191",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-hartmann-gutschrift",
+  "cc": [
+    "alex.morgan@nordhafen.example"
+  ],
+  "storyline": "H3-hartmann-credit-note",
+  "beat": "credit",
+  "category": "H",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "thomas.reuter@hartmann-hydraulik.example"
+    ],
+    "subject": "Gutschrift GS-2026-014",
+    "receivedAt": "2026-07-20T09:00:00Z",
+    "body": "Sehr geehrter Herr Reuter,\n\nwie mit Herrn Morgan vereinbart erhalten Sie anbei unsere Gutschrift GS-2026-014 über 96,75 € zur Rechnung RE-2026-0421 (5 % Nachlass auf SO-26-0149).\n\nMit freundlichen Grüßen\nTobias Krüger\nBuchhaltung\nNordhafen Industriebedarf GmbH\nTel. +49 40 5550 1021"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Nordhafen GS-2026-014 Gutschrift Hartmann",
+          "values": {
+            "invoice_number": "GS-2026-014",
+            "issuer": "Nordhafen",
+            "amount": {
+              "amount": 96.75,
+              "currency": "EUR"
+            },
+            "direction": "outgoing"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example",
+            "phone": "+49 40 5550 1021",
+            "role_title": "Buchhaltung"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "cc-only",
+    "credit-note"
+  ],
+  "storylineTags": [
+    "cc-only"
+  ],
+  "facts": [
+    "Gutschrift GS-2026-014",
+    "96,75 € zu Rechnung RE-2026-0421",
+    "5 % Nachlass SO-26-0149"
+  ]
+}

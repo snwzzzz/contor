@@ -1,0 +1,64 @@
+{
+  "id": "m-0077",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kiebitz-KP402611870093",
+  "cc": [],
+  "storyline": "A3-falkenrath-rush",
+  "beat": "parcel",
+  "category": "A3",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Kiebitz Paket",
+    "fromAddress": "noreply@kiebitz-paket.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Ihre Sendung KP402611870093 wurde übernommen",
+    "receivedAt": "2026-07-09T15:45:00Z",
+    "body": "Guten Tag,\n\nIhre Sendung KP402611870093 an Falkenrath Antriebe GmbH, 34117 Kassel, wurde heute von uns übernommen.\n\nVoraussichtliche Zustellung: Fr, 10.07.2026, bis 12:00 Uhr (Express)\n\nSendungsverfolgung: https://track.kiebitz-paket.example/KP402611870093\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Kiebitz Paket KP402611870093",
+          "values": {
+            "tracking_number": "KP402611870093",
+            "carrier": "Kiebitz Paket",
+            "direction": "outbound",
+            "state": "picked_up",
+            "eta": "2026-07-10"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [
+    {
+      "collection": "people",
+      "title": null
+    },
+    {
+      "collection": "tasks",
+      "title": null
+    }
+  ],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "rush-order"
+  ],
+  "facts": [
+    "Sendung KP402611870093",
+    "an Falkenrath Antriebe GmbH, Kassel",
+    "übernommen",
+    "voraussichtliche Zustellung Fr, 10.07.2026, bis 12:00 Uhr"
+  ]
+}

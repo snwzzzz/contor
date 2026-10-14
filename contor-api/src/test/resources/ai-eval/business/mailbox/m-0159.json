@@ -1,0 +1,76 @@
+{
+  "id": "m-0159",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-wislatrans-260714",
+  "cc": [],
+  "storyline": "B2-wislatrans-delay",
+  "beat": "late",
+  "category": "B2",
+  "lang": "en",
+  "inReplyTo": "m-0119",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Katarzyna Lewandowska",
+    "fromAddress": "k.lewandowska@wislatrans.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: Pickup confirmation WTS-PL-260714",
+    "receivedAt": "2026-07-16T10:10:00Z",
+    "body": "Hello,\n\nWTS-PL-260714 delayed - long traffic jam on A4 near Görlitz, truck will not reach Poznań today. New delivery tomorrow 17.07. morning.\n\nK. Lewandowska"
+  },
+  "expected": {
+    "records": {
+      "shipments": [
+        {
+          "title": "Wisła-Trans WTS-PL-260714",
+          "values": {
+            "tracking_number": "WTS-PL-260714",
+            "state": "delayed",
+            "eta": "2026-07-17"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Katarzyna Lewandowska",
+          "values": {
+            "email": "k.lewandowska@wislatrans.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Wisła-Trans Spedycja Sp. z o.o.",
+          "values": {
+            "domain": "wislatrans.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Katarzyna Lewandowska",
+        "to": "organizations:Wisła-Trans Spedycja Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "delay"
+  ],
+  "storylineTags": [
+    "delay"
+  ],
+  "facts": [
+    "WTS-PL-260714 delayed",
+    "traffic jam on the A4 near Görlitz",
+    "delivery tomorrow 17.07."
+  ]
+}

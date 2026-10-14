@@ -1,0 +1,86 @@
+{
+  "id": "m-0041",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-kessler-km-26-0712",
+  "cc": [],
+  "storyline": "E2-kessler-churn",
+  "beat": "order",
+  "category": "E2",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sabine Wendt",
+    "fromAddress": "s.wendt@kessler-maschinenbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Bestellung KM-26-0712",
+    "receivedAt": "2026-07-08T08:50:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nunsere Bestellung KM-26-0712:\n- 20 Kartons Sechskantschrauben M8x40 (sonst 60 – wir haben derzeit weniger Aufträge)\n- 5 Pack Trennscheiben 125x1,0 Inox\nLiefertermin: 17.07.\n\nMit freundlichen Grüßen\nSabine Wendt\nEinkauf\nKessler Maschinenbau GmbH\nTel. +49 521 5550 3101"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Kessler Maschinenbau KM-26-0712",
+          "entity": "so-0155",
+          "values": {
+            "customer": "Kessler Maschinenbau",
+            "state": "received",
+            "requested_delivery": "2026-07-17"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sabine Wendt",
+          "values": {
+            "email": "s.wendt@kessler-maschinenbau.example",
+            "phone": "+49 521 5550 3101",
+            "role_title": "Einkauf"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Kessler Maschinenbau GmbH",
+          "values": {
+            "domain": "kessler-maschinenbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Sabine Wendt",
+        "to": "organizations:Kessler Maschinenbau GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "CONFIRM",
+    "questions": [],
+    "answeredBy": "m-0051"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "churn-signal"
+  ],
+  "storylineTags": [
+    "churn-signal",
+    "competitor-mentioned"
+  ],
+  "facts": [
+    "Bestellung KM-26-0712",
+    "20 Kartons Schrauben M8x40 (sonst 60)",
+    "5 Pack Trennscheiben 125x1,0",
+    "Liefertermin 17.07.",
+    "derzeit weniger Aufträge"
+  ]
+}

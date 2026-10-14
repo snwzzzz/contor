@@ -1,0 +1,82 @@
+{
+  "id": "m-0270",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-nordkap-first",
+  "cc": [],
+  "storyline": "E5-nordkap-new",
+  "beat": "order",
+  "category": "E5",
+  "lang": "en",
+  "inReplyTo": "m-0203",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Sindre Haugen",
+    "fromAddress": "sindre.haugen@nordkap-marine.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "RE: New customer inquiry - bearings",
+    "receivedAt": "2026-07-27T11:10:00Z",
+    "body": "Thanks Alex! First order: 100 bearings 6205-2RS and 20 bearing units UCP 205. Prepayment is fine, please send the pro-forma. We need the goods before 14 August.\n\nSindre"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Nordkap Marine Service first order",
+          "entity": "so-0172",
+          "values": {
+            "customer": "Nordkap Marine Service",
+            "state": "received",
+            "requested_delivery": "2026-08-14"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Sindre Haugen",
+          "values": {
+            "email": "sindre.haugen@nordkap-marine.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Nordkap Marine Service AS",
+          "values": {
+            "domain": "nordkap-marine.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Sindre Haugen",
+        "to": "organizations:Nordkap Marine Service AS"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": true,
+  "reply": {
+    "intent": "PROVIDE_INFO",
+    "questions": [],
+    "answeredBy": "m-0271"
+  },
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer",
+    "currency"
+  ],
+  "facts": [
+    "first order: 100 bearings 6205-2RS, 20 bearing units UCP 205",
+    "prepayment fine",
+    "delivery before 14 August"
+  ]
+}

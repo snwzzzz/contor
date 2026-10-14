@@ -1,0 +1,81 @@
+{
+  "id": "m-0009",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-odlewnia-po-1083",
+  "cc": [],
+  "storyline": "C2-odlewnia-partial",
+  "beat": "confirm",
+  "category": "C2",
+  "lang": "en",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Agnieszka Mazur",
+    "fromAddress": "a.mazur@odlewnia-wislana.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Order confirmation PO-26-1083",
+    "receivedAt": "2026-07-06T06:20:00Z",
+    "body": "Dear Mr Morgan,\n\nwe confirm your order PO-26-1083: 1,000 pcs housing GG25 type B at 31.50 EUR, total 31,500.00 EUR. Delivery date 10.07.2026 to Hamburg via Wisła-Trans.\n\nYours faithfully\nAgnieszka Mazur\nExport Sales\nOdlewnia Wiślana Sp. z o.o.\nGliwice, Poland\nTel. +48 32 5550 5101"
+  },
+  "expected": {
+    "records": {
+      "purchase_orders": [
+        {
+          "title": "Odlewnia Wiślana PO-26-1083",
+          "values": {
+            "po_number": "PO-26-1083",
+            "supplier": "Odlewnia Wiślana",
+            "total": {
+              "amount": 31500,
+              "currency": "EUR"
+            },
+            "state": "confirmed",
+            "expected_arrival": "2026-07-10"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Agnieszka Mazur",
+          "values": {
+            "email": "a.mazur@odlewnia-wislana.example",
+            "phone": "+48 32 5550 5101",
+            "role_title": "Export Sales"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Odlewnia Wiślana Sp. z o.o.",
+          "values": {
+            "domain": "odlewnia-wislana.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Agnieszka Mazur",
+        "to": "organizations:Odlewnia Wiślana Sp. z o.o."
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [],
+  "storylineTags": [
+    "partial-delivery"
+  ],
+  "facts": [
+    "order confirmation PO-26-1083",
+    "1,000 pcs housing GG25 type B at 31.50 EUR = 31,500.00 EUR",
+    "delivery 10.07.2026 via Wisła-Trans"
+  ]
+}

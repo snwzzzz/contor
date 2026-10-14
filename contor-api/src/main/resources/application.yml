@@ -70,6 +70,13 @@ app:
     username: ${DEV_ACCOUNT_USERNAME:}
     email: ${DEV_ACCOUNT_EMAIL:dev@outlook.com}
     password: ${DEV_ACCOUNT_PASSWORD:}
+  demo-mailbox:
+    # Dev profile only: import the fictional business mailbox (ai-eval/business) into the dev login once.
+    enabled: ${DEMO_MAILBOX_ENABLED:false}
+    # Relative to contor-api (where the backend is started from).
+    path: ${DEMO_MAILBOX_PATH:src/test/resources/ai-eval/business/mailbox}
+    # Move all dates by whole weeks so the newest mail is from the last 7 days (dates inside the texts stay as written).
+    shift-to-today: ${DEMO_MAILBOX_SHIFT_TO_TODAY:false}
   web:
     # Public URL of contor-web; the browser is sent back here after the Microsoft OAuth callback.
     url: ${APP_WEB_URL:http://localhost:3000}

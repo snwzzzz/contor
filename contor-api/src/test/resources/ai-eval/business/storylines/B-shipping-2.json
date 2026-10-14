@@ -1,0 +1,221 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "B4-steiner-customs",
+      "category": "B4",
+      "summary": "The Swiss shipment is held at customs for a missing commercial invoice, EORI and HS codes; accounting provides the invoice and the goods are cleared.",
+      "difficulty": "hard",
+      "editorNotes": "Deadline 'bis morgen 12 Uhr' (to-do), internal delegation to accounting, customer asks a question about customs costs at the end.",
+      "tags": ["customs-hold"],
+      "numbers": ["ASG-2607270", "RE-2026-0438"],
+      "beats": [
+        {
+          "key": "hold", "day": "2026-07-28", "time": "09:20", "from": "p-moser", "conversation": "asg-2607270",
+          "facts": ["Sendung ASG-2607270 für Steiner Präzisionsteile steht am Zoll in Buchs SG", "Handelsrechnung fehlt", "EORI-Nummer und Zolltarifnummern aller Positionen", "bis morgen 12 Uhr, sonst zurück ins Lager"],
+          "style": { "lang": "de", "tone": "urgent", "length": "short", "signature": "full" },
+          "subject": "DRINGEND: Zollstopp ASG-2607270 Steiner Präzisionsteile",
+          "body": "Grüß Gott Herr Morgan,\n\ndie Sendung ASG-2607270 für Steiner Präzisionsteile, Winterthur, steht am Zoll in Buchs SG. Es fehlt die Handelsrechnung, außerdem brauchen wir Ihre EORI-Nummer und die Zolltarifnummern (HS-Codes) aller Positionen.\n\nBitte schicken Sie uns alles bis morgen 12 Uhr, sonst geht die Sendung zurück in unser Lager.\n\nMit freundlichen Grüßen\nStefan Moser\nDisposition\nAlpen-Sammelgut Spedition GmbH\nTel. +43 512 5550 6301",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607270", "values": { "tracking_number": "ASG-2607270", "carrier": "Alpen-Sammelgut", "direction": "outbound", "state": "delayed" } }],
+              "tasks": [{ "title": "Handelsrechnung, EORI-Nummer und Zolltarifnummern für ASG-2607270 an Alpen-Sammelgut senden", "values": { "state": "open", "due_date": "2026-07-29" } }]
+            },
+            "derived": { "tasks.due_date": "morgen = 29.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": [], "answeredBy": "#docs" },
+            "importance": "URGENT",
+            "tags": ["customs-hold", "relative-date"]
+          }
+        },
+        {
+          "key": "ask-tobias", "day": "2026-07-28", "time": "09:35", "direction": "sent", "to": ["p-tobias"], "conversation": "steiner-handelsrechnung",
+          "facts": ["bitte Handelsrechnung zu SO-26-0160 erstellen", "eilt, Zoll wartet", "EORI drauf"],
+          "style": { "lang": "de", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "Eilt: Handelsrechnung Steiner SO-26-0160",
+          "body": "Hi Tobias,\n\nkannst du mir bitte gleich die Handelsrechnung zu SO-26-0160 (Steiner) machen? Die Sendung hängt am Schweizer Zoll. Bitte unsere EORI mit drauf.\n\nDanke!\nAlex"
+        },
+        {
+          "key": "tobias", "day": "2026-07-28", "time": "11:10", "from": "p-tobias", "inReplyTo": "#ask-tobias",
+          "facts": ["Handelsrechnung RE-2026-0438 hängt an", "EORI steht unten auf der Rechnung"],
+          "style": { "lang": "de", "tone": "precise", "length": "1-3 sentences", "signature": "none" },
+          "subject": "AW: Eilt: Handelsrechnung Steiner SO-26-0160",
+          "body": "Hi Alex,\n\nHandelsrechnung RE-2026-0438 hängt an, die EORI steht unten auf der Rechnung.\n\nTobias",
+          "labels": {
+            "records": {
+              "invoices": [{ "title": "Nordhafen RE-2026-0438 Steiner", "values": { "invoice_number": "RE-2026-0438", "direction": "outgoing" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "docs", "day": "2026-07-28", "time": "11:30", "direction": "sent", "to": ["p-moser"], "inReplyTo": "#hold",
+          "facts": ["Handelsrechnung RE-2026-0438 anbei, EORI auf der Rechnung", "HS-Codes: Gewindestangen 7318 15 90, Spiralbohrer 8207 50 10"],
+          "style": { "lang": "de", "tone": "efficient", "length": "short" },
+          "subject": "AW: DRINGEND: Zollstopp ASG-2607270 Steiner Präzisionsteile",
+          "body": "Grüß Gott Herr Moser,\n\nanbei die Handelsrechnung RE-2026-0438, unsere EORI-Nummer steht unten auf der Rechnung. Zolltarifnummern:\n- Gewindestangen M12x1000: 7318 15 90\n- Spiralbohrer HSS-E 8,5 mm: 8207 50 10\n\nViele Grüße\nAlex Morgan"
+        },
+        {
+          "key": "cleared", "day": "2026-07-29", "time": "09:40", "from": "p-moser", "inReplyTo": "#docs",
+          "facts": ["ASG-2607270 verzollt", "Zustellung bei Steiner Do 30.07."],
+          "style": { "lang": "de", "tone": "routine", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: DRINGEND: Zollstopp ASG-2607270 Steiner Präzisionsteile",
+          "body": "Guten Morgen,\n\nASG-2607270 ist verzollt, Zustellung bei Steiner am Donnerstag, 30.07.\n\nStefan Moser",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Alpen-Sammelgut ASG-2607270", "values": { "tracking_number": "ASG-2607270", "state": "in_transit", "eta": "2026-07-30" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "costs", "day": "2026-07-30", "time": "16:00", "from": "p-baumann", "conversation": "steiner-zollkosten",
+          "facts": ["Ware zu SO-26-0160 erhalten", "Verzollungskosten CHF 64.80 belastet", "Frage: gehen laut Offerte zu ihren Lasten, richtig?"],
+          "style": { "lang": "de", "tone": "formal", "length": "1-3 sentences", "signature": "short" },
+          "subject": "SO-26-0160 erhalten / Zollkosten",
+          "body": "Guten Tag Herr Morgan\n\nDie Ware zu SO-26-0160 ist heute eingetroffen, besten Dank. Der Spediteur hat uns Verzollungskosten von CHF 64.80 belastet – die gehen gemäss Ihrer Offerte zu unseren Lasten, richtig?\n\nFreundliche Grüsse\nReto Baumann",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Steiner Präzisionsteile SO-26-0160", "entity": "so-0160", "values": { "order_number": "SO-26-0160", "customer": "Steiner Präzisionsteile", "state": "delivered" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Gehen die Verzollungskosten von CHF 64.80 gemäss Offerte zu unseren Lasten?"] },
+            "importance": "NORMAL",
+            "tags": ["currency"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B4-halvorsen-customs",
+      "category": "B4",
+      "summary": "The Norwegian shipment is held by customs for a missing pro-forma invoice; the buyer is on holiday and her deputy confirms the delivery.",
+      "difficulty": "hard",
+      "editorNotes": "The owner's update to the absent buyer triggers an automatic reply; a deputy (new person) confirms receipt by PO number.",
+      "tags": ["customs-hold"],
+      "numbers": ["KHS-HH-26066", "RE-2026-0431"],
+      "beats": [
+        {
+          "key": "hold", "day": "2026-07-15", "time": "10:05", "from": "p-wendler", "conversation": "kranhoeft-halvorsen",
+          "facts": ["Sendung KHS-HH-26066 für Halvorsen, Stavanger", "norwegischer Zoll hält die Ware fest", "Proforma-Rechnung mit NOK-Werten und Ursprungserklärung fehlen", "bis 17.07. nachreichen", "Ihr Auftrag SO-26-0145"],
+          "style": { "lang": "de", "tone": "professional", "length": "short", "signature": "full" },
+          "subject": "Zollaufenthalt KHS-HH-26066 Halvorsen / SO-26-0145",
+          "body": "Sehr geehrter Herr Morgan,\n\ndie Sendung KHS-HH-26066 für Halvorsen Verkstedservice, Stavanger (Ihr Auftrag SO-26-0145), wird vom norwegischen Zoll festgehalten. Es fehlen eine Proforma-Rechnung mit Werten in NOK sowie die Ursprungserklärung.\n\nBitte reichen Sie beides bis zum 17.07. nach, damit die Ware freigegeben werden kann.\n\nMit freundlichen Grüßen\nClaudia Wendler\nKundenservice Export\nKranhöft Spedition GmbH\nTel. +49 40 5550 6701",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kranhöft KHS-HH-26066", "values": { "tracking_number": "KHS-HH-26066", "carrier": "Kranhöft Spedition", "direction": "outbound", "order_ref": "SO-26-0145", "state": "delayed" } }],
+              "sales_orders": [{ "title": "Halvorsen Verkstedservice SO-26-0145", "entity": "so-0145", "values": { "order_number": "SO-26-0145", "customer": "Halvorsen Verkstedservice", "state": "shipped" } }],
+              "tasks": [{ "title": "Proforma-Rechnung in NOK und Ursprungserklärung für KHS-HH-26066 an Kranhöft senden", "values": { "state": "open", "due_date": "2026-07-17" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "PROVIDE_INFO", "questions": [], "answeredBy": "#docs" },
+            "importance": "URGENT",
+            "tags": ["customs-hold"]
+          }
+        },
+        {
+          "key": "docs", "day": "2026-07-15", "time": "13:45", "direction": "sent", "to": ["p-wendler"], "inReplyTo": "#hold",
+          "facts": ["Proforma RE-2026-0431 mit NOK-Werten und Ursprungserklärung anbei"],
+          "style": { "lang": "de", "tone": "efficient", "length": "1-3 sentences" },
+          "subject": "AW: Zollaufenthalt KHS-HH-26066 Halvorsen / SO-26-0145",
+          "body": "Sehr geehrte Frau Wendler,\n\nanbei die Proforma-Rechnung RE-2026-0431 mit den Werten in NOK und die Ursprungserklärung.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "inform", "day": "2026-07-16", "time": "08:50", "direction": "sent", "to": ["p-solberg"], "conversation": "halvorsen-hv-6120", "inReplyTo": "A6-halvorsen-orders#confirm",
+          "facts": ["goods for HV-6120 held by Norwegian customs", "documents provided", "delivery now expected 21 July"],
+          "style": { "lang": "en", "tone": "apologetic", "length": "1-3 sentences" },
+          "subject": "RE: Purchase order HV-6120 - customs",
+          "body": "Dear Ingrid,\n\nthe goods for HV-6120 are held by Norwegian customs for a missing pro-forma invoice. We have sent the documents; delivery is now expected on 21 July. Sorry for the delay.\n\nKind regards\nAlex Morgan"
+        },
+        {
+          "key": "released", "day": "2026-07-20", "time": "14:30", "from": "p-wendler", "inReplyTo": "#docs",
+          "facts": ["KHS-HH-26066 freigegeben", "Zustellung Halvorsen 21.07."],
+          "style": { "lang": "de", "tone": "professional", "length": "1-3 sentences", "signature": "short" },
+          "subject": "AW: Zollaufenthalt KHS-HH-26066 Halvorsen / SO-26-0145",
+          "body": "Sehr geehrter Herr Morgan,\n\nKHS-HH-26066 ist vom Zoll freigegeben, die Zustellung bei Halvorsen erfolgt am 21.07.\n\nMit freundlichen Grüßen\nClaudia Wendler",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kranhöft KHS-HH-26066", "values": { "tracking_number": "KHS-HH-26066", "state": "in_transit", "eta": "2026-07-21" } }]
+            },
+            "needsReply": false,
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "received", "day": "2026-07-21", "time": "13:15", "from": "p-berg", "conversation": "halvorsen-received",
+          "facts": ["received goods for PO HV-6120 today", "Ingrid is on holiday until 3 August"],
+          "style": { "lang": "en", "tone": "very short", "length": "1-3 sentences", "signature": "full" },
+          "subject": "HV-6120 received",
+          "body": "Hi,\n\nwe received the goods for PO HV-6120 today, all complete. Ingrid is on holiday until 3 August, I take care of the orders meanwhile.\n\nKristian Berg\nWarehouse\nHalvorsen Verkstedservice AS\n+47 5550 2402",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Halvorsen Verkstedservice HV-6120", "entity": "so-0145", "values": { "customer": "Halvorsen Verkstedservice", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "B1-kiebitz-notices",
+      "category": "B1",
+      "summary": "Automatic parcel-service notices: the rush parcel is delivered, the remaining bearings are picked up and delivered.",
+      "difficulty": "easy",
+      "editorNotes": "Automated sender: shipment records only, never a person or a reply.",
+      "tags": ["automated"],
+      "numbers": ["KP402611870129"],
+      "beats": [
+        {
+          "key": "delivered-093", "day": "2026-07-10", "time": "10:52", "from": "p-kiebitz", "conversation": "kiebitz-KP402611870093",
+          "facts": ["Sendung KP402611870093 zugestellt", "10.07.2026 10:48 Uhr", "Empfang quittiert: Kurz"],
+          "style": { "lang": "de", "tone": "automated", "length": "short" },
+          "subject": "Ihre Sendung KP402611870093 wurde zugestellt",
+          "body": "Guten Tag,\n\nIhre Sendung KP402611870093 wurde am 10.07.2026 um 10:48 Uhr zugestellt.\nEmpfang quittiert von: Kurz\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kiebitz Paket KP402611870093", "values": { "tracking_number": "KP402611870093", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "people", "title": null }, { "collection": "tasks", "title": null }]
+          }
+        },
+        {
+          "key": "picked-129", "day": "2026-07-13", "time": "17:40", "from": "p-kiebitz", "conversation": "kiebitz-KP402611870129",
+          "facts": ["Sendung KP402611870129 an Falkenrath Antriebe GmbH, Kassel, übernommen", "voraussichtliche Zustellung Di, 14.07.2026"],
+          "style": { "lang": "de", "tone": "automated", "length": "short" },
+          "subject": "Ihre Sendung KP402611870129 wurde übernommen",
+          "body": "Guten Tag,\n\nIhre Sendung KP402611870129 an Falkenrath Antriebe GmbH, 34117 Kassel, wurde heute von uns übernommen.\n\nVoraussichtliche Zustellung: Di, 14.07.2026\n\nSendungsverfolgung: https://track.kiebitz-paket.example/KP402611870129\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kiebitz Paket KP402611870129", "values": { "tracking_number": "KP402611870129", "carrier": "Kiebitz Paket", "direction": "outbound", "state": "picked_up", "eta": "2026-07-14" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "people", "title": null }, { "collection": "tasks", "title": null }]
+          }
+        },
+        {
+          "key": "delivered-129", "day": "2026-07-14", "time": "11:31", "from": "p-kiebitz", "conversation": "kiebitz-KP402611870129",
+          "facts": ["Sendung KP402611870129 zugestellt", "14.07.2026 11:27 Uhr"],
+          "style": { "lang": "de", "tone": "automated", "length": "short" },
+          "subject": "Ihre Sendung KP402611870129 wurde zugestellt",
+          "body": "Guten Tag,\n\nIhre Sendung KP402611870129 wurde am 14.07.2026 um 11:27 Uhr zugestellt.\nEmpfang quittiert von: Wareneingang\n\nDies ist eine automatisch erzeugte Nachricht. Bitte antworten Sie nicht auf diese E-Mail.\nKiebitz Paket GmbH · Hannover",
+          "labels": {
+            "records": {
+              "shipments": [{ "title": "Kiebitz Paket KP402611870129", "values": { "tracking_number": "KP402611870129", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "mustNotProduce": [{ "collection": "people", "title": null }, { "collection": "tasks", "title": null }]
+          }
+        }
+      ]
+    }
+  ]
+}

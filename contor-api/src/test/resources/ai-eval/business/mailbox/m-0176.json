@@ -1,0 +1,63 @@
+{
+  "id": "m-0176",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-weekly",
+  "cc": [],
+  "storyline": "F4-internal-weekly",
+  "beat": "moved",
+  "category": "F",
+  "lang": "de",
+  "inReplyTo": "m-0005",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Dr. Helga Sommerfeld",
+    "fromAddress": "helga.sommerfeld@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example",
+      "jana.petersen@nordhafen.example",
+      "tobias.krueger@nordhafen.example",
+      "sophie.brandt@nordhafen.example",
+      "daniel.okafor@nordhafen.example"
+    ],
+    "subject": "AW: Weekly Leitungsrunde",
+    "receivedAt": "2026-07-17T14:10:00Z",
+    "body": "Die Runde am Montag verschiebt sich auf Dienstag, 21.07., 9:00 – ich bin Montag beim Steuerberater.\nH."
+  },
+  "expected": {
+    "records": {
+      "events": [
+        {
+          "title": "Weekly Leitungsrunde 21.07.",
+          "values": {
+            "starts_at": "2026-07-21T09:00:00+02:00"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Dr. Helga Sommerfeld",
+          "values": {
+            "email": "helga.sommerfeld@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "reschedule"
+  ],
+  "storylineTags": [
+    "reschedule"
+  ],
+  "facts": [
+    "Weekly am Montag verschiebt sich auf Dienstag 21.07. 9:00",
+    "Helga Montag beim Steuerberater"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "id": "m-0037",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-auerbach-bonitaet",
+  "cc": [],
+  "storyline": "E5-auerbach-new",
+  "beat": "credit",
+  "category": "E5",
+  "lang": "de",
+  "inReplyTo": "m-0020",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Tobias Krüger",
+    "fromAddress": "tobias.krueger@nordhafen.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bonitätsprüfung Auerbach Medizintechnik",
+    "receivedAt": "2026-07-08T07:00:00Z",
+    "body": "Hi Alex,\n\nBonität Auerbach (K-10111) ist ok, Kreditlimit 15.000 €. Ab sofort 30 Tage netto möglich.\n\nTobias"
+  },
+  "expected": {
+    "records": {
+      "customers": [
+        {
+          "title": "Auerbach Medizintechnik",
+          "values": {
+            "name": "Auerbach Medizintechnik",
+            "customer_number": "K-10111",
+            "payment_terms": "30 Tage netto",
+            "notes": "Kreditlimit 15.000 €"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Tobias Krüger",
+          "values": {
+            "email": "tobias.krueger@nordhafen.example"
+          }
+        }
+      ]
+    },
+    "relations": []
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "new-customer"
+  ],
+  "storylineTags": [
+    "new-customer"
+  ],
+  "facts": [
+    "Bonität Auerbach ok",
+    "Limit 15.000 €",
+    "ab sofort 30 Tage netto"
+  ]
+}

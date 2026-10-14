@@ -1,0 +1,76 @@
+{
+  "id": "m-0231",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-moellenhoff-7781",
+  "cc": [],
+  "storyline": "A2-moellenhoff-monthly",
+  "beat": "received",
+  "category": "A2",
+  "lang": "de",
+  "inReplyTo": "m-0160",
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Uwe Rademacher",
+    "fromAddress": "u.rademacher@moellenhoff-stahlbau.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "AW: Bestellung 7781/26",
+    "receivedAt": "2026-07-22T13:10:00Z",
+    "body": "Sehr geehrter Herr Morgan,\n\ndie Lieferung zu SO-26-0164 ist heute vollständig bei uns eingegangen, der Fahrer war pünktlich im Zeitfenster.\n\nMit freundlichen Grüßen\nUwe Rademacher"
+  },
+  "expected": {
+    "records": {
+      "sales_orders": [
+        {
+          "title": "Möllenhoff Stahlbau SO-26-0164",
+          "entity": "so-0164",
+          "values": {
+            "order_number": "SO-26-0164",
+            "customer": "Möllenhoff Stahlbau",
+            "state": "delivered"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Uwe Rademacher",
+          "values": {
+            "email": "u.rademacher@moellenhoff-stahlbau.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Möllenhoff Stahlbau GmbH & Co. KG",
+          "values": {
+            "domain": "moellenhoff-stahlbau.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Uwe Rademacher",
+        "to": "organizations:Möllenhoff Stahlbau GmbH & Co. KG"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "LOW",
+  "dependsOn": [],
+  "tags": [
+    "smooth"
+  ],
+  "storylineTags": [
+    "smooth"
+  ],
+  "facts": [
+    "Lieferung SO-26-0164 vollständig erhalten",
+    "Fahrer pünktlich"
+  ]
+}

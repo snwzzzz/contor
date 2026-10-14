@@ -1,0 +1,91 @@
+{
+  "id": "m-0280",
+  "account": "alex",
+  "folder": "inbox",
+  "conversationId": "c-glanzwerk-gw-2026-188",
+  "cc": [],
+  "storyline": "J7-rechnung-subjects",
+  "beat": "glanzwerk",
+  "category": "J",
+  "lang": "de",
+  "inReplyTo": null,
+  "email": {
+    "mailbox": "alex.morgan@nordhafen.example",
+    "fromName": "Serkan Yılmaz",
+    "fromAddress": "s.yilmaz@glanzwerk-service.example",
+    "to": [
+      "alex.morgan@nordhafen.example"
+    ],
+    "subject": "Rechnung",
+    "receivedAt": "2026-07-28T08:30:00Z",
+    "body": "Guten Tag Herr Morgan,\n\nanbei die Rechnung GW-2026-188 für die Grundreinigung am 18.07. über 1.150,00 €, zahlbar bis 11.08.2026.\n\nGruß\nSerkan Yılmaz\nGlanzwerk Gebäudeservice GmbH"
+  },
+  "expected": {
+    "records": {
+      "invoices": [
+        {
+          "title": "Glanzwerk Gebäudeservice GW-2026-188",
+          "values": {
+            "invoice_number": "GW-2026-188",
+            "issuer": "Glanzwerk Gebäudeservice",
+            "amount": {
+              "amount": 1150,
+              "currency": "EUR"
+            },
+            "due_date": "2026-08-11",
+            "state": "open",
+            "direction": "incoming"
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Rechnung GW-2026-188 bezahlen",
+          "values": {
+            "state": "open",
+            "due_date": "2026-08-11"
+          }
+        }
+      ],
+      "people": [
+        {
+          "title": "Serkan Yılmaz",
+          "values": {
+            "email": "s.yilmaz@glanzwerk-service.example"
+          }
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Glanzwerk Gebäudeservice GmbH",
+          "values": {
+            "domain": "glanzwerk-service.example"
+          }
+        }
+      ]
+    },
+    "relations": [
+      {
+        "type": "works_at",
+        "from": "people:Serkan Yılmaz",
+        "to": "organizations:Glanzwerk Gebäudeservice GmbH"
+      }
+    ]
+  },
+  "mustNotProduce": [],
+  "needsReply": false,
+  "reply": null,
+  "importance": "NORMAL",
+  "dependsOn": [],
+  "tags": [
+    "same-subject"
+  ],
+  "storylineTags": [
+    "same-subject"
+  ],
+  "facts": [
+    "Rechnung GW-2026-188 Grundreinigung 18.07.",
+    "1.150,00 €",
+    "zahlbar bis 11.08.2026"
+  ]
+}

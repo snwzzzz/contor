@@ -186,6 +186,17 @@ class AiSettingsServiceTest {
     }
 
     @Test
+    void updateSettings_OwnerProfileRoundTripsTrimmedAndBlankClearsIt() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().ownerProfile("  Head of Operations at a wholesaler  "));
+        assertThat(dto.getOwnerProfile()).isEqualTo("Head of Operations at a wholesaler");
+
+        assertThat(service.updateSettings(new UpdateAiSettingsCommand().ownerProfile(" ")).getOwnerProfile()).isNull();
+    }
+
+    @Test
     void updateSettings_RepliesAutoRejected() {
         when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
 

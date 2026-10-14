@@ -144,7 +144,7 @@ class AiAnalysisWorkerTest {
 
     private void settings(AiPermissionLevel categories, AiPermissionLevel records, AiPermissionLevel calendar, AiPermissionLevel tasks) {
         when(aiSettingsService.settingsFor(OWNER)).thenReturn(AiSettings.builder().mailAccess(true).historyDays(90)
-                .categories(categories).records(records).calendar(calendar).tasks(tasks).build());
+                .categories(categories).records(records).calendar(calendar).tasks(tasks).ownerProfile("Head of Operations at a wholesaler").build());
     }
 
     private EmailMessage email(long id) {
@@ -174,7 +174,7 @@ class AiAnalysisWorkerTest {
         when(inboxDiscoveryService.discover(any(), anyList(), any())).thenReturn(List.of(suggestion()));
         EmailMessage email = email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of(draft(1L), draft(3L)));
         when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), eq("extractor"), any(), anyCollection()))
                 .thenReturn(new ProposalService.Submission(1L, ProposalService.Outcome.AUTO_APPLIED));
         when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), eq("extractor"), any(), anyCollection()))
@@ -185,7 +185,7 @@ class AiAnalysisWorkerTest {
         verify(collectionSchemaService).createAiCollection(argThat(c -> c.getSlug().equals("job_applications")));
         ArgumentCaptor<List<CollectionDto>> targets = ArgumentCaptor.captor();
         ArgumentCaptor<EmailContent> content = ArgumentCaptor.forClass(EmailContent.class);
-        verify(extractionService).analyze(content.capture(), targets.capture());
+        verify(extractionService).analyze(content.capture(), targets.capture(), eq("Head of Operations at a wholesaler"));
         assertThat(targets.getValue()).extracting(CollectionDto::getSlug).containsExactly("people", "events", "job_applications");
         assertThat(content.getValue().mailbox()).isEqualTo("me@example.com");
         assertThat(content.getValue().body()).isEqualTo("Body 100");
@@ -231,7 +231,7 @@ class AiAnalysisWorkerTest {
         when(emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(100L))).thenReturn(email);
         emailsToProcess(100L);
         List<String> seen = new ArrayList<>();
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenAnswer(inv -> {
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenAnswer(inv -> {
             seen.add(run.getCurrentEmail() != null ? run.getCurrentEmail().getSubject() : "none");
             return List.of();
         });
@@ -256,7 +256,7 @@ class AiAnalysisWorkerTest {
                         && d.payload().get("slug").equals("job_applications") && d.reasoning().equals("Applications")),
                 isNull(), eq(AiPermissionLevel.SUGGEST), eq("router"), eq(InboxDiscoveryService.PROMPT_VERSION));
         verify(collectionSchemaService, never()).createAiCollection(any());
-        verify(extractionService, never()).analyze(any(), anyList());
+        verify(extractionService, never()).analyze(any(), anyList(), any());
         assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.AWAITING_REVIEW);
         assertThat(run.getCategoriesDiscovered()).isEqualTo(1);
         assertThat(run.getProposalsCreated()).isEqualTo(1);
@@ -290,7 +290,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.AUTO, AiPermissionLevel.AUTO, AiPermissionLevel.AUTO);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L)));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of(draft(1L)));
         when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.AUTO), any(), any(), anyCollection()))
                 .thenThrow(new RecordValidationException(List.of("full_name: is required")));
         when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), anyCollection()))
@@ -308,8 +308,8 @@ class AiAnalysisWorkerTest {
         EmailMessage broken = email(100L);
         EmailMessage fine = email(101L);
         emailsToProcess(100L, 101L);
-        when(extractionService.analyze(argThat(c -> c != null && c.id() == 100L), anyList())).thenThrow(new OllamaException("model crashed"));
-        when(extractionService.analyze(argThat(c -> c != null && c.id() == 101L), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(argThat(c -> c != null && c.id() == 100L), anyList(), any())).thenThrow(new OllamaException("model crashed"));
+        when(extractionService.analyze(argThat(c -> c != null && c.id() == 101L), anyList(), any())).thenReturn(List.of());
 
         worker.run(10L);
 
@@ -327,15 +327,15 @@ class AiAnalysisWorkerTest {
         email(100L);
         email(101L);
         emailsToProcess(100L, 101L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenAnswer(inv -> {
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenAnswer(inv -> {
             run.setStatus(AnalysisRunStatus.CANCELLED);
             return List.of();
         });
 
         worker.run(10L);
 
-        verify(extractionService).analyze(argThat(c -> c != null && c.id() == 100L), anyList());
-        verify(extractionService, never()).analyze(argThat(c -> c != null && c.id() == 101L), anyList());
+        verify(extractionService).analyze(argThat(c -> c != null && c.id() == 100L), anyList(), any());
+        verify(extractionService, never()).analyze(argThat(c -> c != null && c.id() == 101L), anyList(), any());
         assertThat(run.getStatus()).isEqualTo(AnalysisRunStatus.CANCELLED);
         verify(emailMessageRepository, never()).updateProcessingStateBefore(any(), any(), any(), any());
     }
@@ -359,7 +359,7 @@ class AiAnalysisWorkerTest {
         worker.run(10L);
 
         verify(aiSettingsService, never()).settingsFor(any());
-        verify(extractionService, never()).analyze(any(), anyList());
+        verify(extractionService, never()).analyze(any(), anyList(), any());
     }
 
     @Test
@@ -368,7 +368,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         EmailMessage email = email(200L);
         when(emailMessageRepository.findIdsForProcessing(eq(OWNER), eq(ProcessingState.NEW), eq(Instant.EPOCH), any())).thenReturn(List.of(200L));
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
 
         worker.processNewMail();
 
@@ -381,7 +381,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         email(200L);
         when(emailMessageRepository.findIdsForProcessing(eq(OWNER), eq(ProcessingState.NEW), eq(Instant.EPOCH), any())).thenReturn(List.of(200L));
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
 
         worker.processNewMail();
 
@@ -394,7 +394,7 @@ class AiAnalysisWorkerTest {
                 .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
         EmailMessage email = email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
         when(replySuggestionService.suggestIfNeeded(100L)).thenReturn(true);
 
         worker.run(10L);
@@ -410,7 +410,7 @@ class AiAnalysisWorkerTest {
         email(100L);
         email(101L);
         emailsToProcess(100L, 101L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
 
         worker.run(10L);
 
@@ -423,7 +423,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model crashed"));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenThrow(new OllamaException("model crashed"));
 
         worker.run(10L);
 
@@ -437,7 +437,7 @@ class AiAnalysisWorkerTest {
                 .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
         EmailMessage email = email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
         when(replySuggestionService.suggestIfNeeded(100L)).thenThrow(new OllamaException("model gone"));
 
         worker.run(10L);
@@ -452,7 +452,7 @@ class AiAnalysisWorkerTest {
                 .categories(AiPermissionLevel.OFF).replies(AiPermissionLevel.SUGGEST).build());
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model gone"));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenThrow(new OllamaException("model gone"));
 
         worker.run(10L);
 
@@ -494,7 +494,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList()))
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any()))
                 .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(5L, "a1"), relationDraft("p1", "a1")));
         submitting(AiPermissionLevel.SUGGEST, ProposalService.Outcome.SUGGESTED, 201L, 202L);
         when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RELATION), eq(100L), eq(AiPermissionLevel.SUGGEST),
@@ -518,7 +518,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.AUTO, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList()))
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any()))
                 .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(5L, "a1"), relationDraft("p1", "a1")));
         submitting(AiPermissionLevel.AUTO, ProposalService.Outcome.AUTO_APPLIED, 201L, 202L);
         when(proposalService.submitDraft(argThat(d -> d != null && d.kind() == ProposalKind.CREATE_RELATION), eq(100L), eq(AiPermissionLevel.AUTO),
@@ -536,7 +536,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF, AiPermissionLevel.OFF);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList()))
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any()))
                 .thenReturn(List.of(recordDraft(1L, "p1"), recordDraft(3L, "e1"), relationDraft("p1", "e1")));
         when(proposalService.submitDraft(any(), eq(100L), eq(AiPermissionLevel.SUGGEST), any(), any(), anyCollection()))
                 .thenReturn(new ProposalService.Submission(201L, ProposalService.Outcome.SUGGESTED));
@@ -552,7 +552,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.OFF);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList()))
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any()))
                 .thenReturn(List.of(recordDraft(3L, "e1"), relationDraft("e1", "e1")));
         when(proposalService.submitDraft(any(), eq(100L), any(), any(), any(), anyCollection()))
                 .thenReturn(new ProposalService.Submission(201L, ProposalService.Outcome.SUGGESTED));
@@ -571,7 +571,7 @@ class AiAnalysisWorkerTest {
         emailsToProcess(100L);
         ImportanceSignals signals = new ImportanceSignals(null, true, true, false);
         when(importanceSignalService.signalsFor(100L)).thenReturn(signals);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of(draft(1L), draft(3L)));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of(draft(1L), draft(3L)));
         when(proposalService.submitDraft(any(), eq(100L), any(), any(), any(), anyCollection()))
                 .thenReturn(new ProposalService.Submission(1L, ProposalService.Outcome.SUGGESTED));
 
@@ -587,7 +587,7 @@ class AiAnalysisWorkerTest {
         email(100L);
         emailsToProcess(100L);
         when(mailContextService.contextTextFor(100L)).thenReturn("Earlier emails: the interview invitation");
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
 
         worker.run(10L);
 
@@ -596,7 +596,7 @@ class AiAnalysisWorkerTest {
         order.verify(emailEmbeddingService).embedEmail(100L);
         order.verify(mailContextService).contextTextFor(100L);
         ArgumentCaptor<EmailContent> content = ArgumentCaptor.forClass(EmailContent.class);
-        order.verify(extractionService).analyze(content.capture(), anyList());
+        order.verify(extractionService).analyze(content.capture(), anyList(), any());
         assertThat(content.getValue().context()).isEqualTo("Earlier emails: the interview invitation");
     }
 
@@ -606,11 +606,11 @@ class AiAnalysisWorkerTest {
         EmailMessage email = email(100L);
         emailsToProcess(100L);
         when(mailContextService.contextTextFor(100L)).thenThrow(new IllegalStateException("database hiccup"));
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
 
         worker.run(10L);
 
-        verify(extractionService).analyze(argThat(content -> !content.hasContext()), anyList());
+        verify(extractionService).analyze(argThat(content -> !content.hasContext()), anyList(), any());
         assertThat(email.getProcessingState()).isEqualTo(ProcessingState.DONE);
     }
 
@@ -630,7 +630,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         EmailMessage email = email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenReturn(List.of());
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenReturn(List.of());
         when(emailEmbeddingService.embedEmail(100L)).thenThrow(new OllamaException("embedding model missing"));
 
         worker.run(10L);
@@ -644,7 +644,7 @@ class AiAnalysisWorkerTest {
         settings(AiPermissionLevel.OFF, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST, AiPermissionLevel.SUGGEST);
         email(100L);
         emailsToProcess(100L);
-        when(extractionService.analyze(any(EmailContent.class), anyList())).thenThrow(new OllamaException("model crashed"));
+        when(extractionService.analyze(any(EmailContent.class), anyList(), any())).thenThrow(new OllamaException("model crashed"));
 
         worker.run(10L);
 

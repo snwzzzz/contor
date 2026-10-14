@@ -1,0 +1,164 @@
+{
+  "prompt": "S1+R1",
+  "model": "claude-opus-5-5",
+  "storylines": [
+    {
+      "id": "A6-halvorsen-orders",
+      "category": "A6",
+      "summary": "A Norwegian customer orders through the shared orders mailbox with the owner in CC; the same mail lands in both accounts.",
+      "difficulty": "medium",
+      "editorNotes": "Duplicate across two accounts; NOK; the shipment later gets stuck in Norwegian customs (B4-halvorsen-customs).",
+      "tags": ["duplicate-account", "currency"],
+      "numbers": ["SO-26-0145"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-06", "time": "13:40", "from": "p-solberg", "accounts": ["orders", "alex"], "to": ["orders@nordhafen.example"], "cc": ["p-alex"], "conversation": "halvorsen-hv-6120",
+          "facts": ["PO HV-6120", "80 packs cut-off wheels 125x1.0", "40 packs drill bits 8.5 mm", "NOK prices as per price agreement", "delivery to Stavanger by 20 July"],
+          "style": { "lang": "en", "tone": "polite", "length": "short", "signature": "full" },
+          "subject": "Purchase order HV-6120",
+          "body": "Dear Nordhafen team,\n\nplease find our purchase order HV-6120:\n- 80 packs cut-off wheel 125x1.0 Inox\n- 40 packs HSS-E drill bit 8.5 mm\nPrices in NOK as per our price agreement. Delivery to Stavanger by 20 July at the latest.\n\nPlease confirm.\n\nKind regards\nIngrid Solberg\nPurchasing Manager\nHalvorsen Verkstedservice AS\n+47 5550 2401",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Halvorsen Verkstedservice HV-6120", "entity": "so-0145", "values": { "customer": "Halvorsen Verkstedservice", "state": "received", "requested_delivery": "2026-07-20" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "tags": ["duplicate-account"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-06", "time": "16:00", "direction": "sent", "to": ["p-solberg"], "inReplyTo": "#order",
+          "facts": ["SO-26-0145", "total NOK 37,920.00", "ships 13 July with Kranhöft incl. export declaration", "delivery approx. 17 July"],
+          "style": { "lang": "en", "tone": "friendly", "length": "1-3 sentences" },
+          "subject": "RE: Purchase order HV-6120",
+          "body": "Dear Ingrid,\n\nthank you - HV-6120 is confirmed as SO-26-0145, total NOK 37,920.00. The goods ship on 13 July with Kranhöft Spedition including the export declaration; delivery in Stavanger around 17 July.\n\nKind regards\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "A6-falkenrath-orders",
+      "category": "A6",
+      "summary": "The growing customer from the rush order places a regular order via the orders mailbox, CC to the owner.",
+      "difficulty": "easy",
+      "editorNotes": "Duplicate across accounts; delivery as calendar week; a growing customer (second order this month).",
+      "tags": ["duplicate-account", "calendar-week"],
+      "numbers": ["SO-26-0168"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-20", "time": "08:30", "from": "p-kurz", "accounts": ["orders", "alex"], "to": ["orders@nordhafen.example"], "cc": ["p-alex"], "conversation": "falkenrath-4500012877",
+          "facts": ["Bestellung 4500012877", "60 Rillenkugellager 6205-2RS", "20 Stehlagereinheiten UCP 205", "Liefertermin KW 31"],
+          "style": { "lang": "de", "tone": "direct", "length": "short", "signature": "full" },
+          "subject": "Bestellung 4500012877",
+          "body": "Guten Morgen,\n\nanbei unsere Bestellung 4500012877:\n- 60 Stk. Rillenkugellager 6205-2RS\n- 20 Stk. Stehlagereinheit UCP 205\nLiefertermin: KW 31.\n\nNach dem Stillstand neulich legen wir uns lieber einen Vorrat hin.\n\nMit freundlichen Grüßen\nMelanie Kurz\nEinkauf\nFalkenrath Antriebe GmbH\nTel. +49 561 5550 2701",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Falkenrath Antriebe 4500012877", "entity": "so-0168", "values": { "customer": "Falkenrath Antriebe", "state": "received", "requested_delivery": "2026-07-27" } }]
+            },
+            "derived": { "sales_orders.requested_delivery": "KW 31 -> Monday 27.07.2026" },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL",
+            "tags": ["duplicate-account", "calendar-week"]
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-20", "time": "11:15", "direction": "sent", "to": ["p-kurz"], "inReplyTo": "#order",
+          "facts": ["SO-26-0168", "60 × 6,40 € = 384,00 €", "20 × 21,90 € = 438,00 €", "822,00 € netto", "Liefertermin Di 28.07."],
+          "style": { "lang": "de", "tone": "friendly", "length": "short" },
+          "subject": "AW: Bestellung 4500012877",
+          "body": "Guten Tag Frau Kurz,\n\nvielen Dank, Ihre Bestellung 4500012877 ist bei uns als SO-26-0168 erfasst:\n60 Stk. NH-52300 à 6,40 € = 384,00 €\n20 Stk. NH-52340 à 21,90 € = 438,00 €\nGesamt 822,00 € netto, Liefertermin Dienstag, 28.07.\n\nViele Grüße\nAlex Morgan"
+        }
+      ]
+    },
+    {
+      "id": "A1-sorensen-unanswered",
+      "category": "A1",
+      "summary": "A small Danish farm business asks for a glove quote and nobody answers; a week later it asks again.",
+      "difficulty": "medium",
+      "editorNotes": "Nobody answers in the mailbox (wanted). The reminder has no numbers and only makes sense with the first mail.",
+      "tags": ["context-needed", "unanswered"],
+      "numbers": [],
+      "insights": [
+        { "id": "insight-sorensen-waiting", "title": "Sørensen Agro has been waiting a week for a quote", "evidence": ["#rfq", "#reminder"], "asOf": "2026-07-28" }
+      ],
+      "beats": [
+        {
+          "key": "rfq", "day": "2026-07-21", "time": "19:40", "from": "p-lsorensen", "conversation": "sorensen-gloves",
+          "facts": ["cut-resistant gloves level C", "30 packs", "delivery to Aarhus", "questions: price, delivery time, prepayment ok?"],
+          "style": { "lang": "en", "tone": "casual", "length": "short", "signature": "short" },
+          "subject": "Gloves",
+          "body": "Hi,\n\nI found your cut-resistant gloves level C on your website. What would 30 packs cost delivered to Aarhus, and how fast can you ship? Prepayment is fine for us.\n\nThanks,\nLine Sørensen\nSørensen Agro ApS\n+45 5550 4101",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["What would 30 packs of cut-resistant gloves level C cost delivered to Aarhus?", "How fast can you ship?"] },
+            "importance": "NORMAL",
+            "tags": ["unanswered"]
+          }
+        },
+        {
+          "key": "reminder", "day": "2026-07-28", "time": "09:05", "from": "p-lsorensen", "conversation": "sorensen-gloves-2",
+          "facts": ["any news on the request from last week?"],
+          "style": { "lang": "en", "tone": "casual", "length": "1-3 sentences", "signature": "short" },
+          "subject": "My request",
+          "body": "Hi again,\n\nany news on my request from last week? Otherwise I'll have to look somewhere else, harvest starts soon.\n\nLine",
+          "labels": {
+            "needsReply": true,
+            "reply": { "intent": "ANSWER_QUESTIONS", "questions": ["Any news on my request from last week?"] },
+            "importance": "HIGH",
+            "dependsOn": ["#rfq"],
+            "tags": ["context-needed", "unanswered", "thread-split", "very-short"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "A2-moellenhoff-monthly",
+      "category": "A2",
+      "summary": "A loyal customer orders with a delivery time window; the delivery by pallet network arrives complete.",
+      "difficulty": "easy",
+      "editorNotes": "Long formal German sentences; the pallet delivery is driven by the shared driver (D-palettenring-marek).",
+      "tags": ["smooth"],
+      "numbers": ["SO-26-0164"],
+      "beats": [
+        {
+          "key": "order", "day": "2026-07-16", "time": "10:00", "from": "p-rademacher", "conversation": "moellenhoff-7781",
+          "facts": ["Bestellung 7781/26", "400 Gewindestangen M12x1000", "60 Kartons Sechskantschrauben M8x40", "Anlieferung Mittwoch 22.07.2026 zwischen 7 und 12 Uhr, Tor 3"],
+          "style": { "lang": "de", "tone": "formal", "length": "medium", "signature": "full" },
+          "subject": "Bestellung 7781/26",
+          "body": "Sehr geehrter Herr Morgan,\n\nhiermit bestellen wir unter unserer Bestellnummer 7781/26 die folgenden Positionen, wobei wir Sie bitten, die Anlieferung wie gewohnt in dem mit unserer Warenannahme abgestimmten Zeitfenster vorzunehmen:\n\n1. 400 Stück Gewindestange M12x1000 verzinkt\n2. 60 Kartons Sechskantschraube M8x40 8.8 verzinkt\n\nAnlieferung: Mittwoch, 22.07.2026, zwischen 7 und 12 Uhr, Tor 3.\n\nFür eine kurze Auftragsbestätigung wären wir Ihnen dankbar.\n\nMit freundlichen Grüßen\nUwe Rademacher\nArbeitsvorbereitung\nMöllenhoff Stahlbau GmbH & Co. KG\nTel. +49 231 5550 2501",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Möllenhoff Stahlbau 7781/26", "entity": "so-0164", "values": { "customer": "Möllenhoff Stahlbau", "state": "received", "requested_delivery": "2026-07-22" } }]
+            },
+            "needsReply": true,
+            "reply": { "intent": "CONFIRM", "questions": [], "answeredBy": "#confirm" },
+            "importance": "NORMAL"
+          }
+        },
+        {
+          "key": "confirm", "day": "2026-07-16", "time": "14:30", "direction": "sent", "to": ["p-rademacher"], "inReplyTo": "#order",
+          "facts": ["SO-26-0164", "400 × 3,85 € = 1.540,00 €", "60 × 18,40 € = 1.104,00 €", "2.644,00 € netto", "Anlieferung 22.07. per Palettenring Nord, Zeitfenster notiert"],
+          "style": { "lang": "de", "tone": "formal", "length": "short" },
+          "subject": "AW: Bestellung 7781/26",
+          "body": "Sehr geehrter Herr Rademacher,\n\nvielen Dank für Ihre Bestellung 7781/26, die wir unter SO-26-0164 bestätigen:\n400 Stk. NH-20530 à 3,85 € = 1.540,00 €\n60 Kartons NH-20410 à 18,40 € = 1.104,00 €\nGesamt 2.644,00 € netto.\n\nDie Anlieferung erfolgt am 22.07. per Palettenring Nord; das Zeitfenster 7–12 Uhr, Tor 3, ist notiert.\n\nMit freundlichen Grüßen\nAlex Morgan"
+        },
+        {
+          "key": "received", "day": "2026-07-22", "time": "15:10", "from": "p-rademacher", "inReplyTo": "#confirm",
+          "facts": ["Lieferung SO-26-0164 vollständig erhalten", "Fahrer pünktlich"],
+          "style": { "lang": "de", "tone": "formal", "length": "1-3 sentences" },
+          "subject": "AW: Bestellung 7781/26",
+          "body": "Sehr geehrter Herr Morgan,\n\ndie Lieferung zu SO-26-0164 ist heute vollständig bei uns eingegangen, der Fahrer war pünktlich im Zeitfenster.\n\nMit freundlichen Grüßen\nUwe Rademacher",
+          "labels": {
+            "records": {
+              "sales_orders": [{ "title": "Möllenhoff Stahlbau SO-26-0164", "entity": "so-0164", "values": { "order_number": "SO-26-0164", "customer": "Möllenhoff Stahlbau", "state": "delivered" } }]
+            },
+            "needsReply": false,
+            "importance": "LOW",
+            "tags": ["smooth"]
+          }
+        }
+      ]
+    }
+  ]
+}
