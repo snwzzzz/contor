@@ -1,5 +1,6 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.CachingLlmClient;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.MailContext;
 import com.example.contor.ai.MailContextPrompt;
@@ -63,8 +64,8 @@ class AiContextEvalTest {
                 new AiProperties.Ollama(URI.create("http://127.0.0.1:11434"), Duration.ofMinutes(5), 16384, "30m"),
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
-        OllamaClient client = new OllamaClient(properties, mapper);
-        List<EvalCase> cases = EvalCaseLoader.loadClasspath("ai-eval/context");
+        CachingLlmClient client = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
+        List<EvalCase> cases = CaseFilter.fromSystemProperty().selectOrSkip(EvalCaseLoader.loadClasspath("ai-eval/context"), EvalCase::id);
         List<CollectionDto> collections = EvalCollections.all();
         Map<Long, String> slugById = new HashMap<>();
         collections.forEach(collection -> slugById.put(collection.getId(), collection.getSlug()));
@@ -102,6 +103,7 @@ class AiContextEvalTest {
         EvalReport without = scorer.score(model, EmailExtractionService.PROMPT_VERSION, cases, run.apply(false));
         System.out.println("[ai-eval] context (" + cases.size() + " cases) with:    " + summary(with));
         System.out.println("[ai-eval] context (" + cases.size() + " cases) without: " + summary(without));
+        System.out.println("[ai-eval] " + client.summary());
         assertThat(with.failedCases()).as("model calls that failed (Ollama running? model pulled?)").isLessThan(cases.size());
     }
 

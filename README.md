@@ -96,6 +96,22 @@ Use it once to create the owner account (the setup page in the web app follows i
 ### Dev account
 
 With the `dev` profile the backend keeps a login ready: set `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD` (same password rules) and optionally `DEV_ACCOUNT_EMAIL` in `.env`. On every start it is created as OWNER if missing, otherwise its password is reset to the configured one and any lockout cleared. First-run setup is then skipped, and the web app signs in as this account by itself: the login page asks the backend (`GET /api/auth/dev-login`, server-side) and calls `POST /api/auth/dev-login`, which exists only with the `dev` profile and answers loopback requests only. Log out to see the login page again (it signs you straight back in). Never set these outside local development.
+### Dev AI cache
+
+Re-analyzing mail during development (after a database reset, or to try a backend change on real mail) normally waits
+for the GPU again. With the `dev` profile and `AI_CACHE=on` in `.env`, every model call goes through `CachingLlmClient`:
+an answer is stored in `.ai-cache/` under the hash of model, context size, prompts and JSON schema, and the same call
+later is answered from disk in milliseconds. Only calls whose prompt changed reach Ollama. The backend logs
+`AI answer cache ON in …` at start.
+
+- A cached answer is replayed only for the identical prompt. Extraction, reply drafts and insights put today's date into
+  their prompt, so their answers are reused on the same day only; routing and reply triage are reused across days. The
+  context (earlier mail, records already created) is part of the prompt too: different data means a new call.
+- Prompt or model changes miss automatically. `AI_CACHE=refresh` asks the model again and overwrites; delete `.ai-cache/`
+  to start over.
+- Embeddings are not cached. Outside the `dev` profile the setting is ignored and no cache exists; the folder holds
+  plain-text answers about your mail, so keep it local.
+
 ## Security overview
 
 - Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
@@ -272,6 +288,23 @@ the gate therefore tolerates one record per metric (`ai.eval.tolerance`); for a 
 | `-Dai.eval.tolerance=0` | records per metric given the benefit of the doubt (default 1): a metric only regresses when it is still worse with that many records better — one record moves a small collection by more than the threshold between identical runs |
 | `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
 | `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
+| `-Dai.eval.cache=on\|off\|refresh` | replay recorded model answers (all eval tests; default `off` = a real measurement). `on` asks the model only for prompts it has not answered before, `refresh` asks again and overwrites. Answers are keyed by model, `num_ctx`, system prompt, user prompt and JSON schema |
+| `-Dai.eval.cacheDir=<dir>` | where the answers are stored (default `.ai-cache/`, shared with the dev cache below; gitignored: it holds answers about private mail too) |
+| `-Dai.eval.cases=<glob>[,<glob>]` | run only the cases whose id matches (`*`, `?`, case-insensitive), in every eval test; an eval with no matching case is skipped. A subset is report only: no baseline comparison |
+
+**Iterating fast.** Only a prompt or model change needs the GPU; changes to parsing, validation, appliers or scoring do not.
+With `-Dai.eval.cache=on` an unchanged prompt is answered from disk, so such a change re-runs the whole eval in seconds, and a
+prompt change asks the model only for the calls whose prompt actually changed (e.g. the extraction call, while relation calls
+with unchanged input stay cached). For a prompt change, try it on a few cases first, then run the full eval once:
+
+```bash
+cd contor-api && ./mvnw verify -Pai-eval -Dtest=AiExtractionEvalTest -Dai.eval.cache=on -Dai.eval.cases="invoice-*,meeting-en-*"
+```
+
+A replayed answer is the earlier run's sample, not a new one: judge prompt changes with real runs as described above.
+`-Dai.eval.updateBaseline=true` is refused with `ai.eval.cache=on` or `ai.eval.cases`, because a baseline must be a complete, real run.
+Latency and `where the time goes` count only the calls that reached the model. Bump `CachingLlmClient.KEY_VERSION` when
+`OllamaClient` changes the request options (temperature, thinking), since those are not part of the key.
 
 **Cases** are JSON files: `{id, email: {mailbox, fromName, fromAddress, to, subject, receivedAt, body}, expected: {records: {<collection slug>: [{title, values}]}, relations: []}, mustNotProduce: [{collection, title?}]}`;
 `values` lists only the fields worth checking. The 49 synthetic German/English cases live in
@@ -383,6 +416,8 @@ All variables are listed in `.env.example`.
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
 | `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
+| `AI_CACHE` | backend (dev profile) | `off` | `on` answers unchanged prompts from disk instead of the model, `refresh` asks again and overwrites (see *Dev AI cache*); ignored outside dev |
+| `AI_CACHE_DIR` | backend (dev profile) | `../.ai-cache` | where those answers are stored (relative to `contor-api`; gitignored, plain text about your mail) |
 | `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the Microsoft OAuth callback (`/settings/accounts?connected=true`) |
 | `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
 | `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,Contacts.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (refresh token); `Contacts.Read` gives sender photos from your Outlook contacts |

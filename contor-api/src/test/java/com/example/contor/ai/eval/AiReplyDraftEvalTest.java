@@ -1,5 +1,6 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.CachingLlmClient;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.OllamaClient;
 import com.example.contor.ai.ReplyCandidateFilter;
@@ -52,10 +53,10 @@ class AiReplyDraftEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
         JsonMapper mapper = JsonMapper.builder().build();
-        OllamaClient client = new OllamaClient(properties, mapper);
+        CachingLlmClient client = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
         ReplyTriageService triageService = new ReplyTriageService(client, properties, mapper);
-        List<EvalCase> cases = EvalCaseLoader.loadClasspath("ai-eval/replies").stream()
-                .filter(evalCase -> Boolean.TRUE.equals(evalCase.needsReply())).toList();
+        List<EvalCase> cases = CaseFilter.fromSystemProperty().selectOrSkip(EvalCaseLoader.loadClasspath("ai-eval/replies").stream()
+                .filter(evalCase -> Boolean.TRUE.equals(evalCase.needsReply())).toList(), EvalCase::id);
 
         int drafts = 0;
         int questions = 0;
@@ -103,6 +104,7 @@ class AiReplyDraftEvalTest {
         System.out.printf("[ai-eval] reply drafts (%s, %d cases): %d drafts, %d questions found, %d answered, %d left open, "
                 + "%d of %d scheduling drafts name an offered day%n", model, cases.size(), drafts, questions, answered, open,
                 schedulingNamingADay, scheduling);
+        System.out.println("[ai-eval] " + client.summary());
         assertThat(drafts).as("drafts written (Ollama running? model pulled?)").isPositive();
     }
 
@@ -115,14 +117,14 @@ class AiReplyDraftEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
         JsonMapper mapper = JsonMapper.builder().build();
-        OllamaClient client = new OllamaClient(properties, mapper);
+        CachingLlmClient client = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
         ReplyTriageService triageService = new ReplyTriageService(client, properties, mapper);
 
         int personal = 0;
         int recognized = 0;
         int drafts = 0;
         int automatedWithoutDraft = 0;
-        for (EvalCase evalCase : EvalCaseLoader.loadClasspath("ai-eval/courtesy")) {
+        for (EvalCase evalCase : CaseFilter.fromSystemProperty().selectOrSkip(EvalCaseLoader.loadClasspath("ai-eval/courtesy"), EvalCase::id)) {
             EmailContent email = evalCase.email();
             if (ReplyCandidateFilter.isAutomatedSender(email.fromAddress())) {
                 automatedWithoutDraft++;
@@ -149,6 +151,7 @@ class AiReplyDraftEvalTest {
         }
         System.out.printf("[ai-eval] courtesy (%s): %d of %d personal mails recognized, %d drafts, %d automated without draft%n",
                 model, recognized, personal, drafts, automatedWithoutDraft);
+        System.out.println("[ai-eval] " + client.summary());
         assertThat(personal).as("personal courtesy cases").isPositive();
     }
 }

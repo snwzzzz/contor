@@ -1,5 +1,6 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.CachingLlmClient;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.Insight;
 import com.example.contor.ai.LlmClient;
@@ -54,7 +55,7 @@ class AiInsightEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
         JsonMapper mapper = JsonMapper.builder().build();
-        OllamaClient ollama = new OllamaClient(properties, mapper);
+        CachingLlmClient ollama = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
         // -Dai.eval.raw=true prints the model's raw answer, to see what the guardrails dropped
         LlmClient client = (llmModel, system, user, schema) -> {
             String answer = ollama.completeJson(llmModel, system, user, schema);
@@ -67,7 +68,7 @@ class AiInsightEvalTest {
         int expected = 0;
         int found = 0;
         int produced = 0;
-        for (InsightCase evalCase : load(mapper)) {
+        for (InsightCase evalCase : CaseFilter.fromSystemProperty().selectOrSkip(load(mapper), InsightCase::id)) {
             InsightModelService service = new InsightModelService(client, properties, mapper, Clock.fixed(evalCase.today(), ZONE));
             List<Insight> insights = service.findInsights(evalCase.emails(), evalCase.openTasks(), evalCase.appointments());
             produced += insights.size();
@@ -86,6 +87,7 @@ class AiInsightEvalTest {
             }
         }
         System.out.printf("[ai-eval] insights (%s): %d of %d expected found, %d insights in total%n", model, found, expected, produced);
+        System.out.println("[ai-eval] " + ollama.summary());
         assertThat(expected).as("insight cases").isPositive();
     }
 

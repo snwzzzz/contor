@@ -6,7 +6,8 @@ import java.util.Map;
 
 /**
  * Builds the JSON schemas passed to Ollama as {@code format} (structured outputs). Ollama turns them into a grammar,
- * so the model can only answer with matching JSON; values are still validated by the caller.
+ * so the model can only answer with matching JSON; values are still validated by the caller. Every map keeps insertion
+ * order (never {@code Map.of}, whose order changes between JVMs), so the same call sends the same bytes in every run.
  */
 public final class JsonSchemas {
 
@@ -24,39 +25,43 @@ public final class JsonSchemas {
 
     /** Ordered property map: {@code properties("name", string(), "age", integer())}. */
     public static Map<String, Object> properties(Object... namesAndSchemas) {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        for (int i = 0; i < namesAndSchemas.length; i += 2) {
-            properties.put((String) namesAndSchemas[i], namesAndSchemas[i + 1]);
-        }
-        return properties;
+        return ordered(namesAndSchemas);
     }
 
     /** An object whose keys are free (e.g. record values keyed by field slug). */
     public static Map<String, Object> freeObject() {
-        return Map.of("type", "object");
+        return ordered("type", "object");
     }
 
     public static Map<String, Object> array(Map<String, Object> items) {
-        return Map.of("type", "array", "items", items);
+        return ordered("type", "array", "items", items);
     }
 
     public static Map<String, Object> string() {
-        return Map.of("type", "string");
+        return ordered("type", "string");
     }
 
     public static Map<String, Object> integer() {
-        return Map.of("type", "integer");
+        return ordered("type", "integer");
     }
 
     public static Map<String, Object> bool() {
-        return Map.of("type", "boolean");
+        return ordered("type", "boolean");
     }
 
     public static Map<String, Object> number() {
-        return Map.of("type", "number");
+        return ordered("type", "number");
     }
 
     public static Map<String, Object> oneOf(List<String> values) {
-        return Map.of("type", "string", "enum", values);
+        return ordered("type", "string", "enum", values);
+    }
+
+    private static Map<String, Object> ordered(Object... keysAndValues) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keysAndValues.length; i += 2) {
+            map.put((String) keysAndValues[i], keysAndValues[i + 1]);
+        }
+        return map;
     }
 }
