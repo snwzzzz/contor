@@ -41,7 +41,8 @@ API enum schemas must not share a name with a domain enum, or mappers would need
 `UserRole`→`Role`, `CreatedBy`→`Creator`, `FieldType`→`CollectionFieldType`, `ProposalKind`→`ProposalAction`,
 `ProposalStatus`→`ProposalState`, `LabelSource`→`LabelOrigin`, `RelationCreatedBy`→`RelationOrigin`,
 `ProcessingState`→`EmailProcessingState`, `MailAccountStatus`→`MailAccountState`, `MailProvider`→`MailProviderKind`,
-`ReplyDraftStatus`→`ReplyDraftState`, `ProposalImportance` (domain)→`ProposalPriority` (API).
+`ReplyDraftStatus`→`ReplyDraftState`, `ReportStatus`→`ReportState`, `ReportSectionKind`→`ReportSectionType`,
+`FindingSeverity`→`FindingLevel`, `ClaimVerification`→`ClaimCheck`, `CitationType`→`CitationKind`, `ProposalImportance` (domain)→`ProposalPriority` (API).
 Map with `ApiEnum.valueOf(domain.name())` and back.
 
 ### Packages (by layer, under `com.example.contor`)

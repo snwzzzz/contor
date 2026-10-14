@@ -1,8 +1,10 @@
 # AI reports implementation plan (any record, its connections, fact-checked, cited to the paragraph)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** R1–R3 implemented (tables, domain and repositories, email paragraphs and their
-> endpoint); R4–R12 open. Branch: `feature/report-section`.
+> in the same change. **Status:** first slice implemented — R1–R6, R8 and R10 (tables, paragraphs, evidence pack,
+> fact-checked generation, API, Details-tab prompt, report page with sources panel). Open: R7 (eval), R9 (Connections-tab
+> scope picker), R11 (deep links that highlight the cited field/paragraph on its own page), R12. Branch:
+> `feature/report-section`.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - R1: the migration is `V1_0_29` (1.0.27 and 1.0.28 came with the business workflows on `developer`). Only `report` has a sequence; the four child tables use identity IDs (detail tables, CLAUDE.md §2).
@@ -11,6 +13,22 @@
 >   only the sentences outside findings (`@SQLRestriction("finding_id is null")`).
 > - R2: `ReportScope` (domain value record) validates records (1–25, no duplicates), depth (0–2) and emails (≤ 60).
 >   `ReportBusyException` (409), `ReportNotFoundException` (404); audit actions `REPORT_GENERATED`, `REPORT_DELETED`.
+> - R4: `ai/EvidencePack` ranks emails by prompt words (no embedding ranking yet); paragraph tokens are 1-based
+>   (`P1.1` = first paragraph, `paragraphIndex` 0). Sender addresses are reduced to their domain in the prompt.
+> - R5: `ReportModelService` (draft `report-v1`, verify, repair) and `ReportGenerator`. The model may not set CONFLICT;
+>   only the verifier does. Timeline entries are deterministic (no model captions) and not counted as sentences. Single
+>   digits are exempt from the number check (counts); a day difference between two cited dates is allowed.
+> - R6: "AI not ready" is 409 (`AiUnavailableException`, the codebase convention), not 503. A question about a follow-up
+>   goes to its report. `ReportDto.sources` is one entry per marker; markers are numbered per report (follow-ups have
+>   their own). `/cited-in` is not built yet (R9).
+> - Live run (qwen3.5:9b, demo PO-26-1083, records only): ready in 18–52 s. The model cites fields as `R1:F3`, so
+>   `EvidencePack.normalizeToken` takes the most specific token in a reference, and the prompt says to write tokens
+>   alone. A sentence that cited nothing is offered the record facts in the repair (refs returned, at most 3 kept); a
+>   sentence that repeats an earlier one is removed. Before these fixes 10 of 12 sentences were removed, after them 0 of 6.
+> - R8/R10: `components/app/reports/` (`RecordReports`, `ReportPrompt`, `ReportView`, `ReportBody`, `CitationMarker`,
+>   `SourcePanel`, `FactCheck`), `lib/report.ts`. The sources panel shows the cited email paragraph with its neighbours
+>   (`GET /api/emails/{id}/paragraphs`) and the quote marked; source links already carry `?tab=…&field=…` /
+>   `&paragraph=…` for R11.
 > - R3: `ai/HtmlText` (jsoup) treats `p`/headings/lists/tables as paragraphs and `div`/`br`/rows as lines; when a mail
 >   has empty spacer paragraphs (Outlook), `p` is a line and the spacers make the breaks. `EmailParagraphs` hashes are
 >   16 hex chars of SHA-256 over the normalized text; `normalize` (case, whitespace, typographic quotes and dashes) is
