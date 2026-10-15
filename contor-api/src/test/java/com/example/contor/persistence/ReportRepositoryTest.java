@@ -8,6 +8,8 @@ import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.FindingSeverity;
 import com.example.contor.domain.Report;
+import com.example.contor.domain.ReportBlock;
+import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
@@ -106,6 +108,43 @@ public class ReportRepositoryTest {
         assertThat(citation.getEmail().getId()).isEqualTo(email.getId());
         assertThat(citation.getQuote()).isEqualTo("held at customs");
         assertThat(citation.isSupportingQuote()).isTrue();
+    }
+
+    @Test
+    void stores_blocks_with_their_items_and_table_cells() {
+        var report = report(4711L, null);
+        var section = section(report, 0, ReportSectionKind.CUSTOM, "Top customers");
+        var list = block(section, 0, ReportBlockKind.NUMBERED, List.of());
+        blockClaim(list, 0, "Weak packaging.", null, null);
+        var table = block(section, 1, ReportBlockKind.TABLE, List.of("Customer", "Orders"));
+        blockClaim(table, 0, "Kessler", 0, 0);
+        var cell = blockClaim(table, 1, "12", 0, 1);
+        cell.getCitations().add(ReportCitation.builder().claim(cell).marker(1).type(CitationType.RECORD).collection(orders).recordId(4711L).build());
+
+        reportRepository.saveAndFlush(report);
+        entityManager.clear();
+
+        var reloaded = reportRepository.findById(report.getId()).orElseThrow().getSections().getFirst();
+        assertThat(reloaded.getClaims()).as("block claims are not section-level claims").isEmpty();
+        assertThat(reloaded.getBlocks()).extracting(ReportBlock::getKind).containsExactly(ReportBlockKind.NUMBERED, ReportBlockKind.TABLE);
+        var reloadedTable = reloaded.getBlocks().get(1);
+        assertThat(reloadedTable.getColumns()).containsExactly("Customer", "Orders");
+        assertThat(reloadedTable.getClaims()).extracting(ReportClaim::getText).containsExactly("Kessler", "12");
+        assertThat(reloadedTable.getClaims().get(1).getRowIndex()).isZero();
+        assertThat(reloadedTable.getClaims().get(1).getColumnIndex()).isEqualTo(1);
+        assertThat(reloadedTable.getClaims().get(1).getCitations()).hasSize(1);
+    }
+
+    @Test
+    void a_block_has_a_known_kind() {
+        var report = report(4711L, null);
+        section(report, 0, ReportSectionKind.CUSTOM, "x");
+        reportRepository.saveAndFlush(report);
+        Long sectionId = report.getSections().getFirst().getId();
+
+        assertThatThrownBy(() -> jdbcTemplate.update("insert into report_block (section_id, position, kind) values (?, 0, 'CHART')", sectionId))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_report_block_kind");
     }
 
     @Test
@@ -221,6 +260,19 @@ public class ReportRepositoryTest {
         var claim = ReportClaim.builder().section(section).finding(finding).position(position).text(text)
                 .verification(ClaimVerification.SUPPORTED).build();
         section.getClaims().add(claim);
+        return claim;
+    }
+
+    private static ReportBlock block(ReportSection section, int position, ReportBlockKind kind, List<String> columns) {
+        var block = ReportBlock.builder().section(section).position(position).kind(kind).columns(columns).build();
+        section.getBlocks().add(block);
+        return block;
+    }
+
+    private static ReportClaim blockClaim(ReportBlock block, int position, String text, Integer row, Integer column) {
+        var claim = ReportClaim.builder().section(block.getSection()).block(block).position(position).text(text)
+                .rowIndex(row).columnIndex(column).verification(ClaimVerification.SUPPORTED).build();
+        block.getClaims().add(claim);
         return claim;
     }
 

@@ -49,6 +49,14 @@
 >   "look at other orders" questions. Live, on complaint "Wrong item SO-26-0155": the first answer has a direct answer
 >   with recommendations, "what do you think went wrong?" gets an opinion, and "look at other emails and orders" finds
 >   other orders and an unrelated misloading case.
+> - **Reports as documents (user request, 2026-10-15):** the model writes Markdown (`report-v5`) and picks the shape:
+>   bullet/numbered lists, tables, quotes under its own headings, answer first; `timeline` says whether the record's
+>   timeline helps. `ai/ReportMarkdown` parses it; `report_block` (`V1_0_30`) stores paragraphs, lists, quotes and
+>   tables, and `report_claim` gained `block_id`, `row_index`, `column_index`, so every item and cell keeps its own
+>   citations. Fixed findings/open questions/recommendations are no longer drafted (old reports still render). Live:
+>   "5 reasons and next steps" gives two numbered lists, "pro and con list" two bullet sections, "table of the orders"
+>   a table with sources per cell, and "top 5 best selling customers" on a customer record says the sales data is not
+>   in its sources (it covers one record and its connections, not a whole collection).
 > - R8/R10: `components/app/reports/` (`RecordReports`, `ReportPrompt`, `ReportView`, `ReportBody`, `CitationMarker`,
 >   `SourcePanel`, `FactCheck`), `lib/report.ts`. The sources panel shows the cited email paragraph with its neighbours
 >   (`GET /api/emails/{id}/paragraphs`) and the quote marked; source links already carry `?tab=…&field=…` /

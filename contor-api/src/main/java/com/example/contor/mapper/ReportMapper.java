@@ -4,6 +4,8 @@ import com.example.contor.api.model.CitationKind;
 import com.example.contor.api.model.ClaimCheck;
 import com.example.contor.api.model.FindingLevel;
 import com.example.contor.api.model.RecordRefDto;
+import com.example.contor.api.model.ReportBlockDto;
+import com.example.contor.api.model.ReportBlockType;
 import com.example.contor.api.model.ReportClaimDto;
 import com.example.contor.api.model.ReportDto;
 import com.example.contor.api.model.ReportFindingDto;
@@ -18,6 +20,8 @@ import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.Report;
+import com.example.contor.domain.ReportBlock;
+import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
@@ -29,12 +33,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.example.contor.mapper.MapperSupport.toOffset;
 
 /**
- * Report → {@link ReportDto}: the visible sentences per section and finding (REMOVED ones only in
- * {@code removedClaims}), supporting quotes per finding, and every cited source once by marker. Whether a source is
+ * Report → {@link ReportDto}: the visible sentences per section, finding and block (REMOVED ones only in
+ * {@code removedClaims}; table cells grouped into rows), supporting quotes per finding, and every cited source once by
+ * marker. Whether a source is
  * still current and the records' current titles come from a {@link SourceLookup} the service fills.
  */
 public final class ReportMapper {
@@ -76,9 +83,16 @@ public final class ReportMapper {
                 findings.add(new ReportFindingDto(finding.getId(), finding.getTitle(), FindingLevel.valueOf(finding.getSeverity().name()),
                         claimsList(findingClaims), new ArrayList<>(quotes)).eventDate(toOffset(finding.getEventDate())));
             }
-            if (!claims.isEmpty() || !findings.isEmpty()) {
+            List<ReportBlockDto> blocks = new ArrayList<>();
+            for (ReportBlock block : section.getBlocks()) {
+                ReportBlockDto dto = block(block, removed, sources);
+                if (!dto.getItems().isEmpty() || !dto.getRows().isEmpty()) {
+                    blocks.add(dto);
+                }
+            }
+            if (!claims.isEmpty() || !findings.isEmpty() || !blocks.isEmpty()) {
                 sections.add(new ReportSectionDto(section.getId(), ReportSectionType.valueOf(section.getKind().name()), section.getTitle(),
-                        claimsList(claims), findings));
+                        claimsList(claims), findings, blocks));
             }
         }
         List<ReportSourceDto> sourceDtos = sources.values().stream().map(citation -> source(citation, lookup)).toList();
@@ -102,18 +116,44 @@ public final class ReportMapper {
         if (report == null) {
             return null;
         }
-        String first = report.getSections().stream()
-                .filter(section -> section.getKind() == ReportSectionKind.SUMMARY)
-                .flatMap(section -> section.getClaims().stream())
-                .filter(claim -> claim.getVerification() != ClaimVerification.REMOVED)
-                .map(ReportClaim::getText)
-                .findFirst().orElse(null);
+        String first = firstSentence(report, section -> section.getKind() == ReportSectionKind.SUMMARY)
+                .or(() -> firstSentence(report, section -> section.getKind() != ReportSectionKind.TIMELINE))
+                .orElse(null);
         return new ReportSummaryDto(report.getId().id(), ReportState.valueOf(report.getStatus().name()), report.getClaimsTotal(),
                 report.getClaimsVerified(), followUpCount, toOffset(report.getCreatedAt()))
                 .title(report.getTitle())
                 .prompt(report.getPrompt())
                 .summary(first)
                 .generatedAt(toOffset(report.getGeneratedAt()));
+    }
+
+    /** The first shown sentence or list item of the matching sections (not a table cell). */
+    private static Optional<String> firstSentence(Report report, Predicate<ReportSection> sections) {
+        return report.getSections().stream()
+                .filter(sections)
+                .flatMap(section -> Stream.concat(section.getClaims().stream(), section.getBlocks().stream()
+                        .filter(block -> block.getKind() != ReportBlockKind.TABLE)
+                        .flatMap(block -> block.getClaims().stream())))
+                .filter(claim -> claim.getVerification() != ClaimVerification.REMOVED)
+                .map(ReportClaim::getText)
+                .findFirst();
+    }
+
+    /** A block with its items, or for a table its cells grouped into rows by row index. */
+    private static ReportBlockDto block(ReportBlock block, List<ReportClaimDto> removed, Map<Integer, ReportCitation> sources) {
+        List<ReportClaimDto> items = new ArrayList<>();
+        Map<Integer, List<ReportClaimDto>> rows = new TreeMap<>();
+        for (ReportClaim claim : block.getClaims()) {
+            List<ReportClaimDto> shown = visible(List.of(claim), removed, sources);
+            if (block.getKind() == ReportBlockKind.TABLE && claim.getRowIndex() != null) {
+                rows.computeIfAbsent(claim.getRowIndex(), row -> new ArrayList<>()).addAll(shown);
+            } else {
+                items.addAll(shown);
+            }
+        }
+        List<String> columns = block.getColumns() != null ? new ArrayList<>(block.getColumns()) : new ArrayList<>();
+        return new ReportBlockDto(block.getId(), ReportBlockType.valueOf(block.getKind().name()), columns, items,
+                new ArrayList<>(rows.values()));
     }
 
     /** The shown sentences; REMOVED ones go to {@code removed}; cited sources are collected by marker (first one wins). */

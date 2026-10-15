@@ -161,8 +161,9 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 
 ## Reports (AI)
 
-Ask the assistant about any record of any collection and get an answer with references: each sentence that comes from
-the record or its emails points at its source, down to a record field or an email paragraph. Plan and status:
+Ask the assistant about any record of any collection and get a structured answer with references: summaries, lists of
+reasons, next steps, pro and con lists, tables. Each sentence, list item or table cell that comes from the record or its
+emails points at its source, down to a record field or an email paragraph. Plan and status:
 [`docs/reports-plan.md`](docs/reports-plan.md).
 
 - **Asking:** the record page's **Details** tab starts with a prompt ("Ask about this record…") and suggestions
@@ -175,17 +176,22 @@ the record or its emails points at its source, down to a record field or an emai
   in meaning to the record's emails, embeddings, any date) and up to 8 **other records** linked to those — so "look at
   other orders" works. The record's own emails come first; about 24 000 characters in all. Each fact is a numbered
   source: records `[R1]`, fields `[F3]`, connections `[L1]`, email paragraphs `[P2.1]`.
-- **The answer** (prompt `report-v4`, `ReportModelService`): the model writes a free-text **answer** to exactly what was
-  asked first (opinions and advice included), with the codes of its sources in square brackets after a sentence, then
-  key findings with quotes, open questions and recommendations. **Nothing is fact-checked or removed:** sentences stay
-  as written; a sentence gets a reference where there is one (`ai/References`: unknown codes are dropped, a whole email
+- **The answer** (prompt `report-v5`, `ReportModelService`): the model writes a **Markdown document**: the direct answer
+  to exactly what was asked first (opinions and advice included), then the sections the request needs, each in the
+  shape that fits — bullet lists, numbered lists (steps, causes, "5 reasons", rankings), tables (comparisons, pro and
+  con, items with several values), quotes. Asked for N items, it gives N; when the sources do not hold what is needed
+  (e.g. the sales of all customers for a "top 5"), it says so instead of inventing. `ai/ReportMarkdown` reads the
+  document into sections and blocks (headings, `-`/`1.` lists, `|` tables, `>` quotes; a bold-only line counts as a
+  heading). Source codes in square brackets follow a sentence, item or cell. **Nothing is fact-checked or removed:**
+  sentences stay as written; each gets a reference where there is one (`ai/References`: unknown codes are dropped, a whole email
   `E3` stands for its paragraphs, codes written as words — "record R1 shows" — become names, a quote is shown only when
-  it is word for word in its email). Opinions, advice and questions may have no source. A sentence that repeats an
-  earlier one is left out; a follow-up answers only its question and leaves out what the report already said. The
-  timeline is built from the record's dated fields and emails without the model (not repeated in follow-ups).
-- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): the answer, key findings (went well /
-  problem / risk) with supporting quotes, timeline, open questions, recommendations (marked as the assistant's
-  suggestions) and sections the request asked for. Markers `[n]` show the source on hover; a click opens it in the
+  it is word for word in its email). Opinions, advice and questions may have no source. A sentence or list item that
+  repeats an earlier one is left out; a follow-up answers only its question and leaves out what the report already said.
+  The timeline is built from the record's dated fields and emails without the model, when the model says it helps or
+  there is no request (not when the model wrote one itself, not in follow-ups).
+- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): the answer, then the document's
+  sections with their paragraphs, lists, tables and quotes (`**bold**`, `*italic*` and `` `code` `` rendered), and the
+  timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
   highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
   sources. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
@@ -195,8 +201,9 @@ the record or its emails points at its source, down to a record field or an emai
   `POST /api/reports/{id}/questions`, `POST /api/reports/{id}/regenerate` (202, generated on the AI thread; poll the
   report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
   user's mailbox are never shown (`sourceState` UNAVAILABLE).
-- **Storage** (`V1_0_29__reports.sql`): `report` (follow-ups have `parent_report_id`), `report_section`, `report_finding`,
-  `report_claim` (one sentence) and `report_citation` (record, field with value snapshot, email paragraph
+- **Storage** (`V1_0_29__reports.sql`, `V1_0_30__report_blocks.sql`): `report` (follow-ups have `parent_report_id`),
+  `report_section`, `report_block` (paragraph, list, quote or table with its header), `report_finding` (timeline and
+  older reports), `report_claim` (one sentence, list item or table cell with its row and column) and `report_citation` (record, field with value snapshot, email paragraph
   with verbatim quote, or relation). Reports are snapshots; reading one marks sources that changed or were deleted.
 - **Email paragraphs:** `GET /api/emails/{id}/paragraphs` (your mailboxes only) splits an email into the paragraphs
   citations point at (`ai/EmailParagraphs`): text body, or the HTML body as text (`ai/HtmlText`, using **jsoup**); quoted

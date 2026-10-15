@@ -41,10 +41,19 @@ public class ReportSection {
     @OrderBy("position")
     private List<ReportFinding> findings = new ArrayList<>();
 
-    /** Sentences outside findings (summary, open questions…); the sentences of a finding are in its own list. */
+    /** Paragraphs, lists, quotes and tables in reading order. */
     @Builder.Default
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
-    @SQLRestriction("finding_id is null")
+    @OrderBy("position")
+    private List<ReportBlock> blocks = new ArrayList<>();
+
+    /**
+     * Sentences outside findings and blocks (reports made before reports were written as documents); the sentences of
+     * a finding or a block are in its own list.
+     */
+    @Builder.Default
+    @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
+    @SQLRestriction("finding_id is null and block_id is null")
     @OrderBy("position")
     private List<ReportClaim> claims = new ArrayList<>();
 }

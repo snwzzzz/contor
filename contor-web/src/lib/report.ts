@@ -70,3 +70,25 @@ export function highlightQuote(paragraph: string, quote: string | undefined): Qu
     after: paragraph.slice(found.index + found[0].length),
   };
 }
+
+export interface InlineMark {
+  text: string;
+  mark?: "strong" | "em" | "code";
+}
+
+const INLINE = /\*\*([^*]+?)\*\*|\*([^*\s][^*]*?)\*|`([^`]+)`/g;
+
+/** A sentence's Markdown emphasis (**bold**, *italic*, `code`) as plain runs; anything else stays text. */
+export function inlineMarks(text: string): InlineMark[] {
+  const runs: InlineMark[] = [];
+  let last = 0;
+  for (const found of text.matchAll(INLINE)) {
+    if (found.index > last) runs.push({ text: text.slice(last, found.index) });
+    if (found[1] !== undefined) runs.push({ text: found[1], mark: "strong" });
+    else if (found[2] !== undefined) runs.push({ text: found[2], mark: "em" });
+    else if (found[3] !== undefined) runs.push({ text: found[3], mark: "code" });
+    last = found.index + found[0].length;
+  }
+  if (last < text.length) runs.push({ text: text.slice(last) });
+  return runs;
+}

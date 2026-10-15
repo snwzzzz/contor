@@ -3256,7 +3256,44 @@ components:
       enum: [QUEUED, COLLECTING, DRAFTING, FACT_CHECKING, READY, FAILED]
     ReportSectionType:
       type: string
+      description: |
+        SUMMARY the answer before the first heading (titled Answer, or Summary without a request) - CUSTOM a section
+        under a heading the assistant chose - TIMELINE the record's dated sources. FINDINGS, OPEN_QUESTIONS and
+        NEXT_STEPS only appear in reports made before reports were written as documents.
       enum: [SUMMARY, FINDINGS, TIMELINE, OPEN_QUESTIONS, NEXT_STEPS, CUSTOM]
+    ReportBlockType:
+      type: string
+      description: |
+        PARAGRAPH (items are its sentences) - BULLETS - NUMBERED (items are the list items) - QUOTE (one item, the
+        quoted text) - TABLE (`columns` and `rows`)
+      enum: [PARAGRAPH, BULLETS, NUMBERED, QUOTE, TABLE]
+    ReportBlockDto:
+      type: object
+      description: A paragraph, list, quote or table of a section, in reading order
+      required: [id, type, columns, items, rows]
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: '#/components/schemas/ReportBlockType'
+        columns:
+          type: array
+          description: TABLE - the header; empty when the table has none
+          items:
+            type: string
+        items:
+          type: array
+          description: Sentences or list items with their markers (not TABLE)
+          items:
+            $ref: '#/components/schemas/ReportClaimDto'
+        rows:
+          type: array
+          description: TABLE - the rows, each a list of cells with their markers
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/ReportClaimDto'
     FindingLevel:
       type: string
       description: POSITIVE went well - NEUTRAL - PROBLEM went wrong - RISK may still go wrong - CONFLICT the sources disagree
@@ -3380,7 +3417,7 @@ components:
             $ref: '#/components/schemas/ReportQuoteDto'
     ReportSectionDto:
       type: object
-      required: [id, type, title, claims, findings]
+      required: [id, type, title, claims, findings, blocks]
       properties:
         id:
           type: integer
@@ -3391,13 +3428,18 @@ components:
           type: string
         claims:
           type: array
-          description: Sentences outside findings (summary, open questions, next steps...)
+          description: Sentences outside findings and blocks (reports made before reports were written as documents)
           items:
             $ref: '#/components/schemas/ReportClaimDto'
         findings:
           type: array
           items:
             $ref: '#/components/schemas/ReportFindingDto'
+        blocks:
+          type: array
+          description: The section's paragraphs, lists, quotes and tables (empty in reports made before)
+          items:
+            $ref: '#/components/schemas/ReportBlockDto'
     ReportDto:
       type: object
       required: [id, collectionId, recordId, state, records, sections, sources, removedClaims, followUps, claimsTotal,
@@ -3456,7 +3498,7 @@ components:
         claimsVerified:
           type: integer
           format: int32
-          description: Sentences with at least one source
+          description: Sentences, list items and table rows with at least one source
         claimsRemoved:
           type: integer
           format: int32

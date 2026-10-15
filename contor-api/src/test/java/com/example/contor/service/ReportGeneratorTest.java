@@ -3,7 +3,6 @@ package com.example.contor.service;
 import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.OllamaException;
-import com.example.contor.ai.References;
 import com.example.contor.ai.ReportDraft;
 import com.example.contor.domain.AiSettings;
 import com.example.contor.domain.AppUser;
@@ -12,8 +11,9 @@ import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.FieldType;
-import com.example.contor.domain.FindingSeverity;
 import com.example.contor.domain.Report;
+import com.example.contor.domain.ReportBlock;
+import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
@@ -105,12 +105,11 @@ class ReportGeneratorTest {
     }
 
     @Test
-    void generate_ReadyWithTheAnswerFindingsQuotesTimelineAndMarkers() {
-        draft(new ReportDraft("Order 4711 review",
-                List.of(claim("The order was due on 2026-09-02 and arrived on 2026-09-07.", "F1", "F3")),
-                List.of(new ReportDraft.Finding("Customs hold", FindingSeverity.PROBLEM, List.of(claim("The shipment was held at customs.", "P1.1")),
-                        List.of(new References.Quote("P1.1", "held at customs")))),
-                List.of(), List.of(), List.of()));
+    void generate_ReadyWithTheDocumentsSectionsBlocksTimelineAndMarkers() {
+        draft(new ReportDraft("Order 4711 review", List.of(
+                section("", paragraph(claim("The order was due on 2026-09-02 and arrived on 2026-09-07.", "F1", "F3"))),
+                section("Reasons", list(ReportBlockKind.NUMBERED, claim("**Customs:** the shipment was held.", "P1.1"), claim("Bad luck.")))),
+                true));
 
         generator.generate(5L);
 
@@ -120,14 +119,18 @@ class ReportGeneratorTest {
         assertThat(report.getPromptVersion()).isEqualTo(ReportModelService.PROMPT_VERSION);
         assertThat(report.getGeneratedAt()).isEqualTo(Instant.parse("2026-10-14T10:00:00Z"));
         assertThat(report.getScope().emailIds()).containsExactly(7L);
-        assertThat(report.getClaimsTotal()).isEqualTo(2);
-        assertThat(report.getClaimsVerified()).as("sentences with a source").isEqualTo(2);
+        assertThat(report.getClaimsTotal()).isEqualTo(3);
+        assertThat(report.getClaimsVerified()).as("sentences and items with a source").isEqualTo(2);
         assertThat(report.getClaimsRemoved()).isZero();
         assertThat(report.getSections()).extracting(ReportSection::getKind)
-                .containsExactly(ReportSectionKind.SUMMARY, ReportSectionKind.FINDINGS, ReportSectionKind.TIMELINE);
-        assertThat(report.getSections().getFirst().getTitle()).as("the answer to the request comes first").isEqualTo("Answer");
+                .containsExactly(ReportSectionKind.SUMMARY, ReportSectionKind.CUSTOM, ReportSectionKind.TIMELINE);
+        assertThat(report.getSections()).extracting(ReportSection::getTitle).containsExactly("Answer", "Reasons", "Timeline");
 
-        ReportClaim answer = report.getSections().getFirst().getClaims().getFirst();
+        ReportBlock lead = report.getSections().getFirst().getBlocks().getFirst();
+        assertThat(lead.getKind()).isEqualTo(ReportBlockKind.PARAGRAPH);
+        ReportClaim answer = lead.getClaims().getFirst();
+        assertThat(answer.getBlock()).isSameAs(lead);
+        assertThat(answer.getSection()).isSameAs(report.getSections().getFirst());
         assertThat(answer.getVerification()).isEqualTo(ClaimVerification.SUPPORTED);
         assertThat(answer.getCitations()).extracting(ReportCitation::getMarker).containsExactly(1, 2);
         ReportCitation due = answer.getCitations().getFirst();
@@ -135,16 +138,15 @@ class ReportGeneratorTest {
         assertThat(due.getFieldSlug()).isEqualTo("expected_delivery");
         assertThat(due.getValueSnapshot()).containsEntry("value", "2026-09-02");
 
-        ReportFinding finding = report.getSections().get(1).getFindings().getFirst();
-        ReportClaim held = finding.getClaims().getFirst();
-        assertThat(held.getSection()).isSameAs(report.getSections().get(1));
-        assertThat(held.getCitations()).allSatisfy(citation -> {
+        ReportBlock reasons = report.getSections().get(1).getBlocks().getFirst();
+        assertThat(reasons.getKind()).isEqualTo(ReportBlockKind.NUMBERED);
+        assertThat(reasons.getClaims()).extracting(ReportClaim::getText).containsExactly("**Customs:** the shipment was held.", "Bad luck.");
+        assertThat(reasons.getClaims()).extracting(ReportClaim::getPosition).containsExactly(0, 1);
+        assertThat(reasons.getClaims().getFirst().getCitations()).singleElement().satisfies(citation -> {
             assertThat(citation.getMarker()).isEqualTo(3);
             assertThat(citation.getEmail().getId().id()).isEqualTo(7L);
             assertThat(citation.getSegmenterVersion()).isEqualTo(EmailParagraphs.SEGMENTER_VERSION);
         });
-        assertThat(held.getCitations()).filteredOn(ReportCitation::isSupportingQuote).extracting(ReportCitation::getQuote)
-                .containsExactly("held at customs");
 
         ReportSection timeline = report.getSections().get(2);
         assertThat(timeline.getFindings()).extracting(ReportFinding::getTitle).containsExactly("2026-09-02", "2026-09-04", "2026-09-07");
@@ -153,82 +155,126 @@ class ReportGeneratorTest {
 
     @Test
     void generate_SentencesAreKeptWithOrWithoutASourceAndNothingIsChecked() {
-        draft(new ReportDraft("", List.of(claim("The total was 1,300 EUR.", "F2"), claim("A second carrier would have helped.")),
-                List.of(), List.of(), List.of(), List.of()));
+        draft(new ReportDraft("", List.of(section("", paragraph(claim("The total was 1,300 EUR.", "F2"), claim("A second carrier would have helped.")))),
+                false));
 
         generator.generate(5L);
 
-        List<ReportClaim> claims = report.getSections().getFirst().getClaims();
+        List<ReportClaim> claims = report.getSections().getFirst().getBlocks().getFirst().getClaims();
         assertThat(claims).extracting(ReportClaim::getText).containsExactly("The total was 1,300 EUR.", "A second carrier would have helped.");
         assertThat(claims).extracting(ReportClaim::getVerification).containsOnly(ClaimVerification.SUPPORTED);
         assertThat(claims.get(1).getCitations()).isEmpty();
         assertThat(report.getClaimsTotal()).isEqualTo(2);
         assertThat(report.getClaimsVerified()).isEqualTo(1);
-        assertThat(report.getClaimsRemoved()).isZero();
         assertThat(report.getTitle()).as("the anchor's title without a drafted one").isEqualTo("Order 4711");
+        assertThat(report.getSections()).as("no timeline unless the model asks for one")
+                .extracting(ReportSection::getKind).doesNotContain(ReportSectionKind.TIMELINE);
+    }
+
+    @Test
+    void generate_ATableKeepsEveryCellWithItsRowColumnAndSources() {
+        draft(new ReportDraft("Pros and cons", List.of(section("Carrier", table(List.of("Pro", "Con"),
+                List.of(claim("Fast"), claim("Expensive", "F2")),
+                List.of(claim("open"), claim("open"))))), false));
+
+        generator.generate(5L);
+
+        ReportSection section = report.getSections().getFirst();
+        assertThat(section.getKind()).as("a document starting with a heading has no answer section").isEqualTo(ReportSectionKind.CUSTOM);
+        ReportBlock table = section.getBlocks().getFirst();
+        assertThat(table.getKind()).isEqualTo(ReportBlockKind.TABLE);
+        assertThat(table.getColumns()).containsExactly("Pro", "Con");
+        assertThat(table.getClaims()).as("repeated cells are kept").extracting(ReportClaim::getText)
+                .containsExactly("Fast", "Expensive", "open", "open");
+        assertThat(table.getClaims()).extracting(ReportClaim::getRowIndex).containsExactly(0, 0, 1, 1);
+        assertThat(table.getClaims()).extracting(ReportClaim::getColumnIndex).containsExactly(0, 1, 0, 1);
+        assertThat(table.getClaims().get(1).getCitations()).extracting(ReportCitation::getFieldSlug).containsExactly("total");
+        assertThat(report.getClaimsTotal()).as("a table counts its rows").isEqualTo(2);
+        assertThat(report.getClaimsVerified()).isEqualTo(1);
+    }
+
+    @Test
+    void generate_AVerbatimQuoteIsHighlightedInItsSource() {
+        draft(new ReportDraft("", List.of(section("", new ReportDraft.Block(ReportBlockKind.QUOTE, List.of(),
+                List.of(claim("„held at customs“", "P1.1")), List.of()))), false));
+
+        generator.generate(5L);
+
+        ReportClaim quote = report.getSections().getFirst().getBlocks().getFirst().getClaims().getFirst();
+        assertThat(quote.getCitations()).singleElement().satisfies(citation -> {
+            assertThat(citation.getQuote()).isEqualTo("held at customs");
+            assertThat(citation.isSupportingQuote()).isFalse();
+        });
+    }
+
+    @Test
+    void generate_ATimelineTheModelWroteItselfIsNotAddedTwice() {
+        draft(new ReportDraft("", List.of(
+                section("", paragraph(claim("It was held at customs.", "P1.1"))),
+                section("Timeline of events", list(ReportBlockKind.BULLETS, claim("2026-09-04: held at customs.", "P1.1")))), true));
+
+        generator.generate(5L);
+
+        assertThat(report.getSections()).extracting(ReportSection::getKind).doesNotContain(ReportSectionKind.TIMELINE);
     }
 
     @Test
     void generate_CodesInTheTextBecomeNamesAndSources() {
-        draft(new ReportDraft("", List.of(claim("Record R1 was due on 2026-09-02 (F1).")), List.of(), List.of(), List.of(), List.of()));
+        draft(new ReportDraft("", List.of(section("", paragraph(claim("Record R1 was due on 2026-09-02 (F1).")))), false));
 
         generator.generate(5L);
 
-        ReportClaim claim = report.getSections().getFirst().getClaims().getFirst();
+        ReportClaim claim = report.getSections().getFirst().getBlocks().getFirst().getClaims().getFirst();
         assertThat(claim.getText()).isEqualTo("Order 4711 was due on 2026-09-02.");
         assertThat(claim.getCitations()).extracting(ReportCitation::getType).containsExactly(CitationType.RECORD, CitationType.FIELD);
     }
 
     @Test
-    void generate_ASentenceIsStoredOnce() {
-        draft(new ReportDraft("", List.of(claim("It was held at customs.", "P1.1")), List.of(),
-                List.of(), List.of(claim("It was held at  customs.", "P1.1")), List.of()));
+    void generate_ASentenceIsStoredOnceAndEmptySectionsAreLeftOut() {
+        draft(new ReportDraft("", List.of(
+                section("", paragraph(claim("It was held at customs.", "P1.1"))),
+                section("Next steps", list(ReportBlockKind.BULLETS, claim("It was held at  customs.", "P1.1")))), false));
 
         generator.generate(5L);
 
-        assertThat(report.getSections()).extracting(ReportSection::getKind).doesNotContain(ReportSectionKind.NEXT_STEPS);
+        assertThat(report.getSections()).extracting(ReportSection::getTitle).containsExactly("Answer");
         assertThat(report.getClaimsTotal()).isEqualTo(1);
     }
 
     @Test
-    void generate_AFollowUpLeavesOutWhatTheReportAlreadySaid() {
+    void generate_AFollowUpLeavesOutWhatTheReportAlreadySaidAndHasNoTimeline() {
         Report parent = Report.builder().id(new Report.ReportId(4L)).build();
         ReportSection summary = ReportSection.builder().report(parent).position(0).kind(ReportSectionKind.SUMMARY).title("Answer").build();
-        summary.getClaims().add(ReportClaim.builder().section(summary).text("It was held at customs.").verification(ClaimVerification.SUPPORTED).build());
+        ReportBlock block = ReportBlock.builder().section(summary).position(0).kind(ReportBlockKind.PARAGRAPH).build();
+        block.getClaims().add(ReportClaim.builder().section(summary).block(block).text("It was held at customs.")
+                .verification(ClaimVerification.SUPPORTED).build());
+        summary.getBlocks().add(block);
+        summary.getClaims().add(ReportClaim.builder().section(summary).text("An older sentence.").verification(ClaimVerification.SUPPORTED).build());
         parent.getSections().add(summary);
         report.setParentReport(parent);
-        draft(new ReportDraft("", List.of(claim("The carrier chose a slow route.", "P1.1")), List.of(), List.of(),
-                List.of(claim("It was held at customs.", "P1.1"), claim("Ask for a faster route next time.", "P1.1")), List.of()));
+        draft(new ReportDraft("", List.of(
+                section("", paragraph(claim("The carrier chose a slow route.", "P1.1"))),
+                section("Next steps", list(ReportBlockKind.BULLETS, claim("It was held at customs.", "P1.1"), claim("Ask for a faster route.")))),
+                true));
 
         generator.generate(5L);
 
-        verify(reportModelService).draft(PACK, "What went wrong?", List.of("It was held at customs."));
-        assertThat(report.getSections()).flatExtracting(ReportSection::getClaims).extracting(ReportClaim::getText)
-                .containsExactly("The carrier chose a slow route.", "Ask for a faster route next time.");
+        verify(reportModelService).draft(PACK, "What went wrong?", List.of("An older sentence.", "It was held at customs."));
+        assertThat(report.getSections()).flatExtracting(ReportSection::getBlocks).flatExtracting(ReportBlock::getClaims)
+                .extracting(ReportClaim::getText).containsExactly("The carrier chose a slow route.", "Ask for a faster route.");
         assertThat(report.getSections()).as("the timeline is in the report the follow-up belongs to")
                 .extracting(ReportSection::getKind).doesNotContain(ReportSectionKind.TIMELINE);
     }
 
     @Test
-    void generate_WithoutARequestTheFirstSectionIsTheSummary() {
+    void generate_WithoutARequestTheFirstSectionIsTheSummaryWithATimeline() {
         report.setPrompt(null);
         when(reportScopeService.collect(any(), eq(""), eq(new AppUser.AppUserId(1L)), eq(true))).thenReturn(PACK);
-        draft(new ReportDraft("", List.of(claim("It was held at customs.", "P1.1")), List.of(), List.of(), List.of(), List.of()));
+        draft(new ReportDraft("", List.of(section("", paragraph(claim("It was held at customs.", "P1.1")))), false));
 
         generator.generate(5L);
 
-        assertThat(report.getSections().getFirst().getTitle()).isEqualTo("Summary");
-    }
-
-    @Test
-    void generate_RecommendationsAndOpenQuestionsHaveTheirSections() {
-        draft(new ReportDraft("", List.of(), List.of(), List.of(claim("Who pays for the delay?")),
-                List.of(claim("Agree on a backup carrier.")), List.of()));
-
-        generator.generate(5L);
-
-        assertThat(report.getSections()).extracting(ReportSection::getTitle)
-                .containsSubsequence("Open questions", "Recommendations and next steps");
+        assertThat(report.getSections()).extracting(ReportSection::getTitle).containsExactly("Summary", "Timeline");
     }
 
     @Test
@@ -259,5 +305,22 @@ class ReportGeneratorTest {
 
     private static ReportDraft.Claim claim(String text, String... refs) {
         return new ReportDraft.Claim(text, List.of(refs));
+    }
+
+    private static ReportDraft.Section section(String title, ReportDraft.Block... blocks) {
+        return new ReportDraft.Section(title, List.of(blocks));
+    }
+
+    private static ReportDraft.Block paragraph(ReportDraft.Claim... sentences) {
+        return list(ReportBlockKind.PARAGRAPH, sentences);
+    }
+
+    private static ReportDraft.Block list(ReportBlockKind kind, ReportDraft.Claim... items) {
+        return new ReportDraft.Block(kind, List.of(), List.of(items), List.of());
+    }
+
+    @SafeVarargs
+    private static ReportDraft.Block table(List<String> columns, List<ReportDraft.Claim>... rows) {
+        return new ReportDraft.Block(ReportBlockKind.TABLE, columns, List.of(), List.of(rows));
     }
 }

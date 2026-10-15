@@ -1,6 +1,6 @@
 package com.example.contor.ai;
 
-import com.example.contor.domain.FindingSeverity;
+import com.example.contor.domain.ReportBlockKind;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
@@ -16,103 +16,53 @@ class ReportDraftTest {
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     @Test
-    void parses_every_section() {
+    void the_document_is_parsed_into_sections_with_the_title_and_the_timeline_choice() {
         var draft = ReportDraft.parse(mapper.readTree("""
-                {"title": " Order 4711 ",
-                 "summary": [{"text": "It was late.", "refs": ["F1", "[F3]"]}],
-                 "findings": [{"title": "Customs hold", "severity": "problem",
-                               "claims": [{"text": "Held at customs.", "refs": ["P1.1"]}],
-                               "quotes": [{"ref": "P1.1", "text": "held at customs"}]}],
-                 "openQuestions": [{"text": "Is the invoice corrected?", "refs": ["P2.1"]}],
-                 "nextSteps": [{"text": "Ask for the corrected invoice.", "refs": ["P2.1"]}],
-                 "customSections": [{"title": "Payments", "claims": [{"text": "Not paid yet.", "refs": ["F4"]}]}]}"""));
+                {"document": "It arrived broken [P1.1].\\n\\n## Reasons\\n1. Weak box.\\n2. Rough handling.",
+                 "title": " Damaged goods ", "timeline": true}"""));
 
-        assertThat(draft.title()).isEqualTo("Order 4711");
-        assertThat(draft.summary()).containsExactly(new ReportDraft.Claim("It was late.", List.of("F1", "F3")));
-        var finding = draft.findings().getFirst();
-        assertThat(finding.severity()).isEqualTo(FindingSeverity.PROBLEM);
-        assertThat(finding.quotes()).containsExactly(new References.Quote("P1.1", "held at customs"));
-        assertThat(draft.openQuestions()).hasSize(1);
-        assertThat(draft.nextSteps()).hasSize(1);
-        assertThat(draft.customSections().getFirst().title()).isEqualTo("Payments");
+        assertThat(draft.title()).isEqualTo("Damaged goods");
+        assertThat(draft.timeline()).isTrue();
+        assertThat(draft.sections()).extracting(ReportDraft.Section::title).containsExactly("", "Reasons");
+        assertThat(draft.sections().get(1).blocks().getFirst().kind()).isEqualTo(ReportBlockKind.NUMBERED);
+        assertThat(draft.isEmpty()).isFalse();
     }
 
     @Test
-    void missing_parts_are_empty_and_blank_claims_are_dropped() {
+    void a_top_heading_is_the_title_when_the_model_gave_none() {
         var draft = ReportDraft.parse(mapper.readTree("""
-                {"summary": [{"text": "  ", "refs": ["F1"]}, {"text": "Fine.", "refs": "F1"}],
-                 "findings": [{"title": "", "claims": [{"text": "x", "refs": ["F1"]}]}, {"title": "Odd", "severity": "WEIRD", "claims": []}]}"""));
+                {"document": "# Top customers\\n\\n| Customer | Orders |\\n|---|---|\\n| A | 3 |", "title": ""}"""));
 
-        assertThat(draft.title()).isEmpty();
-        assertThat(draft.summary()).containsExactly(new ReportDraft.Claim("Fine.", List.of()));
-        assertThat(draft.findings()).as("a finding needs a title and a claim").isEmpty();
-        assertThat(draft.openQuestions()).isEmpty();
-        assertThat(draft.customSections()).isEmpty();
+        assertThat(draft.title()).isEqualTo("Top customers");
+        assertThat(draft.timeline()).as("no timeline unless asked for").isFalse();
     }
 
     @Test
-    void an_unknown_severity_is_neutral_and_the_model_cannot_claim_a_conflict() {
-        var draft = ReportDraft.parse(mapper.readTree("""
-                {"findings": [{"title": "A", "severity": "WEIRD", "claims": [{"text": "a", "refs": ["F1"]}]},
-                              {"title": "B", "severity": "CONFLICT", "claims": [{"text": "b", "refs": ["F1"]}]}]}"""));
+    void a_missing_document_is_empty() {
+        var draft = ReportDraft.parse(mapper.readTree("{\"title\": \"x\"}"));
 
-        assertThat(draft.findings()).extracting(ReportDraft.Finding::severity).containsExactly(FindingSeverity.NEUTRAL, FindingSeverity.NEUTRAL);
+        assertThat(draft.sections()).isEmpty();
+        assertThat(draft.isEmpty()).isTrue();
     }
 
     @Test
-    void sources_written_into_the_sentence_become_refs_and_leave_the_text() {
-        var draft = ReportDraft.parse(mapper.readTree("""
-                {"summary": [{"text": "It was opened on 2026-10-02 and is still open (R1, F1-F3).", "refs": []},
-                             {"text": "The truck broke down near Rosenheim [E3; P4.2].", "refs": ["F9"]},
-                             {"text": "Delivered on time (as agreed) by the carrier.", "refs": ["F1"]},
-                             {"text": "Review the carrier's performance (E3:P3.1, R1:F5).", "refs": []}]}"""));
-
-        assertThat(draft.summary()).containsExactly(
-                new ReportDraft.Claim("It was opened on 2026-10-02 and is still open.", List.of("R1", "F1", "F2", "F3")),
-                new ReportDraft.Claim("The truck broke down near Rosenheim.", List.of("F9", "E3", "P4.2")),
-                new ReportDraft.Claim("Delivered on time (as agreed) by the carrier.", List.of("F1")),
-                new ReportDraft.Claim("Review the carrier's performance.", List.of("E3:P3.1", "R1:F5")));
-    }
-
-    @Test
-    void the_answer_text_becomes_sentences_with_their_bracketed_sources() {
-        var draft = ReportDraft.parse(mapper.readTree("""
-                {"answer": "The wrong discs (125x2,5) were picked instead of 125x1,0 [P2.1]. The replacement came on 23.07. Die Ware \
-                kam am Donnerstag [P1.1, F3]!\\n\\nA second check before packing would catch this.",
-                 "title": "Wrong item"}"""));
-
-        assertThat(draft.summary()).containsExactly(
-                new ReportDraft.Claim("The wrong discs (125x2,5) were picked instead of 125x1,0.", List.of("P2.1")),
-                new ReportDraft.Claim("The replacement came on 23.07. Die Ware kam am Donnerstag!", List.of("P1.1", "F3")),
-                new ReportDraft.Claim("A second check before packing would catch this.", List.of()));
-    }
-
-    @Test
-    void a_finding_with_quotes_but_no_sentence_keeps_its_title() {
-        var draft = ReportDraft.parse(mapper.readTree("""
-                {"findings": [{"title": "Wrong discs shipped", "severity": "PROBLEM", "claims": [],
-                               "quotes": [{"ref": "P2.1", "text": "125x2,5 statt 125x1,0"}]}]}"""));
-
-        assertThat(draft.findings()).singleElement().satisfies(finding ->
-                assertThat(finding.claims()).containsExactly(new ReportDraft.Claim("Wrong discs shipped.", List.of("P2.1"))));
-    }
-
-    @Test
-    void the_answer_comes_first_in_the_schema() {
+    void the_document_comes_first_in_the_schema() {
         String schema = mapper.valueToTree(ReportDraft.schema()).toString();
 
-        assertThat(schema.indexOf("\"answer\"")).isPositive().isLessThan(schema.indexOf("\"findings\""));
+        assertThat(schema.indexOf("\"document\"")).isPositive().isLessThan(schema.indexOf("\"title\""));
+        assertThat(schema).contains("\"timeline\"");
     }
 
     @Test
-    void lists_are_capped() {
-        String claims = String.join(",", java.util.Collections.nCopies(20, "{\"text\": \"a\", \"refs\": [\"F1\"]}"));
-        String findings = String.join(",", java.util.Collections.nCopies(20, "{\"title\": \"t\", \"claims\": [" + claims + "]}"));
+    void codes_and_ranges_written_into_a_sentence_become_refs() {
+        var draft = ReportDraft.parse(mapper.readTree("""
+                {"document": "It was opened on 2026-10-02 (R1, F1-F3). The truck broke down [E3; P4.2]. \
+                Delivered on time (as agreed). Review the carrier (E3:P3.1, R1:F5)."}"""));
 
-        var draft = ReportDraft.parse(mapper.readTree("{\"summary\": [" + claims + "], \"findings\": [" + findings + "]}"));
-
-        assertThat(draft.summary()).hasSize(ReportDraft.MAX_SUMMARY);
-        assertThat(draft.findings()).hasSize(ReportDraft.MAX_FINDINGS);
-        assertThat(draft.findings().getFirst().claims()).hasSize(ReportDraft.MAX_FINDING_CLAIMS);
+        assertThat(draft.sections().getFirst().blocks().getFirst().items()).containsExactly(
+                new ReportDraft.Claim("It was opened on 2026-10-02.", List.of("R1", "F1", "F2", "F3")),
+                new ReportDraft.Claim("The truck broke down.", List.of("E3", "P4.2")),
+                new ReportDraft.Claim("Delivered on time (as agreed).", List.of()),
+                new ReportDraft.Claim("Review the carrier.", List.of("E3:P3.1", "R1:F5")));
     }
 }

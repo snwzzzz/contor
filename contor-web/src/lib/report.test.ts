@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
-import { highlightQuote, isGenerating, reportHref, sourceHref, sourcesLabel } from "./report";
+import { highlightQuote, inlineMarks, isGenerating, reportHref, sourceHref, sourcesLabel } from "./report";
 
 function source(overrides: Partial<ReportSourceDto>): ReportSourceDto {
   return { marker: 1, kind: "RECORD", label: "Orders", sourceState: "CURRENT", ...overrides };
@@ -12,6 +12,18 @@ describe("report helpers", () => {
     expect(isGenerating("FACT_CHECKING")).toBe(true);
     expect(isGenerating("READY")).toBe(false);
     expect(isGenerating("FAILED")).toBe(false);
+  });
+
+  it("splits bold, italic and code out of a sentence and leaves lone asterisks alone", () => {
+    expect(inlineMarks("**Packaging:** the box was weak")).toEqual([
+      { text: "Packaging:", mark: "strong" },
+      { text: " the box was weak" },
+    ]);
+    expect(inlineMarks("a *rough* ride for `SO-26-0156`")).toEqual([
+      { text: "a " }, { text: "rough", mark: "em" }, { text: " ride for " }, { text: "SO-26-0156", mark: "code" },
+    ]);
+    expect(inlineMarks("2 * 3 = 6")).toEqual([{ text: "2 * 3 = 6" }]);
+    expect(inlineMarks("")).toEqual([]);
   });
 
   it("builds the report page link below its record", () => {

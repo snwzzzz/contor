@@ -6,7 +6,7 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** One sentence of a report with its fact-check result and sources. Detail table: identity ID, no auditing. */
+/** One sentence, list item or table cell of a report with its sources (and, in older reports, its fact-check result). Detail table: identity ID, no auditing. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,6 +29,18 @@ public class ReportClaim {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "finding_id")
     private ReportFinding finding;
+
+    /** {@code null} for sentences outside blocks (older reports, findings, timeline). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "block_id")
+    private ReportBlock block;
+
+    /** Table cells only. */
+    @Column(name = "row_index")
+    private Integer rowIndex;
+
+    @Column(name = "column_index")
+    private Integer columnIndex;
 
     @Column(nullable = false)
     private int position;

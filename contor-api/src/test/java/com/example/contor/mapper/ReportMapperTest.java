@@ -4,6 +4,9 @@ import com.example.contor.api.model.CitationKind;
 import com.example.contor.api.model.ClaimCheck;
 import com.example.contor.api.model.FindingLevel;
 import com.example.contor.api.model.RecordRefDto;
+import com.example.contor.api.model.ReportBlockDto;
+import com.example.contor.api.model.ReportBlockType;
+import com.example.contor.api.model.ReportClaimDto;
 import com.example.contor.api.model.ReportDto;
 import com.example.contor.api.model.ReportSectionType;
 import com.example.contor.api.model.ReportSourceDto;
@@ -17,6 +20,8 @@ import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.FieldType;
 import com.example.contor.domain.FindingSeverity;
 import com.example.contor.domain.Report;
+import com.example.contor.domain.ReportBlock;
+import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
@@ -133,6 +138,46 @@ public class ReportMapperTest {
         assertThat(summary.getSummary()).isEqualTo("It was due on 2026-09-02.");
         assertThat(summary.getFollowUpCount()).isEqualTo(2);
         assertThat(summary.getClaimsVerified()).isEqualTo(2);
+    }
+
+    @Test
+    void maps_blocks_with_items_and_table_rows() {
+        Report report = report();
+        report.getSections().clear();
+        ReportSection section = ReportSection.builder().id(4L).report(report).position(0).kind(ReportSectionKind.CUSTOM).title("Top customers").build();
+        ReportBlock list = ReportBlock.builder().id(41L).section(section).position(0).kind(ReportBlockKind.BULLETS).build();
+        list.getClaims().add(ReportClaim.builder().id(51L).section(section).block(list).position(0).text("Kessler orders most.")
+                .verification(ClaimVerification.SUPPORTED).build());
+        ReportBlock table = ReportBlock.builder().id(42L).section(section).position(1).kind(ReportBlockKind.TABLE)
+                .columns(List.of("Customer", "Orders")).build();
+        ReportClaim orders = ReportClaim.builder().id(54L).section(section).block(table).position(1).text("12").rowIndex(0).columnIndex(1)
+                .verification(ClaimVerification.SUPPORTED).build();
+        orders.getCitations().add(ReportCitation.builder().claim(orders).marker(1).type(CitationType.RECORD)
+                .collection(report.getCollection()).recordId(4711L).build());
+        table.getClaims().addAll(List.of(
+                ReportClaim.builder().id(53L).section(section).block(table).position(0).text("Kessler").rowIndex(0).columnIndex(0)
+                        .verification(ClaimVerification.SUPPORTED).build(),
+                orders,
+                ReportClaim.builder().id(55L).section(section).block(table).position(2).text("Moreau").rowIndex(1).columnIndex(0)
+                        .verification(ClaimVerification.SUPPORTED).build(),
+                ReportClaim.builder().id(56L).section(section).block(table).position(3).text("").rowIndex(1).columnIndex(1)
+                        .verification(ClaimVerification.SUPPORTED).build()));
+        section.getBlocks().addAll(List.of(list, table));
+        report.getSections().add(section);
+
+        ReportDto dto = ReportMapper.toDto(report, List.of(), CURRENT);
+
+        var mapped = dto.getSections().getFirst();
+        assertThat(mapped.getType()).isEqualTo(ReportSectionType.CUSTOM);
+        assertThat(mapped.getBlocks()).extracting(ReportBlockDto::getType).containsExactly(ReportBlockType.BULLETS, ReportBlockType.TABLE);
+        assertThat(mapped.getBlocks().getFirst().getItems()).extracting(ReportClaimDto::getText).containsExactly("Kessler orders most.");
+        var mappedTable = mapped.getBlocks().get(1);
+        assertThat(mappedTable.getColumns()).containsExactly("Customer", "Orders");
+        assertThat(mappedTable.getRows()).hasSize(2);
+        assertThat(mappedTable.getRows().getFirst()).extracting(ReportClaimDto::getText).containsExactly("Kessler", "12");
+        assertThat(mappedTable.getRows().getFirst().get(1).getMarkers()).containsExactly(1);
+        assertThat(dto.getSources()).extracting(ReportSourceDto::getMarker).containsExactly(1);
+        assertThat(ReportMapper.toSummary(report, 0).getSummary()).as("the first sentence of any block").isEqualTo("Kessler orders most.");
     }
 
     @Test

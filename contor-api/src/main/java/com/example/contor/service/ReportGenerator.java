@@ -14,6 +14,8 @@ import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.FindingSeverity;
 import com.example.contor.domain.Report;
+import com.example.contor.domain.ReportBlock;
+import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
@@ -35,20 +37,23 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
- * Generates one report on the AI thread: collect the sources ({@link ReportScopeService}), let the model answer the
- * request ({@link ReportModelService}) and store every sentence as written, with references to its sources where it
- * has any ({@link References}) — nothing is verified or removed, except a sentence that repeats an earlier one (also one
- * the report already said, for a follow-up). The first section is the answer ("Answer", or "Summary" without a request);
- * the timeline is built from the record's dated sources without the model (not for a follow-up: its report has it). Never throws: a failure marks the report
- * FAILED.
+ * Generates one report on the AI thread: collect the sources ({@link ReportScopeService}), let the model write the
+ * document ({@link ReportModelService}) and store its sections and blocks (paragraphs, lists, quotes, tables) as
+ * written, each sentence, list item and table cell with references to its sources where it has any
+ * ({@link References}). Nothing is verified or removed, except a sentence or list item that repeats an earlier one
+ * (also one the report already said, for a follow-up). The text before the first heading is the answer ("Answer", or
+ * "Summary" without a request); the timeline is built from the record's dated sources without the model, when the
+ * model asks for it or there is no request (never for a follow-up: its report has it). Never throws: a failure marks
+ * the report FAILED.
  */
 @Slf4j
 @Service
@@ -57,7 +62,9 @@ public class ReportGenerator {
     static final int MAX_TIMELINE = 15;
     private static final int PARAGRAPH_QUOTE_CHARS = 300;
     private static final int TIMELINE_QUOTE_CHARS = 160;
-    private static final String FINDINGS_TITLE = "Key findings";
+    /** A section the model wrote as a timeline itself; the record's timeline is then not added a second time. */
+    private static final Pattern OWN_TIMELINE = Pattern.compile("(?i)timeline|chronolog|zeitverlauf|zeitachse|zeitstrahl");
+    private static final Pattern QUOTE_MARKS = Pattern.compile("^[\\s\"'„“”‚‘’«»]+|[\\s\"'„“”‚‘’«»]+$");
 
     private final ReportRepository reportRepository;
     private final CollectionRepository collectionRepository;
@@ -87,8 +94,12 @@ public class ReportGenerator {
     /** What a run needs from the stored report, read in one transaction. */
     private record Job(ReportScope scope, String prompt, AppUser.AppUserId owner, List<String> earlier, boolean followUp) {}
 
-    /** One sentence of the answer, where it goes and what it refers to. */
-    private record Sentence(ReportSectionKind kind, String sectionTitle, int finding, References.Resolved resolved) {}
+    /** A section to store: its blocks with resolved references. */
+    private record Planned(ReportSectionKind kind, String title, List<PlannedBlock> blocks) {}
+
+    /** A block to store; {@code items} for everything but tables, {@code rows} for tables. */
+    private record PlannedBlock(ReportBlockKind kind, List<String> columns, List<References.Resolved> items,
+                                List<List<References.Resolved>> rows) {}
 
     public void generate(Long reportId) {
         try {
@@ -105,12 +116,10 @@ public class ReportGenerator {
             EvidencePack pack = reportScopeService.collect(job.scope(), prompt, job.owner(), mailAccess);
             update(reportId, report -> report.setStatus(ReportStatus.DRAFTING));
             ReportDraft draft = reportModelService.draft(pack, prompt, job.earlier());
-            List<Sentence> sentences = sentences(draft, prompt.isBlank(), job.earlier(), pack);
-            Map<Integer, List<References.Quote>> quotes = new HashMap<>();
-            for (int i = 0; i < draft.findings().size(); i++) {
-                quotes.put(i, References.resolve("", List.of(), draft.findings().get(i).quotes(), pack).quotes());
-            }
-            transactions.executeWithoutResult(status -> store(reportId, job, draft, sentences, quotes, pack));
+            List<Planned> planned = plan(draft, prompt.isBlank(), job.earlier(), pack);
+            boolean ownTimeline = planned.stream().anyMatch(section -> OWN_TIMELINE.matcher(section.title()).find());
+            boolean timeline = !job.followUp() && !ownTimeline && (draft.timeline() || prompt.isBlank());
+            transactions.executeWithoutResult(status -> store(reportId, job, draft, planned, timeline, pack));
         } catch (RuntimeException | LinkageError e) {
             // A LinkageError (e.g. a class file replaced by a rebuild while running) must not leave the report in progress.
             log.warn("Report {} failed: {}", reportId, e.getClass().getSimpleName());
@@ -126,67 +135,89 @@ public class ReportGenerator {
         }
     }
 
-    /** The drafted sentences in reading order with their references; repeats (also of {@code earlier}) are left out. */
-    private static List<Sentence> sentences(ReportDraft draft, boolean noRequest, List<String> earlier, EvidencePack pack) {
+    /**
+     * The drafted sections with their references, in reading order. A sentence or list item that repeats an earlier
+     * one (also of {@code earlier}) is left out; table cells are kept as they are. Empty blocks and sections go.
+     */
+    private static List<Planned> plan(ReportDraft draft, boolean noRequest, List<String> earlier, EvidencePack pack) {
         Set<String> said = new HashSet<>();
         earlier.forEach(text -> said.add(EmailParagraphs.normalize(text)));
-        List<Sentence> sentences = new ArrayList<>();
-        String answerTitle = noRequest ? "Summary" : "Answer";
-        draft.summary().forEach(claim -> add(sentences, said, pack, ReportSectionKind.SUMMARY, answerTitle, -1, claim));
-        for (int i = 0; i < draft.findings().size(); i++) {
-            int finding = i;
-            draft.findings().get(i).claims().forEach(claim -> add(sentences, said, pack, ReportSectionKind.FINDINGS, FINDINGS_TITLE, finding, claim));
+        List<Planned> sections = new ArrayList<>();
+        for (int i = 0; i < draft.sections().size(); i++) {
+            ReportDraft.Section section = draft.sections().get(i);
+            List<PlannedBlock> blocks = new ArrayList<>();
+            for (ReportDraft.Block block : section.blocks()) {
+                if (block.kind() == ReportBlockKind.TABLE) {
+                    List<List<References.Resolved>> rows = block.rows().stream()
+                            .map(row -> row.stream().map(cell -> References.resolve(cell.text(), cell.refs(), List.of(), pack)).toList())
+                            .toList();
+                    if (!rows.isEmpty()) {
+                        blocks.add(new PlannedBlock(block.kind(), block.columns(), List.of(), rows));
+                    }
+                    continue;
+                }
+                List<References.Resolved> items = new ArrayList<>();
+                for (ReportDraft.Claim item : block.items()) {
+                    References.Resolved resolved = References.resolve(item.text(), item.refs(), quotes(block.kind(), item), pack);
+                    if (!resolved.text().isBlank() && said.add(EmailParagraphs.normalize(resolved.text()))) {
+                        items.add(resolved);
+                    }
+                }
+                if (!items.isEmpty()) {
+                    blocks.add(new PlannedBlock(block.kind(), List.of(), items, List.of()));
+                }
+            }
+            if (blocks.isEmpty()) {
+                continue;
+            }
+            boolean answer = i == 0 && section.title().isBlank();
+            String title = answer ? (noRequest ? "Summary" : "Answer") : section.title();
+            sections.add(new Planned(answer ? ReportSectionKind.SUMMARY : ReportSectionKind.CUSTOM, title, blocks));
         }
-        draft.openQuestions().forEach(claim -> add(sentences, said, pack, ReportSectionKind.OPEN_QUESTIONS, "Open questions", -1, claim));
-        draft.nextSteps().forEach(claim -> add(sentences, said, pack, ReportSectionKind.NEXT_STEPS, "Recommendations and next steps", -1, claim));
-        draft.customSections().forEach(section ->
-                section.claims().forEach(claim -> add(sentences, said, pack, ReportSectionKind.CUSTOM, section.title(), -1, claim)));
-        return sentences;
+        return sections;
     }
 
-    private static void add(List<Sentence> sentences, Set<String> said, EvidencePack pack, ReportSectionKind kind, String title,
-                            int finding, ReportDraft.Claim claim) {
-        References.Resolved resolved = References.resolve(claim.text(), claim.refs(), List.of(), pack);
-        if (!resolved.text().isBlank() && said.add(EmailParagraphs.normalize(resolved.text()))) {
-            sentences.add(new Sentence(kind, title, finding, resolved));
+    /** A quote block quotes the paragraphs it cites; {@link References} keeps the quote where it is verbatim. */
+    private static List<References.Quote> quotes(ReportBlockKind kind, ReportDraft.Claim item) {
+        if (kind != ReportBlockKind.QUOTE) {
+            return List.of();
         }
+        String text = QUOTE_MARKS.matcher(item.text()).replaceAll("").strip();
+        return item.refs().stream().map(ref -> new References.Quote(ref, text)).toList();
     }
 
-    private void store(Long reportId, Job job, ReportDraft draft, List<Sentence> sentences, Map<Integer, List<References.Quote>> quotes,
-                       EvidencePack pack) {
+    private void store(Long reportId, Job job, ReportDraft draft, List<Planned> planned, boolean withTimeline, EvidencePack pack) {
         Report report = load(reportId);
         report.getSections().clear();
         Map<String, Integer> markers = new HashMap<>();
-        Map<String, ReportSection> sections = new LinkedHashMap<>();
-
-        sentences.stream().filter(sentence -> sentence.kind() == ReportSectionKind.SUMMARY)
-                .forEach(sentence -> addClaim(section(report, sections, sentence.kind(), sentence.sectionTitle()), null, sentence, pack,
-                        markers, List.of()));
-        Map<Integer, ReportFinding> findings = new LinkedHashMap<>();
-        for (Sentence sentence : sentences) {
-            if (sentence.kind() != ReportSectionKind.FINDINGS) {
-                continue;
+        int total = 0;
+        int withSource = 0;
+        for (Planned plannedSection : planned) {
+            ReportSection section = ReportSection.builder().report(report).position(report.getSections().size())
+                    .kind(plannedSection.kind()).title(plannedSection.title()).build();
+            report.getSections().add(section);
+            for (PlannedBlock plannedBlock : plannedSection.blocks()) {
+                ReportBlock block = ReportBlock.builder().section(section).position(section.getBlocks().size()).kind(plannedBlock.kind())
+                        .columns(plannedBlock.columns().isEmpty() ? null : plannedBlock.columns()).build();
+                section.getBlocks().add(block);
+                for (References.Resolved item : plannedBlock.items()) {
+                    addClaim(block, item, null, null, pack, markers);
+                    total++;
+                    withSource += item.refs().isEmpty() ? 0 : 1;
+                }
+                for (int row = 0; row < plannedBlock.rows().size(); row++) {
+                    List<References.Resolved> cells = plannedBlock.rows().get(row);
+                    for (int column = 0; column < cells.size(); column++) {
+                        addClaim(block, cells.get(column), row, column, pack, markers);
+                    }
+                    total++;
+                    withSource += cells.stream().anyMatch(cell -> !cell.refs().isEmpty()) ? 1 : 0;
+                }
             }
-            ReportSection section = section(report, sections, sentence.kind(), sentence.sectionTitle());
-            ReportFinding finding = findings.get(sentence.finding());
-            List<References.Quote> supporting = List.of();
-            if (finding == null) {
-                ReportDraft.Finding drafted = draft.findings().get(sentence.finding());
-                finding = ReportFinding.builder().section(section).position(section.getFindings().size())
-                        .title(drafted.title()).severity(drafted.severity()).build();
-                section.getFindings().add(finding);
-                findings.put(sentence.finding(), finding);
-                supporting = quotes.getOrDefault(sentence.finding(), List.of());
-            }
-            addClaim(section, finding, sentence, pack, markers, supporting);
         }
-        if (!job.followUp()) {
-            timeline(report, sections, pack, markers);
+        if (withTimeline) {
+            timeline(report, pack, markers);
         }
-        sentences.stream()
-                .filter(sentence -> sentence.kind() != ReportSectionKind.SUMMARY && sentence.kind() != ReportSectionKind.FINDINGS)
-                .forEach(sentence -> addClaim(section(report, sections, sentence.kind(), sentence.sectionTitle()), null, sentence, pack,
-                        markers, List.of()));
 
         String anchorTitle = pack.sources().isEmpty() ? null : pack.sources().getFirst().recordTitle();
         report.setTitle(!draft.title().isBlank() ? draft.title() : anchorTitle);
@@ -195,8 +226,8 @@ public class ReportGenerator {
         report.setFailureReason(null);
         report.setModel(reportModelService.model());
         report.setPromptVersion(ReportModelService.PROMPT_VERSION);
-        report.setClaimsTotal(sentences.size());
-        report.setClaimsVerified((int) sentences.stream().filter(sentence -> !sentence.resolved().refs().isEmpty()).count());
+        report.setClaimsTotal(total);
+        report.setClaimsVerified(withSource);
         report.setClaimsRemoved(0);
         report.setGeneratedAt(clock.instant());
         reportRepository.saveAndFlush(report);
@@ -207,12 +238,14 @@ public class ReportGenerator {
     }
 
     /** One finding per dated source of the record (date fields, the first paragraph of each email), oldest first. */
-    private void timeline(Report report, Map<String, ReportSection> sections, EvidencePack pack, Map<String, Integer> markers) {
+    private void timeline(Report report, EvidencePack pack, Map<String, Integer> markers) {
         List<Source> events = pack.timeline().stream().limit(MAX_TIMELINE).toList();
         if (events.isEmpty()) {
             return;
         }
-        ReportSection section = section(report, sections, ReportSectionKind.TIMELINE, "Timeline");
+        ReportSection section = ReportSection.builder().report(report).position(report.getSections().size())
+                .kind(ReportSectionKind.TIMELINE).title("Timeline").build();
+        report.getSections().add(section);
         for (Source event : events) {
             ReportFinding finding = ReportFinding.builder().section(section).position(section.getFindings().size())
                     .title(event.date().toString()).severity(FindingSeverity.NEUTRAL)
@@ -227,26 +260,16 @@ public class ReportGenerator {
         }
     }
 
-    private static ReportSection section(Report report, Map<String, ReportSection> sections, ReportSectionKind kind, String title) {
-        return sections.computeIfAbsent(kind + "/" + title, key -> {
-            ReportSection section = ReportSection.builder().report(report).position(sections.size()).kind(kind).title(title).build();
-            report.getSections().add(section);
-            return section;
-        });
-    }
-
-    private void addClaim(ReportSection section, ReportFinding finding, Sentence sentence, EvidencePack pack, Map<String, Integer> markers,
-                          List<References.Quote> supporting) {
-        List<ReportClaim> claims = finding != null ? finding.getClaims() : section.getClaims();
-        ReportClaim claim = ReportClaim.builder().section(section).finding(finding).position(claims.size()).text(sentence.resolved().text())
-                .verification(ClaimVerification.SUPPORTED).build();
-        for (String token : sentence.resolved().refs()) {
-            pack.source(token).ifPresent(source -> claim.getCitations().add(citation(claim, source, null, false, markers)));
+    private void addClaim(ReportBlock block, References.Resolved resolved, Integer row, Integer column, EvidencePack pack,
+                          Map<String, Integer> markers) {
+        ReportClaim claim = ReportClaim.builder().section(block.getSection()).block(block).position(block.getClaims().size())
+                .text(resolved.text()).rowIndex(row).columnIndex(column).verification(ClaimVerification.SUPPORTED).build();
+        Map<String, String> quoted = new HashMap<>();
+        resolved.quotes().forEach(quote -> quoted.putIfAbsent(quote.token(), quote.text()));
+        for (String token : resolved.refs()) {
+            pack.source(token).ifPresent(source -> claim.getCitations().add(citation(claim, source, quoted.get(token), false, markers)));
         }
-        for (References.Quote quote : supporting) {
-            claim.getCitations().add(citation(claim, pack.source(quote.token()).orElseThrow(), quote.text(), true, markers));
-        }
-        claims.add(claim);
+        block.getClaims().add(claim);
     }
 
     private ReportCitation citation(ReportClaim claim, Source source, String quote, boolean supporting, Map<String, Integer> markers) {
@@ -274,7 +297,7 @@ public class ReportGenerator {
         return citation.build();
     }
 
-    /** The sentences of a report, for a follow-up question about it. */
+    /** The sentences, list items and table rows of a report, for a follow-up question about it. */
     private static List<String> sentences(Report report) {
         List<String> sentences = new ArrayList<>();
         for (ReportSection section : report.getSections()) {
@@ -286,6 +309,15 @@ public class ReportGenerator {
             section.getFindings().forEach(finding -> finding.getClaims().stream()
                     .filter(claim -> claim.getVerification() != ClaimVerification.REMOVED)
                     .forEach(claim -> sentences.add(claim.getText())));
+            for (ReportBlock block : section.getBlocks()) {
+                if (block.getKind() != ReportBlockKind.TABLE) {
+                    block.getClaims().forEach(claim -> sentences.add(claim.getText()));
+                    continue;
+                }
+                Map<Integer, List<String>> rows = new TreeMap<>();
+                block.getClaims().forEach(cell -> rows.computeIfAbsent(cell.getRowIndex(), row -> new ArrayList<>()).add(cell.getText()));
+                rows.values().forEach(cells -> sentences.add(String.join(" | ", cells)));
+            }
         }
         return sentences;
     }

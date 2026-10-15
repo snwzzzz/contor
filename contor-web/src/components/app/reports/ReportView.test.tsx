@@ -26,11 +26,11 @@ const report = {
   generatedAt: "2026-10-14T10:01:00Z",
   sections: [
     {
-      id: 1, type: "SUMMARY", title: "Executive summary", findings: [],
+      id: 1, type: "SUMMARY", title: "Executive summary", findings: [], blocks: [],
       claims: [{ id: 11, text: "The order was due on 2026-09-02 and arrived on 2026-09-07.", check: "SUPPORTED", markers: [1, 2] }],
     },
     {
-      id: 2, type: "FINDINGS", title: "Key findings", claims: [],
+      id: 2, type: "FINDINGS", title: "Key findings", claims: [], blocks: [],
       findings: [{
         id: 21, title: "Customs hold", level: "PROBLEM",
         claims: [{ id: 13, text: "The shipment was held at customs.", check: "REPAIRED", note: "Was: \"It was lost.\"", markers: [3] }],
@@ -76,6 +76,37 @@ describe("ReportView", () => {
     expect(screen.queryByText("The carrier apologised.")).not.toBeInTheDocument();
   });
 
+  it("renders the document: lists, tables, quotes and emphasis with their markers", async () => {
+    const claim = (id: number, text: string, markers: number[] = []) => ({ id, text, check: "SUPPORTED", markers });
+    const document = {
+      id: 7, type: "CUSTOM", title: "Possible causes", claims: [], findings: [],
+      blocks: [
+        { id: 71, type: "NUMBERED", columns: [], rows: [], items: [claim(711, "**Packaging:** the box was too weak.", [3]), claim(712, "Rough handling.")] },
+        { id: 72, type: "TABLE", columns: ["Customer", "Orders"], items: [],
+          rows: [[claim(721, "Kessler"), claim(722, "12", [1])], [claim(723, "Moreau"), claim(724, "")]] },
+        { id: 73, type: "QUOTE", columns: [], rows: [], items: [claim(731, "„held at customs“", [3])] },
+        { id: 74, type: "BULLETS", columns: [], rows: [], items: [claim(741, "Check the packing station.")] },
+      ],
+    };
+    mockApi({ "GET /api/reports/5": { body: { ...report, sections: [...report.sections, document] } } });
+
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
+
+    const section = await screen.findByRole("region", { name: "Possible causes" });
+    const [numbered, bullets] = within(section).getAllByRole("list");
+    expect(numbered?.tagName).toBe("OL");
+    expect(within(numbered!).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(numbered!).getByText("Packaging:", { selector: "strong" })).toBeInTheDocument();
+    expect(within(numbered!).getByRole("button", { name: "Source 3: Delay notice" })).toBeInTheDocument();
+    expect(bullets?.tagName).toBe("UL");
+    const table = within(section).getByRole("table");
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Customer", "Orders"]);
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    const orders = within(table).getByRole("cell", { name: /12/ });
+    expect(within(orders).getByRole("button", { name: "Source 1: Expected delivery" })).toBeInTheDocument();
+    expect(within(section).getByText("„held at customs“", { selector: "blockquote *" })).toBeInTheDocument();
+  });
+
   it("opens a source with its exact place when its marker is clicked", async () => {
     mockApi({ "GET /api/reports/5": { body: report }, "GET /api/emails/7/paragraphs": { body: paragraphs } });
     const user = userEvent.setup();
@@ -118,7 +149,7 @@ describe("ReportView", () => {
 
   it("shows the follow-up answers below the report", async () => {
     const followUp = { ...report, id: 6, parentReportId: 5, prompt: "Who caused the delay?", title: "Delay", removedClaims: [],
-      sections: [{ id: 9, type: "SUMMARY", title: "Executive summary", findings: [],
+      sections: [{ id: 9, type: "SUMMARY", title: "Executive summary", findings: [], blocks: [],
         claims: [{ id: 91, text: "The customs office held the shipment.", check: "SUPPORTED", markers: [1] }] }],
       sources: [report.sources[2] && { ...report.sources[2], marker: 1 }] };
     mockApi({ "GET /api/reports/5": { body: { ...report, followUps: [followUp] } } });
@@ -130,7 +161,7 @@ describe("ReportView", () => {
   });
 
   it("marks recommendations as the assistant's suggestions", async () => {
-    const advice = { id: 4, type: "NEXT_STEPS", title: "Recommendations and next steps", findings: [],
+    const advice = { id: 4, type: "NEXT_STEPS", title: "Recommendations and next steps", findings: [], blocks: [],
       claims: [{ id: 41, text: "Agree on a backup carrier for urgent deliveries.", check: "SUPPORTED", markers: [3] }] };
     mockApi({ "GET /api/reports/5": { body: { ...report, sections: [...report.sections, advice] } } });
 
