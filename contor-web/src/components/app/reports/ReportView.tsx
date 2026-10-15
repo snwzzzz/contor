@@ -1,10 +1,10 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Sparkles, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import {
@@ -47,8 +47,9 @@ function quotesOf(report: ReportDto): Map<number, string> {
 }
 
 /**
- * One report as a page: header with the request and how many sentences have a source, the sections with their source
- * markers, the follow-up answers and a follow-up prompt; next to it the sources panel, where a clicked
+ * One report as a page, read like a conversation: header with how many sentences have a source, then each question the
+ * user asked (the request, then the follow-ups) as their own message and the assistant's answer below it, its sections
+ * with their source markers, and a follow-up prompt; next to it the sources panel, where a clicked
  * marker shows exactly what was cited (the field value, the email paragraph with the quote marked) and links there.
  */
 export function ReportView({ collectionId, recordId, reportId }: { collectionId: number; recordId: number; reportId: number }) {
@@ -97,7 +98,6 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
       <header className="grid gap-2 border-b pb-5">
         <h1 className="text-2xl font-semibold tracking-tight">{report.title ?? "Report"}</h1>
-        {report.prompt ? <p className="text-sm text-muted-foreground">{report.prompt}</p> : null}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span>{DATE_FORMAT.format(new Date(report.generatedAt ?? report.createdAt))}</span>
           <span>{report.records.length} {report.records.length === 1 ? "record" : "records"}</span>
@@ -133,14 +133,21 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid content-start gap-8">
-          <ReportState report={report} />
-          <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
+          {report.prompt ? <Question>{report.prompt}</Question> : null}
+          <Answer>
+            <ReportState report={report} />
+            <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
+          </Answer>
           {report.followUps.map((followUp) => (
-            <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-4 border-t pt-6">
-              <h2 id={`follow-up-${followUp.id}`} className="text-base font-semibold">{followUp.prompt ?? "Follow-up"}</h2>
-              <ReportState report={followUp} />
-              <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
-                onSelect={select(followUp.id)} />
+            <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-6 border-t pt-6">
+              <Question>
+                <h2 id={`follow-up-${followUp.id}`} className="font-medium">{followUp.prompt ?? "Follow-up"}</h2>
+              </Question>
+              <Answer>
+                <ReportState report={followUp} />
+                <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
+                  onSelect={select(followUp.id)} />
+              </Answer>
             </section>
           ))}
           <ReportPrompt
@@ -160,6 +167,31 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
         />
       </div>
     </article>
+  );
+}
+
+/** What the user asked, as their own message on the right. */
+function Question({ children }: { children: ReactNode }) {
+  return (
+    <section aria-label="Your question" className="flex justify-end">
+      <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+        <div className="min-w-0 break-words">{children}</div>
+        <UserRound className="mt-0.5 size-4 shrink-0 opacity-80" aria-hidden="true" />
+      </div>
+    </section>
+  );
+}
+
+/** The assistant's answer: labelled and set off by an accent line, so it never reads as the user's words. */
+function Answer({ children }: { children: ReactNode }) {
+  return (
+    <section aria-label="Assistant's answer" className="grid gap-4 border-l-2 border-primary/30 pl-4 sm:pl-5">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+        Assistant
+      </p>
+      <div className="grid gap-8">{children}</div>
+    </section>
   );
 }
 
