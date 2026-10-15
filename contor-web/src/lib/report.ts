@@ -7,7 +7,7 @@ export const REPORT_POLL_MS = 2000;
 const GENERATING: ReadonlySet<ReportState> = new Set<ReportState>(["QUEUED", "COLLECTING", "DRAFTING", "FACT_CHECKING"]);
 
 /** What the assistant is doing in each state, for the progress line. */
-export const REPORT_STEP: Record<ReportState, string> = {
+const REPORT_STEP: Record<ReportState, string> = {
   QUEUED: "Waiting for the assistant…",
   COLLECTING: "Collecting the record, its connections and emails…",
   DRAFTING: "Writing the report…",
@@ -16,12 +16,20 @@ export const REPORT_STEP: Record<ReportState, string> = {
   FAILED: "Failed",
 };
 
+/** The progress line of a report; a report over a whole collection collects by computing its figures. */
+export function reportStep(state: ReportState, collection: boolean): string {
+  return collection && state === "COLLECTING" ? "Choosing and computing the figures…" : REPORT_STEP[state];
+}
+
 export function isGenerating(state: ReportState): boolean {
   return GENERATING.has(state);
 }
 
-export function reportHref(collectionId: number, recordId: number, reportId: number): string {
-  return `/collections/${collectionId}/records/${recordId}/reports/${reportId}`;
+/** The report page: below its record, or below its collection for a report over the whole collection. */
+export function reportHref(collectionId: number, recordId: number | undefined, reportId: number): string {
+  return recordId === undefined
+    ? `/collections/${collectionId}/reports/${reportId}`
+    : `/collections/${collectionId}/records/${recordId}/reports/${reportId}`;
 }
 
 /** The exact place of a source in contor; none for sources that are gone or in another user's mailbox. */

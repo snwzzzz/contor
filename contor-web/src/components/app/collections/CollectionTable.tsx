@@ -8,6 +8,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { PageHeader } from "@/components/app/PageHeader";
+import { CollectionReports } from "@/components/app/reports/CollectionReports";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -134,6 +135,9 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
   return (
     <>
       <PageHeader icon={Database} tint={collectionTintNumber(collection.id, collection.slug)} title={collection.name} description={collection.description} />
+
+      <CollectionReports collectionId={collectionId} collectionName={collection.name} filters={apiFilters} search={query}
+        matching={records?.totalElements} />
 
       <section className="grid min-h-0 gap-2">
         <div className="flex flex-wrap items-center gap-2">

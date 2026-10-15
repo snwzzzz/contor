@@ -1,6 +1,9 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.CollectionPlan;
+import com.example.contor.ai.EvidencePack;
 import com.example.contor.api.model.RecordDto;
+import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
@@ -70,6 +73,8 @@ class ReportScopeServiceTest {
     private RecordService recordService;
     @Mock
     private EmailEmbeddingRepository emailEmbeddingRepository;
+    @Mock
+    private CollectionAnalysisService collectionAnalysisService;
     @Spy
     private AiProperties aiProperties = new AiProperties(null, new AiProperties.Models("router", "extractor", "embedder"), null,
             ZoneId.of("Europe/Berlin"));
@@ -181,6 +186,33 @@ class ReportScopeServiceTest {
         assertThat(pack.emailIds()).isEmpty();
         verify(recordSourceRepository, never()).findByCollection_IdAndRecordId(any(), eq(4711L));
         verify(emailEmbeddingRepository, never()).findNearest(any(), any(), any(), any(), any(), anyDouble(), anyInt());
+    }
+
+    @Test
+    void collectCollection_PacksTheFiguresTheOverviewAndTheRecordsThatFit() {
+        var scope = new ReportScope.CollectionScope(List.of("expected_delivery:notempty"), null);
+        var plan = new CollectionPlan(List.of(new CollectionPlan.Analysis("Late", "orders", "", "count", false, 5, List.of())));
+        var analysis = new EvidencePack.AnalysisInput("Late orders", "3 Orders, all together, counted", List.of("#", "All", "Orders"), 2,
+                List.of(new EvidencePack.AnalysisRow(List.of("1", "All matching records", "3"), List.of())), null);
+        when(collectionAnalysisService.run(plan, 1L, scope)).thenReturn(List.of(analysis));
+        when(collectionAnalysisService.overview(1L, scope)).thenReturn("Overview of Orders:\nOrders: 3 records");
+        when(recordService.listRecords(1L, scope.filters(), null, null, 0, ReportScopeService.COLLECTION_RECORDS)).thenReturn(new RecordPageDto(
+                new ArrayList<>(List.of(recordDto(orders, 4712L, "Order 4712", Map.of("expected_delivery", "2026-09-05")),
+                        recordDto(orders, 4711L, "Order 4711", Map.of()))), 0, ReportScopeService.COLLECTION_RECORDS, 3L, 1));
+
+        EvidencePack pack = reportScopeService.collectCollection(1L, scope, plan, "How many are late?");
+
+        assertThat(pack.analyses()).containsExactly(analysis);
+        assertThat(pack.render()).startsWith("Figures computed by the app").contains("[A1] Late orders", "Overview of Orders:",
+                "Records of Orders (newest first, 2 of 3 matching records):", "[R1] Orders: Order 4712",
+                "[F1] Order 4712 · Expected delivery = 2026-09-05", "[R2] Orders: Order 4711");
+        assertThat(pack.render()).doesNotContain("the record the report is about");
+        assertThat(pack.emailIds()).isEmpty();
+    }
+
+    private static RecordDto recordDto(Collection collection, long recordId, String title, Map<String, Object> values) {
+        return new RecordDto(recordId, collection.getId().id(), new HashMap<>(values), new HashMap<>(),
+                OffsetDateTime.of(2026, 8, 1, 0, 0, 0, 0, ZoneOffset.UTC), "USER").title(title);
     }
 
     private static Collection collection(long id, String slug, String name) {

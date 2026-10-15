@@ -9,6 +9,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import {
   getGetReportQueryKey,
+  getListCollectionReportsQueryKey,
   getListRecordReportsQueryKey,
   useAskReportQuestion,
   useDeleteReport,
@@ -16,7 +17,7 @@ import {
   useRegenerateReport,
 } from "@/lib/api/generated/endpoints/reports/reports";
 import type { ReportDto } from "@/lib/api/generated/model/reportDto";
-import { isGenerating, REPORT_POLL_MS, REPORT_STEP, reportHref, sourcesLabel } from "@/lib/report";
+import { isGenerating, REPORT_POLL_MS, reportHref, reportStep, sourcesLabel } from "@/lib/report";
 import { ReportBody } from "./ReportBody";
 import { ReportPrompt } from "./ReportPrompt";
 import { SourcePanel } from "./SourcePanel";
@@ -50,8 +51,9 @@ function quotesOf(report: ReportDto): Map<number, string> {
  * One report as a page: header with the request and how many sentences have a source, the sections with their source
  * markers, the follow-up answers and a follow-up prompt; next to it the sources panel, where a clicked
  * marker shows exactly what was cited (the field value, the email paragraph with the quote marked) and links there.
+ * Without {@code recordId} it is a report over the whole collection: its scope is the table's filters and search.
  */
-export function ReportView({ collectionId, recordId, reportId }: { collectionId: number; recordId: number; reportId: number }) {
+export function ReportView({ collectionId, recordId, reportId }: { collectionId: number; recordId?: number; reportId: number }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: report, error } = useGetReport(reportId, {
@@ -60,11 +62,16 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
   const [selection, setSelection] = useState<Selection>();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(reportId) });
+  const collection = recordId === undefined;
+  const home = collection ? `/collections/${collectionId}` : `/collections/${collectionId}/records/${recordId}`;
+  const refreshList = () => queryClient.invalidateQueries({
+    queryKey: collection ? getListCollectionReportsQueryKey(collectionId) : getListRecordReportsQueryKey(collectionId, recordId),
+  });
   const ask = useAskReportQuestion({ mutation: { onSuccess: refresh } });
   const regenerate = useRegenerateReport({
     mutation: {
       onSuccess: async (created) => {
-        await queryClient.invalidateQueries({ queryKey: getListRecordReportsQueryKey(collectionId, recordId) });
+        await refreshList();
         if (created.parentReportId === undefined) router.push(reportHref(collectionId, recordId, created.id));
         else await refresh();
       },
@@ -73,8 +80,8 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
   const remove = useDeleteReport({
     mutation: {
       onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: getListRecordReportsQueryKey(collectionId, recordId) });
-        router.push(`/collections/${collectionId}/records/${recordId}`);
+        await refreshList();
+        router.push(home);
       },
     },
   });
@@ -89,10 +96,9 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
   return (
     <article className="mx-auto grid max-w-6xl gap-6">
-      <Link href={`/collections/${collectionId}/records/${recordId}`}
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Link href={home} className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to the record
+        {collection ? "Back to the collection" : "Back to the record"}
       </Link>
 
       <header className="grid gap-2 border-b pb-5">
@@ -100,8 +106,20 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
         {report.prompt ? <p className="text-sm text-muted-foreground">{report.prompt}</p> : null}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span>{DATE_FORMAT.format(new Date(report.generatedAt ?? report.createdAt))}</span>
-          <span>{report.records.length} {report.records.length === 1 ? "record" : "records"}</span>
-          <span>{report.emailCount} {report.emailCount === 1 ? "email" : "emails"}</span>
+          {collection ? (
+            <>
+              <span>Whole collection</span>
+              {(report.filters ?? []).map((filter) => (
+                <code key={filter} className="rounded bg-muted px-1.5 py-0.5">{filter}</code>
+              ))}
+              {report.search ? <span>“{report.search}”</span> : null}
+            </>
+          ) : (
+            <>
+              <span>{report.records.length} {report.records.length === 1 ? "record" : "records"}</span>
+              <span>{report.emailCount} {report.emailCount === 1 ? "email" : "emails"}</span>
+            </>
+          )}
           {report.state === "READY" ? (
             <span className="inline-flex items-center gap-1 font-medium">
               <Link2 className="size-3.5" aria-hidden="true" />
@@ -133,12 +151,12 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid content-start gap-8">
-          <ReportState report={report} />
+          <ReportState report={report} collection={collection} />
           <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
           {report.followUps.map((followUp) => (
             <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-4 border-t pt-6">
               <h2 id={`follow-up-${followUp.id}`} className="text-base font-semibold">{followUp.prompt ?? "Follow-up"}</h2>
-              <ReportState report={followUp} />
+              <ReportState report={followUp} collection={collection} />
               <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
                 onSelect={select(followUp.id)} />
             </section>
@@ -164,12 +182,12 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 }
 
 /** Progress while the report is generated, the reason when it failed; nothing when it is ready. */
-function ReportState({ report }: { report: ReportDto }) {
+function ReportState({ report, collection }: { report: ReportDto; collection: boolean }) {
   if (isGenerating(report.state)) {
     return (
       <p role="status" className="flex items-center gap-2 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
         <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-        {REPORT_STEP[report.state]}
+        {reportStep(report.state, collection)}
       </p>
     );
   }

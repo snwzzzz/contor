@@ -13,6 +13,9 @@ public interface ReportRepository extends JpaRepository<Report, Report.ReportId>
     /** The reports started on a record (follow-ups excluded), newest first. */
     List<Report> findByCollection_IdAndRecordIdAndParentReportIsNullOrderByCreatedAtDesc(Collection.CollectionId collectionId, Long recordId);
 
+    /** The reports started on a whole collection (follow-ups excluded), newest first. */
+    List<Report> findByCollection_IdAndRecordIdIsNullAndParentReportIsNullOrderByCreatedAtDesc(Collection.CollectionId collectionId);
+
     List<Report> findByParentReport_IdOrderByCreatedAtAsc(Report.ReportId parentReportId);
 
     /** Reports in one of {@code statuses} (e.g. still being generated). */

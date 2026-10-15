@@ -16,16 +16,18 @@ import java.util.regex.Pattern;
  * removed — a sentence stays as the model wrote it; it gets a reference where there is one. Unknown references are
  * dropped, a whole email ({@code E3}) stands for its paragraphs, a quote is kept only when it is verbatim in its email
  * paragraph (so a shown quote is always real), and codes the model wrote into the text become references and readable
- * names ("Record R1 shows…" → "Order 4711 shows…", "email P2.1" → "the email “Subject”").
+ * names ("Record R1 shows…" → "Order 4711 shows…", "email P2.1" → "the email “Subject”", "A1.2" → the row's group).
  */
 public final class References {
 
+    /** A source code; a figure row ({@code A1.2}) always has its row number, so "A4 paper" is no code. */
+    private static final String CODE = "(?:(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?|A\\d+\\.\\d+)";
     /** "(P1.1, R1:F2)", "[F9]": a bracket that holds only codes. */
     private static final Pattern CODES_IN_BRACKETS = Pattern.compile(
-            "\\s*[(\\[]\\s*(?:(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?)(?:\\s*[,;/]\\s*(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?)*\\s*[)\\]]");
-    /** A code in the text, with the noun the model put before it ("record R1", "email P2.1"). */
+            "\\s*[(\\[]\\s*" + CODE + "(?:\\s*[,;/]\\s*" + CODE + ")*\\s*[)\\]]");
+    /** A code in the text, with the noun the model put before it ("record R1", "email P2.1", "row A1.2"). */
     private static final Pattern CODE_IN_TEXT = Pattern.compile(
-            "(?i)\\b(?:(?:the\\s+)?(?:record|email|e-mail|mail|field|source|connection|paragraph)\\s+)?((?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?)\\b");
+            "(?i)\\b(?:(?:the\\s+)?(?:record|email|e-mail|mail|field|source|connection|paragraph|row)\\s+)?(" + CODE + ")\\b");
     private static final Pattern SPACES = Pattern.compile("\\s{2,}");
     private static final Pattern SPACE_BEFORE_PUNCTUATION = Pattern.compile("\\s+([.,;:!?])");
 
@@ -62,7 +64,8 @@ public final class References {
         StringBuilder named = new StringBuilder();
         while (inText.find()) {
             List<String> found = pack.expand(inText.group(1));
-            String name = found.isEmpty() ? "" : name(pack.source(found.getFirst()).orElseThrow());
+            String name = pack.rowLabel(inText.group(1))
+                    .orElseGet(() -> found.isEmpty() ? "" : name(pack.source(found.getFirst()).orElseThrow()));
             inText.appendReplacement(named, Matcher.quoteReplacement(name));
         }
         inText.appendTail(named);

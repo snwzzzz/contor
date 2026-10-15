@@ -35,8 +35,8 @@ public final class ReportMarkdown {
     private static final Pattern CELL_SEPARATOR = Pattern.compile("(?<!\\\\)\\|");
     private static final Pattern SEPARATOR_CELL = Pattern.compile(":?-+:?");
 
-    /** A source token, also with its record or email in front ({@code R1:F5}, {@code E3:P3.1}). */
-    private static final String TOKEN = "(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?";
+    /** A source token, also with its record or email in front ({@code R1:F5}, {@code E3:P3.1}), or a figure row ({@code A1.2}). */
+    private static final String TOKEN = "(?:(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?|A\\d+\\.\\d+)";
     /** A bracket that holds nothing but source tokens, ranges and separators. */
     private static final Pattern INLINE_REFS = Pattern.compile("(?i)\\s*[(\\[]\\s*(" + TOKEN + "(?:\\s*-\\s*[RFLPE]?\\d+)?"
             + "(?:\\s*(?:[,;/]|\\band\\b|\\bund\\b)\\s*" + TOKEN + "(?:\\s*-\\s*[RFLPE]?\\d+)?)*)\\s*[)\\]]");

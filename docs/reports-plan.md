@@ -1,7 +1,7 @@
 # AI reports implementation plan (any record, its connections, fact-checked, cited to the paragraph)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** first slice implemented — R1–R6, R8 and R10 (tables, paragraphs, evidence pack,
+> in the same change. **Collection reports:** Part C (C1–C7) implemented. **Status:** first slice implemented — R1–R6, R8 and R10 (tables, paragraphs, evidence pack,
 > fact-checked generation, API, Details-tab prompt, report page with sources panel). Open: R7 (eval), R9 (Connections-tab
 > scope picker), R11 (deep links that highlight the cited field/paragraph on its own page), R12. Branch:
 > `feature/report-section`.
@@ -411,8 +411,83 @@ One helper `lib/report-links.ts` (+ unit tests) builds every link; all carry `re
 The first usable slice: R1–R6 + R8 + R10 without the source panel's email highlight (citations open the inbox
 at the email); R9, R11 and R7 follow.
 
+## Part C — Reports over a whole collection (C1–C7)
+
+**Why:** "list our top 5 best selling customers" or "which suppliers caused the most complaints" need figures over
+every record of a collection. A record report only sees one record, its connections and some emails, so the model
+rightly says the data is missing. A 9B model must also never rank or add up raw rows itself: it miscounts, and the
+rows do not fit the context anyway.
+
+**What the data looks like (dev dataset):** sales orders name their customer in a TEXT field (`sales_orders.customer`),
+complaints too; the Customers collection has only a few records and no relation to sales orders. So "top customers"
+is "sales orders grouped by customer, summed by total", not "customers sorted by a field". The design therefore
+groups any collection by any field (or by a relation type), not only the collection the question was asked on.
+
+### Decisions
+1. **Anchor = collection.** A collection report is a `report` row with `record_id = null` (`V1_0_31`, nullable column,
+   partial index for the collection list). Its `scope` JSON gets `collection: {filters, search}` — the table's filters
+   and search when the report was asked (same `field:op:value` syntax as `GET /records`), applied to the anchor
+   collection; `records` stays empty. Follow-ups and regenerate keep that scope. No separate anchor table: everything
+   else (sections, blocks, citations, follow-ups, the report page) is shared with record reports.
+2. **Two model calls, figures in between computed by the app.**
+   - *Plan* (`collection-plan-v1`): the model sees the request and a catalog of the collections (slug, name, fields with
+     slug/type/values, record counts) and relation types, and answers with up to 3 analyses:
+     `{title, collection, groupBy ("" = each record, a field slug, or "link:<relation type slug>"), measure ("count" or
+     "sum|avg|min|max:<field>"), order, limit (1–25), filters ["field:op:value"]}`. Model output is untrusted: unknown
+     collections, fields, wrong field types and invalid filters are dropped (an analysis without a valid collection is
+     dropped). A failed or empty plan still gives a report (overview + records).
+   - *Aggregate* (deterministic, `persistence/dynamic/DynamicAggregateRepository`, typed jOOQ fields only): group by a
+     text-like field (case and surrounding spaces ignored), a RELATION field (label = the target record's title), a
+     relation type (join over `relation`), or nothing; count, records with a value, and sum/avg/min/max per currency
+     for MONEY. Ranking, top-N and ties are done in Java (`service/CollectionAnalysisService`): by the measure in the
+     currency most rows use (amounts are never converted), then by count, then label. An overview of the anchor
+     collection (record count, values of ENUM/STATUS fields, sums of MONEY/NUMBER fields) is always computed.
+   - *Draft* (`collection-report-v1`): the same Markdown document as record reports, over the figures, the overview and
+     as many of the anchor's records as fit the budget.
+3. **Figures are cited per row and inserted by the app.** Each analysis row has a token `A1.3`; it stands for the
+   records the row aggregates (FIELD citations with the value when a field was measured, else RECORD citations; at
+   most 20 per row, the rest named as "and n more" in the pack). The model writes `{{A1}}` on its own line where the
+   table belongs; the app replaces it with the exact table (rank, group, count, measure), the row's records cited on
+   its measure cell. So a ranking in a report is always the computed one, never a copy the model may have changed.
+   Tables the model writes itself still work (cells citing `A1.2` get that row's records).
+4. **No emails in collection reports** (first slice): the question is about the data. Follow-ups work as for records.
+5. **API:** `GET|POST /api/collections/{collectionId}/reports` (`listCollectionReports`, `createCollectionReport` with
+   `NewCollectionReportCommand {prompt, filters[], search}`), `ReportDto.recordId` optional, `ReportDto.filters` and
+   `search` for the scope; all other report endpoints are shared.
+6. **UI:** "Ask about this collection" on the collection page (above the table, with the table's current filters and
+   search as the scope and a hint when they narrow it), the list of the collection's reports, and the report page at
+   `/collections/{c}/reports/{id}` (the same `ReportView`, back link to the collection, no timeline).
+
+**Status (2026-10-15): C1–C7 implemented** on `feature/collection-reports`. Refinements found while building:
+- `groupBy` has `""` (all records together, one row) and `each` (every record ranked by the measured field) besides
+  fields and `link:`; a group's label is the oldest record's spelling; empty selections give an empty bucket (a `None`
+  aggregate over an empty table returned `array_agg = NULL` and failed the report — found live, fixed with a test).
+- `[A1]` written inside a sentence is treated like `{{A1}}`: the code leaves the text and the table follows the block.
+- Prompt `collection-report-v2`: v1 described "top customers" summed from 27 sales orders as covering "only two
+  customer records" (the Customers collection in view); v2 says figures may come from another collection.
+- Live (qwen3.5:9b, seeded business data, 9–25 s per report): "top 5 best selling customers" on Customers sums sales
+  orders per customer — the ranking matches SQL (Kessler 7040.5 EUR from 3 orders incl. a "kessler maschinenbau gmbh "
+  spelling, Dijkstra 3652.5, Delacroix 3300, Moreau 3264, Thiele 1314), every row cites its orders. "Which customers
+  have the most complaints?" (from the UI) ranks correctly with cited complaints. "Which suppliers caused the most
+  complaints?" answers that complaints record no supplier and shows the counts per customer instead. A pro/con list of
+  the order book gives Pros/Cons/Recommendations sections. Known model slips: the pro/con miscounted "active" orders
+  from the overview (6 instead of 7), and the supplier answer announced a table its plan had not asked for; Steiner's
+  CHF orders (7768 CHF) rank after the EUR customers and the answer did not mention them.
+
+### Steps
+| Step | What | Tests |
+|---|---|---|
+| C1 | `V1_0_31` (nullable `record_id`, index), `ReportScope.collection`, `Report.recordId` nullable | `ReportScopeTest`, `ReportRepositoryTest` |
+| C2 | Spec: two endpoints, `NewCollectionReportCommand`, DTO fields → regenerate | controller test |
+| C3 | `DynamicAggregateRepository` (group by column / relation type / nothing, per currency) | `@DynamicTableTest` |
+| C4 | `ai/CollectionPlan` (parse), `CollectionAnalysisService` (catalog, validate, run, overview, ranking) | unit tests |
+| C5 | `EvidencePack` analyses + `A` tokens, `References`, `ReportModelService.plan/draftCollection`, `ReportGenerator` (`{{A1}}` tables, no timeline), `ReportScopeService.collectCollection` | unit tests |
+| C6 | `ReportService.createCollectionReport/listCollectionReports`, controller | service + controller tests |
+| C7 | Web: `CollectionReports` on the collection page, report route, `ReportView` for collection reports | Vitest |
+
 ## Later (not in this plan)
-- Reports across a whole collection or a filtered table (same pipeline, scope = a filter, map-reduce over chunks).
+- Collection reports with emails (embedding search over the prompt), date grouping (per month), two-level joins
+  (complaints → purchase order → supplier) and map-reduce over records that do not fit the budget.
 - Streaming the draft while it is written; export as PDF; turning a next step into a to-do (INSIGHT follow-up shape).
 - Citations to attachments (needs attachment text extraction) and to calendar entries.
 

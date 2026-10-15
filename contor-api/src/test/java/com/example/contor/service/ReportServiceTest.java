@@ -7,6 +7,9 @@ import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.RecordRefDto;
 import com.example.contor.api.model.ReportDto;
 import com.example.contor.api.model.SourceState;
+import com.example.contor.api.model.NewCollectionReportCommand;
+import com.example.contor.api.model.ReportSummaryDto;
+import com.example.contor.exception.CollectionNotFoundException;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.CitationType;
 import com.example.contor.domain.ClaimVerification;
@@ -58,6 +61,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -316,6 +320,83 @@ class ReportServiceTest {
 
         assertThrows(ReportNotFoundException.class, () -> reportService.deleteReport(5L));
         verify(reportRepository, never()).delete(any());
+    }
+
+    @Test
+    void createCollectionReport_QueuesAReportOverTheTablesView() {
+        when(collectionRepository.findById(new Collection.CollectionId(1L))).thenReturn(Optional.of(orders));
+
+        ReportDto dto = reportService.createCollectionReport(1L, new NewCollectionReportCommand().prompt(" Top 5 customers ")
+                .filters(List.of("state:eq:delivered")).search("acme"));
+
+        verify(recordService).condition(1L, List.of("state:eq:delivered"), "acme");
+        ArgumentCaptor<Report> saved = ArgumentCaptor.forClass(Report.class);
+        verify(reportRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getRecordId()).isNull();
+        assertThat(saved.getValue().getCollection()).isSameAs(orders);
+        assertThat(saved.getValue().getPrompt()).isEqualTo("Top 5 customers");
+        assertThat(saved.getValue().getScope()).isEqualTo(ReportScope.ofCollection(
+                new ReportScope.CollectionScope(List.of("state:eq:delivered"), "acme")));
+        assertThat(dto.getRecordId()).isNull();
+        assertThat(dto.getFilters()).containsExactly("state:eq:delivered");
+        assertThat(queued).hasSize(1);
+    }
+
+    @Test
+    void createCollectionReport_InvalidFilterRejected() {
+        when(collectionRepository.findById(new Collection.CollectionId(1L))).thenReturn(Optional.of(orders));
+        when(recordService.condition(1L, List.of("nope:eq:1"), null)).thenThrow(new IllegalArgumentException("Invalid filter 'nope:eq:1'"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> reportService.createCollectionReport(1L, new NewCollectionReportCommand().filters(List.of("nope:eq:1"))));
+        verify(reportRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createCollectionReport_UnknownCollectionNotFound() {
+        assertThrows(CollectionNotFoundException.class, () -> reportService.createCollectionReport(9L, new NewCollectionReportCommand()));
+        verify(reportRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createCollectionReport_AiNotReadyRejected() {
+        when(collectionRepository.findById(new Collection.CollectionId(1L))).thenReturn(Optional.of(orders));
+        when(aiModelService.isReady()).thenReturn(false);
+
+        assertThrows(AiUnavailableException.class, () -> reportService.createCollectionReport(1L, new NewCollectionReportCommand()));
+        verify(reportRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void askReportQuestion_AFollowUpOfACollectionReportKeepsItsScope() {
+        Report parent = Report.builder().id(new Report.ReportId(6L)).collection(orders).status(ReportStatus.READY).prompt("Top customers")
+                .scope(ReportScope.ofCollection(new ReportScope.CollectionScope(List.of("state:eq:delivered"), null))).build();
+        when(reportRepository.findById(new Report.ReportId(6L))).thenReturn(Optional.of(parent));
+
+        reportService.askReportQuestion(6L, new NewReportQuestionCommand("And by country?"));
+        reportService.regenerateReport(6L);
+
+        ArgumentCaptor<Report> saved = ArgumentCaptor.forClass(Report.class);
+        verify(reportRepository, times(2)).saveAndFlush(saved.capture());
+        assertThat(saved.getAllValues()).allSatisfy(report -> {
+            assertThat(report.getRecordId()).isNull();
+            assertThat(report.getScope()).isEqualTo(parent.getScope());
+        });
+    }
+
+    @Test
+    void listCollectionReports_SummariesNewestFirst() {
+        when(collectionRepository.findById(new Collection.CollectionId(1L))).thenReturn(Optional.of(orders));
+        Report report = report(ReportStatus.READY);
+        when(reportRepository.findByCollection_IdAndRecordIdIsNullAndParentReportIsNullOrderByCreatedAtDesc(new Collection.CollectionId(1L)))
+                .thenReturn(List.of(report));
+
+        assertThat(reportService.listCollectionReports(1L)).extracting(ReportSummaryDto::getId).containsExactly(5L);
+    }
+
+    @Test
+    void listCollectionReports_CollectionNotFound() {
+        assertThrows(CollectionNotFoundException.class, () -> reportService.listCollectionReports(9L));
     }
 
     private Report report(ReportStatus status) {

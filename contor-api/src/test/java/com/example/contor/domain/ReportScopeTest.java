@@ -86,4 +86,44 @@ public class ReportScopeTest {
         assertThatThrownBy(() -> new RecordRef(0L, 1L)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new RecordRef(1L, -1L)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    public void a_collection_scope_has_no_records_and_keeps_the_table_filters() {
+        var scope = ReportScope.ofCollection(new ReportScope.CollectionScope(List.of("state:eq:delivered"), " acme "));
+
+        assertThat(scope.records()).isEmpty();
+        assertThat(scope.depth()).isZero();
+        assertThat(scope.coversCollection()).isTrue();
+        assertThat(scope.collection().filters()).containsExactly("state:eq:delivered");
+        assertThat(scope.collection().search()).isEqualTo("acme");
+    }
+
+    @Test
+    public void a_collection_scope_without_filters_or_search_has_empty_ones() {
+        var collection = new ReportScope.CollectionScope(null, "  ");
+
+        assertThat(collection.filters()).isEmpty();
+        assertThat(collection.search()).isNull();
+    }
+
+    @Test
+    public void a_record_scope_is_not_a_collection_scope() {
+        assertThat(new ReportScope(List.of(new RecordRef(1L, 1L)), 0, List.of()).coversCollection()).isFalse();
+    }
+
+    @Test
+    public void a_collection_scope_rejects_too_many_or_blank_filters() {
+        var many = LongStream.rangeClosed(1, ReportScope.CollectionScope.MAX_FILTERS + 1).mapToObj(i -> "f:eq:" + i).toList();
+
+        assertThatThrownBy(() -> new ReportScope.CollectionScope(many, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ReportScope.CollectionScope(List.of(" "), null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void a_collection_scope_keeps_its_filters_without_its_emails() {
+        var scope = new ReportScope(List.of(), 0, List.of(5L), new ReportScope.CollectionScope(List.of("a:empty"), null));
+
+        assertThat(scope.withoutEmails().emailIds()).isEmpty();
+        assertThat(scope.withoutEmails().collection()).isEqualTo(scope.collection());
+    }
 }

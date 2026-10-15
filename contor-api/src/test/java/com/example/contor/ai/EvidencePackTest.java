@@ -1,9 +1,12 @@
 package com.example.contor.ai;
 
+import com.example.contor.ai.EvidencePack.AnalysisInput;
+import com.example.contor.ai.EvidencePack.AnalysisRow;
 import com.example.contor.ai.EvidencePack.EmailInput;
 import com.example.contor.ai.EvidencePack.FieldInput;
 import com.example.contor.ai.EvidencePack.RecordInput;
 import com.example.contor.ai.EvidencePack.RelationInput;
+import com.example.contor.ai.EvidencePack.RowSource;
 import com.example.contor.ai.EvidencePack.Source;
 import com.example.contor.domain.CitationType;
 import com.example.contor.domain.FieldType;
@@ -41,6 +44,68 @@ class EvidencePackTest {
         assertThat(total.text()).isEqualTo("Order 4711 · Total = 110 EUR");
         assertThat(pack.source("F1").orElseThrow().date()).isEqualTo(LocalDate.of(2026, 9, 2));
         assertThat(pack.render()).contains("[R1] Orders: Order 4711 (the record the report is about)", "[F1] Order 4711 · Expected delivery = 2026-09-02");
+    }
+
+    private static final AnalysisInput BY_CUSTOMER = new AnalysisInput("Sales orders by Customer",
+            "27 sales orders grouped by Customer, sorted by sum of Total (largest first), top 2 of 5 groups",
+            List.of("#", "Customer", "Sales orders", "Sum of Total"), 3, List.of(
+            new AnalysisRow(List.of("1", "Kessler GmbH", "2", "150.5 EUR"), List.of(
+                    new RowSource(5L, "Sales orders", 1L, "SO-1", "total", "Total", Map.of("amount", 100, "currency", "EUR")),
+                    new RowSource(5L, "Sales orders", 2L, "SO-2", "total", "Total", Map.of("amount", 50.5, "currency", "EUR")))),
+            new AnalysisRow(List.of("2", "Moreau SARL", "1", "80 CHF"), List.of(
+                    new RowSource(5L, "Sales orders", 3L, "SO-3", null, null, null)))),
+            "Amounts are not converted between currencies.");
+
+    @Test
+    void analyses_come_first_with_a_token_per_row_that_stands_for_its_records() {
+        var pack = EvidencePack.builder().analysis(BY_CUSTOMER).overview("Sales orders: 27 records").build("", EvidencePack.DEFAULT_BUDGET);
+
+        assertThat(pack.render()).startsWith("Figures computed by the app");
+        assertThat(pack.render()).contains("[A1] Sales orders by Customer: 27 sales orders grouped by Customer",
+                "  | # | Customer | Sales orders | Sum of Total |", "  [A1.1] | 1 | Kessler GmbH | 2 | 150.5 EUR |",
+                "  Amounts are not converted between currencies.", "Sales orders: 27 records");
+        assertThat(pack.render()).as("the rows' records are sources, not prompt lines").doesNotContain("SO-1");
+        assertThat(pack.expand("A1.1")).hasSize(2);
+        assertThat(pack.expand("[a1.1]")).isEqualTo(pack.expand("A1.1"));
+        assertThat(pack.expand("A1.9")).isEmpty();
+        Source first = pack.source(pack.expand("A1.1").getFirst()).orElseThrow();
+        assertThat(first.type()).isEqualTo(CitationType.FIELD);
+        assertThat(first.recordId()).isEqualTo(1L);
+        assertThat(first.recordTitle()).isEqualTo("SO-1");
+        assertThat(first.fieldSlug()).isEqualTo("total");
+        assertThat(first.value()).isEqualTo(Map.of("amount", 100, "currency", "EUR"));
+        Source record = pack.source(pack.expand("A1.2").getFirst()).orElseThrow();
+        assertThat(record.type()).isEqualTo(CitationType.RECORD);
+        assertThat(record.label()).isEqualTo("Sales orders");
+        assertThat(pack.analyses()).containsExactly(BY_CUSTOMER);
+        assertThat(pack.rowLabel("A1.2")).contains("Moreau SARL");
+    }
+
+    @Test
+    void a_row_reuses_the_source_of_a_record_already_in_the_pack() {
+        var analysis = new AnalysisInput("Orders", "1 order", List.of("#", "Order", "Total"), 2, List.of(
+                new AnalysisRow(List.of("1", "Order 4711", "110 EUR"), List.of(
+                        new RowSource(1L, "Orders", 4711L, "Order 4711", "total", "Total", Map.of("amount", 110, "currency", "EUR"))))), null);
+
+        var pack = EvidencePack.builder().analysis(analysis).record(ORDER).build("", EvidencePack.DEFAULT_BUDGET);
+
+        assertThat(pack.expand("A1.1")).containsExactly("F2");
+    }
+
+    @Test
+    void a_collection_pack_lists_records_until_the_budget_and_says_how_many_are_left_out() {
+        var builder = EvidencePack.builder().recordsHeading("Records of Orders (newest first):", true);
+        for (long id = 1; id <= 50; id++) {
+            builder.record(new RecordInput(1L, "Orders", id, "Order " + id, false, List.of(
+                    new FieldInput("notes", "Notes", FieldType.LONG_TEXT, "x".repeat(80)))));
+        }
+
+        var pack = builder.build("", 2_000);
+
+        assertThat(pack.render()).startsWith("Records of Orders (newest first):\n");
+        assertThat(pack.render().length()).isLessThanOrEqualTo(2_100);
+        assertThat(pack.render()).containsPattern("\\[\\d+ records left out]");
+        assertThat(pack.render()).doesNotContain("the record the report is about");
     }
 
     @Test

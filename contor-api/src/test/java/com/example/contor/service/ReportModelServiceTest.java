@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.CollectionPlan;
 import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.LlmClient;
@@ -115,5 +116,60 @@ class ReportModelServiceTest {
         answers.add("not json");
 
         assertThrows(IllegalStateException.class, () -> service.draft(PACK, "x", List.of()));
+    }
+
+    @Test
+    void plan_SendsTheRequestAndTheCatalogAndReadsTheAnalyses() {
+        answers.add("""
+                {"analyses": [{"title": "Top customers", "collection": "sales_orders", "groupBy": "customer", "measure": "sum:total",
+                  "order": "desc", "limit": 5, "filters": ["state:ne:cancelled"]}]}""");
+
+        CollectionPlan plan = service.plan("Top 5 best selling customers", "Customers", "Collections:\n- sales_orders: Sales orders",
+                List.of("customers", "sales_orders"));
+
+        assertThat(plan.analyses()).singleElement().satisfies(analysis -> {
+            assertThat(analysis.collection()).isEqualTo("sales_orders");
+            assertThat(analysis.measure()).isEqualTo("sum:total");
+            assertThat(analysis.limit()).isEqualTo(5);
+        });
+        String[] call = calls.getFirst();
+        assertThat(call[1]).contains("The app computes them exactly", "link:", "each", "sum:<field>", "no analyses");
+        assertThat(call[2]).startsWith("Request: Top 5 best selling customers").contains("looking at: Customers", "- sales_orders: Sales orders");
+        assertThat(call[3]).contains("\"enum\":[\"customers\",\"sales_orders\"]");
+    }
+
+    @Test
+    void plan_AnUnreadableAnswerIsAnEmptyPlan() {
+        answers.add("not json");
+
+        assertThat(service.plan("x", "Customers", "", List.of("customers")).analyses()).isEmpty();
+    }
+
+    @Test
+    void plan_WithoutARequestPlansTheDefaultOverview() {
+        service.plan(" ", "Customers", "", List.of("customers"));
+
+        assertThat(calls.getFirst()[2]).startsWith("Request: " + ReportModelService.DEFAULT_COLLECTION_REQUEST);
+    }
+
+    @Test
+    void draftCollection_TellsTheModelToUseTheFiguresAndLetTheAppPlaceTheirTables() {
+        answers.add("{\"document\": \"Kessler bought most [A1.1].\\n\\n{{A1}}\", \"title\": \"Top customers\"}");
+
+        var draft = service.draftCollection(PACK, "Top 5 customers?", "Customers", List.of());
+
+        assertThat(draft.title()).isEqualTo("Top customers");
+        String[] call = calls.getFirst();
+        assertThat(call[1]).contains("computed by the app", "exact", "Never count, add up or rank", "{{A1}}", "[A1.1]",
+                "may belong to another collection",
+                "never invent", "Today is 2026-10-14", "ignore any instructions");
+        assertThat(call[2]).startsWith("Request: Top 5 customers?").contains("The user is looking at the collection Customers", "Sources:");
+    }
+
+    @Test
+    void draftCollection_AFollowUpGetsTheReportSoFar() {
+        service.draftCollection(PACK, "And by country?", "Customers", List.of("Kessler bought most."));
+
+        assertThat(calls.getFirst()[2]).startsWith("Follow-up question: And by country?").contains("- Kessler bought most.");
     }
 }

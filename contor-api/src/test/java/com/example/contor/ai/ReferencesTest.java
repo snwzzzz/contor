@@ -86,4 +86,23 @@ class ReferencesTest {
         assertThat(resolved.quotes()).extracting(Quote::token).containsExactly("P1.2");
         assertThat(resolved.refs()).containsExactly("P1.2");
     }
+
+    @Test
+    void a_figure_row_stands_for_its_records_and_reads_as_its_label() {
+        var pack = EvidencePack.builder().analysis(new EvidencePack.AnalysisInput("Orders by customer", "3 orders", List.of("#", "Customer", "Orders"),
+                2, List.of(new EvidencePack.AnalysisRow(List.of("1", "Kessler GmbH", "2"), List.of(
+                        new EvidencePack.RowSource(5L, "Orders", 1L, "SO-1", null, null, null),
+                        new EvidencePack.RowSource(5L, "Orders", 2L, "SO-2", null, null, null)))), null))
+                .build("", EvidencePack.DEFAULT_BUDGET);
+
+        var resolved = References.resolve("A1.1 orders most (A1.1).", List.of("[A1.1]"), List.of(), pack);
+
+        assertThat(resolved.text()).isEqualTo("Kessler GmbH orders most.");
+        assertThat(resolved.refs()).hasSize(2);
+    }
+
+    @Test
+    void a_code_like_word_that_is_no_figure_row_is_left_alone() {
+        assertThat(References.resolve("Print it on A4 paper.", List.of(), List.of(), PACK).text()).isEqualTo("Print it on A4 paper.");
+    }
 }

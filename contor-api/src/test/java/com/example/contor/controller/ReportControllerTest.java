@@ -2,6 +2,7 @@ package com.example.contor.controller;
 
 import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
+import com.example.contor.api.model.NewCollectionReportCommand;
 import com.example.contor.api.model.NewReportCommand;
 import com.example.contor.api.model.NewReportQuestionCommand;
 import com.example.contor.api.model.RecordRefDto;
@@ -23,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -105,6 +107,57 @@ public class ReportControllerTest {
     }
 
     @Test
+    void list_collection_reports_returns_200() throws Exception {
+        when(reportService.listCollectionReports(1L)).thenReturn(List.of(
+                new ReportSummaryDto(6L, ReportState.READY, 5, 5, 0, NOW).title("Top customers")));
+
+        mockMvc.perform(get("/api/collections/1/reports").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(6))
+                .andExpect(jsonPath("$[0].title").value("Top customers"));
+    }
+
+    @Test
+    void create_collection_report_returns_202_without_a_record() throws Exception {
+        ReportDto queued = new ReportDto(6L, 1L, ReportState.QUEUED, List.of(), List.of("state:eq:delivered"), 0, List.of(), List.of(),
+                List.of(), List.of(), 0, 0, 0, NOW);
+        when(reportService.createCollectionReport(eq(1L), any(NewCollectionReportCommand.class))).thenReturn(queued);
+
+        mockMvc.perform(post("/api/collections/1/reports").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\": \"Top 5 customers\", \"filters\": [\"state:eq:delivered\"], \"search\": \"acme\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.id").value(6))
+                .andExpect(jsonPath("$.recordId").doesNotExist())
+                .andExpect(jsonPath("$.filters[0]").value("state:eq:delivered"));
+        verify(reportService).createCollectionReport(eq(1L), argThat(command -> "acme".equals(command.getSearch())
+                && command.getFilters().equals(List.of("state:eq:delivered"))));
+    }
+
+    @Test
+    void create_collection_report_with_an_invalid_filter_returns_400() throws Exception {
+        when(reportService.createCollectionReport(eq(1L), any())).thenThrow(new IllegalArgumentException("Invalid filter 'x'"));
+
+        mockMvc.perform(post("/api/collections/1/reports").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"filters\": [\"x\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid filter 'x'"));
+    }
+
+    @Test
+    void create_collection_report_without_csrf_returns_403() throws Exception {
+        mockMvc.perform(post("/api/collections/1/reports").with(TestAuth.user())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
+        verify(reportService, never()).createCollectionReport(any(), any());
+    }
+
+    @Test
+    void list_collection_reports_requires_login() throws Exception {
+        mockMvc.perform(get("/api/collections/1/reports")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void get_report_returns_200() throws Exception {
         when(reportService.getReport(5L)).thenReturn(report(ReportState.READY).title("Order 4711"));
 
@@ -170,7 +223,7 @@ public class ReportControllerTest {
     }
 
     private static ReportDto report(ReportState state) {
-        return new ReportDto(5L, 1L, 4711L, state, List.of(new RecordRefDto(1L, 4711L)), 0, List.of(), List.of(),
-                List.of(), List.of(), 0, 0, 0, NOW);
+        return new ReportDto(5L, 1L, state, List.of(new RecordRefDto(1L, 4711L)), List.of(), 0, List.of(), List.of(),
+                List.of(), List.of(), 0, 0, 0, NOW).recordId(4711L);
     }
 }

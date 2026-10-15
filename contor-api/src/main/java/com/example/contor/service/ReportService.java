@@ -1,6 +1,7 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.api.model.NewCollectionReportCommand;
 import com.example.contor.api.model.NewReportCommand;
 import com.example.contor.api.model.NewReportQuestionCommand;
 import com.example.contor.api.model.RecordDto;
@@ -18,6 +19,7 @@ import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.domain.ReportStatus;
 import com.example.contor.exception.AiUnavailableException;
+import com.example.contor.exception.CollectionNotFoundException;
 import com.example.contor.exception.ReportBusyException;
 import com.example.contor.exception.ReportNotFoundException;
 import com.example.contor.exception.ResourceNotFoundException;
@@ -45,7 +47,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Reports on a record (R6): create one over a checked scope, ask a follow-up question (a report of its own with the
+ * Reports on a record (R6) or over a collection's records (C6): create one over a checked scope, ask a follow-up question (a report of its own with the
  * same scope), regenerate, read and delete. Generation runs on the AI thread after commit ({@link ReportGenerator}).
  * Reading marks each cited source as CURRENT, CHANGED (a field's value differs from its snapshot), DELETED or — for
  * emails of another user's mailbox — UNAVAILABLE, so nobody sees mail that is not theirs.
@@ -97,6 +99,33 @@ public class ReportService {
         return ReportMapper.toDto(report, List.of(), lookup());
     }
 
+    @Transactional
+    public List<ReportSummaryDto> listCollectionReports(Long collectionId) {
+        collection(collectionId);
+        return reportRepository.findByCollection_IdAndRecordIdIsNullAndParentReportIsNullOrderByCreatedAtDesc(new Collection.CollectionId(collectionId))
+                .stream()
+                .map(report -> ReportMapper.toSummary(report, reportRepository.findByParentReport_IdOrderByCreatedAtAsc(report.getId()).size()))
+                .toList();
+    }
+
+    /** A report over the collection's records that match the table's filters and search (checked like a records query). */
+    @Transactional
+    public ReportDto createCollectionReport(Long collectionId, NewCollectionReportCommand command) {
+        Collection collection = collection(collectionId);
+        String prompt = prompt(command.getPrompt(), false);
+        ReportScope.CollectionScope view = new ReportScope.CollectionScope(command.getFilters(), command.getSearch());
+        recordService.condition(collectionId, view.filters(), view.search());
+        requireAi();
+        Report report = reportRepository.saveAndFlush(Report.builder()
+                .collection(collection)
+                .prompt(prompt)
+                .scope(ReportScope.ofCollection(view))
+                .createdByUser(currentUser())
+                .build());
+        queue(report.getId().id());
+        return ReportMapper.toDto(report, List.of(), lookup());
+    }
+
     /** A follow-up is asked on the report it belongs to; a question about a follow-up goes to its report. */
     @Transactional
     public ReportDto askReportQuestion(Long reportId, NewReportQuestionCommand command) {
@@ -112,7 +141,7 @@ public class ReportService {
                 .recordId(parent.getRecordId())
                 .parentReport(parent)
                 .prompt(question)
-                .scope(new ReportScope(parent.getScope().records(), parent.getScope().depth(), List.of()))
+                .scope(parent.getScope().withoutEmails())
                 .createdByUser(currentUser())
                 .build());
         queue(followUp.getId().id());
@@ -132,7 +161,7 @@ public class ReportService {
                 .recordId(report.getRecordId())
                 .parentReport(report.getParentReport())
                 .prompt(report.getPrompt())
-                .scope(new ReportScope(report.getScope().records(), report.getScope().depth(), List.of()))
+                .scope(report.getScope().withoutEmails())
                 .createdByUser(currentUser())
                 .build());
         queue(again.getId().id());
@@ -165,6 +194,12 @@ public class ReportService {
         Report report = load(reportId);
         reportRepository.delete(report);
         auditService.record(AuditEvent.currentActor(AuditAction.REPORT_DELETED).entity("report", reportId));
+    }
+
+    private Collection collection(Long collectionId) {
+        return collectionRepository.findById(new Collection.CollectionId(collectionId))
+                .filter(collection -> collection.getArchivedAt() == null)
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
     }
 
     private Report load(Long reportId) {

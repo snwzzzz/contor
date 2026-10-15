@@ -1,6 +1,7 @@
 package com.example.contor.controller;
 
 import com.example.contor.api.ReportsApi;
+import com.example.contor.api.model.NewCollectionReportCommand;
 import com.example.contor.api.model.NewReportCommand;
 import com.example.contor.api.model.NewReportQuestionCommand;
 import com.example.contor.api.model.ReportDto;
@@ -26,6 +27,16 @@ public class ReportController implements ReportsApi {
     @Override
     public ResponseEntity<ReportDto> createReport(Long collectionId, Long recordId, NewReportCommand newReportCommand) {
         return ResponseEntity.accepted().body(reportService.createReport(collectionId, recordId, newReportCommand));
+    }
+
+    @Override
+    public ResponseEntity<List<ReportSummaryDto>> listCollectionReports(Long collectionId) {
+        return ResponseEntity.ok(reportService.listCollectionReports(collectionId));
+    }
+
+    @Override
+    public ResponseEntity<ReportDto> createCollectionReport(Long collectionId, NewCollectionReportCommand newCollectionReportCommand) {
+        return ResponseEntity.accepted().body(reportService.createCollectionReport(collectionId, newCollectionReportCommand));
     }
 
     @Override

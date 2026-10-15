@@ -181,6 +181,27 @@ public class ReportMapperTest {
     }
 
     @Test
+    void a_collection_report_has_no_record_and_shows_its_filters_and_search() {
+        Collection orders = Collection.builder().id(new Collection.CollectionId(1L)).name("Orders").fields(new ArrayList<>()).build();
+        Report report = Report.builder().id(new Report.ReportId(6L)).collection(orders).status(ReportStatus.QUEUED)
+                .scope(ReportScope.ofCollection(new ReportScope.CollectionScope(List.of("state:eq:delivered"), "acme"))).build();
+        report.setCreatedAt(Instant.parse("2026-10-15T10:00:00Z"));
+
+        ReportDto dto = ReportMapper.toDto(report, List.of(), CURRENT);
+
+        assertThat(dto.getRecordId()).isNull();
+        assertThat(dto.getCollectionId()).isEqualTo(1L);
+        assertThat(dto.getRecords()).isEmpty();
+        assertThat(dto.getFilters()).containsExactly("state:eq:delivered");
+        assertThat(dto.getSearch()).isEqualTo("acme");
+    }
+
+    @Test
+    void a_record_report_has_no_filters() {
+        assertThat(ReportMapper.toDto(report(), List.of(), CURRENT).getFilters()).isEmpty();
+    }
+
+    @Test
     void null_in_null_out() {
         assertThat(ReportMapper.toDto(null, List.of(), CURRENT)).isNull();
         assertThat(ReportMapper.toSummary(null, 0)).isNull();

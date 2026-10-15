@@ -137,4 +137,18 @@ class ReportMarkdownTest {
         assertThat(ReportMarkdown.parse("  ").sections()).isEmpty();
         assertThat(ReportMarkdown.parse(null).sections()).isEmpty();
     }
+
+    @Test
+    void figure_row_codes_are_references_and_a_figure_placeholder_stays_text() {
+        var document = ReportMarkdown.parse("""
+                Kessler orders most [A1.1].
+
+                {{A1}}
+                """);
+
+        var blocks = document.sections().getFirst().blocks();
+        assertThat(blocks.getFirst().items().getFirst().refs()).containsExactly("A1.1");
+        assertThat(blocks.getFirst().items().getFirst().text()).isEqualTo("Kessler orders most.");
+        assertThat(blocks.get(1).items().getFirst().text()).isEqualTo("{{A1}}");
+    }
 }

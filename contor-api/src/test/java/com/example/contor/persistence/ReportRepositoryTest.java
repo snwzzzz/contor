@@ -238,6 +238,36 @@ public class ReportRepositoryTest {
         assertThat(reportCitationRepository.findReportIdsCiting(orders.getId(), 4712L)).isEmpty();
     }
 
+    @Test
+    void stores_a_collection_report_without_a_record_and_lists_it_newest_first() {
+        var older = reportRepository.saveAndFlush(collectionReport(null));
+        var newer = collectionReport(null);
+        newer.setCreatedAt(older.getCreatedAt().plusSeconds(60));
+        reportRepository.saveAndFlush(newer);
+        reportRepository.saveAndFlush(collectionReport(newer));
+        reportRepository.saveAndFlush(report(4711L, null));
+        entityManager.clear();
+
+        var reports = reportRepository.findByCollection_IdAndRecordIdIsNullAndParentReportIsNullOrderByCreatedAtDesc(orders.getId());
+
+        assertThat(reports).extracting(Report::getId).containsExactly(newer.getId(), older.getId());
+        var reloaded = reports.getFirst();
+        assertThat(reloaded.getRecordId()).isNull();
+        assertThat(reloaded.getScope().coversCollection()).isTrue();
+        assertThat(reloaded.getScope().collection().filters()).containsExactly("state:eq:delivered");
+        assertThat(reloaded.getScope().collection().search()).isEqualTo("acme");
+    }
+
+    private Report collectionReport(Report parent) {
+        return Report.builder()
+                .collection(orders)
+                .parentReport(parent)
+                .prompt("Top 5 customers?")
+                .scope(ReportScope.ofCollection(new ReportScope.CollectionScope(List.of("state:eq:delivered"), "acme")))
+                .createdByUser(owner)
+                .build();
+    }
+
     private Report report(long recordId, Report parent) {
         return Report.builder()
                 .collection(orders)

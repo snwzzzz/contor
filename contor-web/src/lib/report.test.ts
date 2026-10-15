@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
-import { highlightQuote, inlineMarks, isGenerating, reportHref, sourceHref, sourcesLabel } from "./report";
+import { highlightQuote, inlineMarks, isGenerating, reportHref, reportStep, sourceHref, sourcesLabel } from "./report";
 
 function source(overrides: Partial<ReportSourceDto>): ReportSourceDto {
   return { marker: 1, kind: "RECORD", label: "Orders", sourceState: "CURRENT", ...overrides };
@@ -28,6 +28,16 @@ describe("report helpers", () => {
 
   it("builds the report page link below its record", () => {
     expect(reportHref(1, 4711, 5)).toBe("/collections/1/records/4711/reports/5");
+  });
+
+  it("builds the page link of a collection report below its collection", () => {
+    expect(reportHref(1, undefined, 6)).toBe("/collections/1/reports/6");
+  });
+
+  it("says what the assistant is doing, for a record or a whole collection", () => {
+    expect(reportStep("COLLECTING", false)).toBe("Collecting the record, its connections and emails…");
+    expect(reportStep("COLLECTING", true)).toBe("Choosing and computing the figures…");
+    expect(reportStep("DRAFTING", true)).toBe("Writing the report…");
   });
 
   it("links each source to its exact place in contor", () => {

@@ -10,6 +10,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -26,6 +28,10 @@ import java.util.stream.Collectors;
  * model cites these tokens; nothing else can be cited. Record facts and connections are always included; emails are
  * ranked by how many words of the prompt they contain (newest first on ties) and added while they fit the budget.
  * Sender addresses are reduced to their domain.
+ * <p>
+ * A report over a collection adds figures the app computed ({@link AnalysisInput}): they come first, each row with a
+ * token ({@code [A1.2]} = analysis 1, row 2) that stands for the records the row was computed from; those records are
+ * sources without a prompt line of their own. Its records are added only while they fit the budget.
  */
 public final class EvidencePack {
 
@@ -33,6 +39,7 @@ public final class EvidencePack {
     public static final int DEFAULT_BUDGET = 24_000;
     private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}]{4,}");
     private static final Pattern WHOLE_EMAIL = Pattern.compile("(?i)\\[?E\\d+]?");
+    private static final Pattern FIGURE_ROW = Pattern.compile("(?i)\\[?\\s*(A\\d+\\.\\d+)\\s*]?");
     private static final Pattern TOKEN_IN_TEXT =Pattern.compile("(?<![A-Z0-9])[RFLP]\\d+(\\.\\d+)?(?![0-9.])");
 
     /**
@@ -70,14 +77,39 @@ public final class EvidencePack {
         }
     }
 
+    /**
+     * Figures the app computed over many records, shown to the model as a table.
+     *
+     * @param description   what was counted, grouped and ranked, for the model
+     * @param measureColumn the column of the figure a row's records support (their citations go there)
+     * @param note          a remark under the table (missing values, currencies); may be {@code null}
+     */
+    public record AnalysisInput(String title, String description, List<String> columns, int measureColumn, List<AnalysisRow> rows,
+                                String note) {}
+
+    /** One row of an analysis: its cells and the records it was computed from (cited by the row). */
+    public record AnalysisRow(List<String> cells, List<RowSource> sources) {}
+
+    /**
+     * A record behind a row; with {@code fieldSlug} the cited source is that field (its value is what was measured),
+     * else the record.
+     */
+    public record RowSource(Long collectionId, String collectionName, Long recordId, String recordTitle, String fieldSlug,
+                            String fieldName, Object value) {}
+
     private final Map<String, Source> sources;
     private final String text;
     private final List<Long> emailIds;
+    private final List<AnalysisInput> analyses;
+    private final Map<String, List<String>> rows;
 
-    private EvidencePack(Map<String, Source> sources, String text, List<Long> emailIds) {
+    private EvidencePack(Map<String, Source> sources, String text, List<Long> emailIds, List<AnalysisInput> analyses,
+                         Map<String, List<String>> rows) {
         this.sources = sources;
         this.text = text;
         this.emailIds = emailIds;
+        this.analyses = analyses;
+        this.rows = rows;
     }
 
     public static Builder builder() {
@@ -95,7 +127,26 @@ public final class EvidencePack {
 
     /** The source of a token such as {@code F3}, {@code [p1.2]}. */
     public Optional<Source> source(String token) {
+        if (token != null && sources.containsKey(token)) {
+            return Optional.of(sources.get(token));
+        }
         return Optional.ofNullable(normalizeToken(token)).map(sources::get);
+    }
+
+    /** The figures in the pack, in prompt order ({@code A1} first). */
+    public List<AnalysisInput> analyses() {
+        return analyses;
+    }
+
+    /** The group a figure row ({@code A1.2}) stands for: its first cell after the rank. */
+    public Optional<String> rowLabel(String reference) {
+        Matcher row = reference == null ? null : FIGURE_ROW.matcher(reference.strip());
+        if (row == null || !row.matches() || !rows.containsKey(row.group(1).toUpperCase(Locale.ROOT))) {
+            return Optional.empty();
+        }
+        String[] numbers = row.group(1).substring(1).split("\\.");
+        List<String> cells = analyses.get(Integer.parseInt(numbers[0]) - 1).rows().get(Integer.parseInt(numbers[1]) - 1).cells();
+        return Optional.of(cells.size() > 1 ? cells.get(1) : cells.getFirst());
     }
 
     /** The emails that made it into the pack, in prompt order. */
@@ -114,10 +165,15 @@ public final class EvidencePack {
     }
 
     /**
-     * The tokens a cited reference stands for: a whole email ({@code E3}) is its paragraphs in the pack, anything else
+     * The tokens a cited reference stands for: a figure row ({@code A1.2}) is its records, a whole email ({@code E3}) is
+     * its paragraphs in the pack, anything else
      * its {@link #normalizeToken normalized} token when the pack has it; empty for unknown references.
      */
     public List<String> expand(String reference) {
+        Matcher row = reference == null ? null : FIGURE_ROW.matcher(reference.strip());
+        if (row != null && row.matches()) {
+            return rows.getOrDefault(row.group(1).toUpperCase(Locale.ROOT), List.of());
+        }
         if (reference != null && WHOLE_EMAIL.matcher(reference.strip()).matches()) {
             String prefix = "P" + reference.strip().substring(1) + ".";
             return sources.keySet().stream().filter(token -> token.startsWith(prefix)).toList();
@@ -144,8 +200,34 @@ public final class EvidencePack {
         private final List<RecordInput> records = new ArrayList<>();
         private final List<RelationInput> relations = new ArrayList<>();
         private final List<EmailInput> emails = new ArrayList<>();
+        private final List<AnalysisInput> analyses = new ArrayList<>();
+        private String overview;
+        private String recordsHeading = "Records:";
+        private boolean recordsWithinBudget;
 
         private Builder() {
+        }
+
+        public Builder analysis(AnalysisInput analysis) {
+            analyses.add(analysis);
+            return this;
+        }
+
+        /** Plain lines about the collection (counts, values), after the figures; no tokens. */
+        public Builder overview(String text) {
+            overview = text;
+            return this;
+        }
+
+        /**
+         * @param heading      the line above the records
+         * @param withinBudget whether records that do not fit the budget are left out (a collection's records) instead of
+         *                     always kept (a record report's scope)
+         */
+        public Builder recordsHeading(String heading, boolean withinBudget) {
+            recordsHeading = heading;
+            recordsWithinBudget = withinBudget;
+            return this;
         }
 
         public Builder record(RecordInput record) {
@@ -166,33 +248,55 @@ public final class EvidencePack {
         /** @param budget characters for the whole prompt text; records and connections are kept even beyond it */
         public EvidencePack build(String prompt, int budget) {
             Map<String, Source> sources = new LinkedHashMap<>();
-            StringBuilder text = new StringBuilder("Records:\n");
+            StringBuilder text = new StringBuilder(figures());
+            if (overview != null && !overview.isBlank()) {
+                text.append(overview.strip()).append("\n\n");
+            }
+            if (!records.isEmpty() || analyses.isEmpty()) {
+                text.append(recordsHeading).append('\n');
+            }
             int field = 0;
+            int recordNumber = 0;
+            int leftOut = 0;
             List<RecordInput> ordered = new ArrayList<>(records.stream().filter(record -> !record.related()).toList());
             ordered.addAll(records.stream().filter(RecordInput::related).toList());
             for (int r = 0; r < ordered.size(); r++) {
                 RecordInput record = ordered.get(r);
-                if (record.related() && (r == 0 || !ordered.get(r - 1).related())) {
-                    text.append("\nOther records (found through related emails):\n");
-                }
-                String token = "R" + (r + 1);
+                String token = "R" + (recordNumber + 1);
                 String line = record.collectionName() + ": " + record.title();
-                sources.put(token, new Source(token, CitationType.RECORD, line, record.collectionName(), record.collectionId(),
+                Map<String, Source> recordSources = new LinkedHashMap<>();
+                StringBuilder block = new StringBuilder();
+                if (record.related() && (r == 0 || !ordered.get(r - 1).related())) {
+                    block.append("\nOther records (found through related emails):\n");
+                }
+                recordSources.put(token, new Source(token, CitationType.RECORD, line, record.collectionName(), record.collectionId(),
                         record.recordId(), record.title(), null, null, null, null, null, null, null, record.related()));
-                text.append('[').append(token).append("] ").append(line)
+                block.append('[').append(token).append("] ").append(line)
                         .append(record.anchor() ? " (the record the report is about)" : "").append('\n');
+                int fields = field;
                 for (FieldInput input : record.fields()) {
                     String value = format(input.value());
                     if (value.isEmpty()) {
                         continue;
                     }
-                    String fieldToken = "F" + (++field);
+                    String fieldToken = "F" + (++fields);
                     String fieldLine = record.title() + " · " + input.name() + " = " + value;
-                    sources.put(fieldToken, new Source(fieldToken, CitationType.FIELD, fieldLine, input.name(), record.collectionId(),
+                    recordSources.put(fieldToken, new Source(fieldToken, CitationType.FIELD, fieldLine, input.name(), record.collectionId(),
                             record.recordId(), record.title(), input.slug(), input.value(), null, null, null, null, date(input),
                             record.related()));
-                    text.append("  [").append(fieldToken).append("] ").append(fieldLine).append('\n');
+                    block.append("  [").append(fieldToken).append("] ").append(fieldLine).append('\n');
                 }
+                if (recordsWithinBudget && text.length() + block.length() > budget) {
+                    leftOut++;
+                    continue;
+                }
+                recordNumber++;
+                field = fields;
+                sources.putAll(recordSources);
+                text.append(block);
+            }
+            if (leftOut > 0) {
+                text.append('[').append(leftOut).append(leftOut == 1 ? " record" : " records").append(" left out]\n");
             }
             if (!relations.isEmpty()) {
                 text.append("\nConnections:\n");
@@ -245,7 +349,74 @@ public final class EvidencePack {
                     text.append('[').append(left).append(left == 1 ? " email" : " emails").append(" left out]\n");
                 }
             }
-            return new EvidencePack(sources, text.toString(), List.copyOf(included));
+            Map<String, List<String>> rows = rowSources(sources);
+            return new EvidencePack(sources, text.toString(), List.copyOf(included), List.copyOf(analyses), rows);
+        }
+
+        /** The analyses as tables, each row with its token; empty without analyses. */
+        private String figures() {
+            if (analyses.isEmpty()) {
+                return "";
+            }
+            StringBuilder text = new StringBuilder("Figures computed by the app over all matching records (exact: use them for ")
+                    .append("counts, sums, averages and rankings, never count or rank the record lines yourself):\n");
+            for (int a = 0; a < analyses.size(); a++) {
+                AnalysisInput analysis = analyses.get(a);
+                text.append("[A").append(a + 1).append("] ").append(analysis.title()).append(": ").append(analysis.description()).append('\n')
+                        .append("  | ").append(String.join(" | ", analysis.columns())).append(" |\n");
+                for (int r = 0; r < analysis.rows().size(); r++) {
+                    text.append("  [A").append(a + 1).append('.').append(r + 1).append("] | ")
+                            .append(String.join(" | ", analysis.rows().get(r).cells())).append(" |\n");
+                }
+                if (analysis.rows().isEmpty()) {
+                    text.append("  (no matching records)\n");
+                }
+                if (analysis.note() != null && !analysis.note().isBlank()) {
+                    text.append("  ").append(analysis.note().strip()).append('\n');
+                }
+            }
+            return text.append('\n').toString();
+        }
+
+        /**
+         * Each figure row's token → the tokens of its records: a source already in the pack (the same record, or field)
+         * is reused, others become sources without a prompt line ({@code X1}, {@code X2}…).
+         */
+        private Map<String, List<String>> rowSources(Map<String, Source> sources) {
+            Map<String, List<String>> rows = new LinkedHashMap<>();
+            Map<String, String> byTarget = new HashMap<>();
+            sources.values().forEach(source -> byTarget.putIfAbsent(target(source.type(), source.collectionId(), source.recordId(),
+                    source.fieldSlug()), source.token()));
+            int hidden = 0;
+            for (int a = 0; a < analyses.size(); a++) {
+                List<AnalysisRow> analysisRows = analyses.get(a).rows();
+                for (int r = 0; r < analysisRows.size(); r++) {
+                    List<String> tokens = new ArrayList<>();
+                    for (RowSource row : analysisRows.get(r).sources()) {
+                        CitationType type = row.fieldSlug() != null ? CitationType.FIELD : CitationType.RECORD;
+                        String key = target(type, row.collectionId(), row.recordId(), row.fieldSlug());
+                        String token = byTarget.get(key);
+                        if (token == null) {
+                            token = "X" + (++hidden);
+                            String text = type == CitationType.FIELD ? row.recordTitle() + " · " + row.fieldName() + " = " + format(row.value())
+                                    : row.collectionName() + ": " + row.recordTitle();
+                            sources.put(token, new Source(token, type, text, type == CitationType.FIELD ? row.fieldName() : row.collectionName(),
+                                    row.collectionId(), row.recordId(), row.recordTitle(), row.fieldSlug(), row.value(), null, null, null,
+                                    null, null, false));
+                            byTarget.put(key, token);
+                        }
+                        if (!tokens.contains(token)) {
+                            tokens.add(token);
+                        }
+                    }
+                    rows.put("A" + (a + 1) + "." + (r + 1), List.copyOf(tokens));
+                }
+            }
+            return rows;
+        }
+
+        private static String target(CitationType type, Long collectionId, Long recordId, String fieldSlug) {
+            return type + "/" + collectionId + "/" + recordId + "/" + fieldSlug;
         }
 
         /** The records' own emails before related ones; within each, most words of the prompt first, newest first on ties. */

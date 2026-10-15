@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An AI report about one record ({@code collection}, {@code recordId}) and the connected records in its {@link #scope}.
+ * An AI report about one record ({@code collection}, {@code recordId}) and the connected records in its {@link #scope},
+ * or — with {@code recordId} {@code null} — about the records of {@code collection} its scope's filters select.
  * A follow-up question is a report of its own with {@link #parentReport} set. Dynamic updates: the generator writes the
  * status while the API may read or delete the report.
  */
@@ -33,7 +34,8 @@ public class Report extends AuditableEntity {
     @JoinColumn(name = "collection_id", nullable = false)
     private Collection collection;
 
-    @Column(name = "record_id", nullable = false)
+    /** {@code null} for a report over the whole collection. */
+    @Column(name = "record_id")
     private Long recordId;
 
     @ManyToOne(fetch = FetchType.LAZY)

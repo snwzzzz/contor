@@ -161,7 +161,8 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 
 ## Reports (AI)
 
-Ask the assistant about any record of any collection and get a structured answer with references: summaries, lists of
+Ask the assistant about any record of any collection, or about a whole collection, and get a structured answer with
+references: summaries, lists of
 reasons, next steps, pro and con lists, tables. Each sentence, list item or table cell that comes from the record or its
 emails points at its source, down to a record field or an email paragraph. Plan and status:
 [`docs/reports-plan.md`](docs/reports-plan.md).
@@ -201,7 +202,28 @@ emails points at its source, down to a record field or an email paragraph. Plan 
   `POST /api/reports/{id}/questions`, `POST /api/reports/{id}/regenerate` (202, generated on the AI thread; poll the
   report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
   user's mailbox are never shown (`sourceState` UNAVAILABLE).
-- **Storage** (`V1_0_29__reports.sql`, `V1_0_30__report_blocks.sql`): `report` (follow-ups have `parent_report_id`),
+- **Reports over a whole collection** ("top 5 best selling customers", "which customers have the most complaints?", a pro
+  and con list of the order book): the collection page starts with "Ask about <collection>…". The report covers the
+  records the table shows (its filters and search go with the request) and needs no emails. It is made in three steps:
+  1. **Plan** (`collection-plan-v1`, `ReportModelService.plan`): the model sees a catalog of all collections (fields,
+     record counts, relation types) and picks up to 3 figures: which collection, grouped by a field, by
+     `link:<relation type>`, all together (`""`) or `each` record, measured as `count` or `sum|avg|min|max:<field>`, order,
+     top N, filters. Unknown collections, fields and invalid filters are dropped (`ai/CollectionPlan`,
+     `service/CollectionAnalysisService`).
+  2. **Figures** (deterministic): `persistence/dynamic/DynamicAggregateRepository` groups and aggregates over **all**
+     matching records with typed jOOQ fields (text grouped ignoring case and spaces, money per currency, never converted);
+     ranking and top N are done in Java (by the amount in the currency most records use, then count, then name). An
+     overview of the collection (counts per choice value, sums) and its newest records (as far as they fit) are added.
+  3. **Document** (`collection-report-v2`): the same Markdown report, written from the figures. Each figure row has a code
+     (`A1.2`) that stands for the records it was computed from; where the model writes `{{A1}}` (or `[A1]`), the app
+     inserts the **exact computed table**, each row citing its records on its figure (at most 20 per row). A table the
+     model neither placed nor cited is added after the answer, so a ranking is never one the model rewrote. No timeline.
+  The page is `/collections/{id}/reports/{reportId}`; follow-ups, Regenerate and Delete work as for records. API:
+  `GET/POST /api/collections/{id}/reports` (`NewCollectionReportCommand {prompt, filters, search}`; `ReportDto.recordId`
+  is empty and `filters`/`search` hold the scope). Known limits: amounts in other currencies are listed but ranked after
+  the main currency; no grouping by month and no two-step joins (complaints → purchase order → supplier) yet.
+- **Storage** (`V1_0_29__reports.sql`, `V1_0_30__report_blocks.sql`, `V1_0_31__collection_reports.sql`: `record_id` is
+  empty for a collection report): `report` (follow-ups have `parent_report_id`),
   `report_section`, `report_block` (paragraph, list, quote or table with its header), `report_finding` (timeline and
   older reports), `report_claim` (one sentence, list item or table cell with its row and column) and `report_citation` (record, field with value snapshot, email paragraph
   with verbatim quote, or relation). Reports are snapshots; reading one marks sources that changed or were deleted.

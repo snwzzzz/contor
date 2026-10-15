@@ -202,6 +202,28 @@ describe("ReportView", () => {
     expect(calls.some((call) => call.method === "DELETE")).toBe(true);
   });
 
+  it("shows a collection report with its scope and returns to the collection", async () => {
+    const collectionReport = {
+      ...report, id: 6, recordId: undefined, records: [], emailCount: 0, filters: ["state:eq:delivered"], search: "acme",
+      title: "Top customers", prompt: "Top 5 customers?",
+    };
+    const calls = mockApi({ "GET /api/reports/6": { body: collectionReport }, "DELETE /api/reports/6": { status: 204 } });
+    const user = userEvent.setup();
+    renderWithProviders(<ReportView collectionId={1} reportId={6} />);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Top customers" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to the collection" })).toHaveAttribute("href", "/collections/1");
+    expect(screen.getByText("Whole collection")).toBeInTheDocument();
+    expect(screen.getByText("state:eq:delivered")).toBeInTheDocument();
+    expect(screen.getByText("“acme”")).toBeInTheDocument();
+    expect(screen.queryByText(/emails?$/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete report" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/collections/1"));
+    expect(calls.some((call) => call.method === "DELETE")).toBe(true);
+  });
+
   it("says when the report does not exist", async () => {
     mockApi({});
 

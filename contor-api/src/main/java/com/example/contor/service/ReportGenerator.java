@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.CollectionPlan;
 import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.EvidencePack.Source;
@@ -43,6 +44,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -54,6 +56,11 @@ import java.util.regex.Pattern;
  * "Summary" without a request); the timeline is built from the record's dated sources without the model, when the
  * model asks for it or there is no request (never for a follow-up: its report has it). Never throws: a failure marks
  * the report FAILED.
+ * <p>
+ * A report over a collection first lets the model plan its figures, which {@link CollectionAnalysisService} computes;
+ * where the document says {@code {{A1}}} the computed table is inserted, each row's records cited on its figure, and a
+ * table the model neither placed nor cited is added after the answer. It has no timeline. A failed plan only means no
+ * figures.
  */
 @Slf4j
 @Service
@@ -65,12 +72,17 @@ public class ReportGenerator {
     /** A section the model wrote as a timeline itself; the record's timeline is then not added a second time. */
     private static final Pattern OWN_TIMELINE = Pattern.compile("(?i)timeline|chronolog|zeitverlauf|zeitachse|zeitstrahl");
     private static final Pattern QUOTE_MARKS = Pattern.compile("^[\\s\"'„“”‚‘’«»]+|[\\s\"'„“”‚‘’«»]+$");
+    /** Where the model wants a figure table: {{A1}}, or the table's code in brackets ([A1]), anywhere in a block. */
+    private static final Pattern FIGURE_TABLE = Pattern.compile("\\s*(?:\\{\\{\\s*[Aa](\\d+)\\s*}}|\\[\\s*[Aa](\\d+)\\s*])");
+    /** A cited figure row: its table needs no extra copy. */
+    private static final Pattern FIGURE_ROW = Pattern.compile("(?i)\\bA(\\d+)\\.\\d+\\b");
 
     private final ReportRepository reportRepository;
     private final CollectionRepository collectionRepository;
     private final EmailMessageRepository emailMessageRepository;
     private final ReportScopeService reportScopeService;
     private final ReportModelService reportModelService;
+    private final CollectionAnalysisService collectionAnalysisService;
     private final AiSettingsService aiSettingsService;
     private final AuditService auditService;
     private final TransactionTemplate transactions;
@@ -78,13 +90,15 @@ public class ReportGenerator {
 
     public ReportGenerator(ReportRepository reportRepository, CollectionRepository collectionRepository,
                            EmailMessageRepository emailMessageRepository, ReportScopeService reportScopeService,
-                           ReportModelService reportModelService, AiSettingsService aiSettingsService, AuditService auditService,
+                           ReportModelService reportModelService, CollectionAnalysisService collectionAnalysisService,
+                           AiSettingsService aiSettingsService, AuditService auditService,
                            PlatformTransactionManager transactionManager, Clock clock) {
         this.reportRepository = reportRepository;
         this.collectionRepository = collectionRepository;
         this.emailMessageRepository = emailMessageRepository;
         this.reportScopeService = reportScopeService;
         this.reportModelService = reportModelService;
+        this.collectionAnalysisService = collectionAnalysisService;
         this.aiSettingsService = aiSettingsService;
         this.auditService = auditService;
         this.transactions = new TransactionTemplate(transactionManager);
@@ -92,7 +106,8 @@ public class ReportGenerator {
     }
 
     /** What a run needs from the stored report, read in one transaction. */
-    private record Job(ReportScope scope, String prompt, AppUser.AppUserId owner, List<String> earlier, boolean followUp) {}
+    private record Job(ReportScope scope, String prompt, AppUser.AppUserId owner, List<String> earlier, boolean followUp,
+                       Long collectionId, String collectionName) {}
 
     /** A section to store: its blocks with resolved references. */
     private record Planned(ReportSectionKind kind, String title, List<PlannedBlock> blocks) {}
@@ -109,16 +124,24 @@ public class ReportGenerator {
                 AppUser.AppUserId owner = report.getCreatedByUser() != null ? report.getCreatedByUser().getId() : null;
                 List<String> earlier = report.getParentReport() != null ? sentences(report.getParentReport()) : List.of();
                 reportRepository.saveAndFlush(report);
-                return new Job(report.getScope(), report.getPrompt(), owner, earlier, report.getParentReport() != null);
+                return new Job(report.getScope(), report.getPrompt(), owner, earlier, report.getParentReport() != null,
+                        report.getCollection().getId().id(), report.getCollection().getName());
             });
-            boolean mailAccess = job.owner() != null && aiSettingsService.settingsFor(job.owner()).isMailAccess();
             String prompt = Optional.ofNullable(job.prompt()).orElse("");
-            EvidencePack pack = reportScopeService.collect(job.scope(), prompt, job.owner(), mailAccess);
+            boolean collection = job.scope().coversCollection();
+            EvidencePack pack;
+            if (collection) {
+                pack = reportScopeService.collectCollection(job.collectionId(), job.scope().collection(), plan(job, prompt), prompt);
+            } else {
+                boolean mailAccess = job.owner() != null && aiSettingsService.settingsFor(job.owner()).isMailAccess();
+                pack = reportScopeService.collect(job.scope(), prompt, job.owner(), mailAccess);
+            }
             update(reportId, report -> report.setStatus(ReportStatus.DRAFTING));
-            ReportDraft draft = reportModelService.draft(pack, prompt, job.earlier());
+            ReportDraft draft = collection ? reportModelService.draftCollection(pack, prompt, job.collectionName(), job.earlier())
+                    : reportModelService.draft(pack, prompt, job.earlier());
             List<Planned> planned = plan(draft, prompt.isBlank(), job.earlier(), pack);
             boolean ownTimeline = planned.stream().anyMatch(section -> OWN_TIMELINE.matcher(section.title()).find());
-            boolean timeline = !job.followUp() && !ownTimeline && (draft.timeline() || prompt.isBlank());
+            boolean timeline = !collection && !job.followUp() && !ownTimeline && (draft.timeline() || prompt.isBlank());
             transactions.executeWithoutResult(status -> store(reportId, job, draft, planned, timeline, pack));
         } catch (RuntimeException | LinkageError e) {
             // A LinkageError (e.g. a class file replaced by a rebuild while running) must not leave the report in progress.
@@ -142,6 +165,8 @@ public class ReportGenerator {
     private static List<Planned> plan(ReportDraft draft, boolean noRequest, List<String> earlier, EvidencePack pack) {
         Set<String> said = new HashSet<>();
         earlier.forEach(text -> said.add(EmailParagraphs.normalize(text)));
+        Set<Integer> shown = new HashSet<>();
+        draft.sections().forEach(section -> section.blocks().forEach(block -> cited(block, shown)));
         List<Planned> sections = new ArrayList<>();
         for (int i = 0; i < draft.sections().size(); i++) {
             ReportDraft.Section section = draft.sections().get(i);
@@ -157,14 +182,21 @@ public class ReportGenerator {
                     continue;
                 }
                 List<References.Resolved> items = new ArrayList<>();
+                List<Integer> tables = new ArrayList<>();
                 for (ReportDraft.Claim item : block.items()) {
-                    References.Resolved resolved = References.resolve(item.text(), item.refs(), quotes(block.kind(), item), pack);
+                    String text = figureTables(item.text(), tables);
+                    References.Resolved resolved = References.resolve(text, item.refs(), quotes(block.kind(), item), pack);
                     if (!resolved.text().isBlank() && said.add(EmailParagraphs.normalize(resolved.text()))) {
                         items.add(resolved);
                     }
                 }
                 if (!items.isEmpty()) {
                     blocks.add(new PlannedBlock(block.kind(), List.of(), items, List.of()));
+                }
+                for (int number : tables) {
+                    if (number >= 1 && number <= pack.analyses().size() && shown.add(-number)) {
+                        blocks.add(figureTable(pack, number));
+                    }
                 }
             }
             if (blocks.isEmpty()) {
@@ -174,7 +206,61 @@ public class ReportGenerator {
             String title = answer ? (noRequest ? "Summary" : "Answer") : section.title();
             sections.add(new Planned(answer ? ReportSectionKind.SUMMARY : ReportSectionKind.CUSTOM, title, blocks));
         }
+        int after = !sections.isEmpty() && sections.getFirst().kind() == ReportSectionKind.SUMMARY ? 1 : 0;
+        for (int number = pack.analyses().size(); number >= 1; number--) {
+            if (!shown.contains(number) && !shown.contains(-number)) {
+                sections.add(after, new Planned(ReportSectionKind.CUSTOM, pack.analyses().get(number - 1).title(),
+                        List.of(figureTable(pack, number))));
+            }
+        }
         return sections;
+    }
+
+    /** The figure tables a block cites rows of ({@code A1.2} → 1), so they are not added again. */
+    private static void cited(ReportDraft.Block block, Set<Integer> shown) {
+        List<ReportDraft.Claim> claims = new ArrayList<>(block.items());
+        block.rows().forEach(claims::addAll);
+        for (ReportDraft.Claim claim : claims) {
+            List<String> codes = new ArrayList<>(claim.refs());
+            codes.add(claim.text());
+            codes.forEach(code -> FIGURE_ROW.matcher(code).results().forEach(row -> shown.add(Integer.parseInt(row.group(1)))));
+        }
+    }
+
+    /** The text without its figure table placeholders; their numbers are added to {@code tables}. */
+    private static String figureTables(String text, List<Integer> tables) {
+        Matcher placeholder = FIGURE_TABLE.matcher(text);
+        while (placeholder.find()) {
+            tables.add(Integer.parseInt(placeholder.group(1) != null ? placeholder.group(1) : placeholder.group(2)));
+        }
+        return FIGURE_TABLE.matcher(text).replaceAll("").strip();
+    }
+
+    /** The computed table of analysis {@code number}: its cells as written, each row's records cited on its figure. */
+    private static PlannedBlock figureTable(EvidencePack pack, int number) {
+        EvidencePack.AnalysisInput analysis = pack.analyses().get(number - 1);
+        List<List<References.Resolved>> rows = new ArrayList<>();
+        for (int r = 0; r < analysis.rows().size(); r++) {
+            List<String> refs = pack.expand("A" + number + "." + (r + 1));
+            List<String> cells = analysis.rows().get(r).cells();
+            List<References.Resolved> row = new ArrayList<>();
+            for (int c = 0; c < cells.size(); c++) {
+                row.add(new References.Resolved(cells.get(c), c == analysis.measureColumn() ? refs : List.of(), List.of()));
+            }
+            rows.add(row);
+        }
+        return new PlannedBlock(ReportBlockKind.TABLE, analysis.columns(), List.of(), rows);
+    }
+
+    /** The figures the model asks for; none when the plan fails (the report is still written). */
+    private CollectionPlan plan(Job job, String prompt) {
+        try {
+            return reportModelService.plan(prompt, job.collectionName(), collectionAnalysisService.catalog(job.collectionId()),
+                    collectionAnalysisService.collectionSlugs());
+        } catch (IllegalStateException e) {
+            log.warn("The plan of a collection report failed: {}", e.getClass().getSimpleName());
+            return new CollectionPlan(List.of());
+        }
     }
 
     /** A quote block quotes the paragraphs it cites; {@link References} keeps the quote where it is verbatim. */
@@ -219,13 +305,14 @@ public class ReportGenerator {
             timeline(report, pack, markers);
         }
 
-        String anchorTitle = pack.sources().isEmpty() ? null : pack.sources().getFirst().recordTitle();
+        String anchorTitle = job.scope().coversCollection() ? job.collectionName()
+                : pack.sources().isEmpty() ? null : pack.sources().getFirst().recordTitle();
         report.setTitle(!draft.title().isBlank() ? draft.title() : anchorTitle);
-        report.setScope(new ReportScope(job.scope().records(), job.scope().depth(), pack.emailIds()));
+        report.setScope(new ReportScope(job.scope().records(), job.scope().depth(), pack.emailIds(), job.scope().collection()));
         report.setStatus(ReportStatus.READY);
         report.setFailureReason(null);
         report.setModel(reportModelService.model());
-        report.setPromptVersion(ReportModelService.PROMPT_VERSION);
+        report.setPromptVersion(job.scope().coversCollection() ? ReportModelService.COLLECTION_PROMPT_VERSION : ReportModelService.PROMPT_VERSION);
         report.setClaimsTotal(total);
         report.setClaimsVerified(withSource);
         report.setClaimsRemoved(0);
@@ -234,7 +321,8 @@ public class ReportGenerator {
         AuditEvent event = job.owner() != null ? AuditEvent.user(AuditAction.REPORT_GENERATED, job.owner().id())
                 : AuditEvent.system(AuditAction.REPORT_GENERATED);
         auditService.record(event.entity("report", reportId).after(Map.of(
-                "records", job.scope().records().size(), "emails", pack.emailIds().size(), "model", reportModelService.model())));
+                "records", job.scope().records().size(), "emails", pack.emailIds().size(), "figures", pack.analyses().size(),
+                "model", reportModelService.model())));
     }
 
     /** One finding per dated source of the record (date fields, the first paragraph of each email), oldest first. */

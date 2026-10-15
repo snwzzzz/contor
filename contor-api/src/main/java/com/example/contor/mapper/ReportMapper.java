@@ -25,6 +25,7 @@ import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
+import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportSection;
 import com.example.contor.domain.ReportSectionKind;
 
@@ -99,10 +100,14 @@ public final class ReportMapper {
         List<RecordRefDto> records = report.getScope().records().stream()
                 .map(ref -> new RecordRefDto(ref.collectionId(), ref.recordId()))
                 .toList();
-        return new ReportDto(report.getId().id(), report.getCollection().getId().id(), report.getRecordId(),
-                ReportState.valueOf(report.getStatus().name()), new ArrayList<>(records), report.getScope().emailIds().size(), sections,
+        ReportScope.CollectionScope collection = report.getScope().collection();
+        return new ReportDto(report.getId().id(), report.getCollection().getId().id(),
+                ReportState.valueOf(report.getStatus().name()), new ArrayList<>(records),
+                new ArrayList<>(collection != null ? collection.filters() : List.of()), report.getScope().emailIds().size(), sections,
                 new ArrayList<>(sourceDtos), removed, new ArrayList<>(followUps), report.getClaimsTotal(), report.getClaimsVerified(),
                 report.getClaimsRemoved(), toOffset(report.getCreatedAt()))
+                .recordId(report.getRecordId())
+                .search(collection != null ? collection.search() : null)
                 .parentReportId(report.getParentReport() != null ? report.getParentReport().getId().id() : null)
                 .prompt(report.getPrompt())
                 .title(report.getTitle())

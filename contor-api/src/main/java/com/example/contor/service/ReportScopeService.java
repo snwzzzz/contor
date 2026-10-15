@@ -1,8 +1,10 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.CollectionPlan;
 import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.api.model.RecordDto;
+import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.config.AiProperties;
 import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
@@ -40,7 +42,8 @@ import java.util.Set;
  * What a report is about (R4): the anchor record and the connected records the user picked, checked to be reachable
  * through relations within the chosen depth, and the {@link EvidencePack} built from them — every record's facts, the
  * relations between the records of the scope and, with mail access, the owner's emails linked to them (record_source)
- * with their conversations, newest {@link ReportScope#MAX_EMAILS} first.
+ * with their conversations, newest {@link ReportScope#MAX_EMAILS} first. For a report over a collection
+ * ({@link #collectCollection}) the pack holds the figures, an overview and the collection's records instead.
  */
 @RequiredArgsConstructor
 @Service
@@ -54,6 +57,10 @@ public class ReportScopeService {
     private final EmailEmbeddingRepository emailEmbeddingRepository;
     private final AiProperties aiProperties;
     private final MailContextProperties mailContextProperties;
+    private final CollectionAnalysisService collectionAnalysisService;
+
+    /** Records of a collection report shown to the model (newest first), as far as they fit the budget. */
+    static final int COLLECTION_RECORDS = 60;
 
     /** Emails from the rest of the mailbox close in meaning to the record's own emails. */
     static final int RELATED_EMAILS = 10;
@@ -145,19 +152,40 @@ public class ReportScopeService {
         return pack.build(prompt, EvidencePack.DEFAULT_BUDGET);
     }
 
+    /**
+     * The evidence for a report over a collection: the figures of {@code plan} computed over all matching records, an
+     * overview of the collection, and its newest matching records as far as they fit the budget. No emails.
+     */
+    @Transactional
+    public EvidencePack collectCollection(Long collectionId, ReportScope.CollectionScope scope, CollectionPlan plan, String prompt) {
+        Collection collection = collectionRepository.findById(new Collection.CollectionId(collectionId))
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
+        EvidencePack.Builder pack = EvidencePack.builder();
+        collectionAnalysisService.run(plan, collectionId, scope).forEach(pack::analysis);
+        pack.overview(collectionAnalysisService.overview(collectionId, scope));
+        RecordPageDto page = recordService.listRecords(collectionId, scope.filters(), scope.search(), null, 0, COLLECTION_RECORDS);
+        pack.recordsHeading("Records of " + collection.getName() + " (newest first, " + page.getItems().size() + " of "
+                + page.getTotalElements() + " matching records):", true);
+        page.getItems().forEach(record -> pack.record(recordInput(collection, record, false, false)));
+        return pack.build(prompt, EvidencePack.DEFAULT_BUDGET);
+    }
+
     private EvidencePack.RecordInput recordInput(RecordRef ref, boolean anchor, boolean related) {
         Collection collection = collectionRepository.findById(new Collection.CollectionId(ref.collectionId()))
                 .orElseThrow(() -> new CollectionNotFoundException(ref.collectionId()));
-        RecordDto record = recordService.getRecord(ref.collectionId(), ref.recordId());
+        return recordInput(collection, recordService.getRecord(ref.collectionId(), ref.recordId()), anchor, related);
+    }
+
+    private static EvidencePack.RecordInput recordInput(Collection collection, RecordDto record, boolean anchor, boolean related) {
         String title = record.getTitle() != null && !record.getTitle().isBlank()
-                ? record.getTitle() : collection.getName() + " #" + ref.recordId();
+                ? record.getTitle() : collection.getName() + " #" + record.getId();
         List<EvidencePack.FieldInput> fields = collection.getFields().stream()
                 .filter(field -> field.getArchivedAt() == null)
                 .sorted(Comparator.comparingInt(CollectionField::getPosition))
                 .map(field -> new EvidencePack.FieldInput(field.getSlug().value(), field.getName(), field.getType(),
                         record.getValues().get(field.getSlug().value())))
                 .toList();
-        return new EvidencePack.RecordInput(ref.collectionId(), collection.getName(), ref.recordId(), title, anchor, fields, related);
+        return new EvidencePack.RecordInput(collection.getId().id(), collection.getName(), record.getId(), title, anchor, fields, related);
     }
 
     private EvidencePack.EmailInput emailInput(EmailMessage email, boolean related) {

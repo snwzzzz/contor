@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.CollectionPlan;
 import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.OllamaException;
@@ -43,7 +44,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -82,6 +85,8 @@ class ReportGeneratorTest {
     private AuditService auditService;
     @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private CollectionAnalysisService collectionAnalysisService;
 
     private ReportGenerator generator;
     private Report report;
@@ -89,7 +94,7 @@ class ReportGeneratorTest {
     @BeforeEach
     void setUp() {
         generator = new ReportGenerator(reportRepository, collectionRepository, emailMessageRepository, reportScopeService,
-                reportModelService, aiSettingsService, auditService, transactionManager,
+                reportModelService, collectionAnalysisService, aiSettingsService, auditService, transactionManager,
                 Clock.fixed(Instant.parse("2026-10-14T10:00:00Z"), ZoneOffset.UTC));
         Collection orders = Collection.builder().id(new Collection.CollectionId(1L)).name("Orders").build();
         report = Report.builder().id(new Report.ReportId(5L)).collection(orders).recordId(4711L).prompt("What went wrong?")
@@ -297,6 +302,112 @@ class ReportGeneratorTest {
 
         assertThat(report.getStatus()).isEqualTo(ReportStatus.FAILED);
         assertThat(report.getFailureReason()).isEqualTo("Generating the report failed.");
+    }
+
+    // A1 "Top customers": row 1 Kessler GmbH (orders 1 and 2, totals 100 and 50.5 EUR), row 2 Moreau SARL (order 3, no total)
+    private static final EvidencePack FIGURES = EvidencePack.builder()
+            .analysis(new EvidencePack.AnalysisInput("Top customers", "3 Sales orders, grouped by Customer",
+                    List.of("#", "Customer", "Sales orders", "Sum of Total"), 3, List.of(
+                    new EvidencePack.AnalysisRow(List.of("1", "Kessler GmbH", "2", "150.5 EUR"), List.of(
+                            new EvidencePack.RowSource(1L, "Sales orders", 1L, "SO-1", "total", "Total", Map.of("amount", 100, "currency", "EUR")),
+                            new EvidencePack.RowSource(1L, "Sales orders", 2L, "SO-2", "total", "Total", Map.of("amount", 50.5, "currency", "EUR")))),
+                    new EvidencePack.AnalysisRow(List.of("2", "Moreau SARL", "1", "–"), List.of(
+                            new EvidencePack.RowSource(1L, "Sales orders", 3L, "SO-3", null, null, null)))), null))
+            .overview("Overview of Sales orders:\nSales orders: 3 records")
+            .build("", EvidencePack.DEFAULT_BUDGET);
+    private static final ReportScope.CollectionScope TABLE_VIEW = new ReportScope.CollectionScope(List.of("state:ne:cancelled"), null);
+    private static final CollectionPlan PLAN = new CollectionPlan(List.of(
+            new CollectionPlan.Analysis("Top customers", "sales_orders", "customer", "sum:total", false, 2, List.of())));
+
+    private Report collectionReport() {
+        Collection salesOrders = Collection.builder().id(new Collection.CollectionId(1L)).name("Sales orders").build();
+        Report collectionReport = Report.builder().id(new Report.ReportId(6L)).collection(salesOrders).prompt("Top 2 customers?")
+                .scope(ReportScope.ofCollection(TABLE_VIEW)).createdByUser(AppUser.builder().id(new AppUser.AppUserId(1L)).build()).build();
+        when(reportRepository.findById(new Report.ReportId(6L))).thenReturn(Optional.of(collectionReport));
+        when(collectionAnalysisService.catalog(1L)).thenReturn("Collections: …");
+        when(collectionAnalysisService.collectionSlugs()).thenReturn(List.of("sales_orders"));
+        when(reportModelService.plan("Top 2 customers?", "Sales orders", "Collections: …", List.of("sales_orders"))).thenReturn(PLAN);
+        when(reportScopeService.collectCollection(1L, TABLE_VIEW, PLAN, "Top 2 customers?")).thenReturn(FIGURES);
+        return collectionReport;
+    }
+
+    @Test
+    void generate_ACollectionReportInsertsTheComputedTableWhereTheModelPlacedIt() {
+        Report collectionReport = collectionReport();
+        when(reportModelService.draftCollection(FIGURES, "Top 2 customers?", "Sales orders", List.of())).thenReturn(new ReportDraft("Top customers",
+                List.of(section("", paragraph(claim("Kessler GmbH bought most.", "A1.1"))), section("Ranking", paragraph(claim("{{A1}}")),
+                        paragraph(claim("Moreau has no totals yet.")))), true));
+
+        generator.generate(6L);
+
+        assertThat(collectionReport.getStatus()).isEqualTo(ReportStatus.READY);
+        assertThat(collectionReport.getPromptVersion()).isEqualTo(ReportModelService.COLLECTION_PROMPT_VERSION);
+        assertThat(collectionReport.getScope().collection()).isEqualTo(TABLE_VIEW);
+        assertThat(collectionReport.getSections()).extracting(ReportSection::getTitle).as("no timeline").containsExactly("Answer", "Ranking");
+        assertThat(collectionReport.getSections().getFirst().getBlocks().getFirst().getClaims().getFirst().getCitations())
+                .extracting(ReportCitation::getRecordId).containsExactly(1L, 2L);
+
+        List<ReportBlock> ranking = collectionReport.getSections().get(1).getBlocks();
+        assertThat(ranking).extracting(ReportBlock::getKind).containsExactly(ReportBlockKind.TABLE, ReportBlockKind.PARAGRAPH);
+        ReportBlock table = ranking.getFirst();
+        assertThat(table.getColumns()).containsExactly("#", "Customer", "Sales orders", "Sum of Total");
+        assertThat(table.getClaims()).extracting(ReportClaim::getText)
+                .containsExactly("1", "Kessler GmbH", "2", "150.5 EUR", "2", "Moreau SARL", "1", "–");
+        ReportClaim sum = table.getClaims().get(3);
+        assertThat(sum.getRowIndex()).isZero();
+        assertThat(sum.getColumnIndex()).isEqualTo(3);
+        assertThat(sum.getCitations()).extracting(ReportCitation::getType, ReportCitation::getRecordId, ReportCitation::getFieldSlug)
+                .containsExactly(tuple(CitationType.FIELD, 1L, "total"), tuple(CitationType.FIELD, 2L, "total"));
+        assertThat(sum.getCitations()).extracting(ReportCitation::getMarker).as("the same sources as the answer").containsExactly(1, 2);
+        assertThat(table.getClaims().get(1).getCitations()).as("the label cell cites nothing").isEmpty();
+        assertThat(table.getClaims().get(7).getCitations()).singleElement()
+                .satisfies(citation -> assertThat(citation.getType()).isEqualTo(CitationType.RECORD));
+        assertThat(collectionReport.getClaimsTotal()).as("answer sentence, two table rows, one sentence").isEqualTo(4);
+        assertThat(collectionReport.getClaimsVerified()).isEqualTo(3);
+    }
+
+    @Test
+    void generate_AFigureTableTheModelDidNotPlaceOrCiteIsAddedAfterTheAnswer() {
+        Report collectionReport = collectionReport();
+        when(reportModelService.draftCollection(any(), anyString(), anyString(), anyList())).thenReturn(new ReportDraft("",
+                List.of(section("", paragraph(claim("Kessler is ahead."))), section("Advice", list(ReportBlockKind.BULLETS, claim("Call Moreau.")))),
+                false));
+
+        generator.generate(6L);
+
+        assertThat(collectionReport.getSections()).extracting(ReportSection::getTitle).containsExactly("Answer", "Top customers", "Advice");
+        assertThat(collectionReport.getSections().get(1).getBlocks()).singleElement()
+                .satisfies(block -> assertThat(block.getKind()).isEqualTo(ReportBlockKind.TABLE));
+        assertThat(collectionReport.getTitle()).as("the collection when the model gave no title").isEqualTo("Sales orders");
+    }
+
+    @Test
+    void generate_ACollectionReportIsWrittenEvenWhenThePlanFails() {
+        Report collectionReport = collectionReport();
+        when(reportModelService.plan(anyString(), anyString(), anyString(), anyList())).thenThrow(new IllegalStateException("The model's answer could not be read"));
+        when(reportScopeService.collectCollection(1L, TABLE_VIEW, new CollectionPlan(List.of()), "Top 2 customers?")).thenReturn(PACK);
+        when(reportModelService.draftCollection(eq(PACK), anyString(), anyString(), anyList()))
+                .thenReturn(new ReportDraft("x", List.of(section("", paragraph(claim("No figures.")))), false));
+
+        generator.generate(6L);
+
+        assertThat(collectionReport.getStatus()).isEqualTo(ReportStatus.READY);
+        verify(reportScopeService, never()).collect(any(), anyString(), any(), anyBoolean());
+    }
+
+    @Test
+    void generate_ATableCodeInASentenceBecomesTheTableAfterIt() {
+        Report collectionReport = collectionReport();
+        when(reportModelService.draftCollection(any(), anyString(), anyString(), anyList())).thenReturn(new ReportDraft("Top",
+                List.of(section("", paragraph(claim("Kessler GmbH and Moreau SARL lead [A1]."), claim("Moreau has no totals.")))), false));
+
+        generator.generate(6L);
+
+        assertThat(collectionReport.getSections()).extracting(ReportSection::getTitle).containsExactly("Answer");
+        List<ReportBlock> blocks = collectionReport.getSections().getFirst().getBlocks();
+        assertThat(blocks).extracting(ReportBlock::getKind).containsExactly(ReportBlockKind.PARAGRAPH, ReportBlockKind.TABLE);
+        assertThat(blocks.getFirst().getClaims()).extracting(ReportClaim::getText)
+                .containsExactly("Kessler GmbH and Moreau SARL lead.", "Moreau has no totals.");
     }
 
     private void draft(ReportDraft draft) {
