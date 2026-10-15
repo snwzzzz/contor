@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.config.AiProperties;
+import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
@@ -17,7 +18,9 @@ import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.domain.Slug;
 import com.example.contor.persistence.CollectionRepository;
+import com.example.contor.persistence.EmailEmbeddingRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.NearEmail;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.persistence.RelationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -43,6 +47,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -62,8 +68,13 @@ class ReportScopeServiceTest {
     private EmailMessageRepository emailMessageRepository;
     @Mock
     private RecordService recordService;
+    @Mock
+    private EmailEmbeddingRepository emailEmbeddingRepository;
     @Spy
-    private AiProperties aiProperties = new AiProperties(null, null, null, ZoneId.of("Europe/Berlin"));
+    private AiProperties aiProperties = new AiProperties(null, new AiProperties.Models("router", "extractor", "embedder"), null,
+            ZoneId.of("Europe/Berlin"));
+    @Spy
+    private MailContextProperties mailContextProperties = new MailContextProperties(true, 6000, 5, 5, 0.25, Duration.ofDays(180));
     @InjectMocks
     private ReportScopeService reportScopeService;
 
@@ -140,6 +151,28 @@ class ReportScopeServiceTest {
     }
 
     @Test
+    void collect_AddsRelatedEmailsFromTheMailboxAndTheRecordsLinkedToThem() {
+        var account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(AppUser.builder().id(owner).build()).build();
+        var delay = email(20L, account, null, "inbox", "Delay notice", "Your shipment is held at customs.");
+        var similar = email(30L, account, null, "inbox", "Another delay", "Order 4800 is stuck at customs too.");
+        when(recordSourceRepository.findByCollection_IdAndRecordId(orders.getId(), 4711L)).thenReturn(List.of(
+                RecordSource.builder().collection(orders).recordId(4711L).email(delay).role(RecordSourceRole.MENTIONED_IN).build()));
+        when(emailEmbeddingRepository.findNearest(eq(owner), eq(20L), eq("embedder"), any(), any(), eq(0.25), anyInt()))
+                .thenReturn(List.of(new NearEmail(20L, 0.0), new NearEmail(30L, 0.1)));
+        when(emailMessageRepository.findAllById(List.of(new EmailMessage.EmailMessageId(30L)))).thenReturn(List.of(similar));
+        when(recordSourceRepository.findByEmail_IdIn(List.of(new EmailMessage.EmailMessageId(30L)))).thenReturn(List.of(
+                RecordSource.builder().collection(orders).recordId(4800L).email(similar).role(RecordSourceRole.CREATED_FROM).build()));
+        record(orders, 4800L, "Order 4800", Map.of());
+        var scope = new ReportScope(List.of(new RecordRef(1L, 4711L)), 0, null);
+
+        var pack = reportScopeService.collect(scope, "What else went wrong?", owner, true);
+
+        assertThat(pack.emailIds()).containsExactly(20L, 30L);
+        assertThat(pack.render()).contains("Other records (found through related emails):", "Orders: Order 4800",
+                "Related emails from the rest of the mailbox", "Order 4800 is stuck at customs too.");
+    }
+
+    @Test
     void collect_WithoutMailAccessUsesNoEmails() {
         var scope = new ReportScope(List.of(new RecordRef(1L, 4711L)), 0, null);
 
@@ -147,6 +180,7 @@ class ReportScopeServiceTest {
 
         assertThat(pack.emailIds()).isEmpty();
         verify(recordSourceRepository, never()).findByCollection_IdAndRecordId(any(), eq(4711L));
+        verify(emailEmbeddingRepository, never()).findNearest(any(), any(), any(), any(), any(), anyDouble(), anyInt());
     }
 
     private static Collection collection(long id, String slug, String name) {

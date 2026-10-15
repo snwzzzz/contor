@@ -40,6 +40,15 @@
 >   "(E3:P3.1)") and whole emails (`E3`) are understood; the verifier sees each email's date and its quotes may span the
 >   sentence's sources with the prompt's separators; follow-ups always answer their question; an empty draft is retried
 >   once. Same data: report 13 of 16 verified with 4 recommendations (was 0 of 16), follow-up 10 of 12 (was empty).
+> - **Fact check replaced by references (user decision, 2026-10-15):** the verifier, the repair pass and the deterministic
+>   number/date checks are gone (`ClaimChecks` removed). The user wants answers to their questions with a reference where
+>   there is one, not removed sentences. `ai/References` resolves codes (in refs, in brackets, or written as words) and
+>   keeps only verbatim quotes. The model writes a free-text `answer` first (`report-v4`; the 9B model left the
+>   structured summary list empty and copied email sentences instead); follow-ups drop sentences the report already
+>   has and get no timeline. Related emails (embeddings) and the records linked to them are part of every report, for
+>   "look at other orders" questions. Live, on complaint "Wrong item SO-26-0155": the first answer has a direct answer
+>   with recommendations, "what do you think went wrong?" gets an opinion, and "look at other emails and orders" finds
+>   other orders and an unrelated misloading case.
 > - R8/R10: `components/app/reports/` (`RecordReports`, `ReportPrompt`, `ReportView`, `ReportBody`, `CitationMarker`,
 >   `SourcePanel`, `FactCheck`), `lib/report.ts`. The sources panel shows the cited email paragraph with its neighbours
 >   (`GET /api/emails/{id}/paragraphs`) and the quote marked; source links already carry `?tab=…&field=…` /

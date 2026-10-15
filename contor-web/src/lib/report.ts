@@ -11,7 +11,7 @@ export const REPORT_STEP: Record<ReportState, string> = {
   QUEUED: "Waiting for the assistant…",
   COLLECTING: "Collecting the record, its connections and emails…",
   DRAFTING: "Writing the report…",
-  FACT_CHECKING: "Fact-checking every sentence…",
+  FACT_CHECKING: "Linking the sources…",
   READY: "Ready",
   FAILED: "Failed",
 };
@@ -42,9 +42,10 @@ export function sourceHref(source: ReportSourceDto): string | undefined {
   }
 }
 
-export function verifiedLabel(verified: number, total: number): string {
-  if (total === 0) return "No sentences to check";
-  return `${verified} of ${total} ${total === 1 ? "sentence" : "sentences"} verified`;
+/** How many of the report's sentences point at a source (opinions and advice may have none). */
+export function sourcesLabel(withSource: number, total: number): string {
+  if (total === 0) return "No sentences";
+  return `${withSource} of ${total} ${total === 1 ? "sentence" : "sentences"} with a source`;
 }
 
 export interface QuoteSplit {

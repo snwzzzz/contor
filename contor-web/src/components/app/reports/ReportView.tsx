@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, LoaderCircle, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,8 +16,7 @@ import {
   useRegenerateReport,
 } from "@/lib/api/generated/endpoints/reports/reports";
 import type { ReportDto } from "@/lib/api/generated/model/reportDto";
-import { isGenerating, REPORT_POLL_MS, REPORT_STEP, reportHref, verifiedLabel } from "@/lib/report";
-import { FactCheck } from "./FactCheck";
+import { isGenerating, REPORT_POLL_MS, REPORT_STEP, reportHref, sourcesLabel } from "@/lib/report";
 import { ReportBody } from "./ReportBody";
 import { ReportPrompt } from "./ReportPrompt";
 import { SourcePanel } from "./SourcePanel";
@@ -48,8 +47,8 @@ function quotesOf(report: ReportDto): Map<number, string> {
 }
 
 /**
- * One report as a page: header with the request and the fact-check count, the sections with their source markers,
- * the follow-up answers, the fact-check details and a follow-up prompt; next to it the sources panel, where a clicked
+ * One report as a page: header with the request and how many sentences have a source, the sections with their source
+ * markers, the follow-up answers and a follow-up prompt; next to it the sources panel, where a clicked
  * marker shows exactly what was cited (the field value, the email paragraph with the quote marked) and links there.
  */
 export function ReportView({ collectionId, recordId, reportId }: { collectionId: number; recordId: number; reportId: number }) {
@@ -104,9 +103,9 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
           <span>{report.records.length} {report.records.length === 1 ? "record" : "records"}</span>
           <span>{report.emailCount} {report.emailCount === 1 ? "email" : "emails"}</span>
           {report.state === "READY" ? (
-            <span className="inline-flex items-center gap-1 font-medium text-success">
-              <ShieldCheck className="size-3.5" aria-hidden="true" />
-              {verifiedLabel(report.claimsVerified, report.claimsTotal)}
+            <span className="inline-flex items-center gap-1 font-medium">
+              <Link2 className="size-3.5" aria-hidden="true" />
+              {sourcesLabel(report.claimsVerified, report.claimsTotal)}
             </span>
           ) : null}
         </div>
@@ -136,14 +135,12 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
         <div className="grid content-start gap-8">
           <ReportState report={report} />
           <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
-          <FactCheck report={report} />
           {report.followUps.map((followUp) => (
             <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-4 border-t pt-6">
               <h2 id={`follow-up-${followUp.id}`} className="text-base font-semibold">{followUp.prompt ?? "Follow-up"}</h2>
               <ReportState report={followUp} />
               <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
                 onSelect={select(followUp.id)} />
-              <FactCheck report={followUp} />
             </section>
           ))}
           <ReportPrompt

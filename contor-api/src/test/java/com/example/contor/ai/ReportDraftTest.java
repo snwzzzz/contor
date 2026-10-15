@@ -31,7 +31,7 @@ class ReportDraftTest {
         assertThat(draft.summary()).containsExactly(new ReportDraft.Claim("It was late.", List.of("F1", "F3")));
         var finding = draft.findings().getFirst();
         assertThat(finding.severity()).isEqualTo(FindingSeverity.PROBLEM);
-        assertThat(finding.quotes()).containsExactly(new ClaimChecks.Quote("P1.1", "held at customs"));
+        assertThat(finding.quotes()).containsExactly(new References.Quote("P1.1", "held at customs"));
         assertThat(draft.openQuestions()).hasSize(1);
         assertThat(draft.nextSteps()).hasSize(1);
         assertThat(draft.customSections().getFirst().title()).isEqualTo("Payments");
@@ -72,6 +72,36 @@ class ReportDraftTest {
                 new ReportDraft.Claim("The truck broke down near Rosenheim.", List.of("F9", "E3", "P4.2")),
                 new ReportDraft.Claim("Delivered on time (as agreed) by the carrier.", List.of("F1")),
                 new ReportDraft.Claim("Review the carrier's performance.", List.of("E3:P3.1", "R1:F5")));
+    }
+
+    @Test
+    void the_answer_text_becomes_sentences_with_their_bracketed_sources() {
+        var draft = ReportDraft.parse(mapper.readTree("""
+                {"answer": "The wrong discs (125x2,5) were picked instead of 125x1,0 [P2.1]. The replacement came on 23.07. Die Ware \
+                kam am Donnerstag [P1.1, F3]!\\n\\nA second check before packing would catch this.",
+                 "title": "Wrong item"}"""));
+
+        assertThat(draft.summary()).containsExactly(
+                new ReportDraft.Claim("The wrong discs (125x2,5) were picked instead of 125x1,0.", List.of("P2.1")),
+                new ReportDraft.Claim("The replacement came on 23.07. Die Ware kam am Donnerstag!", List.of("P1.1", "F3")),
+                new ReportDraft.Claim("A second check before packing would catch this.", List.of()));
+    }
+
+    @Test
+    void a_finding_with_quotes_but_no_sentence_keeps_its_title() {
+        var draft = ReportDraft.parse(mapper.readTree("""
+                {"findings": [{"title": "Wrong discs shipped", "severity": "PROBLEM", "claims": [],
+                               "quotes": [{"ref": "P2.1", "text": "125x2,5 statt 125x1,0"}]}]}"""));
+
+        assertThat(draft.findings()).singleElement().satisfies(finding ->
+                assertThat(finding.claims()).containsExactly(new ReportDraft.Claim("Wrong discs shipped.", List.of("P2.1"))));
+    }
+
+    @Test
+    void the_answer_comes_first_in_the_schema() {
+        String schema = mapper.valueToTree(ReportDraft.schema()).toString();
+
+        assertThat(schema.indexOf("\"answer\"")).isPositive().isLessThan(schema.indexOf("\"findings\""));
     }
 
     @Test

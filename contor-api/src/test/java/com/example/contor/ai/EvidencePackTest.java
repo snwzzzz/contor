@@ -133,6 +133,25 @@ class EvidencePackTest {
         assertThat(pack.timeline()).extracting(Source::token).containsExactly("F1", "P1.1", "F3");
     }
 
+    @Test
+    void related_emails_and_other_records_are_listed_apart_and_the_records_own_emails_come_first() {
+        var linked = email(1L, LocalDate.of(2026, 9, 1), "Order", "Your order has shipped.");
+        var related = new EmailInput(2L, LocalDate.of(2026, 9, 9), "Other Customer", "x@other.example", false, "Wrong item again",
+                EmailParagraphs.split("Again the wrong discs were delivered.", null), true);
+        var otherOrder = new RecordInput(1L, "Orders", 4800L, "Order 4800", false, List.of(), true);
+
+        var pack = EvidencePack.builder().record(ORDER).record(otherOrder).email(related).email(linked)
+                .build("wrong discs delivered", EvidencePack.DEFAULT_BUDGET);
+
+        assertThat(pack.emailIds()).containsExactly(1L, 2L);
+        String text = pack.render();
+        assertThat(text.indexOf("Other records (found through related emails):"))
+                .isGreaterThan(text.indexOf("[R1] Orders: Order 4711")).isLessThan(text.indexOf("Order 4800"));
+        assertThat(text.indexOf("Related emails from the rest of the mailbox"))
+                .isGreaterThan(text.indexOf("Your order has shipped.")).isLessThan(text.indexOf("Again the wrong discs"));
+        assertThat(pack.source("R2").orElseThrow().recordTitle()).isEqualTo("Order 4800");
+    }
+
     private static EmailInput email(long id, LocalDate date, String subject, String... paragraphs) {
         return new EmailInput(id, date, "Carrier Support", "support@carrier.example", false, subject,
                 EmailParagraphs.split(String.join("\n\n", paragraphs), null));

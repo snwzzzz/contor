@@ -1,12 +1,12 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, LoaderCircle, MessageSquare, ShieldCheck } from "lucide-react";
+import { FileText, Link2, LoaderCircle, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { useGetAiStatus } from "@/lib/api/generated/endpoints/ai/ai";
 import { getListRecordReportsQueryKey, useCreateReport, useListRecordReports } from "@/lib/api/generated/endpoints/reports/reports";
 import type { ReportSummaryDto } from "@/lib/api/generated/model/reportSummaryDto";
-import { isGenerating, REPORT_POLL_MS, REPORT_STEP, reportHref, verifiedLabel } from "@/lib/report";
+import { isGenerating, REPORT_POLL_MS, REPORT_STEP, reportHref, sourcesLabel } from "@/lib/report";
 import { ReportPrompt } from "./ReportPrompt";
 
 const SUGGESTIONS = ["Summarize this record", "What went wrong?", "What went well?", "What is still open?"] as const;
@@ -14,8 +14,8 @@ const NOT_READY = "The AI model is not ready: start Ollama and download the mode
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /**
- * The record's reports in its Details tab: a chat-style prompt that asks the assistant for a fact-checked report, and
- * the reports asked so far (newest first) with their progress, first summary sentence and fact check.
+ * The record's reports in its Details tab: a chat-style prompt that asks the assistant about the record, and the
+ * answers so far (newest first) with their progress, first sentence and how many sentences have a source.
  */
 export function RecordReports({ collectionId, recordId }: { collectionId: number; recordId: number }) {
   const queryClient = useQueryClient();
@@ -81,8 +81,8 @@ function ReportCard({ collectionId, recordId, report }: { collectionId: number; 
           {report.summary ? <span className="line-clamp-2 text-sm">{report.summary}</span> : null}
           <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
-              {verifiedLabel(report.claimsVerified, report.claimsTotal)}
+              <Link2 className="size-3.5" aria-hidden="true" />
+              {sourcesLabel(report.claimsVerified, report.claimsTotal)}
             </span>
             {report.followUpCount > 0 ? (
               <span className="inline-flex items-center gap-1">

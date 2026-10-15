@@ -58,22 +58,22 @@ const paragraphs = [
 describe("ReportView", () => {
   beforeEach(() => resetNavigation("/collections/1/records/4711/reports/5"));
 
-  it("shows the summary, the findings with their quotes and the fact check", async () => {
+  it("shows the answer, the findings with their quotes and how many sentences have a source", async () => {
     mockApi({ "GET /api/reports/5": { body: report } });
 
     renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Order 4711 review" })).toBeInTheDocument();
     expect(screen.getByText("What went wrong?")).toBeInTheDocument();
-    expect(screen.getByText("3 of 4 sentences verified")).toBeInTheDocument();
+    expect(screen.getByText("3 of 4 sentences with a source")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Executive summary" })).toBeInTheDocument();
     expect(screen.getByText("The order was due on 2026-09-02 and arrived on 2026-09-07.")).toBeInTheDocument();
     const finding = screen.getByRole("article", { name: "Customs hold" });
     expect(within(finding).getByText("Problem")).toBeInTheDocument();
     expect(within(finding).getByText(/held at customs/, { selector: "blockquote *" })).toBeInTheDocument();
     expect(screen.getByLabelText("Rewritten by the fact check")).toBeInTheDocument();
-    expect(screen.getByText("The carrier apologised.")).toBeInTheDocument();
-    expect(screen.getByText("not supported by its sources")).toBeInTheDocument();
+    expect(screen.queryByText(/Fact check/)).not.toBeInTheDocument();
+    expect(screen.queryByText("The carrier apologised.")).not.toBeInTheDocument();
   });
 
   it("opens a source with its exact place when its marker is clicked", async () => {
@@ -129,7 +129,7 @@ describe("ReportView", () => {
     expect(screen.getByText("The customs office held the shipment.")).toBeInTheDocument();
   });
 
-  it("marks recommendations as the assistant's suggestions based on the cited facts", async () => {
+  it("marks recommendations as the assistant's suggestions", async () => {
     const advice = { id: 4, type: "NEXT_STEPS", title: "Recommendations and next steps", findings: [],
       claims: [{ id: 41, text: "Agree on a backup carrier for urgent deliveries.", check: "SUPPORTED", markers: [3] }] };
     mockApi({ "GET /api/reports/5": { body: { ...report, sections: [...report.sections, advice] } } });
@@ -137,17 +137,16 @@ describe("ReportView", () => {
     renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
 
     const section = await screen.findByRole("region", { name: "Recommendations and next steps" });
-    expect(within(section).getByText("Suggestions from the assistant, based on the cited facts — not stated in the sources."))
-      .toBeInTheDocument();
+    expect(within(section).getByText("Suggestions from the assistant.")).toBeInTheDocument();
     expect(within(section).getByText("Agree on a backup carrier for urgent deliveries.")).toBeInTheDocument();
   });
 
   it("shows the progress while the report is generated", async () => {
-    mockApi({ "GET /api/reports/5": { body: { ...report, state: "FACT_CHECKING", sections: [], sources: [], removedClaims: [] } } });
+    mockApi({ "GET /api/reports/5": { body: { ...report, state: "DRAFTING", sections: [], sources: [], removedClaims: [] } } });
 
     renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
 
-    expect(await screen.findByText("Fact-checking every sentence…")).toBeInTheDocument();
+    expect(await screen.findByText("Writing the report…")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBeDisabled();
   });
 

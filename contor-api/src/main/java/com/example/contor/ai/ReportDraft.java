@@ -11,9 +11,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A report as the model drafted it (prompt {@code report-v1}), before the fact check. Parsing is lenient about shape
- * and strict about content: blank sentences, findings without a title or a sentence and severities the model may not
- * set (CONFLICT is only set by the fact check) are dropped or neutralized, and every list is capped.
+ * A report as the model drafted it. The answer is free text ({@code answer}, split into sentences, sources in square
+ * brackets after a sentence); the other parts are lists of sentences with their source codes. Parsing is lenient about
+ * shape: blank sentences are dropped, a finding with quotes but no sentence keeps its title as its sentence, severities
+ * the model may not set (CONFLICT) are neutralized, and every list is capped. A {@code summary} list is still read when
+ * there is no {@code answer}.
  */
 public record ReportDraft(String title, List<Claim> summary, List<Finding> findings, List<Claim> openQuestions,
                           List<Claim> nextSteps, List<Section> customSections) {
@@ -32,6 +34,9 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
             + "(?:\\s*(?:[,;/]|\\band\\b|\\bund\\b)\\s*" + TOKEN + "(?:\\s*-\\s*[RFLPE]?\\d+)?)*)\\s*[)\\]]");
     private static final Pattern RANGE = Pattern.compile("([RFLPE])(\\d+)(?:\\s*-\\s*[RFLPE]?(\\d+))?");
     private static final Pattern SPACE_BEFORE_PUNCTUATION = Pattern.compile("\\s+([.,;:!?])");
+    private static final Pattern PARAGRAPHS = Pattern.compile("\\n\\s*\\n");
+    /** A sentence ends after a letter, a bracket or a quote mark and . ! ? — not after a number ("23.07. Die …"). */
+    private static final Pattern SENTENCE_END = Pattern.compile("(?<=[\\p{L})\\]\"”'][.!?])\\s+(?=[\\p{Lu}\\p{N}„\"“])");
 
     /** Whether the model wrote no sentence at all. */
     public boolean isEmpty() {
@@ -41,7 +46,7 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
     /** One sentence and the source tokens it cites. */
     public record Claim(String text, List<String> refs) {}
 
-    public record Finding(String title, FindingSeverity severity, List<Claim> claims, List<ClaimChecks.Quote> quotes) {}
+    public record Finding(String title, FindingSeverity severity, List<Claim> claims, List<References.Quote> quotes) {}
 
     public record Section(String title, List<Claim> claims) {}
 
@@ -50,15 +55,18 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
         for (JsonNode node : json.path("findings")) {
             String title = node.path("title").asString("").strip();
             List<Claim> claims = claims(node.path("claims"), MAX_FINDING_CLAIMS);
-            if (title.isEmpty() || claims.isEmpty()) {
-                continue;
-            }
-            List<ClaimChecks.Quote> quotes = new ArrayList<>();
+            List<References.Quote> quotes = new ArrayList<>();
             for (JsonNode quote : node.path("quotes")) {
                 String text = quote.path("text").asString("").strip();
                 if (!text.isEmpty() && quotes.size() < MAX_QUOTES) {
-                    quotes.add(new ClaimChecks.Quote(quote.path("ref").asString(""), text));
+                    quotes.add(new References.Quote(quote.path("ref").asString(""), text));
                 }
+            }
+            if (claims.isEmpty() && !quotes.isEmpty() && !title.isEmpty()) {
+                claims = List.of(new Claim(title.matches(".*[.!?]$") ? title : title + ".", quotes.stream().map(References.Quote::token).toList()));
+            }
+            if (title.isEmpty() || claims.isEmpty()) {
+                continue;
             }
             findings.add(new Finding(title, severity(node.path("severity").asString("")), claims, quotes));
             if (findings.size() == MAX_FINDINGS) {
@@ -73,8 +81,24 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
                 sections.add(new Section(title, claims));
             }
         }
-        return new ReportDraft(json.path("title").asString("").strip(), claims(json.path("summary"), MAX_SUMMARY), findings,
+        String answer = json.path("answer").asString("").strip();
+        List<Claim> summary = answer.isEmpty() ? claims(json.path("summary"), MAX_SUMMARY) : sentences(answer);
+        return new ReportDraft(json.path("title").asString("").strip(), summary, findings,
                 claims(json.path("openQuestions"), MAX_LIST), claims(json.path("nextSteps"), MAX_LIST), sections);
+    }
+
+    /** The answer text as sentences, each with the codes in the brackets after it. */
+    private static List<Claim> sentences(String answer) {
+        List<Claim> sentences = new ArrayList<>();
+        for (String paragraph : PARAGRAPHS.split(answer)) {
+            for (String sentence : SENTENCE_END.split(paragraph.replace('\n', ' ').strip())) {
+                Claim claim = claim(sentence, new ArrayList<>());
+                if (claim != null) {
+                    sentences.add(claim);
+                }
+            }
+        }
+        return sentences;
     }
 
     /** The JSON schema the model answers with (all keys required; empty lists are allowed). */
@@ -94,8 +118,8 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
                 "title", JsonSchemas.string(),
                 "claims", JsonSchemas.array(claim)));
         return JsonSchemas.object(JsonSchemas.properties(
+                "answer", JsonSchemas.string(),
                 "title", JsonSchemas.string(),
-                "summary", JsonSchemas.array(claim),
                 "findings", JsonSchemas.array(finding),
                 "openQuestions", JsonSchemas.array(claim),
                 "nextSteps", JsonSchemas.array(claim),
@@ -105,38 +129,43 @@ public record ReportDraft(String title, List<Claim> summary, List<Finding> findi
     private static List<Claim> claims(JsonNode array, int max) {
         List<Claim> claims = new ArrayList<>();
         for (JsonNode node : array) {
-            String text = node.path("text").asString("").strip();
-            if (text.isEmpty()) {
-                continue;
-            }
             List<String> refs = new ArrayList<>();
             for (JsonNode ref : node.path("refs")) {
                 if (ref.isString()) {
                     refs.add(ref.asString().strip().replace("[", "").replace("]", ""));
                 }
             }
-            // Models also write their sources into the sentence: "(R1, F1-F3)", "[E3; P4.2]".
-            Matcher inline = INLINE_REFS.matcher(text);
-            StringBuilder cleaned = new StringBuilder();
-            while (inline.find()) {
-                for (String ref : expandRanges(inline.group(1))) {
-                    if (!refs.contains(ref)) {
-                        refs.add(ref);
-                    }
-                }
-                inline.appendReplacement(cleaned, "");
-            }
-            inline.appendTail(cleaned);
-            text = SPACE_BEFORE_PUNCTUATION.matcher(cleaned.toString().strip()).replaceAll("$1");
-            if (text.isEmpty()) {
+            Claim claim = claim(node.path("text").asString(""), refs);
+            if (claim == null) {
                 continue;
             }
-            claims.add(new Claim(text, refs));
+            claims.add(claim);
             if (claims.size() == max) {
                 break;
             }
         }
         return claims;
+    }
+
+    /** A sentence without the codes written into it ("(R1, F1-F3)", "[E3; P4.2]"), which join {@code refs}; null when blank. */
+    private static Claim claim(String raw, List<String> refs) {
+        String text = raw.strip();
+        if (text.isEmpty()) {
+            return null;
+        }
+        Matcher inline = INLINE_REFS.matcher(text);
+        StringBuilder cleaned = new StringBuilder();
+        while (inline.find()) {
+            for (String ref : expandRanges(inline.group(1))) {
+                if (!refs.contains(ref)) {
+                    refs.add(ref);
+                }
+            }
+            inline.appendReplacement(cleaned, "");
+        }
+        inline.appendTail(cleaned);
+        text = SPACE_BEFORE_PUNCTUATION.matcher(cleaned.toString().strip()).replaceAll("$1");
+        return text.isEmpty() ? null : new Claim(text, refs);
     }
 
     /** {@code "R1, F1-F3; E3"} → R1, F1, F2, F3, E3 (a range keeps the letter of its start). */

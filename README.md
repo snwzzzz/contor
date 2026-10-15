@@ -161,36 +161,34 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 
 ## Reports (AI)
 
-Fact-checked AI reports on any record of any collection, with every sentence cited down to a record field or an email
-paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md).
+Ask the assistant about any record of any collection and get an answer with references: each sentence that comes from
+the record or its emails points at its source, down to a record field or an email paragraph. Plan and status:
+[`docs/reports-plan.md`](docs/reports-plan.md).
 
 - **Asking:** the record page's **Details** tab starts with a prompt ("Ask about this record…") and suggestions
   (*Summarize this record*, *What went wrong?*, …). Enter sends; an empty prompt asks for a summary of what happened, went
-  well, went wrong and is open. Below it are the record's reports with their progress, first summary sentence and fact
-  check. Needs the AI model to be ready (409 otherwise).
+  well, went wrong and is open. Below it are the record's answers with their progress, first sentence and how many
+  sentences have a source. Needs the AI model to be ready (409 otherwise).
 - **What it reads:** the record, the connected records you include (`connectedRecords`, reachable through relations
   within `depth` steps, at most 25 records) and, with mail access in the AI settings, your emails linked to them (record
-  sources) with their conversations — at most 60 emails, the ones matching your request first, about 24 000 characters.
-  Each fact is a numbered source the model must cite: records `[R1]`, fields `[F3]`, connections `[L1]`, email paragraphs
-  `[P2.1]`.
-- **Fact check:** every drafted sentence is checked deterministically (`ai/ClaimChecks`: it cites existing sources, quotes
-  are verbatim in their paragraph, every date and every number with more than one digit appears in its cited sources in
-  any notation — a date without a year takes the year of its email —, or is the number of days between two cited dates),
-  then by a separate model call that sees only that sentence and its sources and must quote a source word for word for
-  every fact it accepts (the quotes are checked in code). Failed sentences get one rewrite that is checked again; what still fails is removed (listed
-  under *Fact check*), sources that disagree become a *Sources disagree* finding. **Recommendations** (how to do better,
-  next steps) and open questions are the assistant's advice: they must cite the facts they respond to and pass the
-  deterministic checks, but skip the verifier, and the report marks them as suggestions. Sentences about the sources
-  ("the source mentions…") are rejected; sources written into a sentence ("(R1, F1-F3)", "(E3:P3.1)") are taken as its
-  citations; a whole email (`E3`) stands for its paragraphs. A follow-up question is answered directly, not by repeating
-  the report; an empty draft is asked for once more. The timeline is built from dated fields
-  and emails without the model. Prompts: `report-v1`, verification and repair in `ReportModelService` (`report-v2`).
-- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): executive summary, key findings (went
-  well / problem / risk / sources disagree) with supporting quotes, timeline, open questions, next steps, sections the
-  request asked for, and the fact-check details. Markers `[n]` show the source on hover; a click opens it in the
+  sources) with their conversations (up to 50), plus up to 10 **related emails** from the rest of your mailbox (closest
+  in meaning to the record's emails, embeddings, any date) and up to 8 **other records** linked to those — so "look at
+  other orders" works. The record's own emails come first; about 24 000 characters in all. Each fact is a numbered
+  source: records `[R1]`, fields `[F3]`, connections `[L1]`, email paragraphs `[P2.1]`.
+- **The answer** (prompt `report-v4`, `ReportModelService`): the model writes a free-text **answer** to exactly what was
+  asked first (opinions and advice included), with the codes of its sources in square brackets after a sentence, then
+  key findings with quotes, open questions and recommendations. **Nothing is fact-checked or removed:** sentences stay
+  as written; a sentence gets a reference where there is one (`ai/References`: unknown codes are dropped, a whole email
+  `E3` stands for its paragraphs, codes written as words — "record R1 shows" — become names, a quote is shown only when
+  it is word for word in its email). Opinions, advice and questions may have no source. A sentence that repeats an
+  earlier one is left out; a follow-up answers only its question and leaves out what the report already said. The
+  timeline is built from the record's dated fields and emails without the model (not repeated in follow-ups).
+- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): the answer, key findings (went well /
+  problem / risk) with supporting quotes, timeline, open questions, recommendations (marked as the assistant's
+  suggestions) and sections the request asked for. Markers `[n]` show the source on hover; a click opens it in the
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
   highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
-  scope and fact check. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  sources. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
   Reports still being generated when the backend stops are generated again after the next start; an error during
   generation marks the report FAILED with a reason.
 - **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
@@ -198,7 +196,7 @@ paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md).
   report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
   user's mailbox are never shown (`sourceState` UNAVAILABLE).
 - **Storage** (`V1_0_29__reports.sql`): `report` (follow-ups have `parent_report_id`), `report_section`, `report_finding`,
-  `report_claim` (sentence + fact-check result) and `report_citation` (record, field with value snapshot, email paragraph
+  `report_claim` (one sentence) and `report_citation` (record, field with value snapshot, email paragraph
   with verbatim quote, or relation). Reports are snapshots; reading one marks sources that changed or were deleted.
 - **Email paragraphs:** `GET /api/emails/{id}/paragraphs` (your mailboxes only) splits an email into the paragraphs
   citations point at (`ai/EmailParagraphs`): text body, or the HTML body as text (`ai/HtmlText`, using **jsoup**); quoted

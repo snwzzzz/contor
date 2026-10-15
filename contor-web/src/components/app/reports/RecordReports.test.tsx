@@ -31,7 +31,7 @@ describe("RecordReports", () => {
     const link = await screen.findByRole("link", { name: /Order 4711 review/ });
     expect(link).toHaveAttribute("href", "/collections/1/records/4711/reports/5");
     expect(screen.getByText("The order was delivered five days late.")).toBeInTheDocument();
-    expect(screen.getByText("3 of 4 sentences verified")).toBeInTheDocument();
+    expect(screen.getByText("3 of 4 sentences with a source")).toBeInTheDocument();
     expect(screen.getByText("1 follow-up")).toBeInTheDocument();
   });
 

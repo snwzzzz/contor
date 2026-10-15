@@ -20,9 +20,9 @@ const LEVEL: Record<FindingLevel, { label: string; className: string }> = {
   CONFLICT: { label: "Sources disagree", className: "bg-warning/20 text-warning" },
 };
 
-/** Sections whose sentences are the assistant's advice: checked against the facts they cite, not stated in the sources. */
+/** Sections whose sentences are the assistant's advice or questions rather than what the sources say. */
 const SUGGESTIONS: ReadonlySet<ReportSectionType> = new Set<ReportSectionType>(["NEXT_STEPS", "OPEN_QUESTIONS"]);
-const SUGGESTION_NOTE = "Suggestions from the assistant, based on the cited facts — not stated in the sources.";
+const SUGGESTION_NOTE = "Suggestions from the assistant.";
 
 const DAY_FORMAT =new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 

@@ -4,6 +4,7 @@ import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.config.AiProperties;
+import com.example.contor.config.MailContextProperties;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
@@ -12,7 +13,9 @@ import com.example.contor.domain.Relation;
 import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.exception.CollectionNotFoundException;
+import com.example.contor.exception.ResourceNotFoundException;
 import com.example.contor.persistence.CollectionRepository;
+import com.example.contor.persistence.EmailEmbeddingRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.persistence.RelationRepository;
@@ -24,6 +27,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,7 +51,20 @@ public class ReportScopeService {
     private final RecordSourceRepository recordSourceRepository;
     private final EmailMessageRepository emailMessageRepository;
     private final RecordService recordService;
+    private final EmailEmbeddingRepository emailEmbeddingRepository;
     private final AiProperties aiProperties;
+    private final MailContextProperties mailContextProperties;
+
+    /** Emails from the rest of the mailbox close in meaning to the record's own emails. */
+    static final int RELATED_EMAILS = 10;
+    /** Records linked to those related emails (other orders, complaints…). */
+    static final int RELATED_RECORDS = 8;
+    /** The record's own emails, leaving room for the related ones within {@link ReportScope#MAX_EMAILS}. */
+    static final int OWN_EMAILS = ReportScope.MAX_EMAILS - RELATED_EMAILS;
+    /** Seeds of the related-email search: the newest of the record's own emails. */
+    private static final int SEARCH_SEEDS = 10;
+    private static final Instant ALL_TIME_FROM = Instant.EPOCH;
+    private static final Instant ALL_TIME_TO = Instant.parse("9999-01-01T00:00:00Z");
 
     /**
      * The anchor first, then the connected records; each must be reachable from the anchor within {@code depth}
@@ -98,19 +116,9 @@ public class ReportScopeService {
         Map<RecordRef, String> titles = new LinkedHashMap<>();
         RecordRef anchor = scope.records().getFirst();
         for (RecordRef ref : scope.records()) {
-            Collection collection = collectionRepository.findById(new Collection.CollectionId(ref.collectionId()))
-                    .orElseThrow(() -> new CollectionNotFoundException(ref.collectionId()));
-            RecordDto record = recordService.getRecord(ref.collectionId(), ref.recordId());
-            String title = record.getTitle() != null && !record.getTitle().isBlank()
-                    ? record.getTitle() : collection.getName() + " #" + ref.recordId();
-            titles.put(ref, title);
-            List<EvidencePack.FieldInput> fields = collection.getFields().stream()
-                    .filter(field -> field.getArchivedAt() == null)
-                    .sorted(Comparator.comparingInt(CollectionField::getPosition))
-                    .map(field -> new EvidencePack.FieldInput(field.getSlug().value(), field.getName(), field.getType(),
-                            record.getValues().get(field.getSlug().value())))
-                    .toList();
-            pack.record(new EvidencePack.RecordInput(ref.collectionId(), collection.getName(), ref.recordId(), title, ref.equals(anchor), fields));
+            EvidencePack.RecordInput input = recordInput(ref, ref.equals(anchor), false);
+            titles.put(ref, input.title());
+            pack.record(input);
         }
         Map<Long, Relation> relations = new LinkedHashMap<>();
         for (RecordRef ref : scope.records()) {
@@ -128,11 +136,86 @@ public class ReportScopeService {
                     date(relation.getValidFrom()), date(relation.getValidTo())));
         }
         if (mailAccess) {
-            emails(scope, owner).forEach(email -> pack.email(new EvidencePack.EmailInput(email.getId().id(), date(email.getReceivedAt()),
-                    email.getFromName(), email.getFromAddress(), "sent".equals(email.getFolder()), email.getSubject(),
-                    EmailParagraphs.split(email.getBodyText(), email.getBodyHtml()))));
+            List<EmailMessage> own = emails(scope, owner);
+            own.forEach(email -> pack.email(emailInput(email, false)));
+            List<EmailMessage> related = related(own, owner);
+            related.forEach(email -> pack.email(emailInput(email, true)));
+            relatedRecords(related, titles.keySet()).forEach(pack::record);
         }
         return pack.build(prompt, EvidencePack.DEFAULT_BUDGET);
+    }
+
+    private EvidencePack.RecordInput recordInput(RecordRef ref, boolean anchor, boolean related) {
+        Collection collection = collectionRepository.findById(new Collection.CollectionId(ref.collectionId()))
+                .orElseThrow(() -> new CollectionNotFoundException(ref.collectionId()));
+        RecordDto record = recordService.getRecord(ref.collectionId(), ref.recordId());
+        String title = record.getTitle() != null && !record.getTitle().isBlank()
+                ? record.getTitle() : collection.getName() + " #" + ref.recordId();
+        List<EvidencePack.FieldInput> fields = collection.getFields().stream()
+                .filter(field -> field.getArchivedAt() == null)
+                .sorted(Comparator.comparingInt(CollectionField::getPosition))
+                .map(field -> new EvidencePack.FieldInput(field.getSlug().value(), field.getName(), field.getType(),
+                        record.getValues().get(field.getSlug().value())))
+                .toList();
+        return new EvidencePack.RecordInput(ref.collectionId(), collection.getName(), ref.recordId(), title, anchor, fields, related);
+    }
+
+    private EvidencePack.EmailInput emailInput(EmailMessage email, boolean related) {
+        return new EvidencePack.EmailInput(email.getId().id(), date(email.getReceivedAt()), email.getFromName(), email.getFromAddress(),
+                "sent".equals(email.getFolder()), email.getSubject(), EmailParagraphs.split(email.getBodyText(), email.getBodyHtml()),
+                related);
+    }
+
+    /**
+     * The owner's inbox emails closest in meaning to the newest of the record's own emails (embeddings, any date), at most
+     * {@link #RELATED_EMAILS}, closest first: other cases with the same customer, product or problem.
+     */
+    private List<EmailMessage> related(List<EmailMessage> own, AppUser.AppUserId owner) {
+        Set<Long> seen = new HashSet<>();
+        own.forEach(email -> seen.add(email.getId().id()));
+        Map<Long, Double> closest = new HashMap<>();
+        for (EmailMessage email : own.stream().limit(SEARCH_SEEDS).toList()) {
+            emailEmbeddingRepository.findNearest(owner, email.getId().id(), aiProperties.models().embedding(), ALL_TIME_FROM, ALL_TIME_TO,
+                            mailContextProperties.relatedMaxDistance(), RELATED_EMAILS + seen.size()).stream()
+                    .filter(near -> !seen.contains(near.emailId()))
+                    .forEach(near -> closest.merge(near.emailId(), near.distance(), Math::min));
+        }
+        List<EmailMessage.EmailMessageId> ids = closest.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .limit(RELATED_EMAILS)
+                .map(entry -> new EmailMessage.EmailMessageId(entry.getKey()))
+                .toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, EmailMessage> byId = new HashMap<>();
+        emailMessageRepository.findAllById(ids).forEach(email -> byId.put(email.getId().id(), email));
+        return ids.stream().map(id -> byId.get(id.id()))
+                .filter(email -> email != null && email.getAccount().getOwner().getId().equals(owner))
+                .toList();
+    }
+
+    /** Records linked to the related emails that are not in the scope, at most {@link #RELATED_RECORDS}; deleted ones are skipped. */
+    private List<EvidencePack.RecordInput> relatedRecords(List<EmailMessage> related, Set<RecordRef> inScope) {
+        if (related.isEmpty()) {
+            return List.of();
+        }
+        Set<RecordRef> refs = new LinkedHashSet<>();
+        recordSourceRepository.findByEmail_IdIn(related.stream().map(EmailMessage::getId).toList()).forEach(source ->
+                refs.add(new RecordRef(source.getCollection().getId().id(), source.getRecordId())));
+        refs.removeAll(inScope);
+        List<EvidencePack.RecordInput> records = new ArrayList<>();
+        for (RecordRef ref : refs) {
+            if (records.size() == RELATED_RECORDS) {
+                break;
+            }
+            try {
+                records.add(recordInput(ref, false, true));
+            } catch (ResourceNotFoundException e) {
+                // deleted since: not a source any more
+            }
+        }
+        return records;
     }
 
     /** The owner's emails linked to the scope's records and the rest of their conversations, newest first. */
@@ -153,7 +236,7 @@ public class ReportScopeService {
         }
         return emails.values().stream()
                 .sorted(Comparator.comparing(EmailMessage::getReceivedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(ReportScope.MAX_EMAILS)
+                .limit(OWN_EMAILS)
                 .toList();
     }
 

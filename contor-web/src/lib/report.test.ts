@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
-import { highlightQuote, isGenerating, reportHref, sourceHref, verifiedLabel } from "./report";
+import { highlightQuote, isGenerating, reportHref, sourceHref, sourcesLabel } from "./report";
 
 function source(overrides: Partial<ReportSourceDto>): ReportSourceDto {
   return { marker: 1, kind: "RECORD", label: "Orders", sourceState: "CURRENT", ...overrides };
@@ -32,10 +32,10 @@ describe("report helpers", () => {
     expect(sourceHref(source({ kind: "EMAIL_PARAGRAPH", sourceState: "UNAVAILABLE" }))).toBeUndefined();
   });
 
-  it("says how many sentences passed the fact check", () => {
-    expect(verifiedLabel(18, 19)).toBe("18 of 19 sentences verified");
-    expect(verifiedLabel(1, 1)).toBe("1 of 1 sentence verified");
-    expect(verifiedLabel(0, 0)).toBe("No sentences to check");
+  it("says how many sentences have a source", () => {
+    expect(sourcesLabel(18, 19)).toBe("18 of 19 sentences with a source");
+    expect(sourcesLabel(1, 1)).toBe("1 of 1 sentence with a source");
+    expect(sourcesLabel(0, 0)).toBe("No sentences");
   });
 
   it("finds a quote in its paragraph ignoring case and whitespace", () => {
