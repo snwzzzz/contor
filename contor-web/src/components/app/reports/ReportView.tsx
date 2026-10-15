@@ -150,14 +150,18 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
               </Answer>
             </section>
           ))}
-          <ReportPrompt
-            label="Ask a follow-up"
-            placeholder="Ask a follow-up question about this report…"
-            submitLabel="Ask"
-            disabledReason={busy ? "Wait until the report is ready." : report.state === "FAILED" ? "Regenerate the report first." : undefined}
-            pending={ask.isPending}
-            onSubmit={(question) => ask.mutate({ reportId: report.id, data: { question } })}
-          />
+          {/* Stays at the bottom of the screen while scrolling (-bottom-6 reaches past the scroll area's padding); the fade
+              lets text pass under it. */}
+          <div className="sticky -bottom-6 z-10 -mb-6 bg-linear-to-t from-background from-75% to-transparent pt-6 pb-6">
+            <ReportPrompt
+              label="Ask a follow-up"
+              placeholder="Ask a follow-up question about this report…"
+              submitLabel="Ask"
+              disabledReason={busy ? "Wait until the report is ready." : report.state === "FAILED" ? "Regenerate the report first." : undefined}
+              pending={ask.isPending}
+              onSubmit={(question) => ask.mutate({ reportId: report.id, data: { question } })}
+            />
+          </div>
         </div>
         <SourcePanel
           sources={shown.sources}

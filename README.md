@@ -196,7 +196,7 @@ emails points at its source, down to a record field or an email paragraph. Plan 
   timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
   highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
-  sources. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  sources; the follow-up input stays at the bottom of the screen while you scroll. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
   Reports still being generated when the backend stops are generated again after the next start; an error during
   generation marks the report FAILED with a reason.
 - **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
