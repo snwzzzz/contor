@@ -190,8 +190,8 @@ emails points at its source, down to a record field or an email paragraph. Plan 
   The timeline is built from the record's dated fields and emails without the model, when the model says it helps or
   there is no request (not when the model wrote one itself, not in follow-ups).
 - **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`) reads like a conversation: each
-  question you asked (the request, then the follow-ups) is your own message, and the assistant's answer below it is
-  labelled and set off by an accent line. The answer comes first, then the document's
+  question you asked (the request, then the follow-ups) is your own message bubble, with the assistant's answer below
+  it. The answer comes first, then the document's
   sections with their paragraphs, lists, tables and quotes (`**bold**`, `*italic*` and `` `code` `` rendered), and the
   timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote

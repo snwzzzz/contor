@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Sparkles, Trash2, UserRound } from "lucide-react";
+import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -48,7 +48,7 @@ function quotesOf(report: ReportDto): Map<number, string> {
 
 /**
  * One report as a page, read like a conversation: header with how many sentences have a source, then each question the
- * user asked (the request, then the follow-ups) as their own message and the assistant's answer below it, its sections
+ * user asked (the request, then the follow-ups) as their own message bubble and the assistant's answer below it, its sections
  * with their source markers, and a follow-up prompt; next to it the sources panel, where a clicked
  * marker shows exactly what was cited (the field value, the email paragraph with the quote marked) and links there.
  */
@@ -174,25 +174,16 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 function Question({ children }: { children: ReactNode }) {
   return (
     <section aria-label="Your question" className="flex justify-end">
-      <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-        <div className="min-w-0 break-words">{children}</div>
-        <UserRound className="mt-0.5 size-4 shrink-0 opacity-80" aria-hidden="true" />
+      <div className="max-w-[85%] min-w-0 rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm break-words text-primary-foreground">
+        {children}
       </div>
     </section>
   );
 }
 
-/** The assistant's answer: labelled and set off by an accent line, so it never reads as the user's words. */
+/** The assistant's answer, plain below the question (named for screen readers). */
 function Answer({ children }: { children: ReactNode }) {
-  return (
-    <section aria-label="Assistant's answer" className="grid gap-4 border-l-2 border-primary/30 pl-4 sm:pl-5">
-      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-        Assistant
-      </p>
-      <div className="grid gap-8">{children}</div>
-    </section>
-  );
+  return <section aria-label="Assistant's answer" className="grid gap-8">{children}</section>;
 }
 
 /** Progress while the report is generated, the reason when it failed; nothing when it is ready. */
