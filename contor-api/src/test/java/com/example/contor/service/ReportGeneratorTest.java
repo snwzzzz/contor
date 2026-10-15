@@ -256,6 +256,34 @@ class ReportGeneratorTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void generate_RecommendationsAndOpenQuestionsAreAdviceCheckedOnlyAgainstTheFactsTheyCite() {
+        draft(new ReportDraft("", List.of(claim("It was held at customs.", "P1.1")), List.of(),
+                List.of(claim("Who will pay for the delay?", "P1.1")),
+                List.of(claim("Agree on a backup carrier for urgent deliveries.", "P1.1"),
+                        claim("Since it arrived on 2026-09-30, agree on a backup carrier.", "P1.1")), List.of()));
+        when(reportModelService.repair(anyList())).thenReturn(Map.of());
+        List<List<ClaimToVerify>> calls = new java.util.ArrayList<>();
+        when(reportModelService.verify(anyList())).thenAnswer(inv -> {
+            List<ClaimToVerify> claims = inv.getArgument(0);
+            calls.add(claims);
+            return claims.stream().map(claim -> new Verdict(claim.id(), Verdict.Kind.SUPPORTED, "ok", List.of())).toList();
+        });
+
+        generator.generate(5L);
+
+        assertThat(calls).as("advice is not sent to the verifier").singleElement()
+                .satisfies(claims -> assertThat(claims).extracting(ClaimToVerify::text).containsExactly("It was held at customs."));
+        ReportSection advice = report.getSections().stream().filter(section -> section.getKind() == ReportSectionKind.NEXT_STEPS)
+                .findFirst().orElseThrow();
+        assertThat(advice.getTitle()).isEqualTo("Recommendations and next steps");
+        assertThat(advice.getClaims()).extracting(ReportClaim::getVerification)
+                .containsExactly(ClaimVerification.SUPPORTED, ClaimVerification.REMOVED);
+        assertThat(report.getSections()).filteredOn(section -> section.getKind() == ReportSectionKind.OPEN_QUESTIONS)
+                .flatExtracting(ReportSection::getClaims).extracting(ReportClaim::getVerification).containsExactly(ClaimVerification.SUPPORTED);
+    }
+
+    @Test
     void generate_UnsupportedSentenceIsRemovedWhenTheRepairFails() {
         draft(new ReportDraft("", List.of(claim("The carrier apologised for the delay.", "P1.1")), List.of(), List.of(), List.of(), List.of()));
         verdicts(Map.of(0, new Verdict(0, Verdict.Kind.UNSUPPORTED, "no apology in the source", List.of())));

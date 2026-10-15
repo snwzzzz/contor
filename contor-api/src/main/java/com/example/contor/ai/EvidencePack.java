@@ -32,7 +32,8 @@ public final class EvidencePack {
     /** Characters of source lines in the prompt (~6 000 tokens). */
     public static final int DEFAULT_BUDGET = 24_000;
     private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}]{4,}");
-    private static final Pattern TOKEN_IN_TEXT = Pattern.compile("(?<![A-Z0-9])[RFLP]\\d+(\\.\\d+)?(?![0-9.])");
+    private static final Pattern WHOLE_EMAIL = Pattern.compile("(?i)\\[?E\\d+]?");
+    private static final Pattern TOKEN_IN_TEXT =Pattern.compile("(?<![A-Z0-9])[RFLP]\\d+(\\.\\d+)?(?![0-9.])");
 
     /**
      * A citable source. {@code text} is what the model sees after the token; {@code label} names it in the UI (the
@@ -95,6 +96,19 @@ public final class EvidencePack {
                         || (source.type() == CitationType.EMAIL_PARAGRAPH && source.paragraphIndex() == 0))
                 .sorted(Comparator.comparing(Source::date))
                 .toList();
+    }
+
+    /**
+     * The tokens a cited reference stands for: a whole email ({@code E3}) is its paragraphs in the pack, anything else
+     * its {@link #normalizeToken normalized} token when the pack has it; empty for unknown references.
+     */
+    public List<String> expand(String reference) {
+        if (reference != null && WHOLE_EMAIL.matcher(reference.strip()).matches()) {
+            String prefix = "P" + reference.strip().substring(1) + ".";
+            return sources.keySet().stream().filter(token -> token.startsWith(prefix)).toList();
+        }
+        String token = normalizeToken(reference);
+        return token != null && sources.containsKey(token) ? List.of(token) : List.of();
     }
 
     /**

@@ -110,6 +110,31 @@ class ClaimChecksTest {
     }
 
     @Test
+    void source_tokens_left_in_the_text_are_not_numbers() {
+        assertThat(ClaimChecks.check("It is held at customs (E1:P1.1, R1:F2).", List.of("P1.1"), List.of(), PACK).passed()).isTrue();
+    }
+
+    @Test
+    void a_whole_email_may_be_cited_and_stands_for_its_paragraphs() {
+        var result = ClaimChecks.check("It is held at customs and the invoice of €1250 stays unchanged.", List.of("E1"), List.of(), PACK);
+
+        assertThat(result.passed()).isTrue();
+        assertThat(result.refs()).containsExactly("P1.1", "P1.2");
+        assertThat(ClaimChecks.check("It is held at customs.", List.of("E7"), List.of(), PACK).passed()).isFalse();
+    }
+
+    @Test
+    void a_sentence_about_the_sources_instead_of_the_case_fails() {
+        assertThat(ClaimChecks.check("The complaint record explicitly states the topic is a delay.", List.of("F1"), List.of(), PACK).passed())
+                .isFalse();
+        assertThat(ClaimChecks.check("The source mentions a delay and an apology.", List.of("P1.1"), List.of(), PACK).problems())
+                .containsExactly("talks about the sources instead of the case");
+        assertThat(ClaimChecks.check("The provided sources do not say who caused it.", List.of("P1.1"), List.of(), PACK).passed()).isFalse();
+        assertThat(ClaimChecks.check("The records only list the complaint.", List.of("F1"), List.of(), PACK).passed()).isFalse();
+        assertThat(ClaimChecks.check("The carrier wrote that the shipment is held at customs.", List.of("P1.1"), List.of(), PACK).passed()).isTrue();
+    }
+
+    @Test
     void a_number_of_days_between_two_cited_dates_is_allowed() {
         assertThat(ClaimChecks.check("It arrived 5 days late.", List.of("F1", "F3"), List.of(), PACK).passed()).isTrue();
         assertThat(ClaimChecks.check("It arrived 15 days late.", List.of("F1", "F3"), List.of(), PACK).passed()).isFalse();

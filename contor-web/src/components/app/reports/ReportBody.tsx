@@ -7,6 +7,7 @@ import type { ReportClaimDto } from "@/lib/api/generated/model/reportClaimDto";
 import type { ReportDto } from "@/lib/api/generated/model/reportDto";
 import type { ReportFindingDto } from "@/lib/api/generated/model/reportFindingDto";
 import type { ReportSectionDto } from "@/lib/api/generated/model/reportSectionDto";
+import type { ReportSectionType } from "@/lib/api/generated/model/reportSectionType";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
 import { cn } from "@/lib/utils";
 import { CitationMarker } from "./CitationMarker";
@@ -19,7 +20,11 @@ const LEVEL: Record<FindingLevel, { label: string; className: string }> = {
   CONFLICT: { label: "Sources disagree", className: "bg-warning/20 text-warning" },
 };
 
-const DAY_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+/** Sections whose sentences are the assistant's advice: checked against the facts they cite, not stated in the sources. */
+const SUGGESTIONS: ReadonlySet<ReportSectionType> = new Set<ReportSectionType>(["NEXT_STEPS", "OPEN_QUESTIONS"]);
+const SUGGESTION_NOTE = "Suggestions from the assistant, based on the cited facts — not stated in the sources.";
+
+const DAY_FORMAT =new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 interface Citations {
   sources: ReadonlyMap<number, ReportSourceDto>;
@@ -43,6 +48,9 @@ function Section({ section, citations }: { section: ReportSectionDto; citations:
   return (
     <section aria-labelledby={`report-section-${section.id}`} className="grid gap-3">
       <h2 id={`report-section-${section.id}`} className="text-lg font-semibold tracking-tight">{section.title}</h2>
+      {SUGGESTIONS.has(section.type) ? (
+        <p className="-mt-2 text-xs text-muted-foreground">{SUGGESTION_NOTE}</p>
+      ) : null}
       {section.type === "SUMMARY" ? (
         <p className="text-sm leading-7">
           {section.claims.map((claim) => (

@@ -60,6 +60,21 @@ class ReportDraftTest {
     }
 
     @Test
+    void sources_written_into_the_sentence_become_refs_and_leave_the_text() {
+        var draft = ReportDraft.parse(mapper.readTree("""
+                {"summary": [{"text": "It was opened on 2026-10-02 and is still open (R1, F1-F3).", "refs": []},
+                             {"text": "The truck broke down near Rosenheim [E3; P4.2].", "refs": ["F9"]},
+                             {"text": "Delivered on time (as agreed) by the carrier.", "refs": ["F1"]},
+                             {"text": "Review the carrier's performance (E3:P3.1, R1:F5).", "refs": []}]}"""));
+
+        assertThat(draft.summary()).containsExactly(
+                new ReportDraft.Claim("It was opened on 2026-10-02 and is still open.", List.of("R1", "F1", "F2", "F3")),
+                new ReportDraft.Claim("The truck broke down near Rosenheim.", List.of("F9", "E3", "P4.2")),
+                new ReportDraft.Claim("Delivered on time (as agreed) by the carrier.", List.of("F1")),
+                new ReportDraft.Claim("Review the carrier's performance.", List.of("E3:P3.1", "R1:F5")));
+    }
+
+    @Test
     void lists_are_capped() {
         String claims = String.join(",", java.util.Collections.nCopies(20, "{\"text\": \"a\", \"refs\": [\"F1\"]}"));
         String findings = String.join(",", java.util.Collections.nCopies(20, "{\"title\": \"t\", \"claims\": [" + claims + "]}"));

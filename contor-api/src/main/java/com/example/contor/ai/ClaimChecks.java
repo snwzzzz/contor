@@ -36,7 +36,14 @@ import java.util.stream.Collectors;
 public final class ClaimChecks {
 
     private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,']\\d+)*");
-    private static final Pattern INLINE_TOKEN = Pattern.compile("\\[[A-Za-z]\\d+(?:\\.\\d+)?]");
+    /** Source tokens the model left in the sentence ({@code [F3]}, {@code E3:P3.1}): not numbers of the case. */
+    private static final Pattern INLINE_TOKEN = Pattern.compile(
+            "\\[[A-Za-z]\\d+(?:\\.\\d+)?]|\\b(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?\\b");
+    /** "The source mentions…", "the provided sources do not say…": a sentence about the evidence, not about the case. */
+    private static final Pattern ABOUT_THE_SOURCES = Pattern.compile(
+            "(?i)\\bthe\\s+(?:provided\\s+|available\\s+|given\\s+|cited\\s+|[\\p{L}-]+\\s+)?(?:sources?|records?|data)\\s+"
+                    + "(?:only\\s+|also\\s+|explicitly\\s+|clearly\\s+)?"
+                    + "(?:mentions?|describes?|states?|says?|said|shows?|lists?|confirms?|contains?|indicates?|do(?:es)?\\s+not|don't|doesn't|lack)\\b");
     private static final Map<String, Integer> MONTHS = months();
     private static final String MONTH = MONTHS.keySet().stream().sorted(Comparator.comparingInt(String::length).reversed())
             .map(Pattern::quote).collect(Collectors.joining("|"));
@@ -68,12 +75,14 @@ public final class ClaimChecks {
     }
 
     public static Result check(String text, List<String> refs, List<Quote> quotes, EvidencePack pack) {
+        return check(text, refs, quotes, pack, false);
+    }
+
+    /** @param aboutSources the sentence may talk about its sources (the explanation of a conflict between them) */
+    public static Result check(String text, List<String> refs, List<Quote> quotes, EvidencePack pack, boolean aboutSources) {
         Set<String> valid = new LinkedHashSet<>();
         for (String ref : refs) {
-            String token = EvidencePack.normalizeToken(ref);
-            if (token != null && pack.source(token).isPresent()) {
-                valid.add(token);
-            }
+            valid.addAll(pack.expand(ref));
         }
         List<Quote> keptQuotes = new ArrayList<>();
         for (Quote quote : quotes) {
@@ -87,6 +96,10 @@ public final class ClaimChecks {
         List<String> problems = new ArrayList<>();
         if (text == null || text.isBlank()) {
             problems.add("is empty");
+            return new Result(List.copyOf(valid), keptQuotes, problems);
+        }
+        if (!aboutSources && ABOUT_THE_SOURCES.matcher(text).find()) {
+            problems.add("talks about the sources instead of the case");
             return new Result(List.copyOf(valid), keptQuotes, problems);
         }
         if (valid.isEmpty()) {

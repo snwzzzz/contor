@@ -178,8 +178,13 @@ paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md).
   any notation — a date without a year takes the year of its email —, or is the number of days between two cited dates),
   then by a separate model call that sees only that sentence and its sources and must quote a source word for word for
   every fact it accepts (the quotes are checked in code). Failed sentences get one rewrite that is checked again; what still fails is removed (listed
-  under *Fact check*), sources that disagree become a *Sources disagree* finding. The timeline is built from dated fields
-  and emails without the model. Prompts: `report-v1`, verification and repair in `ReportModelService`.
+  under *Fact check*), sources that disagree become a *Sources disagree* finding. **Recommendations** (how to do better,
+  next steps) and open questions are the assistant's advice: they must cite the facts they respond to and pass the
+  deterministic checks, but skip the verifier, and the report marks them as suggestions. Sentences about the sources
+  ("the source mentions…") are rejected; sources written into a sentence ("(R1, F1-F3)", "(E3:P3.1)") are taken as its
+  citations; a whole email (`E3`) stands for its paragraphs. A follow-up question is answered directly, not by repeating
+  the report; an empty draft is asked for once more. The timeline is built from dated fields
+  and emails without the model. Prompts: `report-v1`, verification and repair in `ReportModelService` (`report-v2`).
 - **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): executive summary, key findings (went
   well / problem / risk / sources disagree) with supporting quotes, timeline, open questions, next steps, sections the
   request asked for, and the fact-check details. Markers `[n]` show the source on hover; a click opens it in the

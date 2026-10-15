@@ -32,6 +32,14 @@
 >   from one of the sentence's own sources (checked in code), else the verdict becomes UNSUPPORTED. Known limit of the 9B
 >   model: a wrong conclusion built from correctly quoted parts ("by 2026-07-24, as agreed" while the rest arrived on
 >   29.07.) still passes, and a paraphrased verifier quote removes a correct sentence now and then. R7 should measure both.
+> - Live run on the user's case (complaint BA-2026-07, 8 German emails, "summarize … what went wrong and how we can do
+>   better"): recommendations were all removed (advice is never stated in a source), the repair turned them into "the
+>   source mentions…" sentences, and the follow-up repeated the report or came back empty. Now (`report-v2`): next steps
+>   are "Recommendations and next steps" and, like open questions, skip the verifier (deterministic checks only) and are
+>   marked as suggestions in the UI; sentences about the sources are rejected; inline sources ("(R1, F1-F3)",
+>   "(E3:P3.1)") and whole emails (`E3`) are understood; the verifier sees each email's date and its quotes may span the
+>   sentence's sources with the prompt's separators; follow-ups always answer their question; an empty draft is retried
+>   once. Same data: report 13 of 16 verified with 4 recommendations (was 0 of 16), follow-up 10 of 12 (was empty).
 > - R8/R10: `components/app/reports/` (`RecordReports`, `ReportPrompt`, `ReportView`, `ReportBody`, `CitationMarker`,
 >   `SourcePanel`, `FactCheck`), `lib/report.ts`. The sources panel shows the cited email paragraph with its neighbours
 >   (`GET /api/emails/{id}/paragraphs`) and the quote marked; source links already carry `?tab=…&field=…` /

@@ -129,6 +129,19 @@ describe("ReportView", () => {
     expect(screen.getByText("The customs office held the shipment.")).toBeInTheDocument();
   });
 
+  it("marks recommendations as the assistant's suggestions based on the cited facts", async () => {
+    const advice = { id: 4, type: "NEXT_STEPS", title: "Recommendations and next steps", findings: [],
+      claims: [{ id: 41, text: "Agree on a backup carrier for urgent deliveries.", check: "SUPPORTED", markers: [3] }] };
+    mockApi({ "GET /api/reports/5": { body: { ...report, sections: [...report.sections, advice] } } });
+
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
+
+    const section = await screen.findByRole("region", { name: "Recommendations and next steps" });
+    expect(within(section).getByText("Suggestions from the assistant, based on the cited facts — not stated in the sources."))
+      .toBeInTheDocument();
+    expect(within(section).getByText("Agree on a backup carrier for urgent deliveries.")).toBeInTheDocument();
+  });
+
   it("shows the progress while the report is generated", async () => {
     mockApi({ "GET /api/reports/5": { body: { ...report, state: "FACT_CHECKING", sections: [], sources: [], removedClaims: [] } } });
 

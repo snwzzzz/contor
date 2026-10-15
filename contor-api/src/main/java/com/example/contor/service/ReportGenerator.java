@@ -117,6 +117,11 @@ public class ReportGenerator {
             this.text = claim.text();
             this.refs = claim.refs();
         }
+
+        /** Recommendations and open questions are advice grounded in the cited facts, not facts the sources state. */
+        boolean suggestion() {
+            return kind == ReportSectionKind.NEXT_STEPS || kind == ReportSectionKind.OPEN_QUESTIONS;
+        }
     }
 
     private record Conflict(String text, List<String> refs) {}
@@ -167,7 +172,7 @@ public class ReportGenerator {
             draft.findings().get(i).claims().forEach(claim -> work.add(new Work(ReportSectionKind.FINDINGS, "Key findings", finding, claim)));
         }
         draft.openQuestions().forEach(claim -> work.add(new Work(ReportSectionKind.OPEN_QUESTIONS, "Open questions", -1, claim)));
-        draft.nextSteps().forEach(claim -> work.add(new Work(ReportSectionKind.NEXT_STEPS, "Next steps", -1, claim)));
+        draft.nextSteps().forEach(claim -> work.add(new Work(ReportSectionKind.NEXT_STEPS, "Recommendations and next steps", -1, claim)));
         draft.customSections().forEach(section ->
                 section.claims().forEach(claim -> work.add(new Work(ReportSectionKind.CUSTOM, section.title(), -1, claim))));
         return work;
@@ -191,7 +196,10 @@ public class ReportGenerator {
                 }
             }
             sentence.validRefs = result.refs();
-            if (result.passed()) {
+            if (result.passed() && sentence.suggestion()) {
+                // Advice is never stated in the sources: it stands when the facts it cites pass the deterministic checks.
+                sentence.state = ClaimVerification.SUPPORTED;
+            } else if (result.passed()) {
                 toVerify.add(new ClaimToVerify(id, sentence.text, sources(result.refs(), pack)));
             } else {
                 sentence.reason = String.join("; ", result.problems());
@@ -206,7 +214,7 @@ public class ReportGenerator {
             } else if (verdict.kind() == Verdict.Kind.CONTRADICTED && verdict.conflictingRefs().size() >= 2) {
                 sentence.state = ClaimVerification.REMOVED;
                 sentence.note = "Its sources disagree: " + verdict.reason();
-                ClaimChecks.Result reason = ClaimChecks.check(verdict.reason(), verdict.conflictingRefs(), List.of(), pack);
+                ClaimChecks.Result reason = ClaimChecks.check(verdict.reason(), verdict.conflictingRefs(), List.of(), pack, true);
                 conflicts.add(new Conflict(reason.passed() && !verdict.reason().isBlank()
                         ? "The sources disagree: " + verdict.reason()
                         : "The sources cited here disagree with each other.", verdict.conflictingRefs()));
@@ -217,7 +225,7 @@ public class ReportGenerator {
             }
         }
         Map<Integer, Repaired> rewritten = toRepair.isEmpty() ? Map.of() : reportModelService.repair(toRepair.stream()
-                .map(id -> new ClaimToRepair(id, work.get(id).text, work.get(id).reason, repairSources(work.get(id), pack)))
+                .map(id -> new ClaimToRepair(id, work.get(id).text, work.get(id).reason, repairSources(work.get(id), pack), work.get(id).suggestion()))
                 .toList());
         List<ClaimToVerify> recheck = new ArrayList<>();
         for (int id : toRepair) {
@@ -231,6 +239,11 @@ public class ReportGenerator {
             if (unchanged) {
                 sentence.state = ClaimVerification.REMOVED;
                 sentence.note = sentence.reason + "; the rewrite changed nothing";
+            } else if (result != null && result.passed() && sentence.suggestion()) {
+                sentence.text = repaired.text();
+                sentence.validRefs = result.refs();
+                sentence.state = ClaimVerification.REPAIRED;
+                sentence.note = "Was: \"" + sentence.original + "\" (" + sentence.reason + ")";
             } else if (result != null && result.passed()) {
                 sentence.text = repaired.text();
                 sentence.validRefs = result.refs();
