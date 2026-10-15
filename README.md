@@ -191,6 +191,8 @@ paragraph. Plan and status: [`docs/reports-plan.md`](docs/reports-plan.md).
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
   highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
   scope and fact check. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  Reports still being generated when the backend stops are generated again after the next start; an error during
+  generation marks the report FAILED with a reason.
 - **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
   `POST /api/reports/{id}/questions`, `POST /api/reports/{id}/regenerate` (202, generated on the AI thread; poll the
   report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
@@ -586,6 +588,9 @@ The sidebar can be resized (drag its right edge, or focus the edge and use the a
 
 ## Notes
 
+- Do not run `./mvnw` (compile, test) in `contor-api` while IntelliJ runs the backend from the same checkout: both write
+  `target/classes`, and a running backend that loads a class compiled by the other compiler can fail with
+  `NoClassDefFoundError` (e.g. `ReportGenerator$1`). Rebuild in IntelliJ and restart, or build in a separate git worktree.
 - Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.

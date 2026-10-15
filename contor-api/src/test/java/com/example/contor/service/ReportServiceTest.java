@@ -288,6 +288,29 @@ class ReportServiceTest {
     }
 
     @Test
+    void resumeInterruptedReports_QueuesReportsARestartLeftInProgress() {
+        Report drafting = report(ReportStatus.DRAFTING);
+        when(reportRepository.findByStatusIn(ReportStatus.ACTIVE)).thenReturn(List.of(drafting));
+
+        reportService.resumeInterruptedReports();
+
+        assertThat(drafting.getStatus()).isEqualTo(ReportStatus.QUEUED);
+        verify(reportRepository).saveAndFlush(drafting);
+        assertThat(queued).hasSize(1);
+        queued.getFirst().run();
+        verify(reportGenerator).generate(5L);
+    }
+
+    @Test
+    void resumeInterruptedReports_NothingLeftNothingQueued() {
+        when(reportRepository.findByStatusIn(ReportStatus.ACTIVE)).thenReturn(List.of());
+
+        reportService.resumeInterruptedReports();
+
+        assertThat(queued).isEmpty();
+    }
+
+    @Test
     void deleteReport_NotFound() {
         when(reportRepository.findById(new Report.ReportId(5L))).thenReturn(Optional.empty());
 

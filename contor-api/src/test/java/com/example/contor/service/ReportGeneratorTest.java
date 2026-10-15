@@ -333,6 +333,16 @@ class ReportGeneratorTest {
     }
 
     @Test
+    void generate_ALinkageErrorAlsoMarksTheReportFailedInsteadOfLeavingItInProgress() {
+        when(reportModelService.draft(any(), anyString(), anyList())).thenThrow(new NoClassDefFoundError("ReportGenerator$1"));
+
+        generator.generate(5L);
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.FAILED);
+        assertThat(report.getFailureReason()).isEqualTo("Generating the report failed.");
+    }
+
+    @Test
     void generate_FollowUpGetsTheSentencesOfTheReportItAsksAbout() {
         Report parent = Report.builder().id(new Report.ReportId(4L)).build();
         ReportSection summary = ReportSection.builder().report(parent).position(0).kind(ReportSectionKind.SUMMARY).title("Executive summary").build();

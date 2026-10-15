@@ -29,6 +29,8 @@ import com.example.contor.persistence.ReportRepository;
 import com.example.contor.security.CurrentActor;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -145,6 +147,17 @@ public class ReportService {
                 .map(followUp -> ReportMapper.toDto(followUp, List.of(), lookup))
                 .toList();
         return ReportMapper.toDto(report, followUps, lookup);
+    }
+
+    /** After a restart: reports a stopped backend left in progress are generated again from the start. */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void resumeInterruptedReports() {
+        for (Report report : reportRepository.findByStatusIn(ReportStatus.ACTIVE)) {
+            report.setStatus(ReportStatus.QUEUED);
+            reportRepository.saveAndFlush(report);
+            queue(report.getId().id());
+        }
     }
 
     @Transactional

@@ -150,7 +150,8 @@ public class ReportGenerator {
             }
             List<Conflict> conflicts = factCheck(work, quotes, pack);
             transactions.executeWithoutResult(status -> store(reportId, job, draft, work, conflicts, quotes, pack));
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
+            // A LinkageError (e.g. a class file replaced by a rebuild while running) must not leave the report in progress.
             log.warn("Report {} failed: {}", reportId, e.getClass().getSimpleName());
             String reason = failure(e);
             try {
@@ -467,7 +468,7 @@ public class ReportGenerator {
         return text.substring(0, cut > 0 ? cut : max);
     }
 
-    private static String failure(RuntimeException e) {
+    private static String failure(Throwable e) {
         if (e instanceof OllamaException) {
             return "The AI model did not answer. Is Ollama running?";
         }

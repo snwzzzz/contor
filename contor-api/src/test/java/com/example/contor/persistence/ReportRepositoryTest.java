@@ -123,6 +123,18 @@ public class ReportRepositoryTest {
     }
 
     @Test
+    void finds_the_reports_still_being_generated() {
+        var drafting = report(4711L, null);
+        drafting.setStatus(ReportStatus.DRAFTING);
+        reportRepository.saveAndFlush(drafting);
+        var ready = report(4712L, null);
+        ready.setStatus(ReportStatus.READY);
+        reportRepository.saveAndFlush(ready);
+
+        assertThat(reportRepository.findByStatusIn(ReportStatus.ACTIVE)).extracting(Report::getId).containsExactly(drafting.getId());
+    }
+
+    @Test
     void finds_the_follow_ups_of_a_report() {
         var parent = reportRepository.saveAndFlush(report(4711L, null));
         var followUp = reportRepository.saveAndFlush(report(4711L, parent));
