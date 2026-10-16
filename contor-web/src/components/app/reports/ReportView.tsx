@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import {
@@ -48,8 +48,9 @@ function quotesOf(report: ReportDto): Map<number, string> {
 }
 
 /**
- * One report as a page: header with the request and how many sentences have a source, the sections with their source
- * markers, the follow-up answers and a follow-up prompt; next to it the sources panel, where a clicked
+ * One report as a page, read like a conversation: header with how many sentences have a source, then each question the
+ * user asked (the request, then the follow-ups) as their own message bubble and the assistant's answer below it, its sections
+ * with their source markers, and a follow-up prompt; next to it the sources panel, where a clicked
  * marker shows exactly what was cited (the field value, the email paragraph with the quote marked) and links there.
  * Without {@code recordId} it is a report over the whole collection: its scope is the table's filters and search.
  */
@@ -103,7 +104,6 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
       <header className="grid gap-2 border-b pb-5">
         <h1 className="text-2xl font-semibold tracking-tight">{report.title ?? "Report"}</h1>
-        {report.prompt ? <p className="text-sm text-muted-foreground">{report.prompt}</p> : null}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span>{DATE_FORMAT.format(new Date(report.generatedAt ?? report.createdAt))}</span>
           {collection ? (
@@ -151,24 +151,35 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid content-start gap-8">
-          <ReportState report={report} collection={collection} />
-          <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
+          {report.prompt ? <Question>{report.prompt}</Question> : null}
+          <Answer>
+            <ReportState report={report} collection={collection} />
+            <ReportBody report={report} selected={selection?.reportId === report.id ? selection.marker : undefined} onSelect={select(report.id)} />
+          </Answer>
           {report.followUps.map((followUp) => (
-            <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-4 border-t pt-6">
-              <h2 id={`follow-up-${followUp.id}`} className="text-base font-semibold">{followUp.prompt ?? "Follow-up"}</h2>
-              <ReportState report={followUp} collection={collection} />
-              <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
-                onSelect={select(followUp.id)} />
+            <section key={followUp.id} aria-labelledby={`follow-up-${followUp.id}`} className="grid gap-6 border-t pt-6">
+              <Question>
+                <h2 id={`follow-up-${followUp.id}`} className="font-medium">{followUp.prompt ?? "Follow-up"}</h2>
+              </Question>
+              <Answer>
+                <ReportState report={followUp} collection={collection} />
+                <ReportBody report={followUp} selected={selection?.reportId === followUp.id ? selection.marker : undefined}
+                  onSelect={select(followUp.id)} />
+              </Answer>
             </section>
           ))}
-          <ReportPrompt
-            label="Ask a follow-up"
-            placeholder="Ask a follow-up question about this report…"
-            submitLabel="Ask"
-            disabledReason={busy ? "Wait until the report is ready." : report.state === "FAILED" ? "Regenerate the report first." : undefined}
-            pending={ask.isPending}
-            onSubmit={(question) => ask.mutate({ reportId: report.id, data: { question } })}
-          />
+          {/* Stays at the bottom of the screen while scrolling (-bottom-6 reaches past the scroll area's padding); the fade
+              lets text pass under it. */}
+          <div className="sticky -bottom-6 z-10 -mb-6 bg-linear-to-t from-background from-75% to-transparent pt-6 pb-6">
+            <ReportPrompt
+              label="Ask a follow-up"
+              placeholder="Ask a follow-up question about this report…"
+              submitLabel="Ask"
+              disabledReason={busy ? "Wait until the report is ready." : report.state === "FAILED" ? "Regenerate the report first." : undefined}
+              pending={ask.isPending}
+              onSubmit={(question) => ask.mutate({ reportId: report.id, data: { question } })}
+            />
+          </div>
         </div>
         <SourcePanel
           sources={shown.sources}
@@ -179,6 +190,22 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
       </div>
     </article>
   );
+}
+
+/** What the user asked, as their own message on the right. */
+function Question({ children }: { children: ReactNode }) {
+  return (
+    <section aria-label="Your question" className="flex justify-end">
+      <div className="max-w-[85%] min-w-0 rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm break-words text-primary-foreground">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** The assistant's answer, plain below the question (named for screen readers). */
+function Answer({ children }: { children: ReactNode }) {
+  return <section aria-label="Assistant's answer" className="grid gap-8">{children}</section>;
 }
 
 /** Progress while the report is generated, the reason when it failed; nothing when it is ready. */

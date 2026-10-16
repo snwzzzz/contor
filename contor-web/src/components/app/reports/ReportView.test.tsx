@@ -76,6 +76,33 @@ describe("ReportView", () => {
     expect(screen.queryByText("The carrier apologised.")).not.toBeInTheDocument();
   });
 
+  it("sets the user's questions apart from the assistant's answers", async () => {
+    const followUp = { ...report, id: 6, parentReportId: 5, prompt: "Who caused the delay?", title: "Delay", removedClaims: [],
+      sections: [{ id: 9, type: "SUMMARY", title: "Answer", findings: [], blocks: [],
+        claims: [{ id: 91, text: "The customs office held the shipment.", check: "SUPPORTED", markers: [] }] }] };
+    mockApi({ "GET /api/reports/5": { body: { ...report, followUps: [followUp] } } });
+
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
+
+    const [asked, askedAgain] = await screen.findAllByRole("region", { name: "Your question" });
+    const [answer, followUpAnswer] = screen.getAllByRole("region", { name: "Assistant's answer" });
+    expect(within(asked!).getByText("What went wrong?")).toBeInTheDocument();
+    expect(within(answer!).getByText("The order was due on 2026-09-02 and arrived on 2026-09-07.")).toBeInTheDocument();
+    expect(within(answer!).queryByText("What went wrong?")).not.toBeInTheDocument();
+    expect(within(askedAgain!).getByRole("heading", { name: "Who caused the delay?" })).toBeInTheDocument();
+    expect(within(followUpAnswer!).getByText("The customs office held the shipment.")).toBeInTheDocument();
+    expect(within(followUpAnswer!).queryByText("Who caused the delay?")).not.toBeInTheDocument();
+  });
+
+  it("shows no question for a report made without one", async () => {
+    mockApi({ "GET /api/reports/5": { body: { ...report, prompt: undefined } } });
+
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} />);
+
+    expect(await screen.findByRole("region", { name: "Assistant's answer" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Your question" })).not.toBeInTheDocument();
+  });
+
   it("renders the document: lists, tables, quotes and emphasis with their markers", async () => {
     const claim = (id: number, text: string, markers: number[] = []) => ({ id, text, check: "SUPPORTED", markers });
     const document = {

@@ -190,12 +190,14 @@ emails points at its source, down to a record field or an email paragraph. Plan 
   repeats an earlier one is left out; a follow-up answers only its question and leaves out what the report already said.
   The timeline is built from the record's dated fields and emails without the model, when the model says it helps or
   there is no request (not when the model wrote one itself, not in follow-ups).
-- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`): the answer, then the document's
+- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`) reads like a conversation: each
+  question you asked (the request, then the follow-ups) is your own message bubble, with the assistant's answer below
+  it. The answer comes first, then the document's
   sections with their paragraphs, lists, tables and quotes (`**bold**`, `*italic*` and `` `code` `` rendered), and the
   timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
   **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
   highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
-  sources. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  sources; the follow-up input stays at the bottom of the screen while you scroll. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
   Reports still being generated when the backend stops are generated again after the next start; an error during
   generation marks the report FAILED with a reason.
 - **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
