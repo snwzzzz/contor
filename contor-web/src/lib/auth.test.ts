@@ -9,7 +9,7 @@ describe("safeNextPath", () => {
   it.each([null, undefined, "", "https://evil.example", "//evil.example", "/\\evil.example", "javascript:alert(1)", "/login", "/setup"])(
     "falls back for %s",
     (next) => {
-      expect(safeNextPath(next)).toBe("/inbox");
+      expect(safeNextPath(next)).toBe("/");
     },
   );
 });

@@ -2,10 +2,12 @@ import {
   Bot,
   Brain,
   CalendarDays,
+  House,
   Inbox,
   KeyRound,
   ListFilter,
   ListTodo,
+  MessagesSquare,
   ScanSearch,
   Network,
   Settings,
@@ -24,14 +26,24 @@ export interface NavItem {
   tint?: Tint;
 }
 
+export const HOME_HREF = "/";
+
 /** Top-level sections (sidebar + command palette share this list). */
 export const PRIMARY_NAV: readonly NavItem[] = [
+  { title: "Home", href: HOME_HREF, icon: House },
   { title: "Inbox", href: "/inbox", icon: Inbox, tint: 8 },
-  { title: "Proposals", href: "/proposals", icon: Sparkles, tint: 10 },
-  { title: "Findings", href: "/findings", icon: ScanSearch, tint: 6 },
   { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: CALENDAR_TINT },
   { title: "To-dos", href: "/tasks", icon: ListTodo, tint: TASKS_TINT },
 ];
+
+/** What the assistant proposes and found (the "AI insights" group of the sidebar). */
+export const AI_INSIGHTS_NAV: readonly NavItem[] = [
+  { title: "Proposals", href: "/proposals", icon: Sparkles, tint: 10 },
+  { title: "Findings", href: "/findings", icon: ScanSearch, tint: 6 },
+];
+
+/** Chat with the assistant (top bar; a placeholder page for now). */
+export const CHAT_NAV: NavItem = { title: "Chat", href: "/chat", icon: MessagesSquare, tint: 7 };
 
 export const DATA_NAV: readonly NavItem[] = [
   { title: "Relations", href: "/relations", icon: Network, tint: 2 },
@@ -79,12 +91,12 @@ export function settingsHref(pathname: string, section: SettingsSection): string
 
 /** The navigation entry of a top-level page (its icon and tint for the page title). */
 export function navItem(href: string): NavItem {
-  const item = [...PRIMARY_NAV, ...DATA_NAV].find((entry) => entry.href === href);
+  const item = [...PRIMARY_NAV, ...AI_INSIGHTS_NAV, CHAT_NAV, ...DATA_NAV].find((entry) => entry.href === href);
   if (!item) throw new Error(`No navigation entry for ${href}`);
   return item;
 }
 
-export const ALL_NAV: readonly NavItem[] = [...PRIMARY_NAV, ...DATA_NAV, SETTINGS_ROOT, ...SETTINGS_NAV];
+export const ALL_NAV: readonly NavItem[] = [...PRIMARY_NAV, ...AI_INSIGHTS_NAV, CHAT_NAV, ...DATA_NAV, SETTINGS_ROOT, ...SETTINGS_NAV];
 
 /** Where an in-app link to `item` goes: settings entries open the modal over the current page. */
 export function inAppHref(item: NavItem, pathname: string): string {

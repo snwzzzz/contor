@@ -114,6 +114,11 @@
 }
 
 @layer base {
+  /* Height of the top bar; the navigation drawer (portaled to <body>) starts below it. */
+  :root {
+    --header-height: 3.5rem;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
