@@ -4,6 +4,14 @@ Personal, self-hosted management platform: dynamic collections (Deliveries, Orde
 
 > **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent), `docs/ai-v2-plan.md` (smarter replies, multi-mail context, proposal importance, insights, speed).
 
+## How this project was built
+
+Much of the code in this repository was written with the help of Claude, an AI coding assistant. Every major
+architectural decision was made by humans: the technology stack, the architecture and its layering, the data model,
+the security model, the API contract and the working rules in `CLAUDE.md`. Claude worked within those decisions,
+proposed plans and implemented them; humans reviewed the plans, answered the open questions and decided what was built.
+The recorded decisions are in `docs/decisions/` (ADRs).
+
 ## Repository layout
 
 | Path | What |
