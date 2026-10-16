@@ -92,6 +92,11 @@ app:
       timeout: ${OLLAMA_TIMEOUT:5m}
       num-ctx: ${OLLAMA_NUM_CTX:16384}
       keep-alive: ${OLLAMA_KEEP_ALIVE:30m}
+    # Dev profile only: AI_CACHE=on answers unchanged prompts from disk instead of the model (re-analysis without waiting
+    # for the GPU); refresh asks again and overwrites. Ignored outside dev. The folder holds plain-text answers about your mail.
+    cache:
+      mode: ${AI_CACHE:off}
+      directory: ${AI_CACHE_DIR:../.ai-cache}
     # One model for routing and extraction (fits a 12 GB GPU next to the embedding model, no model swapping).
     models:
       routing: ${AI_MODEL_ROUTING:qwen3.5:9b}

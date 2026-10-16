@@ -305,4 +305,35 @@ class RecordServiceTest {
                 assertThrows(IllegalArgumentException.class, () -> service.listRecords(1L, null, null, "colour", 0, 25)).getMessage());
         verify(dynamicRecordRepository, never()).find(any(), any(), any(), any(), anyInt(), anyInt());
     }
+    @Test
+    void condition_CombinesFiltersAndSearch() {
+        Condition condition = service.condition(1L, List.of("tracking:eq:T-1"), "acme");
+
+        assertTrue(condition.toString().contains("T-1"));
+        assertTrue(condition.toString().toLowerCase().contains("acme"));
+        assertEquals(DSL.noCondition(), service.condition(1L, null, " "));
+    }
+
+    @Test
+    void condition_InvalidFilterRejected() {
+        assertEquals("Invalid filter 'nope:eq:1': unknown field 'nope'",
+                assertThrows(IllegalArgumentException.class, () -> service.condition(1L, List.of("nope:eq:1"), null)).getMessage());
+    }
+
+    @Test
+    void findByIds() {
+        when(dynamicRecordRepository.find(eq(TABLE), any(), any(Condition.class), any(SortField.class), eq(0), eq(2)))
+                .thenReturn(List.of(row(5L, storedColumns()), row(6L, storedColumns())));
+
+        List<RecordDto> records = service.findByIds(1L, List.of(5L, 6L));
+
+        assertEquals(List.of(5L, 6L), records.stream().map(RecordDto::getId).toList());
+        assertEquals("T-1", records.getFirst().getValues().get("tracking"));
+    }
+
+    @Test
+    void findByIds_NoIdsNoQuery() {
+        assertTrue(service.findByIds(1L, List.of()).isEmpty());
+        verify(dynamicRecordRepository, never()).find(any(), any(), any(), any(), anyInt(), anyInt());
+    }
 }

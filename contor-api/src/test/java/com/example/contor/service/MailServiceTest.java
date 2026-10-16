@@ -367,6 +367,26 @@ class MailServiceTest {
     }
 
     @Test
+    void getEmailParagraphs_SplitsTheHtmlBody() {
+        var email = email(1L);
+        email.setBodyHtml("<p>Your order has shipped.</p><p>It is held at customs.</p>");
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email));
+
+        List<EmailParagraphDto> paragraphs = mailService.getEmailParagraphs(5L);
+
+        assertEquals(List.of(0, 1), paragraphs.stream().map(EmailParagraphDto::getIndex).toList());
+        assertEquals("It is held at customs.", paragraphs.get(1).getText());
+        assertEquals(16, paragraphs.get(1).getHash().length());
+    }
+
+    @Test
+    void getEmailParagraphs_OfAnotherUserIsNotFound() {
+        when(emailMessageRepository.findById(new EmailMessage.EmailMessageId(5L))).thenReturn(Optional.of(email(2L)));
+
+        assertThrows(EmailNotFoundException.class, () -> mailService.getEmailParagraphs(5L));
+    }
+
+    @Test
     void getEmailThread_OldestFirstIncludingSentMail() {
         var anchor = email(1L);
         anchor.setConversationId("conv-1");

@@ -17,6 +17,7 @@ import { bannerGradient, useDominantColor } from "@/lib/dominant-color";
 import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
+import { RecordReports } from "@/components/app/reports/RecordReports";
 import { RecordConnectionsTab } from "./RecordConnectionsTab";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
@@ -211,16 +212,19 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
 
 function DetailsTab({ fields, record }: { fields: readonly CollectionFieldDto[]; record: RecordDto }) {
   return (
-    <ul aria-label="Fields" className="grid gap-x-10 gap-y-5 rounded-xl border p-6 sm:grid-cols-2 xl:grid-cols-3">
-      {fields.map((field) => (
-        <li key={field.slug} className={cn("grid min-w-0 gap-0.5", field.type === "LONG_TEXT" && "sm:col-span-2 xl:col-span-3")}>
-          <span className="text-xs text-muted-foreground">{field.name}</span>
-          <span className="min-w-0 text-sm break-words">
-            <FieldValue field={field} value={record.values[field.slug]} />
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-6">
+      <RecordReports collectionId={record.collectionId} recordId={record.id} />
+      <ul aria-label="Fields" className="grid gap-x-10 gap-y-5 rounded-xl border p-6 sm:grid-cols-2 xl:grid-cols-3">
+        {fields.map((field) => (
+          <li key={field.slug} className={cn("grid min-w-0 gap-0.5", field.type === "LONG_TEXT" && "sm:col-span-2 xl:col-span-3")}>
+            <span className="text-xs text-muted-foreground">{field.name}</span>
+            <span className="min-w-0 text-sm break-words">
+              <FieldValue field={field} value={record.values[field.slug]} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

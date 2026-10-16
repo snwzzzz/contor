@@ -1,5 +1,6 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.CachingLlmClient;
 import com.example.contor.ai.EmailContent;
 import com.example.contor.ai.EmailTextCleaner;
 import com.example.contor.ai.OllamaClient;
@@ -53,13 +54,15 @@ class AiReplyTriageEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZoneId.of("Europe/Berlin"));
         JsonMapper mapper = JsonMapper.builder().build();
-        ReplyTriageService triage = new ReplyTriageService(new OllamaClient(properties, mapper), properties, mapper);
+        CachingLlmClient client = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
+        ReplyTriageService triage = new ReplyTriageService(client, properties, mapper);
 
         List<EvalCase> cases = new ArrayList<>(EvalCaseLoader.loadClasspath("ai-eval/synthetic"));
         cases.addAll(EvalCaseLoader.loadClasspath("ai-eval/replies"));
         cases.addAll(EvalCaseLoader.loadClasspath("ai-eval/courtesy"));
         cases.addAll(EvalCaseLoader.load(privateDir));
-        List<EvalCase> labelled = cases.stream().filter(evalCase -> evalCase.needsReply() != null).toList();
+        List<EvalCase> labelled = CaseFilter.fromSystemProperty().selectOrSkip(cases.stream().filter(evalCase -> evalCase.needsReply() != null).toList(),
+                EvalCase::id);
 
         ReplyTriageScore score = ReplyTriageScore.empty();
         int failed = 0;
@@ -77,6 +80,7 @@ class AiReplyTriageEvalTest {
         }
         System.out.printf("[ai-eval] reply triage (%s, %d cases): precision %.2f, recall %.2f, %s%n", model, labelled.size(),
                 score.precision(), score.recall(), score);
+        System.out.println("[ai-eval] " + client.summary());
 
         assertThat(failed).as("model calls that failed (Ollama running? model pulled?)").isLessThan(labelled.size());
         assertThat(score.precision()).as("reply triage precision").isGreaterThanOrEqualTo(minPrecision);

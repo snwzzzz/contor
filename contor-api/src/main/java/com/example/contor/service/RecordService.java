@@ -88,13 +88,7 @@ public class RecordService {
         if (pageNumber < 0 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("page must be >= 0 and size between 1 and " + MAX_PAGE_SIZE);
         }
-        Condition condition = DSL.noCondition();
-        for (String filter : filters != null ? filters : List.<String>of()) {
-            condition = condition.and(parseFilter(schema, filter));
-        }
-        if (query != null && !query.isBlank()) {
-            condition = condition.and(searchCondition(schema, query.strip()));
-        }
+        Condition condition = condition(schema, filters, query);
         SortField<?> sortField = parseSort(schema, sort);
 
         List<RecordDto> items = dynamicRecordRepository
@@ -104,6 +98,28 @@ public class RecordService {
         long total = dynamicRecordRepository.count(schema.table(), condition);
         int totalPages = (int) ((total + pageSize - 1) / pageSize);
         return new RecordPageDto(new ArrayList<>(items), pageNumber, pageSize, total, totalPages);
+    }
+
+    /**
+     * The filters and search of {@link #listRecords} as a condition on the collection's table (for figures over the same
+     * records); an invalid filter is rejected with the same message.
+     */
+    @Transactional
+    public Condition condition(Long collectionId, List<String> filters, String query) {
+        return condition(schema(collectionId), filters, query);
+    }
+
+    /** The records with these ids (missing ones are skipped), by id. */
+    @Transactional
+    public List<RecordDto> findByIds(Long collectionId, List<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        Schema schema = schema(collectionId);
+        return dynamicRecordRepository.find(schema.table(), columns(schema), DynamicRecordRepository.ID.in(ids),
+                        DynamicRecordRepository.ID.asc(), 0, ids.size()).stream()
+                .map(record -> toDto(schema, record))
+                .toList();
     }
 
     @Transactional
@@ -336,6 +352,17 @@ public class RecordService {
             case "gt" -> column.gt(bound);
             default -> column.ge(bound);
         };
+    }
+
+    private Condition condition(Schema schema, List<String> filters, String query) {
+        Condition condition = DSL.noCondition();
+        for (String filter : filters != null ? filters : List.<String>of()) {
+            condition = condition.and(parseFilter(schema, filter));
+        }
+        if (query != null && !query.isBlank()) {
+            condition = condition.and(searchCondition(schema, query.strip()));
+        }
+        return condition;
     }
 
     /** The title or any text column contains {@code query} (jOOQ escapes LIKE wildcards in containsIgnoreCase). */

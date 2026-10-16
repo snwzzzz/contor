@@ -78,6 +78,11 @@ public class MailController implements MailApi {
     }
 
     @Override
+    public ResponseEntity<List<EmailParagraphDto>> getEmailParagraphs(Long emailId) {
+        return ResponseEntity.ok(mailService.getEmailParagraphs(emailId));
+    }
+
+    @Override
     public ResponseEntity<List<EmailSuggestionDto>> suggestEmailSenders(String q, EmailFolder folder) {
         return ResponseEntity.ok(mailService.suggestEmailSenders(q, folder));
     }

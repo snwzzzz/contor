@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.EmailParagraphs;
 import com.example.contor.config.WebProperties;
 import com.example.contor.api.model.*;
 import com.example.contor.domain.*;
@@ -334,6 +335,17 @@ public class MailService {
                 .toList()), new ArrayList<>(drafts), replySuggestionService.state(id))
                 .conversationId(email.getConversationId())
                 .pendingReplyProposal(pending);
+    }
+
+    /** The paragraphs report citations point at ({@link EmailParagraphs}). */
+    @Transactional
+    public List<EmailParagraphDto> getEmailParagraphs(Long id) {
+        EmailMessage email = emailMessageRepository.findById(new EmailMessage.EmailMessageId(id))
+                .filter(candidate -> candidate.getAccount().getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new EmailNotFoundException(id));
+        return EmailParagraphs.split(email.getBodyText(), email.getBodyHtml()).stream()
+                .map(paragraph -> new EmailParagraphDto(paragraph.index(), paragraph.text(), paragraph.hash()))
+                .toList();
     }
 
     @Transactional

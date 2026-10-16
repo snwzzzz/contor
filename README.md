@@ -109,6 +109,23 @@ shipments, complaints, invoices). Then run the AI setup as usual and the backgro
   all dates by whole weeks so the newest mail is recent (dates written inside the mails keep their July values).
 - To start over, disconnect the two demo accounts and delete them in the database, or reset the database; the import
   runs again for a dev login without demo accounts. `DEMO_MAILBOX_PATH` points to another generated mailbox folder.
+
+### Dev AI cache
+
+Re-analyzing mail during development (after a database reset, or to try a backend change on real mail) normally waits
+for the GPU again. With the `dev` profile and `AI_CACHE=on` in `.env`, every model call goes through `CachingLlmClient`:
+an answer is stored in `.ai-cache/` under the hash of model, context size, prompts and JSON schema, and the same call
+later is answered from disk in milliseconds. Only calls whose prompt changed reach Ollama. The backend logs
+`AI answer cache ON in …` at start.
+
+- A cached answer is replayed only for the identical prompt. Extraction, reply drafts and insights put today's date into
+  their prompt, so their answers are reused on the same day only; routing and reply triage are reused across days. The
+  context (earlier mail, records already created) is part of the prompt too: different data means a new call.
+- Prompt or model changes miss automatically. `AI_CACHE=refresh` asks the model again and overwrites; delete `.ai-cache/`
+  to start over.
+- Embeddings are not cached. Outside the `dev` profile the setting is ignored and no cache exists; the folder holds
+  plain-text answers about your mail, so keep it local.
+
 ## Security overview
 
 - Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
@@ -141,6 +158,84 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: a full-width banner in the dominant color of its picture, the picture itself (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
 - On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
+
+## Reports (AI)
+
+Ask the assistant about any record of any collection, or about a whole collection, and get a structured answer with
+references: summaries, lists of
+reasons, next steps, pro and con lists, tables. Each sentence, list item or table cell that comes from the record or its
+emails points at its source, down to a record field or an email paragraph. Plan and status:
+[`docs/reports-plan.md`](docs/reports-plan.md).
+
+- **Asking:** the record page's **Details** tab starts with a prompt ("Ask about this record…") and suggestions
+  (*Summarize this record*, *What went wrong?*, …). Enter sends; an empty prompt asks for a summary of what happened, went
+  well, went wrong and is open. Below it are the record's answers with their progress, first sentence and how many
+  sentences have a source. Needs the AI model to be ready (409 otherwise).
+- **What it reads:** the record, the connected records you include (`connectedRecords`, reachable through relations
+  within `depth` steps, at most 25 records) and, with mail access in the AI settings, your emails linked to them (record
+  sources) with their conversations (up to 50), plus up to 10 **related emails** from the rest of your mailbox (closest
+  in meaning to the record's emails, embeddings, any date) and up to 8 **other records** linked to those — so "look at
+  other orders" works. The record's own emails come first; about 24 000 characters in all. Each fact is a numbered
+  source: records `[R1]`, fields `[F3]`, connections `[L1]`, email paragraphs `[P2.1]`.
+- **The answer** (prompt `report-v5`, `ReportModelService`): the model writes a **Markdown document**: the direct answer
+  to exactly what was asked first (opinions and advice included), then the sections the request needs, each in the
+  shape that fits — bullet lists, numbered lists (steps, causes, "5 reasons", rankings), tables (comparisons, pro and
+  con, items with several values), quotes. Asked for N items, it gives N; when the sources do not hold what is needed
+  (e.g. the sales of all customers for a "top 5"), it says so instead of inventing. `ai/ReportMarkdown` reads the
+  document into sections and blocks (headings, `-`/`1.` lists, `|` tables, `>` quotes; a bold-only line counts as a
+  heading). Source codes in square brackets follow a sentence, item or cell. **Nothing is fact-checked or removed:**
+  sentences stay as written; each gets a reference where there is one (`ai/References`: unknown codes are dropped, a whole email
+  `E3` stands for its paragraphs, codes written as words — "record R1 shows" — become names, a quote is shown only when
+  it is word for word in its email). Opinions, advice and questions may have no source. A sentence or list item that
+  repeats an earlier one is left out; a follow-up answers only its question and leaves out what the report already said.
+  The timeline is built from the record's dated fields and emails without the model, when the model says it helps or
+  there is no request (not when the model wrote one itself, not in follow-ups).
+- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`) reads like a conversation: each
+  question you asked (the request, then the follow-ups) is your own message bubble, with the assistant's answer below
+  it. The answer comes first, then the document's
+  sections with their paragraphs, lists, tables and quotes (`**bold**`, `*italic*` and `` `code` `` rendered), and the
+  timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
+  **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
+  highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
+  sources; the follow-up input stays at the bottom of the screen while you scroll. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  Reports still being generated when the backend stops are generated again after the next start; an error during
+  generation marks the report FAILED with a reason.
+- **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
+  `POST /api/reports/{id}/questions`, `POST /api/reports/{id}/regenerate` (202, generated on the AI thread; poll the
+  report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
+  user's mailbox are never shown (`sourceState` UNAVAILABLE).
+- **Reports over a whole collection** ("top 5 best selling customers", "which customers have the most complaints?", a pro
+  and con list of the order book): the collection page starts with "Ask about <collection>…". The report covers the
+  records the table shows (its filters and search go with the request) and needs no emails. It is made in three steps:
+  1. **Plan** (`collection-plan-v1`, `ReportModelService.plan`): the model sees a catalog of all collections (fields,
+     record counts, relation types) and picks up to 3 figures: which collection, grouped by a field, by
+     `link:<relation type>`, all together (`""`) or `each` record, measured as `count` or `sum|avg|min|max:<field>`, order,
+     top N, filters. Unknown collections, fields and invalid filters are dropped (`ai/CollectionPlan`,
+     `service/CollectionAnalysisService`).
+  2. **Figures** (deterministic): `persistence/dynamic/DynamicAggregateRepository` groups and aggregates over **all**
+     matching records with typed jOOQ fields (text grouped ignoring case and spaces, money per currency, never converted);
+     ranking and top N are done in Java (by the amount in the currency most records use, then count, then name). An
+     overview of the collection (counts per choice value, sums) and its newest records (as far as they fit) are added.
+  3. **Document** (`collection-report-v2`): the same Markdown report, written from the figures. Each figure row has a code
+     (`A1.2`) that stands for the records it was computed from; where the model writes `{{A1}}` (or `[A1]`), the app
+     inserts the **exact computed table**, each row citing its records on its figure (at most 20 per row). A table the
+     model neither placed nor cited is added after the answer, so a ranking is never one the model rewrote. No timeline.
+  The page is `/collections/{id}/reports/{reportId}`; follow-ups, Regenerate and Delete work as for records. API:
+  `GET/POST /api/collections/{id}/reports` (`NewCollectionReportCommand {prompt, filters, search}`; `ReportDto.recordId`
+  is empty and `filters`/`search` hold the scope). Known limits: amounts in other currencies are listed but ranked after
+  the main currency; no grouping by month and no two-step joins (complaints → purchase order → supplier) yet.
+- **Storage** (`V1_0_29__reports.sql`, `V1_0_30__report_blocks.sql`, `V1_0_31__collection_reports.sql`: `record_id` is
+  empty for a collection report): `report` (follow-ups have `parent_report_id`),
+  `report_section`, `report_block` (paragraph, list, quote or table with its header), `report_finding` (timeline and
+  older reports), `report_claim` (one sentence, list item or table cell with its row and column) and `report_citation` (record, field with value snapshot, email paragraph
+  with verbatim quote, or relation). Reports are snapshots; reading one marks sources that changed or were deleted.
+- **Email paragraphs:** `GET /api/emails/{id}/paragraphs` (your mailboxes only) splits an email into the paragraphs
+  citations point at (`ai/EmailParagraphs`): text body, or the HTML body as text (`ai/HtmlText`, using **jsoup**); quoted
+  history and signatures removed; blank lines separate paragraphs, list items are their own, a short greeting joins the
+  next paragraph, paragraphs over 1 200 characters are split at a sentence end. Each paragraph carries a hash of its
+  normalized text, so citations survive later changes to the splitting rules.
+- Not yet: picking connections in the Connections tab, opening a cited field or paragraph highlighted on its own page,
+  and the report evaluation (plan steps R9, R11, R7).
 
 ## Local AI (Ollama)
 
@@ -290,6 +385,23 @@ the gate therefore tolerates one record per metric (`ai.eval.tolerance`); for a 
 | `-Dai.eval.tolerance=0` | records per metric given the benefit of the doubt (default 1): a metric only regresses when it is still worse with that many records better — one record moves a small collection by more than the threshold between identical runs |
 | `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
 | `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
+| `-Dai.eval.cache=on\|off\|refresh` | replay recorded model answers (all eval tests; default `off` = a real measurement). `on` asks the model only for prompts it has not answered before, `refresh` asks again and overwrites. Answers are keyed by model, `num_ctx`, system prompt, user prompt and JSON schema |
+| `-Dai.eval.cacheDir=<dir>` | where the answers are stored (default `.ai-cache/`, shared with the dev cache below; gitignored: it holds answers about private mail too) |
+| `-Dai.eval.cases=<glob>[,<glob>]` | run only the cases whose id matches (`*`, `?`, case-insensitive), in every eval test; an eval with no matching case is skipped. A subset is report only: no baseline comparison |
+
+**Iterating fast.** Only a prompt or model change needs the GPU; changes to parsing, validation, appliers or scoring do not.
+With `-Dai.eval.cache=on` an unchanged prompt is answered from disk, so such a change re-runs the whole eval in seconds, and a
+prompt change asks the model only for the calls whose prompt actually changed (e.g. the extraction call, while relation calls
+with unchanged input stay cached). For a prompt change, try it on a few cases first, then run the full eval once:
+
+```bash
+cd contor-api && ./mvnw verify -Pai-eval -Dtest=AiExtractionEvalTest -Dai.eval.cache=on -Dai.eval.cases="invoice-*,meeting-en-*"
+```
+
+A replayed answer is the earlier run's sample, not a new one: judge prompt changes with real runs as described above.
+`-Dai.eval.updateBaseline=true` is refused with `ai.eval.cache=on` or `ai.eval.cases`, because a baseline must be a complete, real run.
+Latency and `where the time goes` count only the calls that reached the model. Bump `CachingLlmClient.KEY_VERSION` when
+`OllamaClient` changes the request options (temperature, thinking), since those are not part of the key.
 
 **Cases** are JSON files: `{id, email: {mailbox, fromName, fromAddress, to, subject, receivedAt, body}, expected: {records: {<collection slug>: [{title, values}]}, relations: []}, mustNotProduce: [{collection, title?}]}`;
 `values` lists only the fields worth checking. The 49 synthetic German/English cases live in
@@ -475,6 +587,8 @@ All variables are listed in `.env.example`.
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
 | `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
+| `AI_CACHE` | backend (dev profile) | `off` | `on` answers unchanged prompts from disk instead of the model, `refresh` asks again and overwrites (see *Dev AI cache*); ignored outside dev |
+| `AI_CACHE_DIR` | backend (dev profile) | `../.ai-cache` | where those answers are stored (relative to `contor-api`; gitignored, plain text about your mail) |
 | `DEMO_MAILBOX_ENABLED` | backend (dev profile) | `false` | import the fictional business mailbox into the dev login once (see *Demo mailbox*) |
 | `DEMO_MAILBOX_PATH` | backend (dev profile) | `src/test/resources/ai-eval/business/mailbox` | folder of the generated messages, relative to `contor-api` |
 | `DEMO_MAILBOX_SHIFT_TO_TODAY` | backend (dev profile) | `false` | move the demo mail by whole weeks so the newest mail is recent |
@@ -503,6 +617,9 @@ The sidebar can be resized (drag its right edge, or focus the edge and use the a
 
 ## Notes
 
+- Do not run `./mvnw` (compile, test) in `contor-api` while IntelliJ runs the backend from the same checkout: both write
+  `target/classes`, and a running backend that loads a class compiled by the other compiler can fail with
+  `NoClassDefFoundError` (e.g. `ReportGenerator$1`). Rebuild in IntelliJ and restart, or build in a separate git worktree.
 - Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.
