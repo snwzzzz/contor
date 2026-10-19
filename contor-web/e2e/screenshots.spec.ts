@@ -29,9 +29,26 @@ for (const theme of themes) {
     test.describe("signed in", () => {
       test.use({ storageState: STORAGE_STATE });
 
+      test(`home at desktop and phone width (${theme})`, async ({ page }) => {
+        for (const [width, height] of [[1920, 1080], [390, 844]]) {
+          await page.setViewportSize({ width, height });
+          await page.goto("/");
+          await expect(page.getByRole("heading", { level: 2, name: "Navigate" })).toBeVisible();
+          await expect(page.locator("main [data-slot=skeleton]")).toHaveCount(0);
+          // The page scrolls inside <main>: capture the whole of it, not only the viewport.
+          await page.locator("main").evaluate((main) => {
+            main.style.overflow = "visible";
+            main.parentElement?.style.setProperty("height", "auto");
+            main.parentElement?.style.setProperty("overflow", "visible");
+          });
+          await capture(page, `home-${width}`, theme);
+        }
+      });
+
       test(`shell and palette (${theme})`, async ({ page }) => {
         await page.goto("/inbox");
-        await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "People" })).toBeVisible();
+        // Current user loaded = page hydrated.
+        await expect(page.getByRole("button", { name: /e2e_owner/ })).toBeVisible();
         await capture(page, "inbox", theme);
 
         await page.goto("/inbox?settings=accounts");

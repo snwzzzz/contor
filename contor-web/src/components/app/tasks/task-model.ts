@@ -3,6 +3,9 @@ import type { DueTone } from "@/lib/due";
 
 export type State = "open" | "in_progress" | "done";
 
+/** The to-do list query (to-do page and home page share its cache entry). */
+export const TASK_LIST_PARAMS = { sort: "due_date", size: 200 } as const;
+
 export const DUE_TONE: Record<DueTone, string> = {
   overdue: "text-destructive",
   today: "text-tint-2-vivid",

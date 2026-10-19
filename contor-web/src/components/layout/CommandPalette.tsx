@@ -18,9 +18,13 @@ import {
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
 import { ALL_NAV, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/command-palette";
 import { shortcutLabel, useIsApplePlatform } from "@/lib/platform";
 
-/** ⌘K / Ctrl+K: jump to any section or collection, switch theme, log out. One instance lives in the top bar. */
+/**
+ * ⌘K / Ctrl+K: jump to any section or collection, switch theme, log out. One instance lives in the top bar; other parts
+ * of the app open it with `openCommandPalette()`.
+ */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -37,8 +41,15 @@ export function CommandPalette() {
         setOpen((current) => !current);
       }
     }
+    function onOpenRequest() {
+      setOpen(true);
+    }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpenRequest);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpenRequest);
+    };
   }, []);
 
   function go(href: string) {
@@ -53,10 +64,10 @@ export function CommandPalette() {
 
   return (
     <>
-      <AppButton variant="outline" className="w-56 justify-start text-muted-foreground" onClick={() => setOpen(true)}>
+      <AppButton variant="outline" className="w-56 justify-start bg-muted/40 font-normal text-muted-foreground shadow-none" onClick={() => setOpen(true)}>
         <Search aria-hidden="true" data-icon="inline-start" />
         <span>Search or jump to…</span>
-        <kbd className="ml-auto rounded border bg-muted px-1.5 font-mono text-[10px]">{shortcutLabel("K", apple)}</kbd>
+        <kbd className="ml-auto rounded border bg-background px-1.5 font-mono text-[10px]">{shortcutLabel("K", apple)}</kbd>
       </AppButton>
       <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Jump to a page or collection, or run an action">
         <Command>

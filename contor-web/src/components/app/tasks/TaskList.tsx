@@ -16,9 +16,7 @@ import { describeDue } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
 import { cn } from "@/lib/utils";
 import { TaskDetail } from "./TaskDetail";
-import { DUE_TONE, PRIORITY, stateOf, stringValue, type State } from "./task-model";
-
-const PARAMS = { sort: "due_date", size: 200 } as const;
+import { DUE_TONE, PRIORITY, stateOf, stringValue, TASK_LIST_PARAMS, type State } from "./task-model";
 
 const COLUMNS: readonly BoardColumn<State>[] = [
   { key: "open", title: "To do", icon: CircleDashed, iconClass: "text-muted-foreground", empty: "Nothing to do." },
@@ -52,7 +50,7 @@ export function TaskList() {
   const queryClient = useQueryClient();
   const { collection, isLoading, error } = useSystemCollection("tasks");
   const collectionId = collection?.id ?? 0;
-  const { data } = useListRecords(collectionId, PARAMS, { query: { enabled: collection !== undefined } });
+  const { data } = useListRecords(collectionId, TASK_LIST_PARAMS, { query: { enabled: collection !== undefined } });
   const [title, setTitle] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: getListRecordsQueryKey(collectionId) });
@@ -92,7 +90,7 @@ export function TaskList() {
     const stateChanged = stateOf(task) !== state;
 
     // Optimistic: the card lands in its new place right away; the refresh afterwards shows what the server has.
-    queryClient.setQueryData<RecordPageDto>(getListRecordsQueryKey(collectionId, PARAMS), (page) => page && {
+    queryClient.setQueryData<RecordPageDto>(getListRecordsQueryKey(collectionId, TASK_LIST_PARAMS), (page) => page && {
       ...page,
       items: page.items.map((item) => {
         const position = positions.get(item.id);

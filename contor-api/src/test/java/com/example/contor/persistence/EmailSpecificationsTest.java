@@ -154,6 +154,21 @@ public class EmailSpecificationsTest {
         assertThat(answered(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
     }
 
+    private List<String> read(Boolean read) {
+        return subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, null, false, read));
+    }
+
+    @Test
+    void filters_by_read_state() {
+        var meeting = emailMessageRepository.findAll().stream().filter(e -> e.getSubject().equals("Meeting tomorrow")).findFirst().orElseThrow();
+        meeting.setRead(true);
+        emailMessageRepository.save(meeting);
+
+        assertThat(read(false)).containsExactly("Your ORDER has shipped", "Invoice");
+        assertThat(read(true)).containsExactly("Meeting tomorrow");
+        assertThat(read(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
+    }
+
     @Test
     void sent_folder_lists_only_the_owners_sent_mail() {
         var sent = save(work, "7", "Re: Invoice", "work@example.com", "Me", ProcessingState.SKIPPED, "2026-01-05T09:00:00Z");

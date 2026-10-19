@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
 import { resetNavigation, router } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
+import { openCommandPalette } from "@/lib/command-palette";
 import { CommandPalette } from "./CommandPalette";
 
 vi.mock("next/navigation", () => import("@/test/next-navigation"));
@@ -49,6 +50,14 @@ describe("CommandPalette", () => {
     renderWithProviders(<CommandPalette />);
 
     await userEvent.click(screen.getByRole("button", { name: /Search or jump to/ }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("opens when another part of the app asks for it", async () => {
+    renderWithProviders(<CommandPalette />);
+
+    openCommandPalette();
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });

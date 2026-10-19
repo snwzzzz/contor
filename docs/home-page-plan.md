@@ -4,7 +4,7 @@ Goal: a home page at `/` and an Azure-style shell: a full-width top navbar; navi
 
 ## Shell
 
-**Top bar** (`components/layout/TopBar`, full width, `bg-background` + border, shadcn look kept):
+**Top bar** (`components/layout/TopBar`, full width, compact 3rem, white with a hairline below):
 
 | Position | Item | Behaviour |
 |---|---|---|
@@ -25,15 +25,18 @@ to reorder when not searching) / Graph & automation. The sidebar width and resiz
 
 ## Home page (`app/(app)/page.tsx`)
 
-Azure-style, no boxes, sections stacked: "Welcome to contor", **Quick actions** (row of icons with labels),
-**Aktuelles** (preview text only, bold while new), **Actions** (top 3 pending proposals, "View all"),
-**Connected mailboxes** (compact rows, address as link, "Manage").
+Quiet shadcn-style layout on a white page, neutral black/white theme, color only for small status marks. Max. 1360 px
+wide. Greeting by time of day with a one-line status and outline quick-action buttons (*More* opens the command palette),
+a hairline-divided strip of four numbers, then unboxed sections (*Recent activity* with tabs, *Pending actions* |
+*Today*, *Connected mailboxes*, *AI status*) and *Navigate* links. Unread counts use `GET /api/emails?read=false` (added
+for this); "Flagged" became *Needs reply* (`answered=false`) because emails have no flag; the greeting uses the username
+(no display name in the API).
 
 ## Tests first
 - `TopBar.test.tsx`: launcher opens the empty Apps panel, menu opens the navigation, logo → `/`, chat → `/chat`, settings → `?settings=accounts`.
 - `NavDrawer.test.tsx`: closed by default, all links, search filter and "No pages found", closes on navigation/Escape, Ctrl+B, badges, current page, collection reordering.
-- `home/*.test.tsx`: quick action hrefs; news items bold until opened; proposals list + view all + empty state; mailboxes as links + manage link + empty state.
-- e2e `shell.spec.ts`: drawer navigation and search, top bar links, home page sections.
+- `home/*.test.tsx`: greeting + status banner states, stat cards (numbers, links, skeletons), quick-action tiles + *More*, recent activity tabs/unread/empty, pending actions (inline approve), today, mailboxes (sync state), AI status, navigate links.
+- e2e `shell.spec.ts`: drawer navigation and search, top bar links, home page cards and tabs, no sideways scrolling at 390 px.
 
 ## Docs
 README frontend section: home page, navbar, chat placeholder.

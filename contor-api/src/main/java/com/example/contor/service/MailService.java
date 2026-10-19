@@ -187,7 +187,7 @@ public class MailService {
 
     @Transactional
     public EmailPageDto listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                   EmailSearchField field, Boolean answered, EmailFolder folder, Integer page, Integer size) {
+                                   EmailSearchField field, Boolean answered, Boolean read, EmailFolder folder, Integer page, Integer size) {
         var criteria = new EmailSpecifications.Criteria(
                 currentUser(),
                 accountId != null ? new MailAccount.MailAccountId(accountId) : null,
@@ -196,7 +196,8 @@ public class MailService {
                 q,
                 field != null ? SearchField.valueOf(field.name()) : SearchField.ALL,
                 answered,
-                folder == EmailFolder.SENT);
+                folder == EmailFolder.SENT,
+                read);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailSummary> result = emailMessageRepository.findSummaries(EmailSpecifications.matching(criteria), pageable);

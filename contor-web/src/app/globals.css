@@ -25,6 +25,8 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface-page: var(--surface-page);
+  --color-surface-raised: var(--surface-raised);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
@@ -116,7 +118,7 @@
 @layer base {
   /* Height of the top bar; the navigation drawer (portaled to <body>) starts below it. */
   :root {
-    --header-height: 3.5rem;
+    --header-height: 3rem;
   }
 
   * {

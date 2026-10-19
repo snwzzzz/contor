@@ -123,11 +123,11 @@ public class MailControllerTest {
 
     @Test
     void list_emails_passes_filters() throws Exception {
-        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, false, EmailFolder.SENT, 1, 10))
+        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, false, false, EmailFolder.SENT, 1, 10))
                 .thenReturn(new EmailPageDto(List.of(), 1, 10, 0L, 0));
 
         mockMvc.perform(get("/api/emails").with(TestAuth.user()).param("accountId", "2").param("labelId", "3")
-                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("answered", "false").param("folder", "SENT").param("page", "1").param("size", "10"))
+                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("answered", "false").param("read", "false").param("folder", "SENT").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk());
     }
 

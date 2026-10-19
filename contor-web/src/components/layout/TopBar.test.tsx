@@ -45,6 +45,13 @@ describe("TopBar", () => {
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/calendar?settings=accounts");
   });
 
+  it("is a compact white bar separated from the page by a hairline", () => {
+    renderTopBar();
+
+    expect(screen.getByRole("banner")).toHaveClass("h-(--header-height)", "bg-background", "border-b");
+    expect(screen.getByRole("banner")).not.toHaveClass("shadow-(--shadow-card)");
+  });
+
   it("shows the account menu", async () => {
     renderTopBar();
 

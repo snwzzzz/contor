@@ -1689,6 +1689,12 @@ paths:
             false: only emails not answered yet; omitted: all. Ignored for the SENT folder.
           schema:
             type: boolean
+        - name: read
+          in: query
+          required: false
+          description: "true: only emails the user has read; false: only unread ones (totalElements is the unread count); omitted: all"
+          schema:
+            type: boolean
         - name: folder
           in: query
           required: false
