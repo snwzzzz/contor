@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, FolderPlus, ListFilter, Search, SearchX, Table2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, FolderPlus, ListFilter, SearchX, Table2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/app/SearchField";
 import { useGetCollection } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
@@ -159,17 +160,14 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
 
       <section className="grid min-h-0 gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              type="search"
-              aria-label={`Search ${collection.name}`}
-              placeholder={`Search ${collection.name.toLowerCase()}…`}
-              value={search}
-              onChange={(event) => onSearch(event.target.value)}
-              className="h-9 pl-8"
-            />
-          </div>
+          <SearchField
+            wrapperClassName="w-full max-w-xs"
+            aria-label={`Search ${collection.name}`}
+            placeholder={`Search ${collection.name.toLowerCase()}…`}
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            onClear={() => onSearch("")}
+          />
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {activeFilters > 0 ? (
               <AppButton variant="ghost" size="sm" onClick={() => { setFilters({}); setPage(0); }}>
@@ -364,7 +362,7 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
       {totalPages > 1 ? (
         <label className="flex items-center justify-end gap-2 text-muted-foreground">
           Go to page
-          <input
+          <Input
             type="number"
             min={1}
             max={totalPages}
@@ -376,7 +374,7 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
               if (Number.isInteger(target)) onPage(Math.min(totalPages, Math.max(1, target)) - 1);
               setGoTo("");
             }}
-            className="h-8 w-14 rounded-md border bg-background px-2 text-center text-foreground"
+            className="w-14 text-center text-foreground"
           />
         </label>
       ) : (
@@ -396,14 +394,14 @@ function CellValue({ value, field }: { value: unknown; field?: CollectionFieldDt
   return <>{formatValue(value)}</>;
 }
 
-const FILTER_INPUT = "h-8 w-full min-w-28 rounded-md border bg-background px-2 text-xs font-normal";
+const FILTER_INPUT = "min-w-28 px-2 text-xs font-normal";
 
 function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldDto; value: ColumnFilter; onChange: (input: ColumnFilter) => void }) {
   const kind = filterKind(field);
   const label = `Filter ${field.name}`;
   switch (kind) {
     case "text":
-      return <input aria-label={label} placeholder="contains…" className={FILTER_INPUT} value={value.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} />;
+      return <Input aria-label={label} placeholder="contains…" className={FILTER_INPUT} value={value.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} />;
     case "choice": {
       const options = field.options[field.type === "STATUS" ? "states" : "values"];
       return (
@@ -431,8 +429,8 @@ function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldD
       const type = kind === "number" ? "number" : "date";
       return (
         <div className="grid gap-1">
-          <input type={type} aria-label={`${field.name} from`} placeholder="from" className={FILTER_INPUT} value={value.min ?? ""} onChange={(event) => onChange({ min: event.target.value })} />
-          <input type={type} aria-label={`${field.name} to`} placeholder="to" className={FILTER_INPUT} value={value.max ?? ""} onChange={(event) => onChange({ max: event.target.value })} />
+          <Input type={type} aria-label={`${field.name} from`} placeholder="from" className={FILTER_INPUT} value={value.min ?? ""} onChange={(event) => onChange({ min: event.target.value })} />
+          <Input type={type} aria-label={`${field.name} to`} placeholder="to" className={FILTER_INPUT} value={value.max ?? ""} onChange={(event) => onChange({ max: event.target.value })} />
         </div>
       );
     }

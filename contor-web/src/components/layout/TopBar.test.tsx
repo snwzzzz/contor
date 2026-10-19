@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
@@ -27,6 +27,12 @@ describe("TopBar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apps" }));
 
     expect(await screen.findByText("No apps yet")).toBeInTheDocument();
+  });
+
+  it("puts the navigation menu first in the bar", () => {
+    renderTopBar();
+
+    expect(within(screen.getByRole("banner")).getAllByRole("button")[0]).toHaveAccessibleName("Menu");
   });
 
   it("opens the navigation over the page with the menu button", async () => {

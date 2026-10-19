@@ -132,11 +132,11 @@
   }
 }
 
-/* Thin scrollbars everywhere: 6px rounded thumb, no track (Chromium/WebKit); Firefox gets its thin variant. */
+/* Thin scrollbars everywhere: 4px rounded thumb, no track (Chromium/WebKit); Firefox gets its thin variant. */
 @layer base {
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track,
   ::-webkit-scrollbar-corner {

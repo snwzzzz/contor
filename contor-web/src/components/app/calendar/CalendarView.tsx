@@ -259,13 +259,7 @@ function DayAgenda({ day, collectionId, events, onClose }: DayAgendaProps) {
         <div className="flex items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
             <span className="text-muted-foreground">Time</span>
-            <input
-              type="time"
-              value={time}
-              disabled={allDay}
-              onChange={(event) => setTime(event.target.value)}
-              className="h-8 rounded-md border bg-background px-2 disabled:opacity-50"
-            />
+            <Input type="time" value={time} disabled={allDay} onChange={(event) => setTime(event.target.value)} className="w-auto px-2" />
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} className="size-4 accent-primary" />

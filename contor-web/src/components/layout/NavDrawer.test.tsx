@@ -98,6 +98,18 @@ describe("NavDrawer", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
+  it("is colorful but minimal: compact rows, icons in their section or collection color, no tiles", async () => {
+    const drawer = await openDrawer();
+
+    const inbox = within(drawer).getByRole("link", { name: /^Inbox/ });
+    expect(inbox).toHaveClass("h-8");
+    expect(inbox.querySelector("svg")).toHaveClass("text-tint-8-vivid");
+    const people = within(drawer).getByRole("link", { name: "People" });
+    expect(people.querySelector("svg")).toHaveClass("text-tint-2-vivid");
+    expect(within(drawer).getByRole("link", { name: /^Home/ }).querySelector("svg")).toHaveClass("text-muted-foreground");
+    expect(drawer.querySelector("[class*='bg-tint-']")).toBeNull();
+  });
+
   it("shows the number of pending proposals", async () => {
     const drawer = await openDrawer();
 

@@ -1,12 +1,11 @@
 "use client";
 
-import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SettingsSectionContent } from "@/components/app/settings/SettingsSectionContent";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/app/SearchField";
 import { cn } from "@/lib/utils";
 import { isSettingsSection, SETTINGS_NAV, SETTINGS_PARAM, settingsHref } from "@/lib/navigation";
 
@@ -43,16 +42,13 @@ export function SettingsDialog() {
     <Dialog open={section !== null} onOpenChange={(open) => (open ? undefined : close())}>
       <DialogContent className="grid h-[min(85svh,52rem)] w-[min(72rem,calc(100%-2rem))] max-w-none grid-rows-[auto_1fr] gap-0 overflow-hidden p-0 sm:max-w-none md:grid-cols-[15rem_1fr] md:grid-rows-1">
         <aside className="flex flex-col gap-4 border-b bg-muted/40 p-3 md:border-r md:border-b-0">
-          <div className="relative">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              placeholder="Search settings"
-              aria-label="Search settings"
-              className="pl-8"
-            />
-          </div>
+          <SearchField
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            onClear={() => setFilter("")}
+            placeholder="Search settings"
+            aria-label="Search settings"
+          />
           <DialogTitle className="px-2 text-xs font-medium text-muted-foreground">Settings</DialogTitle>
           <DialogDescription className="sr-only">Accounts, AI, autonomy and security.</DialogDescription>
           <nav aria-label="Settings sections">

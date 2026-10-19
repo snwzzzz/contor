@@ -1,9 +1,10 @@
 "use client";
 
-import { Database, GripVertical, Menu, Plus, Search } from "lucide-react";
+import { Database, GripVertical, Menu, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
+import { SearchField } from "@/components/app/SearchField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -12,7 +13,7 @@ import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useCountProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import { moveItem, orderByIds } from "@/lib/collection-order";
-import { collectionTint, tintVividClass } from "@/lib/collection-tint";
+import { collectionTintNumber, tintVividClass } from "@/lib/collection-tint";
 import {
   AI_INSIGHTS_NAV,
   collectionHref,
@@ -29,7 +30,8 @@ import { cn } from "@/lib/utils";
 const PROPOSAL_COUNT_REFRESH_MS = 60_000;
 const COLLECTION_ORDER_KEY = "contor.sidebar.collectionOrder";
 const NO_ORDER: readonly number[] = [];
-const ROW = "flex h-9 items-center gap-3 px-4 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent";
+/** Compact rows (shadcn sidebar style): inset and rounded; color only on the icon; the current page gets the accent background. */
+const ROW = "mx-2 flex h-8 items-center gap-2.5 rounded-md px-2 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent";
 const ACTIVE_ROW = "bg-accent font-medium text-accent-foreground";
 
 function parseOrder(raw: unknown): readonly number[] | undefined {
@@ -115,15 +117,13 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <>
-      <div className="relative shrink-0 border-b p-2">
-        <Search className="pointer-events-none absolute top-1/2 left-4.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <input
-          type="search"
+      <div className="shrink-0 border-b p-2">
+        <SearchField
           aria-label="Search pages"
           placeholder="Search pages…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="h-8 w-full rounded-md bg-muted pr-2 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          onClear={() => setQuery("")}
         />
       </div>
       <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto pb-2">
@@ -153,11 +153,13 @@ function NavGroup({ label, children }: { label?: string; children: ReactNode }) 
   return (
     <div className="pt-2">
       {label ? (
-        <h3 id={id} className="px-4 pt-2 pb-1 text-xs font-medium text-muted-foreground">
+        <h3 id={id} className="px-4 pt-2 pb-1 text-xs text-muted-foreground">
           {label}
         </h3>
       ) : null}
-      <ul aria-labelledby={id}>{children}</ul>
+      <ul aria-labelledby={id} className="grid gap-px">
+        {children}
+      </ul>
     </div>
   );
 }
@@ -190,10 +192,8 @@ function CollectionLink({ collection, pathname, onNavigate }: { collection: Coll
   const href = collectionHref(collection.id);
   const active = isActive(pathname, href);
   return (
-    <Link href={href} onClick={onNavigate} draggable={false} aria-current={active ? "page" : undefined} className={cn(ROW, "pr-9", active && ACTIVE_ROW)}>
-      <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md", collectionTint(collection.id, collection.slug))} aria-hidden="true">
-        <Database className="size-3" />
-      </span>
+    <Link href={href} onClick={onNavigate} draggable={false} aria-current={active ? "page" : undefined} className={cn(ROW, "pr-8", active && ACTIVE_ROW)}>
+      <Database aria-hidden="true" className={cn("size-4 shrink-0", tintVividClass(collectionTintNumber(collection.id, collection.slug)))} />
       <span className="truncate">{collection.name}</span>
     </Link>
   );
@@ -303,7 +303,7 @@ function CollectionItem({ collection, pathname, onNavigate, preview, onDragStart
         aria-label={`Move ${collection.name}`}
         title="Drag, or Alt+Up/Down to move"
         onKeyDown={onGripKeyDown}
-        className="absolute top-2 right-2 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute top-1.5 right-3 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GripVertical className="size-3.5" aria-hidden="true" />
       </button>

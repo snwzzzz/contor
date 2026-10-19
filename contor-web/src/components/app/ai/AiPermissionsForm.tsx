@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import type { AiAccess } from "@/lib/api/generated/model/aiAccess";
 import type { AiSettingsDto } from "@/lib/api/generated/model/aiSettingsDto";
 
@@ -91,9 +92,9 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
         <label htmlFor={profileId} className="text-sm font-medium">
           About you and your business
         </label>
-        <textarea
+        <Textarea
           id={profileId}
-          className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"
+          className="min-h-20"
           maxLength={2000}
           placeholder="e.g. Head of Operations at a wholesaler: customers order from us, we buy from suppliers."
           value={value.ownerProfile ?? ""}

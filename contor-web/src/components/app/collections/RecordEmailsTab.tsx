@@ -62,7 +62,8 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
   const filtering = deferredText.trim() !== "";
 
   return (
-    <div className="flex min-h-[32rem] flex-col gap-6 lg:h-[calc(100svh-18rem)] lg:flex-row">
+    // Fills the tab panel on large screens (RecordDetail makes the page a column); the panes scroll on their own.
+    <div className="flex min-h-[32rem] flex-col gap-6 lg:min-h-80 lg:flex-1 lg:flex-row">
       {/* Message list: filter on top, the email boxes below in their own scroll area */}
       <section aria-label="Email list" className="flex min-h-0 flex-col gap-3 max-lg:max-h-[55svh] lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
         <div className="flex shrink-0 items-center gap-2">

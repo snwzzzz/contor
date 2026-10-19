@@ -148,6 +148,33 @@ describe("RecordDetail", () => {
     expect(await within(panel).findByText("We would like to invite you to an interview.")).toBeInTheDocument();
   });
 
+  it("never scrolls the tab bar vertically: the active underline stays inside it", async () => {
+    api([], []);
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const tabs = await screen.findByRole("tablist", { name: "Record sections" });
+    expect(tabs).toHaveClass("overflow-y-hidden");
+    for (const tab of within(tabs).getAllByRole("tab")) expect(tab).not.toHaveClass("-mb-px");
+  });
+
+  it("lets the emails fill the rest of the screen instead of a fixed height that scrolls the page", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/collections/1/records/5/emails": { body: { items: [], page: 0, size: 25, totalElements: 0, totalPages: 0 } },
+    });
+    const { container } = renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    await userEvent.click(await screen.findByRole("tab", { name: /Emails/ }));
+
+    const panel = screen.getByRole("tabpanel", { name: /Emails/ });
+    expect(container.querySelector("article")).toHaveClass("lg:min-h-0", "lg:flex-1");
+    expect(panel).toHaveClass("lg:min-h-0", "lg:flex-1");
+    expect(container.innerHTML).not.toContain("100svh");
+  });
+
   it("filters the record's emails", async () => {
     const mail = (id: number, subject: string, snippet: string) => ({ id, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger",
       subject, snippet, receivedAt: "2026-10-06T08:00:00Z", read: true, hasAttachments: false, processingState: "DONE", labels: [] });

@@ -3,6 +3,7 @@
 import { SendHorizontal, Sparkles } from "lucide-react";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
+import { FIELD, FIELD_FOCUS_WITHIN } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export function ReportPrompt({ label, placeholder, submitLabel, suggestions = []
   }
 
   return (
-    <form onSubmit={onFormSubmit} className="grid gap-2 rounded-xl border bg-card p-3">
+    <form onSubmit={onFormSubmit} className={cn("grid gap-2 p-3", FIELD, FIELD_FOCUS_WITHIN)}>
       <div className="flex items-end gap-2">
         <Sparkles className="mb-2.5 size-4 shrink-0 text-primary" aria-hidden="true" />
         <Textarea

@@ -138,7 +138,7 @@ export function TaskDetail({ collection, task, today, onMove, onChanged, onClose
           </div>
         ) : null}
 
-        <Input aria-label="Title" value={title} onChange={(event) => setTitle(event.target.value)} className="h-10 text-base font-medium" />
+        <Input aria-label="Title" value={title} onChange={(event) => setTitle(event.target.value)} className="font-medium" />
 
         <div className="flex flex-wrap gap-2">
           {state === "open" ? <AppButton size="sm" variant="outline" onClick={() => onMove("in_progress")}>Start</AppButton> : null}
