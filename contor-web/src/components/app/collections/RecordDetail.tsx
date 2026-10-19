@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowLeft, Bot, Database, Mail, Network, User, UserRound, type LucideIcon } from "lucide-react";
+import { Mail, Network, Table2, UserRound, type LucideIcon } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { RefreshCommand } from "@/components/app/PageCommandButtons";
+import { CommandLink, PageCommands } from "@/components/app/PageCommands";
+import { collectionTrail, PageTitle, PageTrail } from "@/components/app/PageHeader";
 import { domainOf, initialOf } from "@/components/app/mail/mail-format";
 import { useGetCollection } from "@/lib/api/generated/endpoints/collections/collections";
 import { useGetRecord, useListRecordEmails } from "@/lib/api/generated/endpoints/records/records";
@@ -12,9 +14,10 @@ import { useListRelations } from "@/lib/api/generated/endpoints/relations/relati
 import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
-import { collectionTint, recordTintNumber, tintClass } from "@/lib/collection-tint";
+import { recordTintNumber, tintClass } from "@/lib/collection-tint";
 import { bannerGradient, useDominantColor } from "@/lib/dominant-color";
 import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictures";
+import { collectionHref } from "@/lib/navigation";
 import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { RecordReports } from "@/components/app/reports/RecordReports";
@@ -22,7 +25,7 @@ import { RecordConnectionsTab } from "./RecordConnectionsTab";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
 const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const PICTURE_SIZE = 112;
+const PICTURE_SIZE = 80;
 /** The first page of the Emails tab: its total is the tab count (the tab reuses this query for page 1). */
 const EMAIL_PAGE = { page: 0, size: RECORD_EMAIL_PAGE_SIZE } as const;
 
@@ -62,7 +65,10 @@ function pictureSources(record: RecordDto, fields: readonly CollectionFieldDto[]
   return { addresses, domains };
 }
 
-/** One record as a full page: banner in the color of its picture, the picture, and tabs for details, emails, connections. */
+/**
+ * One record as a full page: breadcrumbs, a contained banner in the color of its picture with the picture over its
+ * edge, title | collection with its commands, and tabs for details, emails, connections.
+ */
 export function RecordDetail({ collectionId, recordId }: { collectionId: number; recordId: number }) {
   const { data: collection } = useGetCollection(collectionId);
   const { data: record, error } = useGetRecord(collectionId, recordId, { query: { retry: false } });
@@ -89,56 +95,53 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
   const src = candidate && candidate !== failedSrc ? candidate : undefined;
   const color = useDominantColor(src);
   const title = record.title ?? `Record #${record.id}`;
-  const collectionColor = collectionTint(collection.id, collection.slug);
-  // The record's own color (never its collection's), so e.g. people are not all banners in the same color.
+  // The record's own color for its banner and initial (never its collection's), so e.g. people do not all look alike.
   const tint = tintClass(recordTintNumber(collection.id, record.id, collection.slug));
   const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, connections: relations?.length };
 
-  return (
-    // Bleeds over the page padding so the banner and the tab bar span the whole content area.
-    <article className="-mx-6 -mt-6 grid">
-      <div
-        data-testid="record-banner"
-        className={cn("h-44 transition-[background] duration-700", color ? undefined : tint)}
-        style={color ? { background: bannerGradient(color) } : undefined}
-      />
+  const addedBy = record.createdBy === "AI" ? "the assistant" : record.createdBy === "SYSTEM" ? "contor" : "you";
 
-      <div className="flex flex-wrap items-end gap-5 px-8">
-        {src ? (
-          <Image
-            src={src}
-            alt={title}
-            width={PICTURE_SIZE}
-            height={PICTURE_SIZE}
-            unoptimized
-            onError={() => setFailedSrc(src)}
-            style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
-            className="-mt-14 shrink-0 rounded-full bg-background object-cover shadow-sm ring-4 ring-background"
-          />
-        ) : (
-          <span
-            data-testid="record-initial"
-            aria-hidden="true"
-            style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
-            className={cn("-mt-14 flex shrink-0 items-center justify-center rounded-full text-4xl font-semibold shadow-sm ring-4 ring-background", tint)}
-          >
-            {initialOf(title)}
-          </span>
-        )}
-        <header className="grid min-w-0 gap-1.5 pt-4">
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <Link href={`/collections/${collection.id}`} className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium hover:opacity-80", collectionColor)}>
-              <ArrowLeft className="size-3" aria-hidden="true" />
-              <Database className="size-3" aria-hidden="true" />
-              {collection.name}
-            </Link>
-            <span className="inline-flex items-center gap-1">
-              {record.createdBy === "AI" ? <Bot className="size-3.5" aria-hidden="true" /> : <User className="size-3.5" aria-hidden="true" />}
-              Added by {record.createdBy === "AI" ? "the assistant" : record.createdBy === "SYSTEM" ? "contor" : "you"} on{" "}
-              {CREATED_FORMAT.format(new Date(record.createdAt))}
+  return (
+    <article className="grid gap-4">
+      <PageTrail trail={collectionTrail(collection)} current={title} />
+
+      {/* A contained banner (no full-bleed strip) with the picture over its lower edge, like a profile. */}
+      <div className="grid">
+        <div
+          data-testid="record-banner"
+          className={cn("h-28 rounded-xl transition-[background] duration-700 motion-reduce:transition-none", color ? undefined : tint)}
+          style={color ? { background: bannerGradient(color) } : undefined}
+        />
+        <header className="flex flex-wrap items-end gap-x-4 gap-y-2 px-5">
+          {src ? (
+            <Image
+              src={src}
+              alt={title}
+              width={PICTURE_SIZE}
+              height={PICTURE_SIZE}
+              unoptimized
+              onError={() => setFailedSrc(src)}
+              style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
+              className="-mt-10 shrink-0 rounded-full bg-background object-cover ring-4 ring-background"
+            />
+          ) : (
+            <span
+              data-testid="record-initial"
+              aria-hidden="true"
+              style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
+              className={cn("-mt-10 flex shrink-0 items-center justify-center rounded-full text-3xl font-medium ring-4 ring-background", tint)}
+            >
+              {initialOf(title)}
             </span>
+          )}
+          <div className="grid min-w-0 flex-1 gap-0.5 pt-2">
+            <PageTitle title={title} subtitle={collection.name} />
+            <p className="text-sm text-muted-foreground">{`Added by ${addedBy} on ${CREATED_FORMAT.format(new Date(record.createdAt))}`}</p>
           </div>
+          <PageCommands>
+            <RefreshCommand />
+            <CommandLink href={collectionHref(collection.id)} icon={Table2} label="Table view" />
+          </PageCommands>
         </header>
       </div>
 
@@ -174,7 +177,7 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
 
   return (
     <>
-      <div role="tablist" aria-label="Record sections" onKeyDown={onKeyDown} className="mt-6 flex gap-6 overflow-x-auto border-b px-8">
+      <div role="tablist" aria-label="Record sections" onKeyDown={onKeyDown} className="flex gap-6 overflow-x-auto border-b">
         {TABS.map((tab, index) => {
           const selected = tab.id === active;
           const count = counts[tab.id];
@@ -203,7 +206,7 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
           );
         })}
       </div>
-      <div role="tabpanel" id={`${id}-${active}-panel`} aria-labelledby={`${id}-${active}`} className="px-8 py-6">
+      <div role="tabpanel" id={`${id}-${active}-panel`} aria-labelledby={`${id}-${active}`} className="py-5">
         {children}
       </div>
     </>

@@ -1,13 +1,15 @@
 "use client";
 
 import { keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, ListFilter, Search, SearchX, Table2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, FolderPlus, ListFilter, Search, SearchX, Table2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { PageHeader } from "@/components/app/PageHeader";
+import { RefreshCommand } from "@/components/app/PageCommandButtons";
+import { CommandLink, PageCommands } from "@/components/app/PageCommands";
+import { COLLECTIONS_CRUMB, PageHeader } from "@/components/app/PageHeader";
 import { CollectionReports } from "@/components/app/reports/CollectionReports";
 import {
   DropdownMenu,
@@ -23,6 +25,7 @@ import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import { collectionTintNumber, tintClass, type Tint } from "@/lib/collection-tint";
+import { navItem, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { pageItems } from "@/lib/pagination";
 import { formatValue } from "@/lib/proposal-format";
 import { buildFilters, countActiveFilters, filterKind, type ColumnFilter, type FilterState } from "@/lib/record-filters";
@@ -134,7 +137,22 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
 
   return (
     <>
-      <PageHeader icon={Database} tint={collectionTintNumber(collection.id, collection.slug)} title={collection.name} description={collection.description} />
+      <PageHeader
+        trail={[COLLECTIONS_CRUMB]}
+        icon={Database}
+        tint={collectionTintNumber(collection.id, collection.slug)}
+        title={collection.name}
+        subtitle="Collection"
+        description={collection.description}
+        actions={
+          <PageCommands>
+            <RefreshCommand />
+            <CommandLink href="/relations" icon={navItem("/relations").icon} label="Relations" />
+            <CommandLink href="/queries" icon={navItem("/queries").icon} label="Queries" />
+            <CommandLink href={NEW_COLLECTION_HREF} icon={FolderPlus} label="New collection" />
+          </PageCommands>
+        }
+      />
 
       <CollectionReports collectionId={collectionId} collectionName={collection.name} filters={apiFilters} search={query}
         matching={records?.totalElements} />

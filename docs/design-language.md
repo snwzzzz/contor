@@ -67,11 +67,12 @@ Color appears only as small marks. Never as card or section backgrounds.
 | `ImportanceBadge` | Only "Urgent" / "High"; normal and low show nothing. |
 
 Icons are lucide, `size-4`, `strokeWidth={1.75}`, `text-muted-foreground`. They sit bare: no tinted tiles and no filled
-squares.
+squares. The one exception is the page icon in the page header: `size-6`, bare, in its section's vivid tint
+(`tintVividClass`), so pages are recognizable at a glance.
 
 ## 5. Layout
 
-- Page container: `mx-auto w-full max-w-[85rem]`. The shell (`AppShell`) adds `p-6`, and the page adds `sm:px-2`.
+- Page container: `mx-auto w-full max-w-[85rem]`. The shell (`AppShell`) adds `px-6 pt-3 pb-6` and `gap-5` between the header and content. The home page adds `sm:px-2`.
 - Vertical rhythm: `gap-8` between blocks, `gap-2` between a section heading and its content, `gap-5` inside the hero.
 - Multi-column areas are **one grid with rows**, so each row starts on the same line:
   `grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[repeat(3,minmax(0,1fr))] gap-x-10 gap-y-8 items-start`. The main
@@ -98,6 +99,9 @@ Home page order: hero (greeting, status line, quick actions) → stat strip → 
 | List rows | Recent activity, Today, mailboxes | `rounded-md px-2 py-1.5–2.5` + `ROW_HOVER`; the list is `-mx-2` so the hover background bleeds to the column edge while text stays aligned with the heading. Avatars at 24px. |
 | Tabs | Recent activity | Owned shadcn `Tabs` with `variant="line"`, `text-xs` triggers. Each tab mounts its own query. |
 | Link lists | `home/NavigateLinks.tsx` | Icon + title + one-line description. Hover: `bg-muted`, icon turns `text-foreground`, title underlines (`group-hover:underline`). |
+| Page header | `app/PageHeader.tsx` | Every page except Home. Row 1: `PageTrail` breadcrumbs (`Home › Collections › People › current`, `text-xs` muted links, current page `aria-current`). Row 2 (Azure style): bare page icon, `h1` title, optional light `| Subtitle`, then the page's command bar after a hairline, and a ghost **Close** ✕ at the far right that goes to the last crumb. Row 3: one-line `text-sm` muted description. Pages pass `trail` for levels between Home and themselves (`COLLECTIONS_CRUMB`, …). Optional `media` replaces the icon with a 32px round picture or tinted initial (records). Pages with their own header (reports) render `PageTrail` alone, with Close at its end. |
+| Record profile | `collections/RecordDetail.tsx` | The one page with a picture: `PageTrail` (Close at its end) in the usual place, then a **contained** `h-28 rounded-xl` banner in the dominant color of the picture (the record's own tint without one), never full-bleed and never with a strip above it. The 80px picture or tinted initial overlaps the banner's lower edge (`-mt-10 ring-4 ring-background`); next to it `PageTitle` (title | collection), "Added by … on …" and the command bar. Records of the calendar and to-dos lead back through those pages (`collectionTrail`). |
+| Command bar | `app/PageCommands.tsx` (server-safe: `PageCommands`, `CommandLink`), `app/PageCommandButtons.tsx` (client: `RefreshCommand`, `SyncMailCommand`, `SettingsCommand`, `CollectionTableCommand`) | `role="toolbar"` row of ghost `sm` buttons, muted icon + label (icon only below `md`, label stays the accessible name). 2–4 commands per page, using only what exists: Refresh, related pages, settings sections, the system collection's table view, mail sync. Every page gets one, so the title row is never empty. |
 | Top bar | `layout/TopBar.tsx` | 3rem, `bg-background border-b`, ghost icon buttons, logo as a `size-6` black square with a white "c", search fields `bg-muted/50` without border. |
 
 Buttons: `default` (black) only for the single primary action of a row ("Approve"). Use `outline` for secondary actions
@@ -129,7 +133,7 @@ and `ghost` for tertiary ones and icon buttons. Inside lists use `size="xs"`, el
 | Do | Don't |
 |---|---|
 | Hairlines and whitespace to group | Cards around every section |
-| One small status dot | Colored banners, tinted backgrounds, gradients |
+| One small status dot | Colored banners (except the record profile banner), tinted backgrounds, gradients |
 | Muted bare icons at `size-4` | Big icons on colored tiles |
 | `font-medium` for titles | Bold everywhere |
 | Underlined text links | Links that only differ by color |
@@ -138,7 +142,7 @@ and `ghost` for tertiary ones and icon buttons. Inside lists use `size="xs"`, el
 
 ## 10. Checklist for a new screen
 
-1. Plain page background, `max-w-[85rem]` container, `gap-8` rhythm.
+1. `PageHeader` with the right `trail` (Close must land one level up) and a `PageCommands` bar, plain page background, `max-w-[85rem]` container, `gap-8` rhythm.
 2. Sections are `HomeSection`-style headings over a hairline. Frame something only if it is one object.
 3. Color only for status marks; weight only for titles and unread.
 4. Lists: `-mx-2` + `ROW_HOVER` rows, `Pager` when they can grow, `QuietEmpty` when empty, shaped skeletons while loading.

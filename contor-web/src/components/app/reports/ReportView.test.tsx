@@ -239,7 +239,8 @@ describe("ReportView", () => {
     renderWithProviders(<ReportView collectionId={1} reportId={6} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Top customers" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to the collection" })).toHaveAttribute("href", "/collections/1");
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", { name: "Collections" })).toHaveAttribute("href", "/collections");
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
     expect(screen.getByText("Whole collection")).toBeInTheDocument();
     expect(screen.getByText("state:eq:delivered")).toBeInTheDocument();
     expect(screen.getByText("“acme”")).toBeInTheDocument();

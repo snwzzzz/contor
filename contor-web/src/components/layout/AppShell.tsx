@@ -13,7 +13,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     // Fixed to the viewport: pages scroll inside <main>, so panes (e.g. the inbox) can scroll on their own.
     <div className="flex h-svh flex-col overflow-hidden">
       <TopBar />
-      <main className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto bg-surface-page p-6">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto bg-surface-page px-6 pt-3 pb-6">{children}</main>
       <SettingsDialog />
       <AiSetupWizard />
     </div>

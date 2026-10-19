@@ -42,16 +42,27 @@ function api(contactPhotos: unknown[], logos: string[]) {
 }
 
 describe("RecordDetail", () => {
-  it("shows the record with a banner, its picture and every field", async () => {
+  it("shows the record as a profile: breadcrumbs, a contained banner, the picture over its edge, title | collection and every field", async () => {
     api([{ id: 9, emailAddress: "anna.berger@acme.com" }], ["acme.com"]);
 
     renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Anna Berger" })).toBeInTheDocument();
-    expect(screen.getByTestId("record-banner")).toBeInTheDocument();
+    // The breadcrumbs sit in the page like on every other page, not in a strip of their own above the banner.
+    const banner = screen.getByTestId("record-banner");
+    expect(banner).toHaveClass("rounded-xl");
+    expect(screen.getByRole("navigation", { name: "Breadcrumb" }).compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const picture = await screen.findByRole("img", { name: "Anna Berger" });
+    expect(picture).toHaveAttribute("width", "80");
+    const header = screen.getByRole("heading", { level: 1, name: "Anna Berger" }).closest("header") as HTMLElement;
+    expect(within(header).getByText("People")).toBeInTheDocument();
+    expect(within(header).getByText(/^Added by/)).toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "Table view" })).toHaveAttribute("href", "/collections/1");
     expect(picture.getAttribute("src")).toContain("/api/senders/contact-photos/9");
-    expect(screen.getByRole("link", { name: /People/ })).toHaveAttribute("href", "/collections/1");
+    const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "People" })).toHaveAttribute("href", "/collections/1");
+    expect(within(trail).getByText("Anna Berger")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
 
     const details = screen.getByRole("list", { name: "Fields" });
     expect(within(details).getByText("Phone")).toBeInTheDocument();
@@ -59,6 +70,24 @@ describe("RecordDetail", () => {
     expect(within(details).getByRole("link", { name: "+49 89 1234567" })).toHaveAttribute("href", "tel:+49891234567");
     expect(within(details).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
     expect(within(details).getByText("Notes").nextElementSibling).toHaveTextContent("–");
+  });
+
+  it("leads through the calendar for an event, not through the collection table", async () => {
+    const events = { ...people, id: 3, slug: "events", name: "Calendar", matchKeys: [], fields: [field(1, "starts_at", "Starts", "DATETIME")] };
+    mockApi({
+      "GET /api/collections/3": { body: events },
+      "GET /api/collections/3/records/12": { body: { ...anna, id: 12, collectionId: 3, title: "Leitungsrunde", values: {} } },
+      "GET /api/senders/contact-photos": { body: [] },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={3} recordId={12} />);
+
+    const trail = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getAllByRole("link").map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["Home", "/"],
+      ["Calendar", "/calendar"],
+    ]);
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/calendar");
   });
 
   it("falls back to the logo of the email domain", async () => {

@@ -1,12 +1,14 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CircleAlert, Link2, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { collectionTrail, PageTrail, type Crumb } from "@/components/app/PageHeader";
+import { useGetCollection } from "@/lib/api/generated/endpoints/collections/collections";
+import { useGetRecord } from "@/lib/api/generated/endpoints/records/records";
 import {
   getGetReportQueryKey,
   getListCollectionReportsQueryKey,
@@ -65,6 +67,11 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
   const refresh = () => queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(reportId) });
   const collection = recordId === undefined;
   const home = collection ? `/collections/${collectionId}` : `/collections/${collectionId}/records/${recordId}`;
+  // Names for the breadcrumbs (cached when coming from the collection or record page).
+  const { data: collectionDto } = useGetCollection(collectionId, { query: { retry: false } });
+  const { data: recordDto } = useGetRecord(collectionId, recordId ?? 0, { query: { enabled: !collection, retry: false } });
+  const trail: Crumb[] = collectionTrail({ id: collectionId, slug: collectionDto?.slug, name: collectionDto?.name });
+  if (!collection) trail.push({ label: recordDto?.title ?? "Record", href: home });
   const refreshList = () => queryClient.invalidateQueries({
     queryKey: collection ? getListCollectionReportsQueryKey(collectionId) : getListRecordReportsQueryKey(collectionId, recordId),
   });
@@ -97,10 +104,7 @@ export function ReportView({ collectionId, recordId, reportId }: { collectionId:
 
   return (
     <article className="mx-auto grid max-w-6xl gap-6">
-      <Link href={home} className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {collection ? "Back to the collection" : "Back to the record"}
-      </Link>
+      <PageTrail trail={trail} current={report.title ?? "Report"} />
 
       <header className="grid gap-2 border-b pb-5">
         <h1 className="text-2xl font-semibold tracking-tight">{report.title ?? "Report"}</h1>
