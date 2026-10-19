@@ -156,7 +156,7 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - Archived fields are hidden and read-only; their column and data stay.
 - Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`); `?q=` searches the title and every text-like field case-insensitively.
 - In the app, `/collections` lists every collection (`CollectionsOverview`): a search over name and description, filter chips *All / Built-in / Yours / By the assistant* with counts, and one row per collection with its description, number of records, active fields and origin; the row opens the collection. With no collection yet it offers *New collection*.
-- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: breadcrumbs with Close like every page (calendar and to-do records lead back through *Calendar* / *To-dos*, others through *Collections* › the collection; `collectionTrail`), a contained rounded banner in the dominant color of its picture (the record's own tint without one), the picture (80px) over the banner's lower edge next to title | collection, "Added by … on …" and the commands Refresh and Table view; the picture is the (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
+- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: breadcrumbs with Close like every page (calendar and to-do records lead back through *Calendar* / *To-dos*, others through *Collections* › the collection; `collectionTrail`), the picture (64px, no banner) next to title | collection, "Added by … on …" and the commands Refresh and Table view; the picture is the (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
 - On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
 
@@ -168,12 +168,13 @@ reasons, next steps, pro and con lists, tables. Each sentence, list item or tabl
 emails points at its source, down to a record field or an email paragraph. Plan and status:
 [`docs/reports-plan.md`](docs/reports-plan.md).
 
-- **Asking:** the record page's **Reports** tab (with the number of reports) works like a chat start page: "What do
-  you want to know about …?", one input and the suggestions (*Summarize this record*, *What went wrong?*, …) as small
-  buttons below. Enter (or a suggestion) creates the report and opens its page right away, where the assistant
-  writes it. The record's reports are listed below as plain rows (title, date, or *Writing…* while generated). An empty
-  input asks for a summary of what happened, went well, went wrong and is open. Needs the AI model to be ready (409
-  otherwise).
+- **Asking:** the record page's **Reports** tab (with the number of reports) is a workspace that fills the page: a closable side list of
+  the record's reports (search over title, request and summary; *New report*; open/closed is remembered per browser) and
+  next to it either the question "What do you want to know about …?" with the input and suggestion buttons, or the
+  selected report itself with its sources and follow-up questions (`ReportView` embedded). Sending (or a suggestion)
+  creates the report and shows it there while the assistant writes it; *Open full screen* opens the report's own page.
+  An empty input asks for a summary of what happened, went well, went wrong and is open. Needs the AI model to be ready
+  (409 otherwise).
 - **What it reads:** the record, the connected records you include (`connectedRecords`, reachable through relations
   within `depth` steps, at most 25 records) and, with mail access in the AI settings, your emails linked to them (record
   sources) with their conversations (up to 50), plus up to 10 **related emails** from the rest of your mailbox (closest

@@ -229,6 +229,30 @@ describe("ReportView", () => {
     expect(calls.some((call) => call.method === "DELETE")).toBe(true);
   });
 
+  it("embeds in the record's Reports tab: h2 title, Open full screen, and deleting or regenerating stays in the tab", async () => {
+    const calls = mockApi({
+      "GET /api/reports/5": { body: report },
+      "DELETE /api/reports/5": { status: 204 },
+    });
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} embedded onNavigate={onNavigate} />);
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Order 4711 review" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open full screen" })).toHaveAttribute("href", "/collections/1/records/4711/reports/5");
+    // Wide tables or long words scroll in their own box; the report column never widens past its space.
+    expect(screen.getByRole("region", { name: "Assistant's answer" }).parentElement).toHaveClass("grid-cols-[minmax(0,1fr)]");
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete report" }));
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith(null));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(calls.some((call) => call.method === "DELETE")).toBe(true);
+  });
+
   it("shows a collection report with its scope and returns to the collection", async () => {
     const collectionReport = {
       ...report, id: 6, recordId: undefined, records: [], emailCount: 0, filters: ["state:eq:delivered"], search: "acme",

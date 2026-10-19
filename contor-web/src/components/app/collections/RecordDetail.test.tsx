@@ -44,18 +44,15 @@ function api(contactPhotos: unknown[], logos: string[]) {
 }
 
 describe("RecordDetail", () => {
-  it("shows the record as a profile: breadcrumbs, a contained banner, the picture over its edge, title | collection and every field", async () => {
+  it("shows the record as a profile without a banner: breadcrumbs, the picture next to title | collection, and every field", async () => {
     api([{ id: 9, emailAddress: "anna.berger@acme.com" }], ["acme.com"]);
 
     renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Anna Berger" })).toBeInTheDocument();
-    // The breadcrumbs sit in the page like on every other page, not in a strip of their own above the banner.
-    const banner = screen.getByTestId("record-banner");
-    expect(banner).toHaveClass("rounded-xl");
-    expect(screen.getByRole("navigation", { name: "Breadcrumb" }).compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("record-banner")).not.toBeInTheDocument();
     const picture = await screen.findByRole("img", { name: "Anna Berger" });
-    expect(picture).toHaveAttribute("width", "80");
+    expect(picture).toHaveAttribute("width", "64");
     const header = screen.getByRole("heading", { level: 1, name: "Anna Berger" }).closest("header") as HTMLElement;
     expect(within(header).getByText("People")).toBeInTheDocument();
     expect(within(header).getByText(/^Added by/)).toBeInTheDocument();
@@ -116,7 +113,7 @@ describe("RecordDetail", () => {
     expect(screen.getByTestId("record-initial")).toHaveTextContent("A");
   });
 
-  it("has a Reports tab with its count: one input and the list of reports; the details tab only shows the fields", async () => {
+  it("has a Reports tab with its count: the question with the input and the report list; the details tab only shows the fields", async () => {
     mockApi({
       "GET /api/collections/1": { body: people },
       "GET /api/collections/1/records/5": { body: anna },
@@ -138,7 +135,11 @@ describe("RecordDetail", () => {
 
     const panel = screen.getByRole("tabpanel", { name: /Reports/ });
     expect(within(panel).getByRole("heading", { name: "What do you want to know about Anna Berger?" })).toBeInTheDocument();
-    expect(await within(panel).findByRole("link", { name: /Overview/ })).toHaveAttribute("href", "/collections/1/records/5/reports/5");
+    // On the Reports tab the record page is exactly as high as the screen: a column whose panel takes the rest.
+    expect(panel.closest("article")).toHaveClass("lg:flex", "lg:flex-1", "lg:min-h-0", "lg:flex-col");
+    expect(panel).toHaveClass("lg:min-h-0", "lg:flex-1");
+    const list = within(panel).getByRole("complementary", { name: "Report list" });
+    expect(await within(list).findByRole("button", { name: /Overview/ })).toBeInTheDocument();
   });
 
   it("opens on the details tab and switches to the emails the record comes up in", async () => {

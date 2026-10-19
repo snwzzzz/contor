@@ -15,7 +15,6 @@ import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import { recordTintNumber, tintClass } from "@/lib/collection-tint";
-import { bannerGradient, useDominantColor } from "@/lib/dominant-color";
 import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import { collectionHref } from "@/lib/navigation";
 import { formatValue } from "@/lib/proposal-format";
@@ -25,7 +24,7 @@ import { RecordConnectionsTab } from "./RecordConnectionsTab";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
 const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const PICTURE_SIZE = 80;
+const PICTURE_SIZE = 64;
 /** The first page of the Emails tab: its total is the tab count (the tab reuses this query for page 1). */
 const EMAIL_PAGE = { page: 0, size: RECORD_EMAIL_PAGE_SIZE } as const;
 
@@ -67,8 +66,7 @@ function pictureSources(record: RecordDto, fields: readonly CollectionFieldDto[]
 }
 
 /**
- * One record as a full page: breadcrumbs, a contained banner in the color of its picture with the picture over its
- * edge, title | collection with its commands, and tabs for details, emails, reports, connections.
+ * One record as a full page: breadcrumbs, the picture next to title | collection with its commands, and tabs for details, emails, reports, connections.
  */
 export function RecordDetail({ collectionId, recordId }: { collectionId: number; recordId: number }) {
   const { data: collection } = useGetCollection(collectionId);
@@ -94,60 +92,54 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
   const candidate = addresses.map((address) => pictures.contactPhoto(address)).find(Boolean)
     ?? domains.map((domain) => pictures.logo(domain)).find(Boolean);
   const src = candidate && candidate !== failedSrc ? candidate : undefined;
-  const color = useDominantColor(src);
   const title = record.title ?? `Record #${record.id}`;
-  // The record's own color for its banner and initial (never its collection's), so e.g. people do not all look alike.
+  // The record's own color for its initial (never its collection's), so e.g. people do not all look alike.
   const tint = tintClass(recordTintNumber(collection.id, record.id, collection.slug));
   const { data: reports } = useRecordReports(collection.id, record.id);
   const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, reports: reports?.length, connections: relations?.length };
 
+  const fill = tab === "reports";
   const addedBy = record.createdBy === "AI" ? "the assistant" : record.createdBy === "SYSTEM" ? "contor" : "you";
 
   return (
-    <article className="grid gap-4">
+    // On the Reports tab the page is exactly the screen's height: a column whose tab panel takes the rest (no page scroll).
+    <article className={cn("grid gap-3", fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}>
       <PageTrail trail={collectionTrail(collection)} current={title} />
 
-      {/* A contained banner (no full-bleed strip) with the picture over its lower edge, like a profile. */}
-      <div className="grid">
-        <div
-          data-testid="record-banner"
-          className={cn("h-28 rounded-xl transition-[background] duration-700 motion-reduce:transition-none", color ? undefined : tint)}
-          style={color ? { background: bannerGradient(color) } : undefined}
-        />
-        <header className="flex flex-wrap items-end gap-x-4 gap-y-2 px-5">
-          {src ? (
-            <Image
-              src={src}
-              alt={title}
-              width={PICTURE_SIZE}
-              height={PICTURE_SIZE}
-              unoptimized
-              onError={() => setFailedSrc(src)}
-              style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
-              className="-mt-10 shrink-0 rounded-full bg-background object-cover ring-4 ring-background"
-            />
-          ) : (
-            <span
-              data-testid="record-initial"
-              aria-hidden="true"
-              style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
-              className={cn("-mt-10 flex shrink-0 items-center justify-center rounded-full text-3xl font-medium ring-4 ring-background", tint)}
-            >
-              {initialOf(title)}
-            </span>
-          )}
-          <div className="grid min-w-0 flex-1 gap-0.5 pt-2">
-            <PageTitle title={title} subtitle={collection.name} />
-            <p className="text-sm text-muted-foreground">{`Added by ${addedBy} on ${CREATED_FORMAT.format(new Date(record.createdAt))}`}</p>
-          </div>
-          <PageCommands>
-            <RefreshCommand />
-            <CommandLink href={collectionHref(collection.id)} icon={Table2} label="Table view" />
-          </PageCommands>
-        </header>
-      </div>
+      {/* The profile: picture next to title | collection and the commands; room below before the tabs. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+        {src ? (
+          <Image
+            src={src}
+            alt={title}
+            width={PICTURE_SIZE}
+            height={PICTURE_SIZE}
+            unoptimized
+            onError={() => setFailedSrc(src)}
+            style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
+            className="shrink-0 rounded-full bg-muted object-cover"
+          />
+        ) : (
+          <span
+            data-testid="record-initial"
+            aria-hidden="true"
+            style={{ width: PICTURE_SIZE, height: PICTURE_SIZE }}
+            className={cn("flex shrink-0 items-center justify-center rounded-full text-2xl font-medium", tint)}
+          >
+            {initialOf(title)}
+          </span>
+        )}
+        <div className="grid min-w-0 flex-1 gap-0.5">
+          <PageTitle title={title} subtitle={collection.name} />
+          <p className="text-sm text-muted-foreground">{`Added by ${addedBy} on ${CREATED_FORMAT.format(new Date(record.createdAt))}`}</p>
+        </div>
+        <PageCommands>
+          <RefreshCommand />
+          <CommandLink href={collectionHref(collection.id)} icon={Table2} label="Table view" />
+        </PageCommands>
+      </header>
 
-      <Tabs active={tab} counts={counts} onChange={setTab}>
+      <Tabs active={tab} counts={counts} fill={fill} onChange={setTab}>
         {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
         {tab === "emails" ? <RecordEmailsTab collectionId={collection.id} recordId={record.id} /> : null}
         {tab === "reports" ? <RecordReports collectionId={collection.id} recordId={record.id} recordTitle={title} /> : null}
@@ -160,12 +152,14 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
 interface TabsProps {
   active: Tab;
   counts: Partial<Record<Tab, number>>;
+  /** The panel takes the rest of the page's height (large screens) instead of growing with its content. */
+  fill: boolean;
   onChange: (tab: Tab) => void;
   children: ReactNode;
 }
 
 /** Underlined tabs (arrow keys move between them) and the active tab's panel. */
-function Tabs({ active, counts, onChange, children }: TabsProps) {
+function Tabs({ active, counts, fill, onChange, children }: TabsProps) {
   const id = useId();
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -217,7 +211,7 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
         })}
       </div>
       <div role="tabpanel" id={`${id}-${active}-panel`} aria-labelledby={`${id}-${active}`}
-        className="py-5"
+        className={cn("py-5", fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-4 lg:pb-0")}
       >
         {children}
       </div>

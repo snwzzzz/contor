@@ -4,8 +4,8 @@ Open work that was discussed and deliberately postponed. Newest first; remove an
 
 ## Reports sidebar on the record page ("reports this record is in")
 
-**Goal:** the record page's Reports tab gets a toggleable sidebar that lists every report the record
-appears in, not only the reports started on it.
+**Goal:** the record page's Reports tab already has a closable side list (search, New report) of the reports
+started on the record. It should also list every report the record appears in.
 
 **Why it waits:** the API cannot answer it yet.
 - `GET /api/collections/{c}/records/{r}/reports` lists only the reports started on this record.
@@ -19,6 +19,6 @@ appears in, not only the reports started on it.
    `records` or citations (`report_citation`) include `(collectionId, recordId)`, excluding the record's own reports.
 2. Backend: repository query over the report records / citations (scoped to the current user), service, controller,
    one test per layer.
-3. Frontend: toggle button in the Reports tab (remembered per browser), sidebar with the record's own reports and the
-   mentions, each opening its report; collapses on small screens. Tests for the toggle, the list and the empty state.
+3. Frontend: a second group "Mentioned in" in the existing side list (`RecordReports`), each opening its report
+   embedded or full screen. Tests for the group and its empty state.
 4. README + design language (sidebar pattern).
