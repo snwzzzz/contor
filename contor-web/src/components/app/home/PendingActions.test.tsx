@@ -72,6 +72,20 @@ describe("PendingActions", () => {
     expect(screen.getByText("Task 4")).toBeInTheDocument();
   });
 
+  it("keeps its height on a shorter last page", async () => {
+    mockApi({
+      "GET /api/proposals": { body: page([1, 2, 3, 4].map((id) => ({ ...proposal, id, payload: { collectionId: 3, title: `Task ${id}` } }))) },
+      "GET /api/collections": { body: COLLECTIONS },
+    });
+    const { container } = renderWithProviders(<PendingActions />);
+    await screen.findByText("Task 1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(container.querySelectorAll("li[data-placeholder]")).toHaveLength(2);
+  });
+
   it("says when nothing waits for a decision", async () => {
     mockApi({ "GET /api/proposals": { body: page([]) }, "GET /api/collections": { body: [] } });
     renderWithProviders(<PendingActions />);

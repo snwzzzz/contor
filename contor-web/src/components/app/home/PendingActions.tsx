@@ -22,6 +22,8 @@ import { Pager, usePages } from "./Pager";
 /** The twelve most important, three per page. */
 const TOP_PENDING = { status: "PENDING", group: "ACTIONS", sort: "IMPORTANCE", size: 12 } as const;
 const PER_PAGE = 3;
+/** Every row is this tall (title line + two reasoning lines), so turning pages never changes the height. */
+const ROW_HEIGHT = "h-[4.625rem]";
 const PROPOSALS_HREF = "/proposals";
 
 /** Kinds that need more than a yes (editing a draft, choosing follow-ups) are decided on the proposals page. */
@@ -71,6 +73,12 @@ export function PendingActions() {
                 />
               </li>
             ))}
+            {/* Invisible rows fill a shorter last page, so the section keeps its height. */}
+            {pages.pages > 1
+              ? Array.from({ length: PER_PAGE - pages.items.length }, (_, index) => (
+                  <li key={`placeholder-${index}`} data-placeholder aria-hidden="true" className={ROW_HEIGHT} />
+                ))
+              : null}
           </ul>
           <Pager label="Proposals" {...pages} />
         </>
@@ -90,14 +98,14 @@ function ProposalRow({ proposal, slug, approving, onApprove }: ProposalRowProps)
   const payload = proposal.payload as HomePayload;
   const description = describeProposal(proposal, slug);
   return (
-    <article className={cn("flex items-start gap-3 rounded-md px-2 py-2.5", ROW_HOVER)}>
+    <article className={cn("flex items-start gap-3 overflow-hidden rounded-md px-2 py-2.5", ROW_HEIGHT, ROW_HOVER)}>
       <description.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="truncate text-sm font-medium">{payload.subject || proposalTitle(payload)}</h3>
           <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
         </div>
-        <p className="line-clamp-2 text-xs text-muted-foreground">
+        <p className="line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">
           <span>{description.label}</span>
           {proposal.reasoning ? (
             <>
