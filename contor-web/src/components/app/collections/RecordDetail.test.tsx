@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
 import { renderWithProviders } from "@/test/render";
 import { RecordDetail } from "./RecordDetail";
+
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
 function field(id: number, slug: string, name: string, type: string) {
   return { id, slug, name, type, options: {}, required: false, uniqueValue: false, position: id };
@@ -112,6 +114,31 @@ describe("RecordDetail", () => {
     await screen.findByRole("heading", { level: 1, name: "Anna Berger" });
     expect(screen.queryByRole("img", { name: "Anna Berger" })).not.toBeInTheDocument();
     expect(screen.getByTestId("record-initial")).toHaveTextContent("A");
+  });
+
+  it("has a Reports tab with its count: one input and the list of reports; the details tab only shows the fields", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": {
+        body: [{ id: 5, title: "Overview", state: "READY", claimsTotal: 1, claimsVerified: 1, followUpCount: 0, createdAt: "2026-10-14T10:00:00Z" }],
+      },
+    });
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const tabs = await screen.findByRole("tablist", { name: "Record sections" });
+    const reportsTab = within(tabs).getByRole("tab", { name: /Reports/ });
+    await waitFor(() => expect(reportsTab).toHaveTextContent("1"));
+    expect(screen.queryByRole("textbox", { name: "Ask about this record" })).not.toBeInTheDocument();
+
+    await userEvent.click(reportsTab);
+
+    const panel = screen.getByRole("tabpanel", { name: /Reports/ });
+    expect(within(panel).getByRole("heading", { name: "What do you want to know about Anna Berger?" })).toBeInTheDocument();
+    expect(await within(panel).findByRole("link", { name: /Overview/ })).toHaveAttribute("href", "/collections/1/records/5/reports/5");
   });
 
   it("opens on the details tab and switches to the emails the record comes up in", async () => {

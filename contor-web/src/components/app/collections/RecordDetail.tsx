@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Network, Table2, UserRound, type LucideIcon } from "lucide-react";
+import { FileText, Mail, Network, Table2, UserRound, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
@@ -20,7 +20,7 @@ import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictur
 import { collectionHref } from "@/lib/navigation";
 import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
-import { RecordReports } from "@/components/app/reports/RecordReports";
+import { RecordReports, useRecordReports } from "@/components/app/reports/RecordReports";
 import { RecordConnectionsTab } from "./RecordConnectionsTab";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
@@ -29,10 +29,11 @@ const PICTURE_SIZE = 80;
 /** The first page of the Emails tab: its total is the tab count (the tab reuses this query for page 1). */
 const EMAIL_PAGE = { page: 0, size: RECORD_EMAIL_PAGE_SIZE } as const;
 
-type Tab = "details" | "emails" | "connections";
+type Tab = "details" | "emails" | "reports" | "connections";
 const TABS: readonly { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "details", label: "Details", icon: UserRound },
   { id: "emails", label: "Emails", icon: Mail },
+  { id: "reports", label: "Reports", icon: FileText },
   { id: "connections", label: "Connections", icon: Network },
 ];
 
@@ -67,7 +68,7 @@ function pictureSources(record: RecordDto, fields: readonly CollectionFieldDto[]
 
 /**
  * One record as a full page: breadcrumbs, a contained banner in the color of its picture with the picture over its
- * edge, title | collection with its commands, and tabs for details, emails, connections.
+ * edge, title | collection with its commands, and tabs for details, emails, reports, connections.
  */
 export function RecordDetail({ collectionId, recordId }: { collectionId: number; recordId: number }) {
   const { data: collection } = useGetCollection(collectionId);
@@ -97,7 +98,8 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
   const title = record.title ?? `Record #${record.id}`;
   // The record's own color for its banner and initial (never its collection's), so e.g. people do not all look alike.
   const tint = tintClass(recordTintNumber(collection.id, record.id, collection.slug));
-  const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, connections: relations?.length };
+  const { data: reports } = useRecordReports(collection.id, record.id);
+  const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, reports: reports?.length, connections: relations?.length };
 
   const addedBy = record.createdBy === "AI" ? "the assistant" : record.createdBy === "SYSTEM" ? "contor" : "you";
 
@@ -148,6 +150,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
       <Tabs active={tab} counts={counts} onChange={setTab}>
         {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
         {tab === "emails" ? <RecordEmailsTab collectionId={collection.id} recordId={record.id} /> : null}
+        {tab === "reports" ? <RecordReports collectionId={collection.id} recordId={record.id} recordTitle={title} /> : null}
         {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} recordTitle={title} relations={relations} /> : null}
       </Tabs>
     </article>
@@ -225,7 +228,6 @@ function Tabs({ active, counts, onChange, children }: TabsProps) {
 function DetailsTab({ fields, record }: { fields: readonly CollectionFieldDto[]; record: RecordDto }) {
   return (
     <div className="grid gap-6">
-      <RecordReports collectionId={record.collectionId} recordId={record.id} />
       <ul aria-label="Fields" className="grid gap-x-10 gap-y-5 rounded-xl border p-6 sm:grid-cols-2 xl:grid-cols-3">
         {fields.map((field) => (
           <li key={field.slug} className={cn("grid min-w-0 gap-0.5", field.type === "LONG_TEXT" && "sm:col-span-2 xl:col-span-3")}>
