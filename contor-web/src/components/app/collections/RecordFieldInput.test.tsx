@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import { RecordFieldInput } from "./RecordFieldInput";
@@ -64,10 +65,71 @@ describe("RecordFieldInput", () => {
     expect(screen.getByText("Required")).toBeInTheDocument();
   });
 
-  it("shows types it cannot edit yet as text", () => {
-    render(<RecordFieldInput field={field("MONEY")} value={{ amount: 12.5, currency: "EUR" }} onChange={() => {}} />);
+  it("edits a number and reports it as a number", async () => {
+    const onChange = vi.fn();
+    render(<RecordFieldInput field={field("NUMBER")} value={4} onChange={onChange} />);
 
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByText(/12\.5|12,5/)).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Field" }), "2");
+
+    expect(onChange).toHaveBeenLastCalledWith(42);
+  });
+
+  it("edits money as an amount and a currency", async () => {
+    const onChange = vi.fn();
+    function Harness() {
+      const [value, setValue] = useState<unknown>({ amount: 10, currency: "EUR" });
+      return <RecordFieldInput field={field("MONEY")} value={value} onChange={(next) => { setValue(next); onChange(next); }} />;
+    }
+    render(<Harness />);
+
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Field" }), "0");
+    expect(onChange).toHaveBeenLastCalledWith({ amount: 100, currency: "EUR" });
+
+    await userEvent.clear(screen.getByRole("textbox", { name: "Field currency" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Field currency" }), "usd");
+    expect(onChange).toHaveBeenLastCalledWith({ amount: 100, currency: "USD" });
+  });
+
+  it("edits yes/no with an empty choice", async () => {
+    const onChange = vi.fn();
+    render(<RecordFieldInput field={field("BOOLEAN")} value={true} onChange={onChange} />);
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Field" }), "No");
+    expect(onChange).toHaveBeenLastCalledWith(false);
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Field" }), "–");
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("edits a date and time and reports it as an ISO instant", () => {
+    render(<RecordFieldInput field={field("DATETIME")} value="2026-10-19T08:30:00Z" onChange={vi.fn()} />);
+
+    const input = screen.getByLabelText("Field");
+    expect(input).toHaveAttribute("type", "datetime-local");
+    expect((input as HTMLInputElement).value).toMatch(/^2026-10-19T\d{2}:30$/);
+  });
+
+  it("edits a related record by its id, and a file by its name", async () => {
+    const onRelation = vi.fn();
+    const { unmount } = render(<RecordFieldInput field={field("RELATION")} value={7} onChange={onRelation} />);
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Field" }), "1");
+    expect(onRelation).toHaveBeenLastCalledWith(71);
+    unmount();
+
+    const onFile = vi.fn();
+    render(<RecordFieldInput field={field("FILE")} value="a.pdf" onChange={onFile} />);
+    await userEvent.type(screen.getByRole("textbox", { name: "Field" }), "x");
+    expect(onFile).toHaveBeenLastCalledWith("a.pdfx");
+  });
+
+  it("offers to open an email address, phone number or link next to its input", () => {
+    render(<RecordFieldInput field={field("EMAIL")} value="anna@acme.com" onChange={vi.fn()} />);
+
+    expect(screen.getByRole("link", { name: "Send email to anna@acme.com" })).toHaveAttribute("href", "mailto:anna@acme.com");
+  });
+
+  it("uses the shared field look for choices too", () => {
+    render(<RecordFieldInput field={field("ENUM", { values: ["a", "b"] })} value="a" onChange={vi.fn()} />);
+
+    expect(screen.getByRole("combobox", { name: "Field" })).toHaveClass("h-8", "rounded-md");
   });
 });

@@ -63,12 +63,15 @@ describe("RecordDetail", () => {
     expect(within(trail).getByText("Anna Berger")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
 
-    const details = screen.getByRole("list", { name: "Fields" });
-    expect(within(details).getByText("Phone")).toBeInTheDocument();
-    expect(within(details).getByRole("link", { name: "Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
-    expect(within(details).getByRole("link", { name: "+49 89 1234567" })).toHaveAttribute("href", "tel:+49891234567");
-    expect(within(details).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
-    expect(within(details).getByText("Notes").nextElementSibling).toHaveTextContent("–");
+    // Every field is an input with its current value.
+    const details = screen.getByRole("form", { name: "Details" });
+    expect(within(details).getByRole("textbox", { name: "Title" })).toHaveValue("Anna Berger");
+    expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
+    expect(within(details).getByRole("textbox", { name: "Phone" })).toHaveValue("+49 89 1234567");
+    expect(within(details).getByRole("textbox", { name: "Notes" })).toHaveValue("");
+    expect(within(details).getByRole("link", { name: "Send email to Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
+    // Nothing to save until something changes.
+    expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
   it("leads through the calendar for an event, not through the collection table", async () => {
@@ -87,6 +90,51 @@ describe("RecordDetail", () => {
       ["Calendar", "/calendar"],
     ]);
     expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/calendar");
+  });
+
+  it("saves only the changed fields of the details and can discard edits", async () => {
+    const calls = mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "PUT /api/collections/1/records/5": { body: { ...anna, values: { ...anna.values, phone: "+49 30 999" } } },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+    const details = await screen.findByRole("form", { name: "Details" });
+
+    await user.clear(within(details).getByRole("textbox", { name: "Notes" }));
+    await user.type(within(details).getByRole("textbox", { name: "Notes" }), "Call back");
+    await user.click(within(details).getByRole("button", { name: "Discard" }));
+    expect(within(details).getByRole("textbox", { name: "Notes" })).toHaveValue("");
+
+    const phone = within(details).getByRole("textbox", { name: "Phone" });
+    await user.clear(phone);
+    await user.type(phone, "+49 30 999");
+    expect(within(details).getByText("1 change")).toBeInTheDocument();
+    await user.click(within(details).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ values: { phone: "+49 30 999" } }));
+    await waitFor(() => expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument());
+  });
+
+  it("shows why saving failed", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "PUT /api/collections/1/records/5": { status: 400, body: { message: "email: not a valid email address", status: 400 } },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+    const details = await screen.findByRole("form", { name: "Details" });
+
+    await user.type(within(details).getByRole("textbox", { name: "Email" }), "x");
+    await user.click(within(details).getByRole("button", { name: "Save" }));
+
+    expect(await within(details).findByRole("alert")).toHaveTextContent("email: not a valid email address");
   });
 
   it("falls back to the logo of the email domain", async () => {

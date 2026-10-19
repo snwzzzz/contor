@@ -17,10 +17,10 @@ import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import { recordTintNumber, tintClass } from "@/lib/collection-tint";
 import { isFreeMailDomain, useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import { collectionHref } from "@/lib/navigation";
-import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { RecordReports, useRecordReports } from "@/components/app/reports/RecordReports";
 import { RecordConnectionsTab } from "./RecordConnectionsTab";
+import { RecordDetailsForm } from "./RecordDetailsForm";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
 
 const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -140,7 +140,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
       </header>
 
       <Tabs active={tab} counts={counts} fill={fill} onChange={setTab}>
-        {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
+        {tab === "details" ? <RecordDetailsForm fields={fields} record={record} /> : null}
         {tab === "emails" ? <RecordEmailsTab collectionId={collection.id} recordId={record.id} /> : null}
         {tab === "reports" ? <RecordReports collectionId={collection.id} recordId={record.id} recordTitle={title} /> : null}
         {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} recordTitle={title} relations={relations} /> : null}
@@ -219,38 +219,3 @@ function Tabs({ active, counts, fill, onChange, children }: TabsProps) {
   );
 }
 
-function DetailsTab({ fields, record }: { fields: readonly CollectionFieldDto[]; record: RecordDto }) {
-  return (
-    <div className="grid gap-6">
-      <ul aria-label="Fields" className="grid gap-x-10 gap-y-5 rounded-xl border p-6 sm:grid-cols-2 xl:grid-cols-3">
-        {fields.map((field) => (
-          <li key={field.slug} className={cn("grid min-w-0 gap-0.5", field.type === "LONG_TEXT" && "sm:col-span-2 xl:col-span-3")}>
-            <span className="text-xs text-muted-foreground">{field.name}</span>
-            <span className="min-w-0 text-sm break-words">
-              <FieldValue field={field} value={record.values[field.slug]} />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-const LINK = "underline-offset-4 hover:underline";
-
-function FieldValue({ field, value }: { field: CollectionFieldDto; value: unknown }) {
-  if (value === null || value === undefined || value === "") {
-    return <span className="text-muted-foreground">–</span>;
-  }
-  if (typeof value === "string") {
-    if (field.type === "EMAIL") return <a href={`mailto:${value}`} className={LINK}>{value}</a>;
-    if (field.type === "PHONE") return <a href={`tel:${value.replace(/[^\d+]/g, "")}`} className={LINK}>{value}</a>;
-    if (field.type === "URL") {
-      const label = value.replace(/^https?:\/\//, "").replace(/\/$/, "");
-      return <a href={value} target="_blank" rel="noreferrer" className={LINK}>{label}</a>;
-    }
-    if (field.type === "LONG_TEXT") return <span className="whitespace-pre-line">{value}</span>;
-    if (field.type === "ENUM" || field.type === "STATUS") return <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{value}</span>;
-  }
-  return <>{formatValue(value)}</>;
-}
