@@ -104,18 +104,22 @@ describe("RecordReports", () => {
     expect(workspace.querySelector("aside")).toHaveAttribute("inert");
   });
 
-  it("keeps the layout still when the list closes: one toggle at the same place in both states", async () => {
+  it("closes from the list's own header; then an open button appears in a fixed row, so nothing shifts", async () => {
     api();
     renderReports();
+    const list = screen.getByRole("complementary", { name: "Report list" });
     const detail = screen.getByTestId("report-detail");
-    const hide = screen.getByRole("button", { name: "Hide report list" });
-    expect(detail.firstElementChild).toContainElement(hide);
+    expect(within(list).getByRole("button", { name: "Hide report list" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show report list" })).not.toBeInTheDocument();
+    // The row that holds the open button is there in both states (same height), empty while the list is open.
+    expect(detail.firstElementChild).toHaveClass("h-8");
 
-    await userEvent.click(hide);
+    await userEvent.click(within(list).getByRole("button", { name: "Hide report list" }));
 
     const show = screen.getByRole("button", { name: "Show report list" });
-    expect(show).toBe(hide);
     expect(detail.firstElementChild).toContainElement(show);
+    await userEvent.click(show);
+    expect(within(screen.getByRole("complementary", { name: "Report list" })).getByRole("button", { name: "Hide report list" })).toBeInTheDocument();
   });
 
   it("closes and reopens the list, and remembers it", async () => {

@@ -146,6 +146,12 @@ describe("ReportView", () => {
     const cited = await within(panel).findByTestId("cited-paragraph");
     expect(within(cited).getByText("held at customs", { selector: "mark" })).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Open in inbox" })).toHaveAttribute("href", "/inbox?email=7&paragraph=1");
+    // Nothing is cut off: names and the surrounding paragraphs wrap in full, and the panel only takes its content's
+    // height (so it can stay in view) instead of a scroll area of its own.
+    expect(within(panel).getByText("Hello Tom,")).not.toHaveClass("line-clamp-2");
+    expect(within(panel).getByText("Delivered at", { selector: "span" })).not.toHaveClass("truncate");
+    expect(panel).toHaveClass("lg:self-start");
+    expect(panel.className).not.toMatch(/overflow|max-h/);
   });
 
   it("marks a field that changed since the report and links to it", async () => {

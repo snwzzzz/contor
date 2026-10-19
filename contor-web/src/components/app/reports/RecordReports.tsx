@@ -85,6 +85,7 @@ export function RecordReports({ collectionId, recordId, recordTitle }: RecordRep
         selected={selected}
         onSelect={setSelected}
         onNew={() => setSelected(null)}
+        onHide={() => writeStoredValue(LIST_OPEN_KEY, false)}
       />
 
       {/* Scrolls on its own, never sideways; pb-6 keeps room for the report's sticky follow-up input at the bottom. */}
@@ -95,19 +96,21 @@ export function RecordReports({ collectionId, recordId, recordTitle }: RecordRep
           listOpen && "lg:pl-6",
         )}
       >
-        {/* One toggle, always in this row: opening or closing the list never moves the content up or down. */}
+        {/* The open button appears here while the list is closed; the row keeps its height in both states, so opening or
+            closing the list never moves the content up or down. */}
         <div className="flex h-8 shrink-0 items-center">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={listOpen ? "Hide report list" : "Show report list"}
-            title={listOpen ? "Hide report list" : "Show report list"}
-            aria-expanded={listOpen}
-            className="text-muted-foreground"
-            onClick={() => writeStoredValue(LIST_OPEN_KEY, !listOpen)}
-          >
-            {listOpen ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
-          </Button>
+          {listOpen ? null : (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Show report list"
+              title="Show report list"
+              className="text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none"
+              onClick={() => writeStoredValue(LIST_OPEN_KEY, true)}
+            >
+              <PanelLeftOpen aria-hidden="true" />
+            </Button>
+          )}
         </div>
         {selected === null ? (
           <AskStart recordTitle={recordTitle} disabledReason={disabledReason} pending={create.isPending} onAsk={ask} />
@@ -167,10 +170,11 @@ interface ReportListProps {
   selected: number | null;
   onSelect: (reportId: number) => void;
   onNew: () => void;
+  onHide: () => void;
 }
 
 /** The side list: New report, search and one plain row per report (no boxes; a hairline sets it apart). */
-function ReportList({ open, reports, selected, onSelect, onNew }: ReportListProps) {
+function ReportList({ open, reports, selected, onSelect, onNew, onHide }: ReportListProps) {
   const [query, setQuery] = useState("");
   const text = useDeferredValue(query);
   const shown = (reports ?? []).filter((report) => matches(report, text));
@@ -191,6 +195,9 @@ function ReportList({ open, reports, selected, onSelect, onNew }: ReportListProp
           <h3 className="mr-auto text-sm font-medium">Reports</h3>
           <Button variant="ghost" size="icon-sm" aria-label="New report" title="New report" className="text-muted-foreground" onClick={onNew}>
             <SquarePen aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Hide report list" title="Hide report list" className="text-muted-foreground" onClick={onHide}>
+            <PanelLeftClose aria-hidden="true" />
           </Button>
         </div>
         <SearchField
