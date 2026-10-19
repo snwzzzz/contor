@@ -99,12 +99,10 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
   const tint = tintClass(recordTintNumber(collection.id, record.id, collection.slug));
   const counts: Partial<Record<Tab, number>> = { emails: emails?.totalElements, connections: relations?.length };
 
-  const fill = tab === "emails";
   const addedBy = record.createdBy === "AI" ? "the assistant" : record.createdBy === "SYSTEM" ? "contor" : "you";
 
   return (
-    // The emails tab fills the rest of the screen (two panes that scroll on their own); the other tabs grow with the page.
-    <article className={cn("grid gap-4", fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}>
+    <article className="grid gap-4">
       <PageTrail trail={collectionTrail(collection)} current={title} />
 
       {/* A contained banner (no full-bleed strip) with the picture over its lower edge, like a profile. */}
@@ -147,7 +145,7 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
         </header>
       </div>
 
-      <Tabs active={tab} counts={counts} fill={fill} onChange={setTab}>
+      <Tabs active={tab} counts={counts} onChange={setTab}>
         {tab === "details" ? <DetailsTab fields={fields} record={record} /> : null}
         {tab === "emails" ? <RecordEmailsTab collectionId={collection.id} recordId={record.id} /> : null}
         {tab === "connections" ? <RecordConnectionsTab collectionId={collection.id} recordId={record.id} recordTitle={title} relations={relations} /> : null}
@@ -159,14 +157,12 @@ function RecordView({ collection, record }: { collection: CollectionDto; record:
 interface TabsProps {
   active: Tab;
   counts: Partial<Record<Tab, number>>;
-  /** The panel takes the remaining height (on large screens) instead of growing with its content. */
-  fill: boolean;
   onChange: (tab: Tab) => void;
   children: ReactNode;
 }
 
 /** Underlined tabs (arrow keys move between them) and the active tab's panel. */
-function Tabs({ active, counts, fill, onChange, children }: TabsProps) {
+function Tabs({ active, counts, onChange, children }: TabsProps) {
   const id = useId();
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -206,7 +202,7 @@ function Tabs({ active, counts, fill, onChange, children }: TabsProps) {
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               className={cn(
-                "flex items-center gap-2 border-b-2 py-3 text-sm whitespace-nowrap transition-colors",
+                "flex items-center gap-2 border-b-2 py-3 text-sm whitespace-nowrap outline-none transition-colors focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
                 selected ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
@@ -218,7 +214,7 @@ function Tabs({ active, counts, fill, onChange, children }: TabsProps) {
         })}
       </div>
       <div role="tabpanel" id={`${id}-${active}-panel`} aria-labelledby={`${id}-${active}`}
-        className={cn("py-5", fill && "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col")}
+        className="py-5"
       >
         {children}
       </div>

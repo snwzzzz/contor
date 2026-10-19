@@ -77,7 +77,8 @@ squares. The one exception is the page icon in the page header: `size-6`, bare, 
 - Multi-column areas are **one grid with rows**, so each row starts on the same line:
   `grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[repeat(3,minmax(0,1fr))] gap-x-10 gap-y-8 items-start`. The main
   content takes `lg:col-span-2`.
-- Always use `minmax(0, 1fr)` tracks (and `min-w-0` on grid children). Otherwise long text widens the column instead
+- List + detail inside a page (record emails): the page scrolls with the list; the detail pane is `lg:sticky lg:top-0` with the viewport height and scrolls its own content. No fixed-height panes sized with `calc(100svh - …)` guesses.
+- Always use `minmax(0, 1fr)` tracks (and `min-w-0` on grid children), also for a single-column grid inside a row (`grid-cols-[minmax(0,1fr)]`), e.g. the text column of an email row. Otherwise long text widens the column instead
   of truncating.
 - Responsive: 4 → 2 → 1 columns for stat-like grids (`sm:grid-cols-2 xl:grid-cols-4`), 3 → 1 for content. No sideways
   scrolling at 390px (e2e guards the home page).
@@ -115,6 +116,7 @@ and `ghost` for tertiary ones and icon buttons. Inside lists use `size="xs"`, el
 - **Loading:** skeletons in the final shape with deterministic widths (`w-3/4`, `w-2/3`, …, never random). Numbers get
   a `h-7 w-12` block, rows get avatar + line skeletons.
 - **Empty:** `QuietEmpty` with a reason and, if useful, the next step ("Go to inbox"). Never a blank area.
+- **Empty detail pane** (nothing selected yet): a framed placeholder, `rounded-lg border-dashed bg-muted/30`, aligned with the top of the list beside it, never floating text in a tall empty area (`mail/ReadingPanePlaceholder.tsx`). The pane only takes the screen height once something is open.
 - **Errors:** `ErrorMessage` in place of the content.
 - **Paging:** rows have a fixed height when their content varies (e.g. reasoning clamped to two lines with
   `line-clamp-2 min-h-8 leading-4`). A shorter last page is padded with invisible `aria-hidden` rows, so the section

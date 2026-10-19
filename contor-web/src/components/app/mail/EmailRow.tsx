@@ -52,7 +52,8 @@ export function EmailRow({ email, selected, account, picture, now, onSelect, onP
     >
       {unread ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" /> : null}
       <PictureAvatar label={sender || "?"} src={picture} size={36} className="mt-0.5 self-start" />
-      <div className="grid min-w-0 flex-1 gap-0.5">
+      {/* minmax(0, 1fr): a long subject truncates instead of widening the row past its box (the date and marks would clip). */}
+      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
         <div className="flex items-baseline justify-between gap-2">
           <span className={cn("min-w-0 truncate text-sm", unread && "font-semibold")}>{sender}</span>
           <time dateTime={email.receivedAt} className={cn("shrink-0 text-xs", unread ? "font-medium text-primary" : "text-muted-foreground")}>

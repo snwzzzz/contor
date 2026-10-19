@@ -155,24 +155,44 @@ describe("RecordDetail", () => {
     const tabs = await screen.findByRole("tablist", { name: "Record sections" });
     expect(tabs).toHaveClass("overflow-y-hidden");
     for (const tab of within(tabs).getAllByRole("tab")) expect(tab).not.toHaveClass("-mb-px");
+    // A click leaves no box around the tab; keyboard focus still shows a ring.
+    for (const tab of within(tabs).getAllByRole("tab")) expect(tab).toHaveClass("outline-none", "focus-visible:ring-2");
   });
 
-  it("lets the emails fill the rest of the screen instead of a fixed height that scrolls the page", async () => {
+  it("keeps the emails in the page: the page scrolls, the reading pane stays in view and rows never clip", async () => {
     mockApi({
       "GET /api/collections/1": { body: people },
       "GET /api/collections/1/records/5": { body: anna },
       "GET /api/senders/contact-photos": { body: [] },
       "GET /api/senders/logos": { body: [] },
-      "GET /api/collections/1/records/5/emails": { body: { items: [], page: 0, size: 25, totalElements: 0, totalPages: 0 } },
+      "GET /api/collections/1/records/5/emails": {
+        body: {
+          items: [{ id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger",
+            subject: "RE: STATUS CMR-BL-260718 / UNLOADING SLOT FOR THE TRUCK AT THE BORDER", snippet: "Dear sir",
+            receivedAt: "2026-10-06T08:00:00Z", read: false, hasAttachments: false, processingState: "DONE", labels: [], threadSize: 3, answered: true }],
+          page: 0, size: 50, totalElements: 1, totalPages: 1,
+        },
+      },
     });
     const { container } = renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     await userEvent.click(await screen.findByRole("tab", { name: /Emails/ }));
 
     const panel = screen.getByRole("tabpanel", { name: /Emails/ });
-    expect(container.querySelector("article")).toHaveClass("lg:min-h-0", "lg:flex-1");
-    expect(panel).toHaveClass("lg:min-h-0", "lg:flex-1");
-    expect(container.innerHTML).not.toContain("100svh");
+    const row = await within(panel).findByRole("button", { name: /UNLOADING SLOT/ });
+    // No fixed-height panes: the list grows with the page, which scrolls.
+    expect(container.querySelector("article")).not.toHaveClass("lg:flex-1");
+    expect(within(panel).getByTestId("email-list")).not.toHaveClass("overflow-y-auto");
+    expect(within(panel).getByRole("region", { name: "Email details" })).toHaveClass("lg:sticky");
+    // A long subject truncates instead of pushing the date and marks out of the row.
+    expect(row.querySelector(".grid")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+    expect(within(panel).getByText("1 email")).toBeInTheDocument();
+
+    // An open email takes only the height it needs (no empty pane), long conversations stop at the screen height.
+    await userEvent.click(row);
+    const pane = within(panel).getByRole("region", { name: "Email details" });
+    expect(pane.className).toMatch(/lg:max-h-\[/);
+    expect(pane.className).not.toMatch(/lg:h-\[/);
   });
 
   it("filters the record's emails", async () => {
@@ -254,7 +274,7 @@ describe("RecordDetail", () => {
 
     const pager = within(panel).getByRole("navigation", { name: "Pages" });
     expect(pager).toHaveTextContent("Page 1 of 2 · 60 emails");
-    expect(within(panel).getByTestId("email-list-scroll")).toContainElement(pager);
+    expect(within(panel).getByTestId("email-list")).toContainElement(pager);
     expect(mail.compareDocumentPosition(pager) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     await userEvent.click(within(pager).getByRole("button", { name: /Next/ }));
