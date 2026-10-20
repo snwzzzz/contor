@@ -1,48 +1,53 @@
 "use client";
 
-import { Database, LogOut, Monitor, Moon, Plus, Search, Sun } from "lucide-react";
+import { Database, LogOut, Mail, Monitor, Moon, Plus, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { AppButton } from "@/components/app/AppButton";
-import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
+import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { Command, CommandBareInput, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
 import { ALL_NAV, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/command-palette";
 import { shortcutLabel, useIsApplePlatform } from "@/lib/platform";
+import { cn } from "@/lib/utils";
+import { FIELD, FIELD_FOCUS_WITHIN } from "@/components/ui/input";
 
 /**
- * ⌘K / Ctrl+K: jump to any section or collection, switch theme, log out. One instance lives in the top bar; other parts
- * of the app open it with `openCommandPalette()`.
+ * ⌘K / Ctrl+K: the app's one search. Jump to any section or collection, search the mail for what was typed (results in
+ * the inbox), switch theme, log out. It is the wide search bar in the middle of the top bar: focusing it (a click,
+ * ⌘K/Ctrl+K, or `openCommandPalette()` from other parts of the app) drops the list down right underneath it.
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const pathname = usePathname();
   const router = useRouter();
   const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
-  const { data: collections } = useListCollections({ query: { enabled: open } });
+  const { data: collections, isPending: collectionsLoading } = useListCollections({ query: { enabled: open } });
   const apple = useIsApplePlatform();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // A closing dialog or sheet keeps its focus trap until its animation ends and pulls the focus back: keep trying for
+    // a moment (about 40 frames) until the bar has it.
+    function focusBar(attempt = 0) {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      if (document.activeElement !== input && attempt < 40) requestAnimationFrame(() => focusBar(attempt + 1));
+    }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        setOpen((current) => !current);
+        // Toggles: focusing the bar opens the list, leaving it closes the list.
+        if (document.activeElement === inputRef.current) inputRef.current?.blur();
+        else focusBar();
       }
     }
     function onOpenRequest() {
-      setOpen(true);
+      focusBar();
     }
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpenRequest);
@@ -52,28 +57,72 @@ export function CommandPalette() {
     };
   }, []);
 
-  function go(href: string) {
+  /** Closes the list; the input starts empty next time. */
+  function close() {
     setOpen(false);
+    setSearch("");
+  }
+
+  /** After a choice the bar lets go of the focus, so the next focus opens the list again. */
+  function finish() {
+    close();
+    inputRef.current?.blur();
+  }
+
+  function onBlur(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) close();
+  }
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      finish();
+    }
+  }
+
+  function go(href: string) {
+    finish();
     router.push(href);
   }
 
   function run(action: () => void) {
-    setOpen(false);
+    finish();
     action();
   }
 
   return (
-    <>
-      <AppButton variant="outline" className="w-56 justify-start bg-muted/40 font-normal text-muted-foreground shadow-none" onClick={() => setOpen(true)}>
-        <Search aria-hidden="true" data-icon="inline-start" />
-        <span>Search or jump to…</span>
-        <kbd className="ml-auto rounded border bg-background px-1.5 font-mono text-[10px]">{shortcutLabel("K", apple)}</kbd>
-      </AppButton>
-      <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Jump to a page or collection, or run an action">
-        <Command>
-          <CommandInput placeholder="Search pages, collections and actions…" />
+    <Command
+      data-testid="search-bar"
+      label="Search or jump to"
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      className="relative size-auto w-full max-w-xl overflow-visible rounded-none! bg-transparent p-0"
+    >
+      <div className={cn("flex h-9 items-center gap-2 px-3", FIELD, FIELD_FOCUS_WITHIN)}>
+        <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <CommandBareInput
+          ref={inputRef}
+          placeholder="Search pages, collections, actions or mail…"
+          value={search}
+          onValueChange={(value) => {
+            setSearch(value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
+        />
+        <kbd className="hidden shrink-0 rounded border bg-background px-1.5 font-mono text-[10px] text-muted-foreground sm:inline">
+          {shortcutLabel("K", apple)}
+        </kbd>
+      </div>
+      {open ? (
+        // Right under the bar, over the page. Pressing in the list must not blur the input (that would close it first).
+        <div
+          data-slot="search-dropdown"
+          onMouseDown={(event) => event.preventDefault()}
+          className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 duration-100 motion-reduce:animate-none"
+        >
           <CommandList>
-            <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup heading="Go to">
               {ALL_NAV.map((item) => (
                 <CommandItem key={item.href} value={item.title} onSelect={() => go(inAppHref(item, pathname))}>
@@ -114,9 +163,20 @@ export function CommandPalette() {
                 Log out
               </CommandItem>
             </CommandGroup>
+            {/* Always offered for typed text, whatever else matches (forceMount skips the filter); last, so
+                Enter picks a matching page or collection first and falls back to the mail search. Only once the collections
+                are there: an option that is already selected stays selected when better matches arrive later. */}
+            {search.trim() && !collectionsLoading ? (
+              <CommandGroup heading="Mail" forceMount>
+                <CommandItem value="search mail" forceMount onSelect={() => go(`/inbox?${new URLSearchParams({ q: search.trim() })}`)}>
+                  <Mail aria-hidden="true" />
+                  <span className="truncate">Search mail for “{search.trim()}”</span>
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
           </CommandList>
-        </Command>
-      </CommandDialog>
-    </>
+        </div>
+      ) : null}
+    </Command>
   );
 }

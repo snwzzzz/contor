@@ -56,7 +56,7 @@ for (const theme of themes) {
         await capture(page, "settings", theme);
 
         await page.keyboard.press("ControlOrMeta+k");
-        await expect(page.getByPlaceholder("Search pages, collections and actions…")).toBeVisible();
+        await expect(page.getByRole("listbox")).toBeVisible();
         await capture(page, "command-palette", theme);
       });
     });

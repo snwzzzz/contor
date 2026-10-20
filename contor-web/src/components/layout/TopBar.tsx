@@ -2,13 +2,12 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { HOME_HREF } from "@/lib/navigation";
 import { CommandPalette } from "./CommandPalette";
-import { GlobalSearch } from "./GlobalSearch";
 import { ProcessingIndicator } from "./ProcessingIndicator";
 import { NavDrawer } from "./NavDrawer";
 import { AppLauncher, ChatLink, SettingsLink } from "./TopBarButtons";
 import { UserMenu } from "./UserMenu";
 
-/** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, search, chat, settings and account. */
+/** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, the search bar (command palette), chat, settings and account. */
 export function TopBar() {
   return (
     <header className="sticky top-0 z-20 flex h-(--header-height) w-full shrink-0 items-center gap-1 border-b bg-background px-2 sm:px-3">
@@ -23,13 +22,13 @@ export function TopBar() {
         </span>
         <span className="hidden text-sm font-medium tracking-tight sm:inline">contor</span>
       </Link>
+      {/* The one search: the command palette's bar (pages, collections, actions, mail). */}
       <div className="flex flex-1 justify-center px-3">
-        <GlobalSearch />
+        <CommandPalette />
       </div>
       <div className="flex items-center gap-1">
-        {/* Hidden on phones to make room; still mounted, so the palette's shortcut keeps working. */}
+        {/* Hidden on phones to make room. */}
         <div className="hidden items-center gap-1 md:flex">
-          <CommandPalette />
           <ProcessingIndicator />
           <Separator orientation="vertical" className="mx-1 h-4" />
         </div>

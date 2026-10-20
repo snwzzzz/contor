@@ -58,6 +58,16 @@ describe("TopBar", () => {
     expect(screen.getByRole("banner")).not.toHaveClass("shadow-(--shadow-card)");
   });
 
+  it("has one search in the middle: the command palette's bar, no separate mail search", () => {
+    renderTopBar();
+    const banner = screen.getByRole("banner");
+
+    expect(within(banner).queryByRole("searchbox", { name: "Search mail" })).not.toBeInTheDocument();
+    const search = within(banner).getByTestId("search-bar");
+    expect(within(search).getByRole("combobox", { name: "Search or jump to" })).toBeInTheDocument();
+    expect(search.parentElement).toHaveClass("flex-1", "justify-center");
+  });
+
   it("shows the account menu", async () => {
     renderTopBar();
 

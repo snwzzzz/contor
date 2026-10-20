@@ -65,7 +65,7 @@ test.describe("app shell", () => {
     await expect(page.getByRole("tab", { name: "Unread" })).toHaveAttribute("aria-selected", "true");
 
     await page.getByRole("button", { name: "More" }).click();
-    await expect(page.getByPlaceholder("Search pages, collections and actions…")).toBeVisible();
+    await expect(page.getByRole("listbox")).toBeVisible();
     await page.keyboard.press("Escape");
 
     await page.getByRole("link", { name: /^View mailbox/ }).click();
@@ -87,7 +87,7 @@ test.describe("app shell", () => {
     await expect(page.getByRole("button", { name: /e2e_owner/ })).toBeVisible();
 
     await page.keyboard.press("ControlOrMeta+k");
-    await page.getByPlaceholder("Search pages, collections and actions…").fill("organ");
+    await page.getByPlaceholder("Search pages, collections, actions or mail…").fill("organ");
     // Collections load when the palette opens: pick the entry once it is there.
     await expect(page.getByRole("option", { name: /Organizations/ })).toBeVisible();
     await page.keyboard.press("Enter");
@@ -128,7 +128,7 @@ test.describe("app shell", () => {
     await expect(page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "People" })).toBeVisible();
     await page.keyboard.press("Escape");
     await page.keyboard.press("ControlOrMeta+k");
-    await expect(page.getByPlaceholder("Search pages, collections and actions…")).toBeVisible();
+    await expect(page.getByRole("listbox")).toBeVisible();
     await page.keyboard.press("Escape");
 
     expect(errors).toEqual([]);

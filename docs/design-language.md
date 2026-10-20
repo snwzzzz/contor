@@ -98,6 +98,7 @@ Home page order: hero (greeting, status line, quick actions) → stat strip → 
 | `Pager` / `usePages` | `home/Pager.tsx` | `‹ 2 / 3 ›` under a list, right-aligned, ghost `icon-xs` buttons. Hidden when everything fits. Clamps when the list shrinks. |
 | Stat strip | `home/KpiRow.tsx` | One `SURFACE_CARD` with `gap-px bg-border` for hairlines between cells. Each cell is a whole-cell link: label + small icon, number, one line of context. |
 | Status line | `home/StatusBanner.tsx` | One line, not a banner: dot + text + `outline xs` action, optional thin `Progress` (`w-32`). `role="status"`. |
+| Search bar | `layout/CommandPalette.tsx` | The top bar's one search: an `h-9` field (`FIELD` look) up to `max-w-xl` in the middle, the shortcut as a small `kbd` on the right. It is the command input itself; its list opens directly underneath (same width, `bg-popover`, hairline border, `shadow-md`), never as a centered dialog. |
 | Quick actions | `home/QuickActions.tsx` | `outline sm` buttons with a muted icon, `font-normal shadow-none`; a ghost "More" opens the command palette (`openCommandPalette()`). |
 | List rows | Recent activity, Today, mailboxes | `rounded-md px-2 py-1.5–2.5` + `ROW_HOVER`; the list is `-mx-2` so the hover background bleeds to the column edge while text stays aligned with the heading. Avatars at 24px. |
 | Tabs | Recent activity | Owned shadcn `Tabs` with `variant="line"`, `text-xs` triggers. Each tab mounts its own query. |

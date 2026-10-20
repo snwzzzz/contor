@@ -77,6 +77,10 @@ export function NavDrawer() {
         side="left"
         showCloseButton={false}
         overlayClassName="bg-transparent supports-backdrop-filter:backdrop-blur-none"
+        // Back to the menu button only when nothing else took the focus while it closed (e.g. Ctrl+K into the search bar).
+        onCloseAutoFocus={(event) => {
+          if (document.activeElement && document.activeElement !== document.body) event.preventDefault();
+        }}
         // Starts below the top bar, like a flyout.
         className="gap-0 p-0 data-[side=left]:top-(--header-height) data-[side=left]:h-[calc(100svh-var(--header-height))] data-[side=left]:w-72 data-[side=left]:sm:max-w-72"
       >
