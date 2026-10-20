@@ -1,23 +1,21 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LoaderCircle, PanelLeftClose, PanelLeftOpen, SquarePen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, SquarePen } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { SearchField } from "@/components/app/SearchField";
 import { Button } from "@/components/ui/button";
 import { useGetAiStatus } from "@/lib/api/generated/endpoints/ai/ai";
 import { getListRecordReportsQueryKey, useCreateReport, useListRecordReports } from "@/lib/api/generated/endpoints/reports/reports";
 import type { ReportSummaryDto } from "@/lib/api/generated/model/reportSummaryDto";
-import { ROW_HOVER } from "@/lib/card-hover";
 import { isGenerating, REPORT_POLL_MS } from "@/lib/report";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
-import { REPORT_NOT_READY } from "./ReportCard";
 import { ReportPrompt } from "./ReportPrompt";
+import { REPORT_NOT_READY, ReportRow } from "./ReportRow";
 import { ReportView } from "./ReportView";
 
 const SUGGESTIONS = ["Summarize this record", "What went wrong?", "What went well?", "What is still open?"] as const;
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 
 /** Whether the report list is open: a per-browser preference. */
 const LIST_OPEN_KEY = "contor.reports.listOpen";
@@ -216,7 +214,7 @@ function ReportList({ open, reports, selected, onSelect, onNew, onHide }: Report
             <ul className="-mx-2 grid content-start">
               {shown.map((report) => (
                 <li key={report.id}>
-                  <ReportRow report={report} current={report.id === selected} onSelect={() => onSelect(report.id)} />
+                  <ReportRow report={report} fallback="Report about this record" current={report.id === selected} onSelect={() => onSelect(report.id)} />
                 </li>
               ))}
             </ul>
@@ -224,35 +222,5 @@ function ReportList({ open, reports, selected, onSelect, onNew, onHide }: Report
         )}
       </div>
     </aside>
-  );
-}
-
-/** One report: its title (or request), and on the right its date, or that it is still being written. */
-function ReportRow({ report, current, onSelect }: { report: ReportSummaryDto; current: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-current={current ? "true" : undefined}
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        ROW_HOVER,
-        current && "bg-accent font-medium hover:bg-accent",
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate">{report.title ?? report.prompt ?? "Report about this record"}</span>
-      {isGenerating(report.state) ? (
-        <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
-          <LoaderCircle aria-hidden="true" className="size-3 animate-spin" />
-          Writing…
-        </span>
-      ) : report.state === "FAILED" ? (
-        <span className="shrink-0 text-xs font-normal text-destructive">Failed</span>
-      ) : (
-        <time dateTime={report.createdAt} className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">
-          {DATE.format(new Date(report.createdAt))}
-        </time>
-      )}
-    </button>
   );
 }

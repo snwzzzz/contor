@@ -148,13 +148,24 @@ describe("CollectionTable", () => {
     return urls;
   }
 
-  it("shows choice values as colored pills and opens a record from its row action", async () => {
+  it("is a compact, plain table (no colors) and opens a record from its row action", async () => {
     setup();
     renderWithProviders(<CollectionTable collectionId={1} />);
 
     const shoes = await screen.findByRole("row", { name: /Shoes/ });
-    expect(within(shoes).getByText("DHL")).toHaveClass("bg-tint-1");
-    expect(within(screen.getByRole("row", { name: /Books/ })).getByText("UPS")).toHaveClass("bg-tint-2");
+    // Choice values are plain text; nothing in the table carries a tint.
+    expect(within(shoes).getByText("DHL").className).not.toMatch(/tint/);
+    expect(screen.getByRole("table").querySelector("[class*='tint-']")).toBeNull();
+    // Small rows, sentence-case headers.
+    expect(within(shoes).getAllByRole("cell")[0]).toHaveClass("py-1.5");
+    expect(screen.getByRole("button", { name: "Sort by Title" })).not.toHaveClass("uppercase");
+    // The reports do not take room on the page: they open from a toolbar button.
+    expect(screen.queryByRole("textbox", { name: /Ask about/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Reports/ })).toBeInTheDocument();
+    // The table takes the rest of the page down to the record count and scrolls on its own.
+    const scroller = screen.getByRole("table").parentElement;
+    expect(scroller).toHaveClass("flex-1", "min-h-0", "overflow-auto");
+    expect(scroller?.parentElement).toHaveClass("flex-1", "flex-col");
 
     await userEvent.click(within(shoes).getByRole("button", { name: "Open Shoes" }));
     expect(router.push).toHaveBeenCalledWith("/collections/1/records/5");

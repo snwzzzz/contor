@@ -25,7 +25,7 @@ import { useGetCollection } from "@/lib/api/generated/endpoints/collections/coll
 import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
-import { collectionTintNumber, tintClass, type Tint } from "@/lib/collection-tint";
+import { collectionTintNumber } from "@/lib/collection-tint";
 import { navItem, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { pageItems } from "@/lib/pagination";
 import { formatValue } from "@/lib/proposal-format";
@@ -55,13 +55,6 @@ function hiddenColumnsKey(collectionId: number): string {
 
 function parseHidden(raw: unknown): readonly string[] | undefined {
   return Array.isArray(raw) && raw.every((key) => typeof key === "string") ? raw : undefined;
-}
-
-/** Choice values (ENUM/STATUS) as soft pills; each allowed value keeps its tint. */
-function choiceTint(field: CollectionFieldDto, value: string): string {
-  const options = field.options[field.type === "STATUS" ? "states" : "values"];
-  const index = Array.isArray(options) ? options.indexOf(value) : -1;
-  return index < 0 ? "bg-muted text-foreground" : tintClass(((index % 10) + 1) as Tint);
 }
 
 /** A collection's records as a table: search, column filters and visibility, sorting, numbered paging; double click opens. */
@@ -155,10 +148,8 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
         }
       />
 
-      <CollectionReports collectionId={collectionId} collectionName={collection.name} filters={apiFilters} search={query}
-        matching={records?.totalElements} />
-
-      <section className="grid min-h-0 gap-2">
+      {/* The rest of the page: the table grows down to the record count and scrolls on its own. */}
+      <section className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <SearchField
             wrapperClassName="w-full max-w-xs"
@@ -168,7 +159,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
             onChange={(event) => onSearch(event.target.value)}
             onClear={() => onSearch("")}
           />
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-1">
             {activeFilters > 0 ? (
               <AppButton variant="ghost" size="sm" onClick={() => { setFilters({}); setPage(0); }}>
                 <X aria-hidden="true" data-icon="inline-start" />
@@ -210,6 +201,8 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <CollectionReports collectionId={collectionId} collectionName={collection.name} filters={apiFilters} search={query}
+              matching={records?.totalElements} />
             <AppButton
               variant={filtersOpen ? "secondary" : "ghost"}
               size="sm"
@@ -226,7 +219,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
 
         {error ? <ErrorMessage message={error.message} /> : null}
 
-        <div className="min-h-0 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           <table aria-label={collection.name} className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background text-left">
               <tr>
@@ -234,12 +227,12 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                   const direction = sort === column.key ? "ascending" : sort === `-${column.key}` ? "descending" : "none";
                   const SortIcon = direction === "ascending" ? ArrowUp : direction === "descending" ? ArrowDown : ArrowUpDown;
                   return (
-                    <th key={column.key} scope="col" aria-sort={direction} className="border-b px-4 py-3 whitespace-nowrap">
+                    <th key={column.key} scope="col" aria-sort={direction} className="h-9 border-b px-3 font-normal whitespace-nowrap">
                       <button
                         type="button"
                         aria-label={`Sort by ${column.name}`}
                         onClick={() => toggleSort(column.key)}
-                        className="flex w-full items-center justify-between gap-3 rounded text-xs font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="flex w-full items-center justify-between gap-3 rounded text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       >
                         {column.name}
                         <SortIcon className={cn("size-3.5 shrink-0", direction === "none" && "opacity-50")} aria-hidden="true" />
@@ -247,12 +240,12 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                     </th>
                   );
                 })}
-                <th scope="col" aria-label="Actions" className="w-12 border-b px-2 py-3" />
+                <th scope="col" aria-label="Actions" className="w-10 border-b px-1" />
               </tr>
               {filtersOpen ? (
                 <tr>
                   {columns.map((column) => (
-                    <td key={column.key} className="border-b px-3 py-2 align-top">
+                    <td key={column.key} className="border-b px-2 py-1.5 align-top">
                       {column.field ? (
                         <ColumnFilterInput field={column.field} value={filters[column.key] ?? {}} onChange={(input) => setFilter(column.key, input)} />
                       ) : null}
@@ -272,18 +265,18 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                   onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
                     if (event.key === "Enter" && event.target === event.currentTarget) open(record);
                   }}
-                  className="group cursor-pointer border-b last:border-b-0 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
+                  className="group cursor-pointer border-b last:border-b-0 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className={cn("max-w-72 truncate px-4 py-3.5", column.key === TITLE_COLUMN && "font-medium")}>
-                      <CellValue value={column.field ? record.values[column.key] : record.title} field={column.field} />
+                    <td key={column.key} className={cn("max-w-72 truncate px-3 py-1.5", column.key === TITLE_COLUMN && "font-medium")}>
+                      <CellValue value={column.field ? record.values[column.key] : record.title} />
                     </td>
                   ))}
-                  <td className="px-2 py-2 text-right">
+                  <td className="px-1 py-0.5 text-right">
                     <AppButton
                       variant="ghost"
                       size="icon"
-                      className="size-8 text-muted-foreground opacity-60 group-hover:opacity-100"
+                      className="size-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100"
                       aria-label={`Open ${record.title ?? `record ${record.id}`}`}
                       onClick={() => open(record)}
                     >
@@ -384,12 +377,10 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
   );
 }
 
-function CellValue({ value, field }: { value: unknown; field?: CollectionFieldDto }) {
+/** A cell as plain text (choice values too: the table stays black and white). */
+function CellValue({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-muted-foreground">–</span>;
-  }
-  if (field && (field.type === "ENUM" || field.type === "STATUS") && typeof value === "string") {
-    return <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", choiceTint(field, value))}>{value}</span>;
   }
   return <>{formatValue(value)}</>;
 }
