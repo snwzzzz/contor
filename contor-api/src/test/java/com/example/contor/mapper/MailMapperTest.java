@@ -68,6 +68,20 @@ public class MailMapperTest {
         assertEquals(Instant.parse("2026-01-01T00:00:00Z").atOffset(ZoneOffset.UTC), dto.getLastSyncedAt());
         assertFalse(dto.toString().contains("secret"));
         assertFalse(dto.getHasPhoto());
+        assertTrue(dto.getAiEnabled());
+        assertFalse(dto.getHidden());
+    }
+
+    @Test
+    void maps_the_mailbox_flags() {
+        MailAccount account = account();
+        account.setAiEnabled(false);
+        account.setHidden(true);
+
+        MailAccountDto dto = MailMapper.toDto(account);
+
+        assertFalse(dto.getAiEnabled());
+        assertTrue(dto.getHidden());
     }
 
     @Test

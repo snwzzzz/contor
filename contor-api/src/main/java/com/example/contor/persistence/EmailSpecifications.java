@@ -18,7 +18,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
-/** Email search: always limited to one owner's mailboxes, optional account, label, state and text filters. */
+/** Email search: always limited to one owner's mailboxes that are not hidden, optional account, label, state and text filters. */
 public final class EmailSpecifications {
 
     private static final char ESCAPE = '\\';
@@ -62,6 +62,8 @@ public final class EmailSpecifications {
             List<Predicate> predicates = new ArrayList<>();
             Join<EmailMessage, MailAccount> account = root.join("account");
             predicates.add(cb.equal(account.get("owner").get("id").get("id"), criteria.ownerId().id()));
+            // Hidden mailboxes are not shown anywhere in the app (the AI may still read them, see EmailMessageRepository).
+            predicates.add(cb.isFalse(account.get("hidden")));
             if (criteria.sent()) {
                 predicates.add(cb.equal(root.get("folder"), EmailMessage.FOLDER_SENT));
             } else {

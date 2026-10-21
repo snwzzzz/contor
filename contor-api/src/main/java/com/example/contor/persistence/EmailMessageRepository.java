@@ -22,19 +22,30 @@ import java.util.Optional;
 public interface EmailMessageRepository extends JpaRepository<EmailMessage, EmailMessage.EmailMessageId>,
         JpaSpecificationExecutor<EmailMessage>, EmailSummaryQueries {
 
+    /**
+     * The mail the AI may read (JPQL, email alias {@code e}): its mailbox is AI-enabled and either shown in the app or
+     * its owner lets the AI read hidden mailboxes (no settings row = yes). Every query that feeds the model uses it.
+     */
+    String AI_READABLE = " e.account.aiEnabled = true and (e.account.hidden = false or not exists "
+            + "(select 1 from AiSettings s where s.user = e.account.owner and s.readHiddenMailboxes = false)) ";
+
+    /** {@link #AI_READABLE} for native SQL, mailbox alias {@code a}. */
+    String AI_READABLE_SQL = " a.ai_enabled and (not a.hidden or not exists "
+            + "(select 1 from \"ai_settings\" st where st.user_id = a.owner_user_id and not st.read_hidden_mailboxes)) ";
+
     Optional<EmailMessage> findByAccount_IdAndProviderMessageId(MailAccount.MailAccountId accountId, String providerMessageId);
 
     List<EmailMessage> findByProcessingState(ProcessingState processingState);
 
     /** Ids of an owner's emails in {@code state} received at/after {@code since}, oldest first (AI processing order). */
     @Query("select e.id.id from EmailMessage e where e.account.owner.id = :ownerId and e.processingState = :state "
-            + "and e.receivedAt >= :since order by e.receivedAt asc")
+            + "and e.receivedAt >= :since and" + AI_READABLE + "order by e.receivedAt asc")
     List<Long> findIdsForProcessing(AppUser.AppUserId ownerId, ProcessingState state, Instant since, Pageable pageable);
 
     /** Sender/subject/snippet of an owner's emails received at/after {@code since}, newest first (category discovery). */
     @Query("select new com.example.contor.ai.DiscoveryEmail(e.fromName, e.fromAddress, e.subject, e.snippet, e.receivedAt) "
             + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since "
-            + "and (e.folder is null or e.folder <> 'sent') order by e.receivedAt desc")
+            + "and (e.folder is null or e.folder <> 'sent') and" + AI_READABLE + "order by e.receivedAt desc")
     List<DiscoveryEmail> findDiscoveryEmails(AppUser.AppUserId ownerId, Instant since, Pageable pageable);
 
     /** Ids of an owner's inbox emails that have no vector of {@code model} yet, newest first (embedding backfill). */
@@ -43,9 +54,9 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
             + "order by e.receivedAt desc")
     List<Long> findIdsWithoutEmbedding(AppUser.AppUserId ownerId, String model, Pageable pageable);
 
-    /** Senders of an owner's inbox whose name or address matches the (lower-case LIKE) {@code pattern}, most emails first. */
+    /** Senders of an owner's inbox (hidden mailboxes left out) whose name or address matches the (lower-case LIKE) {@code pattern}, most emails first. */
     @Query("select new com.example.contor.persistence.SenderCount(max(e.fromName), lower(e.fromAddress), count(e)) "
-            + "from EmailMessage e where e.account.owner.id = :ownerId and (e.folder is null or e.folder <> 'sent') "
+            + "from EmailMessage e where e.account.owner.id = :ownerId and e.account.hidden = false and (e.folder is null or e.folder <> 'sent') "
             + "and e.fromAddress is not null "
             + "and (lower(e.fromAddress) like :pattern escape '\\' or lower(e.fromName) like :pattern escape '\\') "
             + "group by lower(e.fromAddress) order by count(e) desc, lower(e.fromAddress)")
@@ -60,11 +71,11 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
         Long getEmails();
     }
 
-    /** Recipients of an owner's sent mail matching the (lower-case LIKE) {@code pattern}: unnests the jsonb To list. */
+    /** Recipients of an owner's sent mail (hidden mailboxes left out) matching the (lower-case LIKE) {@code pattern}: unnests the jsonb To list. */
     @Query(value = "select max(r.name) as name, lower(r.address) as address, count(*) as emails "
             + "from \"email_message\" e join \"mail_account\" a on a.id = e.account_id "
             + "cross join lateral jsonb_to_recordset(e.to_recipients) as r(name text, address text) "
-            + "where a.owner_user_id = :ownerId and e.folder = 'sent' and r.address is not null "
+            + "where a.owner_user_id = :ownerId and not a.hidden and e.folder = 'sent' and r.address is not null "
             + "and (lower(r.address) like :pattern escape '\\' or lower(r.name) like :pattern escape '\\') "
             + "group by lower(r.address) order by count(*) desc, lower(r.address) limit :limit", nativeQuery = true)
     List<RecipientRow> findRecipientRows(Long ownerId, String pattern, int limit);
@@ -86,7 +97,7 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
      * (nobody answered yet), newest first. Mail without a conversation id counts as unanswered.
      */
     @Query(value = "select s.id from \"email_message\" s join \"mail_account\" a on a.id = s.account_id "
-            + "where a.owner_user_id = :ownerId and s.folder = 'sent' and s.received_at >= :from and s.received_at < :to "
+            + "where a.owner_user_id = :ownerId and s.folder = 'sent' and s.received_at >= :from and s.received_at < :to and" + AI_READABLE_SQL
             + "and not exists (select 1 from \"email_message\" r where r.account_id = s.account_id "
             + "and r.conversation_id = s.conversation_id and (r.folder is null or r.folder <> 'sent') and r.received_at > s.received_at) "
             + "order by s.received_at desc limit :limit", nativeQuery = true)
@@ -98,7 +109,8 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, Emai
 
     /** An owner's mail (inbox and sent) received since {@code since}, newest first, as digest lines (insight pass). */
     @Query("select new com.example.contor.ai.DigestEmail(e.id.id, e.fromName, e.fromAddress, e.subject, e.snippet, e.receivedAt, e.folder) "
-            + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since order by e.receivedAt desc")
+            + "from EmailMessage e where e.account.owner.id = :ownerId and e.receivedAt >= :since and" + AI_READABLE
+            + "order by e.receivedAt desc")
     List<DigestEmail> findDigest(AppUser.AppUserId ownerId, Instant since, Pageable pageable);
 
     /** Whether an owner ever sent mail to {@code address} (any case, To recipients of Sent Items). */

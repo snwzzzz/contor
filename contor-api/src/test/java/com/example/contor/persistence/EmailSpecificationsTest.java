@@ -86,6 +86,16 @@ public class EmailSpecificationsTest {
     }
 
     @Test
+    void leaves_out_hidden_mailboxes_even_when_asked_for_one() {
+        home.setHidden(true);
+        mailAccountRepository.saveAndFlush(home);
+
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null)))
+                .containsExactly("Your ORDER has shipped", "Meeting tomorrow");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), home.getId(), null, null, null))).isEmpty();
+    }
+
+    @Test
     void filters_by_account_label_and_state() {
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), home.getId(), null, null, null))).containsExactly("Invoice");
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, orders.getId(), null, null))).containsExactly("Your ORDER has shipped");

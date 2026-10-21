@@ -1474,6 +1474,36 @@ paths:
             text/html:
               schema:
                 type: string
+  /api/mail/accounts/{accountId}:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    patch:
+      tags: [Mail]
+      operationId: updateMailAccount
+      summary: >-
+        Change how contor uses one of your mailboxes (partial update): whether the AI reads it and whether its mail is
+        shown in the app. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMailAccountCommand'
+      responses:
+        '200':
+          description: Updated mailbox
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailAccountDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/mail/accounts/{accountId}/photo:
     parameters:
       - $ref: '#/components/parameters/MailAccountId'
@@ -3092,7 +3122,7 @@ components:
           format: int64
     MailAccountDto:
       type: object
-      required: [id, provider, emailAddress, status]
+      required: [id, provider, emailAddress, status, aiEnabled, hidden]
       properties:
         id:
           type: integer
@@ -3112,6 +3142,24 @@ components:
           type: boolean
           default: false
           description: The mailbox has a profile photo, served by GET /api/mail/accounts/{accountId}/photo.
+        aiEnabled:
+          type: boolean
+          default: true
+          description: The AI reads this mailbox (the analysis and new mail). Off = its mail is never given to the model.
+        hidden:
+          type: boolean
+          default: false
+          description: >-
+            Its mail is not shown anywhere in the app (inbox, home, record emails). Whether the AI still reads it is the
+            user's choice (AiSettingsDto.readHiddenMailboxes).
+    UpdateMailAccountCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        aiEnabled:
+          type: boolean
+        hidden:
+          type: boolean
     DevLoginDto:
       type: object
       required: [username]
@@ -3839,7 +3887,7 @@ components:
       enum: ['OFF', SUGGEST, AUTO]
     AiSettingsDto:
       type: object
-      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies]
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, readHiddenMailboxes]
       properties:
         mailAccess:
           type: boolean
@@ -3865,6 +3913,10 @@ components:
           type: string
           nullable: true
           description: Who the user is in their own words (role, company, what it buys and sells); tells the AI whose side an email is on
+        readHiddenMailboxes:
+          type: boolean
+          default: true
+          description: The AI also reads mailboxes whose mail is hidden in the app (MailAccountDto.hidden), as long as their aiEnabled is on
         onboardedAt:
           type: string
           format: date-time
@@ -3891,6 +3943,8 @@ components:
         replies:
           $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
+          type: boolean
+        readHiddenMailboxes:
           type: boolean
         ownerProfile:
           type: string

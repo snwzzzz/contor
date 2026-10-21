@@ -23,6 +23,7 @@ public class AiMapper {
                 .tasks(toAccess(settings.getTasks()))
                 .replies(toAccess(settings.getReplies()))
                 .courtesyReplies(settings.isCourtesyReplies())
+                .readHiddenMailboxes(settings.isReadHiddenMailboxes())
                 .ownerProfile(settings.getOwnerProfile())
                 .onboardedAt(MapperSupport.toOffset(settings.getOnboardedAt()));
     }

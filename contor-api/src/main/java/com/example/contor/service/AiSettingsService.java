@@ -55,6 +55,7 @@ public class AiSettingsService {
             settings.setReplies(replies);
         }
         if (command.getCourtesyReplies() != null) settings.setCourtesyReplies(command.getCourtesyReplies());
+        if (command.getReadHiddenMailboxes() != null) settings.setReadHiddenMailboxes(command.getReadHiddenMailboxes());
         if (command.getOwnerProfile() != null) settings.setOwnerProfile(command.getOwnerProfile().isBlank() ? null : command.getOwnerProfile().strip());
         if (Boolean.TRUE.equals(command.getCompleteOnboarding()) && settings.getOnboardedAt() == null) {
             settings.setOnboardedAt(clock.instant());
@@ -93,6 +94,7 @@ public class AiSettingsService {
         snapshot.put("tasks", settings.getTasks().name());
         snapshot.put("replies", settings.getReplies().name());
         snapshot.put("courtesyReplies", settings.isCourtesyReplies());
+        snapshot.put("readHiddenMailboxes", settings.isReadHiddenMailboxes());
         snapshot.put("ownerProfile", settings.getOwnerProfile() != null);
         snapshot.put("onboarded", settings.getOnboardedAt() != null);
         return snapshot;

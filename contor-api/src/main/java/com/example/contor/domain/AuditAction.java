@@ -25,6 +25,8 @@ public enum AuditAction {
     /** Rejected by the system because it is out of date (e.g. a reply draft after you answered in Outlook). */
     PROPOSAL_SUPERSEDED,
     AI_SETTINGS_CHANGED,
+    /** A mailbox was turned on/off for the AI or hidden/shown in the app. */
+    MAIL_ACCOUNT_CHANGED,
     AI_ANALYSIS_STARTED,
     AI_ANALYSIS_CANCELLED,
     /** Logged with the scope size and model only, never the prompt or mail text. */

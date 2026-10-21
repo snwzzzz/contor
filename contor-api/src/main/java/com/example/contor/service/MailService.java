@@ -71,6 +71,7 @@ public class MailService {
     private final ReplyDraftRepository replyDraftRepository;
     private final ProposalRepository proposalRepository;
     private final ReplySuggestionService replySuggestionService;
+    private final AuditService auditService;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
@@ -147,6 +148,29 @@ public class MailService {
                 .orElseThrow(() -> new MailAccountNotFoundException(accountId));
 
         return mailSyncService.syncAccount(account);
+    }
+
+    /** Turns one of the current user's mailboxes on/off for the AI and hides/shows its mail; {@code null} = unchanged. */
+    @Transactional
+    public MailAccountDto updateMailAccount(Long accountId, UpdateMailAccountCommand command) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+        Map<String, Object> before = flags(account);
+
+        if (command.getAiEnabled() != null) account.setAiEnabled(command.getAiEnabled());
+        if (command.getHidden() != null) account.setHidden(command.getHidden());
+        MailAccount saved = mailAccountRepository.saveAndFlush(account);
+
+        auditService.record(AuditEvent.currentActor(AuditAction.MAIL_ACCOUNT_CHANGED)
+                .entity("mail_account", accountId)
+                .before(before)
+                .after(flags(saved)));
+        return MailMapper.toDto(saved);
+    }
+
+    private static Map<String, Object> flags(MailAccount account) {
+        return Map.of("aiEnabled", account.isAiEnabled(), "hidden", account.isHidden());
     }
 
     @Transactional

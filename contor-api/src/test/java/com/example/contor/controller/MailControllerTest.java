@@ -4,6 +4,7 @@ import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
 import com.example.contor.api.model.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.service.MailService;
@@ -18,9 +19,12 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -39,12 +43,44 @@ public class MailControllerTest {
     @Test
     void list_mail_accounts_returns_200() throws Exception {
         when(mailService.listMailAccounts()).thenReturn(List.of(
-                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE)));
+                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE, true, false)));
 
         mockMvc.perform(get("/api/mail/accounts").with(TestAuth.user()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].emailAddress").value("me@example.com"))
-                .andExpect(jsonPath("$[0].accessToken").doesNotExist());
+                .andExpect(jsonPath("$[0].accessToken").doesNotExist())
+                .andExpect(jsonPath("$[0].aiEnabled").value(true))
+                .andExpect(jsonPath("$[0].hidden").value(false));
+    }
+
+    @Test
+    void update_mail_account_owner_returns_200() throws Exception {
+        when(mailService.updateMailAccount(eq(2L), any())).thenReturn(
+                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE, true, true));
+
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"hidden\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hidden").value(true));
+        verify(mailService).updateMailAccount(eq(2L), argThat(command -> Boolean.TRUE.equals(command.getHidden()) && command.getAiEnabled() == null));
+    }
+
+    @Test
+    void update_mail_account_user_forbidden() throws Exception {
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"hidden\":true}"))
+                .andExpect(status().isForbidden());
+        verify(mailService, never()).updateMailAccount(any(), any());
+    }
+
+    @Test
+    void update_mail_account_of_someone_else_returns_404() throws Exception {
+        when(mailService.updateMailAccount(eq(2L), any())).thenThrow(new MailAccountNotFoundException(2L));
+
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aiEnabled\":false}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test
