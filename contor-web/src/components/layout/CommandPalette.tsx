@@ -1,7 +1,6 @@
 "use client";
 
-import { Database, LogOut, Mail, Monitor, Moon, Plus, Search, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Database, LogOut, Mail, Plus, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Command, CommandBareInput, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
@@ -15,15 +14,15 @@ import { FIELD, FIELD_FOCUS_WITHIN } from "@/components/ui/input";
 
 /**
  * ⌘K / Ctrl+K: the app's one search. Jump to any section or collection, search the mail for what was typed (results in
- * the inbox), switch theme, log out. It is the wide search bar in the middle of the top bar: focusing it (a click,
- * ⌘K/Ctrl+K, or `openCommandPalette()` from other parts of the app) drops the list down right underneath it.
+ * the inbox), log out; the theme is chosen in Settings › General. It is the wide search bar in the middle of the top
+ * bar: focusing it (a click, ⌘K/Ctrl+K, or `openCommandPalette()` from other parts of the app) drops the list down
+ * right underneath it.
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const pathname = usePathname();
   const router = useRouter();
-  const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
   const { data: collections, isPending: collectionsLoading } = useListCollections({ query: { enabled: open } });
   const apple = useIsApplePlatform();
@@ -146,18 +145,6 @@ export function CommandPalette() {
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Actions">
-              <CommandItem value="Theme light" onSelect={() => run(() => setTheme("light"))}>
-                <Sun aria-hidden="true" />
-                Light theme
-              </CommandItem>
-              <CommandItem value="Theme dark" onSelect={() => run(() => setTheme("dark"))}>
-                <Moon aria-hidden="true" />
-                Dark theme
-              </CommandItem>
-              <CommandItem value="Theme system" onSelect={() => run(() => setTheme("system"))}>
-                <Monitor aria-hidden="true" />
-                System theme
-              </CommandItem>
               <CommandItem value="Log out" onSelect={() => run(() => logout.mutate())}>
                 <LogOut aria-hidden="true" />
                 Log out

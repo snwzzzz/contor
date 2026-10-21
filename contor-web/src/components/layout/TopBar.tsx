@@ -4,10 +4,10 @@ import { HOME_HREF } from "@/lib/navigation";
 import { CommandPalette } from "./CommandPalette";
 import { ProcessingIndicator } from "./ProcessingIndicator";
 import { NavDrawer } from "./NavDrawer";
-import { AppLauncher, ChatLink, SettingsLink } from "./TopBarButtons";
+import { AppLauncher, ChatLink } from "./TopBarButtons";
 import { UserMenu } from "./UserMenu";
 
-/** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, the search bar (command palette), chat, settings and account. */
+/** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, the search bar (command palette), chat and account (settings open from the search bar or the account menu). */
 export function TopBar() {
   return (
     <header className="sticky top-0 z-20 flex h-(--header-height) w-full shrink-0 items-center gap-1 border-b bg-background px-2 sm:px-3">
@@ -33,7 +33,6 @@ export function TopBar() {
           <Separator orientation="vertical" className="mx-1 h-4" />
         </div>
         <ChatLink />
-        <SettingsLink />
         <UserMenu />
       </div>
     </header>

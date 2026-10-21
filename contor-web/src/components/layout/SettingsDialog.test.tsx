@@ -33,6 +33,32 @@ describe("SettingsDialog", () => {
     expect(within(dialog).getByRole("link", { name: "AI Models" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("starts the section list with General (theme and language)", () => {
+    openAt("settings=general");
+
+    const dialog = screen.getByRole("dialog", { name: "Settings" });
+    const sections = within(within(dialog).getByRole("navigation", { name: "Settings sections" })).getAllByRole("link");
+    expect(sections[1]).toHaveAccessibleName("General");
+    expect(within(dialog).getByRole("heading", { name: "General" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("radiogroup", { name: "Theme" })).toBeInTheDocument();
+  });
+
+  it("has My account as the first section: who is signed in, and Log out", async () => {
+    mockApi({
+      "GET /api/mail/accounts": { body: [] },
+      "GET /api/auth/me": { body: { id: 1, username: "anna", email: "anna@example.com", role: "OWNER", totpEnabled: false } },
+    });
+    openAt("settings=account");
+
+    const dialog = screen.getByRole("dialog", { name: "Settings" });
+    const sections = within(within(dialog).getByRole("navigation", { name: "Settings sections" })).getAllByRole("link");
+    expect(sections[0]).toHaveAccessibleName("My account");
+    expect(sections[0]).toHaveAttribute("aria-current", "page");
+    expect(within(dialog).getByRole("heading", { name: "My account" })).toBeInTheDocument();
+    expect(await within(dialog).findByText("anna@example.com")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Log out" })).toBeInTheDocument();
+  });
+
   it("switches sections without leaving the page", () => {
     openAt("settings=ai");
 

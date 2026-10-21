@@ -38,6 +38,11 @@ describe("InsightCard", () => {
     expect(within(card).getByText("High")).toBeInTheDocument();
     const sources = within(card).getAllByRole("link", { name: /source email/i });
     expect(sources.map((link) => link.getAttribute("href"))).toEqual(["/inbox?email=12", "/inbox?email=10"]);
+
+    // No icon on a colored tile and no gray box: the kind is a small bare icon next to its label.
+    expect(card.querySelector("[class*='bg-tint']")).toBeNull();
+    expect([...card.querySelectorAll("*")].some((element) => element.classList.contains("bg-muted/50"))).toBe(false);
+    expect(card.querySelector("svg[class*='size-3.5']")).not.toBeNull();
   });
 
   it("keeps only the follow-ups left ticked", async () => {

@@ -3,6 +3,8 @@ import { AiAutonomySettings } from "@/components/app/ai/AiAutonomySettings";
 import { AiSettingsPanel } from "@/components/app/ai/AiSettingsPanel";
 import { EmptyState } from "@/components/app/EmptyState";
 import { AccountsList } from "@/components/app/mail/AccountsList";
+import { AccountOverview } from "@/components/app/account/AccountOverview";
+import { GeneralSettings } from "./GeneralSettings";
 import type { SettingsSection } from "@/lib/navigation";
 
 interface SettingsSectionContentProps {
@@ -15,6 +17,10 @@ interface SettingsSectionContentProps {
 /** Body of one settings section inside the settings modal. */
 export function SettingsSectionContent({ section, connected, mailError }: SettingsSectionContentProps) {
   switch (section) {
+    case "account":
+      return <AccountOverview />;
+    case "general":
+      return <GeneralSettings />;
     case "accounts":
       return <AccountsList connected={connected} mailError={mailError} />;
     case "ai":

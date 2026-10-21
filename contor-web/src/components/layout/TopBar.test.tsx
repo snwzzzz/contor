@@ -43,12 +43,12 @@ describe("TopBar", () => {
     expect(await screen.findByRole("dialog", { name: "Navigation" })).toBeInTheDocument();
   });
 
-  it("links home, chat and the settings of the current page", () => {
+  it("links home and chat; settings live in the search bar and the account menu, not as a bar icon", () => {
     renderTopBar();
 
     expect(screen.getByRole("link", { name: "contor home" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Chat" })).toHaveAttribute("href", "/chat");
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/calendar?settings=accounts");
+    expect(within(screen.getByRole("banner")).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
   });
 
   it("is a compact white bar separated from the page by a hairline", () => {

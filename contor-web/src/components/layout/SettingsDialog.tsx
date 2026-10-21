@@ -50,7 +50,7 @@ export function SettingsDialog() {
             aria-label="Search settings"
           />
           <DialogTitle className="px-2 text-xs font-medium text-muted-foreground">Settings</DialogTitle>
-          <DialogDescription className="sr-only">Accounts, AI, autonomy and security.</DialogDescription>
+          <DialogDescription className="sr-only">My account, general, accounts, AI, autonomy and security.</DialogDescription>
           <nav aria-label="Settings sections">
             <ul className="grid gap-0.5">
               {visible.map((item) => {

@@ -33,7 +33,7 @@ test.describe("app shell", () => {
     await expect(nav).toBeHidden();
   });
 
-  test("top bar opens the app launcher, chat and settings", async ({ page }) => {
+  test("top bar opens the app launcher, chat and settings (account menu)", async ({ page }) => {
     await page.goto("/");
     const bar = page.getByRole("banner");
 
@@ -41,8 +41,9 @@ test.describe("app shell", () => {
     await expect(page.getByText("No apps yet")).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await bar.getByRole("link", { name: "Settings" }).click();
-    await expect(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
+    await bar.getByRole("button", { name: /e2e_owner/ }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: "General", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
 
     await bar.getByRole("link", { name: "Chat" }).click();
@@ -96,11 +97,10 @@ test.describe("app shell", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Organizations" })).toBeVisible();
   });
 
-  test("dark mode can be switched on", async ({ page }) => {
-    await page.goto("/inbox");
+  test("dark mode can be switched on in Settings › General", async ({ page }) => {
+    await page.goto("/inbox?settings=general");
 
-    await page.getByRole("button", { name: /e2e_owner/ }).click();
-    await page.getByRole("menuitem", { name: "Dark" }).click();
+    await page.getByRole("dialog", { name: "Settings" }).getByText("Dark", { exact: true }).click();
 
     await expect(page.locator("html")).toHaveClass(/dark/);
   });
@@ -119,7 +119,7 @@ test.describe("app shell", () => {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     }
     // Settings are a modal over the inbox; the old URLs redirect into it.
-    for (const [path, section] of [["/settings", "Accounts"], ["/settings/security", "Security"]]) {
+    for (const [path, section] of [["/settings", "General"], ["/settings/security", "Security"]]) {
       await page.goto(path);
       await expect(page.getByRole("dialog", { name: "Settings" }).getByRole("heading", { name: section, exact: true })).toBeVisible();
     }
@@ -132,6 +132,32 @@ test.describe("app shell", () => {
     await page.keyboard.press("Escape");
 
     expect(errors).toEqual([]);
+  });
+
+  test("my account shows who is signed in, from the account menu", async ({ page }) => {
+    await page.goto("/inbox");
+
+    await page.getByRole("button", { name: /e2e_owner/ }).click();
+    await page.getByRole("menuitem", { name: "My account" }).click();
+
+    await expect(page).toHaveURL(/\?settings=account$/);
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await expect(dialog.getByRole("heading", { name: "My account" })).toBeVisible();
+    await expect(dialog.getByLabel("Username")).toHaveText("e2e_owner");
+    await expect(dialog.getByRole("button", { name: "Log out" })).toBeVisible();
+  });
+
+  test("AI models only manage the models; autonomy holds setup, mailboxes, permissions and the analysis", async ({ page }) => {
+    await page.goto("/inbox?settings=ai");
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await expect(dialog.getByRole("heading", { name: "Local model" })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: /AI setup|Set up the AI/ })).toHaveCount(0);
+
+    await page.goto("/inbox?settings=autonomy");
+    for (const section of ["Setup", "Mailboxes", "Permissions", "Inbox analysis"]) {
+      await expect(dialog.getByRole("heading", { name: section, exact: true })).toBeVisible();
+    }
+    await expect(dialog.getByText("No mailbox connected yet.")).toBeVisible();
   });
 
   test("logout ends the session", async ({ browser }) => {

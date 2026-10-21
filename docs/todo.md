@@ -2,6 +2,20 @@
 
 Open work that was discussed and deliberately postponed. Newest first; remove an item when it ships.
 
+## Language setting (Settings → General)
+
+**Goal:** pick the interface language (e.g. English, German) in Settings → General.
+
+**Today:** the row is there but shows English only, disabled ("More languages will follow."; `GeneralSettings`).
+
+**Plan (tests first, per CLAUDE.md):**
+1. Decide the i18n approach for Next.js 16 (read `node_modules/next/dist/docs/` on internationalization first) and where
+   the choice lives: per user on the server (spec change: a `locale` on the user/preferences, asked before changing the
+   spec) or per browser.
+2. Move the UI strings into message files; English as the source, German as the first translation.
+3. Enable the select, apply the language without a reload, format dates and numbers by locale.
+4. README + design language.
+
 ## Reports sidebar on the record page ("reports this record is in")
 
 **Goal:** the record page's Reports tab already has a closable side list (search, New report) of the reports

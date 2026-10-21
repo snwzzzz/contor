@@ -3,7 +3,7 @@
 import { Database } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CHAT_NAV, inAppHref, navItem, SETTINGS_ROOT, type NavItem } from "@/lib/navigation";
+import { CHAT_NAV, inAppHref, navItem, type NavItem } from "@/lib/navigation";
 
 interface Destination {
   item: NavItem;
@@ -20,7 +20,6 @@ const DESTINATIONS: readonly Destination[] = [
   { item: navItem("/queries"), description: "Saved filters across your collections." },
   { item: navItem("/rules"), description: "Sort incoming mail automatically." },
   { item: CHAT_NAV, description: "Ask the assistant about your data." },
-  { item: SETTINGS_ROOT, description: "Mailboxes, AI models, autonomy and security." },
 ];
 
 /** "Navigate" at the bottom of the home page: four columns of small icon, title and a one-line description. */
@@ -36,7 +35,6 @@ export function NavigateLinks() {
           <li key={item.href}>
             <Link
               href={inAppHref(item, pathname)}
-              scroll={item === SETTINGS_ROOT ? false : undefined}
               className="group flex items-start gap-3 rounded-md p-2 outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
             >
               <item.icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" strokeWidth={1.75} />

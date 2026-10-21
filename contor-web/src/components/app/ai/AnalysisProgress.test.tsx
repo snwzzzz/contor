@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockApi } from "@/test/api-mock";
@@ -118,6 +118,20 @@ describe("AnalysisProgress", () => {
     expect(screen.getByRole("link", { name: /review findings/i })).toHaveAttribute("href", "/findings");
     expect(screen.getByRole("link", { name: /calendar/i })).toHaveAttribute("href", "/calendar");
     expect(screen.getByRole("link", { name: /to-dos/i })).toHaveAttribute("href", "/tasks");
+  });
+
+  it("lines the result links up with the counters above: same grid, one link per column, full width", async () => {
+    mockApi({ "GET /api/ai/analysis/latest": { body: run("COMPLETED", { processedEmails: 100 }) } });
+    renderWithProviders(<AnalysisProgress />);
+
+    const results = await screen.findByRole("navigation", { name: "Results" });
+    const counters = screen.getByText("Waiting for review").closest("dl");
+    const grid = ["grid", "grid-cols-2", "gap-3", "sm:grid-cols-4"];
+    expect(counters).toHaveClass(...grid);
+    expect(results).toHaveClass(...grid);
+    for (const link of within(results).getAllByRole("link")) {
+      expect(link).toHaveClass("w-full");
+    }
   });
 
   it("shows why a run failed", async () => {

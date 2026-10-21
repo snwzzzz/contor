@@ -5,10 +5,10 @@ import { Lightbulb } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
+import { KindLabel } from "@/components/app/KindLabel";
 import { useDecideProposal } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import { CARD_HOVER } from "@/lib/card-hover";
-import { tintClass } from "@/lib/collection-tint";
 import { formatValue } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { ImportanceBadge } from "./ImportanceBadge";
@@ -64,14 +64,11 @@ export function InsightCard({ proposal }: { proposal: ProposalDto }) {
     <article aria-label={title} className={cn("relative flex h-full flex-col overflow-hidden rounded-xl border bg-card", CARD_HOVER, decide.isPending && "opacity-60")}>
       <div className="grid flex-1 content-start gap-3 p-4">
         <div className="flex items-start gap-3">
-          <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tintClass(4))} aria-hidden="true">
-            <Lightbulb className="size-4" />
-          </span>
-          <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <div className="grid min-w-0 flex-1 gap-1">
+            <KindLabel icon={Lightbulb} tint={4}>
               Insight
               <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
-            </span>
+            </KindLabel>
             <h2 className="line-clamp-2 leading-snug font-medium">{title}</h2>
           </div>
         </div>

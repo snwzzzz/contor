@@ -4,12 +4,23 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { SettingsSection } from "@/components/app/settings/SettingsSection";
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { aiSetupHref } from "@/lib/navigation";
 import { getGetAiSettingsQueryKey, useGetAiSettings, useUpdateAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import { AiPermissionsForm, permissionsOf, type AiPermissions } from "./AiPermissionsForm";
+import { InboxAnalysisSection } from "./InboxAnalysisSection";
+import { MailboxAiPicker } from "./MailboxAiPicker";
 
-/** Settings → Autonomy: the same permissions as in the setup wizard, editable at any time. */
+/**
+ * Settings → Autonomy: everything about the assistant except the models. The setup wizard, which mailboxes it reads,
+ * the permissions (the same as in the wizard, editable at any time) and the inbox analysis.
+ */
 export function AiAutonomySettings() {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const { data: settings, isLoading, error } = useGetAiSettings();
   const [draft, setDraft] = useState<AiPermissions | null>(null);
   const save = useUpdateAiSettings({
@@ -30,11 +41,32 @@ export function AiAutonomySettings() {
 
   const value = draft ?? permissionsOf(settings);
   return (
-    <div className="grid gap-6">
-      <AiPermissionsForm value={value} onChange={setDraft} />
-      <AppButton className="w-fit" disabled={draft === null} loading={save.isPending} onClick={() => save.mutate({ data: value })}>
-        Save
-      </AppButton>
+    <div className="grid gap-10">
+      <SettingsSection title="Setup">
+        <p className="text-sm text-muted-foreground">
+          {settings.onboardedAt
+            ? "Walk through the setup again: the model, the permissions, the mailboxes and a new inbox analysis."
+            : "The assistant is not set up yet. The setup checks the model, asks what it may do and starts the first analysis."}
+        </p>
+        <Link
+          href={aiSetupHref(pathname)}
+          className="inline-flex w-fit items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+        >
+          <Sparkles className="size-4" aria-hidden="true" />
+          {settings.onboardedAt ? "Open AI setup" : "Set up the AI assistant"}
+        </Link>
+      </SettingsSection>
+      <SettingsSection title="Mailboxes">
+        <p className="text-sm text-muted-foreground">Which mailboxes the AI reads. Changes are saved right away.</p>
+        <MailboxAiPicker />
+      </SettingsSection>
+      <SettingsSection title="Permissions">
+        <AiPermissionsForm value={value} onChange={setDraft} />
+        <AppButton className="w-fit" disabled={draft === null} loading={save.isPending} onClick={() => save.mutate({ data: value })}>
+          Save
+        </AppButton>
+      </SettingsSection>
+      <InboxAnalysisSection />
     </div>
   );
 }

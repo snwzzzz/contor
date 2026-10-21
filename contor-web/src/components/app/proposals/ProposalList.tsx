@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
+import { KindLabel } from "@/components/app/KindLabel";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { FilterChip } from "@/components/app/FilterChip";
@@ -18,7 +19,6 @@ import { useDecideProposal, useListProposals } from "@/lib/api/generated/endpoin
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { ProposalPriority } from "@/lib/api/generated/model/proposalPriority";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
-import { tintClass } from "@/lib/collection-tint";
 import { describeProposal, GROUPS, type Description, type Group } from "@/lib/proposal-describe";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
@@ -249,14 +249,11 @@ function ActionCard({ proposal, description, busy, onOpen, onDecide }: ActionCar
     >
       <div className="flex-1 pb-4">
         <div className="flex items-start gap-3 p-4 pb-3">
-          <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tint ? tintClass(tint) : "bg-muted")} aria-hidden="true">
-            <Icon className="size-4" />
-          </span>
-          <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <div className="grid min-w-0 flex-1 gap-1">
+            <KindLabel icon={Icon} tint={tint}>
               {label}
               <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
-            </span>
+            </KindLabel>
             <h2 className="line-clamp-2 leading-snug font-medium">
               {/* Stretched over the whole card; the decision buttons sit above it. */}
               <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>
@@ -286,7 +283,7 @@ function ActionCard({ proposal, description, busy, onOpen, onDecide }: ActionCar
         ) : null}
 
         {proposal.reasoning ? (
-          <p className="mx-4 mt-3 line-clamp-3 rounded-lg bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{proposal.reasoning}</p>
+          <p className="mx-4 mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{proposal.reasoning}</p>
         ) : null}
       </div>
 

@@ -4,11 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Reply } from "lucide-react";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
+import { KindLabel } from "@/components/app/KindLabel";
 import { useDecideProposal } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
-import { tintClass } from "@/lib/collection-tint";
 import { placeholdersIn, recipientLabel, type ReplyDraftPayload, type ReplyText } from "@/lib/reply-draft";
 import { cn } from "@/lib/utils";
 import { ReplyBody } from "./ReplyBody";
@@ -54,14 +54,11 @@ export function ReplySuggestionCard({ proposal, label, full = false, onOpen }: R
     <article aria-label={subject} className={cn("relative flex flex-col overflow-hidden rounded-xl border bg-card", !full && "h-full", onOpen && CARD_HOVER, decide.isPending && "opacity-60")}>
       <div className="grid flex-1 content-start gap-3 p-4">
         <div className="flex items-start gap-3">
-          <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tintClass(5))} aria-hidden="true">
-            <Reply className="size-4" />
-          </span>
-          <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <div className="grid min-w-0 flex-1 gap-1">
+            <KindLabel icon={Reply} tint={5}>
               {heading}
               <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
-            </span>
+            </KindLabel>
             <h2 className="line-clamp-2 leading-snug font-medium">
               {onOpen ? (
                 <button type="button" aria-label={`Show details for ${subject}`} onClick={onOpen} className={STRETCHED_BUTTON}>

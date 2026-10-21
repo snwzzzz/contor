@@ -1,7 +1,6 @@
 "use client";
 
-import { LogOut, Monitor, Moon, Settings, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { CircleUser, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -19,11 +17,10 @@ import { useGetCurrentUser } from "@/lib/api/generated/endpoints/auth/auth";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
 import { settingsHref } from "@/lib/navigation";
 
-/** Current user, theme switch, settings, logout. */
+/** Current user, My account (a settings section), settings (where the theme is chosen), logout. */
 export function UserMenu() {
   const pathname = usePathname();
   const { data: user } = useGetCurrentUser();
-  const { setTheme } = useTheme();
   const logout = useLogoutAndRedirect();
   const username = user?.username ?? "";
 
@@ -43,23 +40,14 @@ export function UserMenu() {
           <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={() => setTheme("light")}>
-            <Sun aria-hidden="true" />
-            Light
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setTheme("dark")}>
-            <Moon aria-hidden="true" />
-            Dark
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setTheme("system")}>
-            <Monitor aria-hidden="true" />
-            System
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={settingsHref(pathname, "accounts")} scroll={false}>
+          <Link href={settingsHref(pathname, "account")} scroll={false}>
+            <CircleUser aria-hidden="true" />
+            My account
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={settingsHref(pathname, "general")} scroll={false}>
             <Settings aria-hidden="true" />
             Settings
           </Link>

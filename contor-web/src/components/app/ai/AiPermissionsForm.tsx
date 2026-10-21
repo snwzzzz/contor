@@ -5,10 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import type { AiAccess } from "@/lib/api/generated/model/aiAccess";
 import type { AiSettingsDto } from "@/lib/api/generated/model/aiSettingsDto";
 
-export type AiPermissions = Omit<AiSettingsDto, "onboardedAt">;
+/** What the AI may do; reading hidden mailboxes is a General setting, saved on its own. */
+export type AiPermissions = Omit<AiSettingsDto, "onboardedAt" | "readHiddenMailboxes">;
 type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies";
 
-/** The editable part of the settings (everything except the onboarding timestamp). */
+/** The editable permissions (everything except the onboarding timestamp and the hidden-mailbox setting). */
 export function permissionsOf(settings: AiSettingsDto): AiPermissions {
   const { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile } = settings;
   return { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile };
@@ -32,6 +33,17 @@ export const AREAS: readonly { key: AreaKey; label: string; description: string;
   },
 ];
 
+/** The "All areas" preset: every area at one level; reply drafts are never sent, so they stop at "Ask me". */
+function withAllAreas(value: AiPermissions, level: AiAccess): AiPermissions {
+  const replies = level === "AUTO" ? "SUGGEST" : level;
+  return { ...value, categories: level, records: level, calendar: level, tasks: level, replies };
+}
+
+/** The preset the areas match, or `null` when they are mixed. */
+function allAreasLevel(value: AiPermissions): AiAccess | null {
+  return LEVELS.find((level) => AREAS.every((area) => value[area.key] === withAllAreas(value, level)[area.key])) ?? null;
+}
+
 export const HISTORY_OPTIONS: readonly { days: number; label: string }[] = [
   { days: 30, label: "Last 30 days" },
   { days: 90, label: "Last 90 days" },
@@ -54,7 +66,7 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
   const profileId = useId();
   return (
     <div className="grid gap-6">
-      <label className="flex items-start gap-3 rounded-lg border p-4">
+      <label className="flex items-start gap-3">
         <input
           type="checkbox"
           className="mt-1 size-4 accent-primary"
@@ -69,13 +81,14 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
         </span>
       </label>
 
+      {/* While mail access is off only the inputs fade; labels and hints stay as they are. */}
       <div className="grid gap-2">
         <label htmlFor={historyId} className="text-sm font-medium">
           How far back should the first analysis read?
         </label>
         <select
           id={historyId}
-          className="h-9 w-56 rounded-md border bg-background px-3 text-sm"
+          className="h-9 w-56 rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           value={value.historyDays}
           disabled={!value.mailAccess}
           onChange={(event) => onChange({ ...value, historyDays: Number(event.target.value) })}
@@ -96,6 +109,7 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
           id={profileId}
           className="min-h-20"
           maxLength={2000}
+          disabled={!value.mailAccess}
           placeholder="e.g. Head of Operations at a wholesaler: customers order from us, we buy from suppliers."
           value={value.ownerProfile ?? ""}
           onChange={(event) => onChange({ ...value, ownerProfile: event.target.value })}
@@ -106,6 +120,14 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
       </div>
 
       <div className="grid gap-4">
+        <AccessLevelPicker
+          label="All areas"
+          description="Set every area below at once."
+          levels={LEVELS}
+          value={allAreasLevel(value)}
+          disabled={!value.mailAccess}
+          onChange={(level) => onChange(withAllAreas(value, level))}
+        />
         {AREAS.map((area) => (
           <AccessLevelPicker
             key={area.key}
@@ -117,10 +139,10 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
             onChange={(level) => onChange({ ...value, [area.key]: level })}
           />
         ))}
-        <label className="flex items-start gap-3 text-sm has-disabled:opacity-50">
+        <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"
-            className="mt-0.5 size-4 accent-primary"
+            className="mt-0.5 size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
             checked={value.courtesyReplies}
             disabled={!value.mailAccess || value.replies === "OFF"}
             onChange={(event) => onChange({ ...value, courtesyReplies: event.target.checked })}
@@ -141,7 +163,8 @@ interface AccessLevelPickerProps {
   label: string;
   description: string;
   levels: readonly AiAccess[];
-  value: AiAccess;
+  /** `null`: none checked (the "All areas" preset when the areas are mixed). */
+  value: AiAccess | null;
   disabled: boolean;
   onChange: (value: AiAccess) => void;
 }
@@ -149,7 +172,8 @@ interface AccessLevelPickerProps {
 function AccessLevelPicker({ label, description, levels, value, disabled, onChange }: AccessLevelPickerProps) {
   const id = useId();
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    // Choices always to the right of the label; a long description wraps instead of pushing them below.
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-3">
       <div className="grid gap-0.5">
         <span id={`${id}-label`} className="text-sm font-medium">
           {label}
@@ -162,12 +186,12 @@ function AccessLevelPicker({ label, description, levels, value, disabled, onChan
         role="radiogroup"
         aria-labelledby={`${id}-label`}
         aria-describedby={`${id}-description`}
-        className="inline-flex rounded-md border p-0.5"
+        className="inline-flex rounded-md border p-0.5 has-disabled:opacity-50"
       >
         {levels.map((level) => (
           <label
             key={level}
-            className="cursor-pointer rounded px-3 py-1 text-sm has-checked:bg-primary has-checked:text-primary-foreground has-disabled:cursor-not-allowed has-disabled:opacity-50 has-focus-visible:ring-2 has-focus-visible:ring-ring"
+            className="relative cursor-pointer rounded px-3 py-1 text-sm has-checked:bg-primary has-checked:text-primary-foreground has-disabled:cursor-not-allowed has-focus-visible:ring-2 has-focus-visible:ring-ring"
           >
             <input
               type="radio"

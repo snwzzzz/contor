@@ -2,6 +2,7 @@ import {
   Bot,
   Brain,
   CalendarDays,
+  CircleUser,
   House,
   Inbox,
   KeyRound,
@@ -12,6 +13,7 @@ import {
   Network,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Tags,
   type LucideIcon,
@@ -54,7 +56,7 @@ export const DATA_NAV: readonly NavItem[] = [
 /** Settings open as a modal over the current page, addressed by `?settings=<section>`. */
 export const SETTINGS_PARAM = "settings";
 
-export const SETTINGS_SECTIONS = ["accounts", "ai", "autonomy", "security"] as const;
+export const SETTINGS_SECTIONS = ["account", "general", "accounts", "ai", "autonomy", "security"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export interface SettingsNavItem extends NavItem {
@@ -64,9 +66,23 @@ export interface SettingsNavItem extends NavItem {
 
 /** `href` (/settings/<section>) redirects into the modal; in-app links use {@link settingsHref}. */
 export const SETTINGS_NAV: readonly SettingsNavItem[] = [
+  {
+    title: "My account",
+    href: "/settings/account",
+    section: "account",
+    icon: CircleUser,
+    description: "Who is signed in. Editing your account comes later.",
+  },
+  { title: "General", href: "/settings/general", section: "general", icon: SlidersHorizontal, description: "Appearance and language." },
   { title: "Accounts", href: "/settings/accounts", section: "accounts", icon: KeyRound, description: "Connected mailboxes." },
-  { title: "AI Models", href: "/settings/ai", section: "ai", icon: Brain, description: "The local Ollama model and the inbox analysis." },
-  { title: "Autonomy", href: "/settings/autonomy", section: "autonomy", icon: Bot, description: "What the AI may read and how much it may do without asking." },
+  { title: "AI Models", href: "/settings/ai", section: "ai", icon: Brain, description: "Ollama and the local models: what is installed, downloads." },
+  {
+    title: "Autonomy",
+    href: "/settings/autonomy",
+    section: "autonomy",
+    icon: Bot,
+    description: "Set up the assistant, which mailboxes it reads, what it may do without asking, and the inbox analysis.",
+  },
   { title: "Security", href: "/settings/security", section: "security", icon: ShieldCheck, description: "Password and two-factor authentication." },
 ];
 
@@ -100,7 +116,7 @@ export const ALL_NAV: readonly NavItem[] = [...PRIMARY_NAV, ...AI_INSIGHTS_NAV, 
 
 /** Where an in-app link to `item` goes: settings entries open the modal over the current page. */
 export function inAppHref(item: NavItem, pathname: string): string {
-  if (item === SETTINGS_ROOT) return settingsHref(pathname, "accounts");
+  if (item === SETTINGS_ROOT) return settingsHref(pathname, "general");
   const settings = SETTINGS_NAV.find((entry) => entry.href === item.href);
   return settings ? settingsHref(pathname, settings.section) : item.href;
 }

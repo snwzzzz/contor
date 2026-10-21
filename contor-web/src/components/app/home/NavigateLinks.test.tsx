@@ -21,10 +21,11 @@ describe("NavigateLinks", () => {
       ["Queries", "/queries"],
       ["Rules & Labels", "/rules"],
       ["Chat", "/chat"],
-      ["Settings", "/?settings=accounts"],
     ]) {
       expect(screen.getByRole("link", { name: new RegExp(`^${name}`) })).toHaveAttribute("href", href);
     }
+    // Settings open from the search bar or the account menu.
+    expect(screen.queryByRole("link", { name: /^Settings/ })).not.toBeInTheDocument();
     expect(screen.getByText("Records the assistant keeps, grouped by type.")).toBeInTheDocument();
   });
 });

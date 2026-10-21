@@ -117,6 +117,23 @@ describe("CommandPalette", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
+  it("opens the settings at General", async () => {
+    renderWithProviders(<CommandPalette />);
+    await userEvent.keyboard("{Control>}k{/Control}");
+
+    await userEvent.click(await screen.findByRole("option", { name: /^Settings$/ }));
+
+    expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/\?settings=general$/));
+  });
+
+  it("has no theme actions (the theme is chosen in Settings › General)", async () => {
+    renderWithProviders(<CommandPalette />);
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("option", { name: /Proposals/ });
+
+    expect(screen.queryByRole("option", { name: /theme/i })).not.toBeInTheDocument();
+  });
+
   it("navigates to app sections", async () => {
     renderWithProviders(<CommandPalette />);
     await userEvent.keyboard("{Control>}k{/Control}");
