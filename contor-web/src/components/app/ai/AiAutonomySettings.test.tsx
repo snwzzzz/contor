@@ -79,14 +79,14 @@ describe("AiAutonomySettings", () => {
     await waitFor(() => expect(calls.find((call) => call.method === "PUT")?.body).toMatchObject({ calendar: "AUTO", tasks: "SUGGEST" }));
   });
 
-  it("is where the assistant is set up: the setup wizard, the mailboxes it reads, then the permissions", async () => {
+  it("starts with the inbox analysis, then the setup wizard, the mailboxes it reads and the permissions", async () => {
     api();
     renderWithProviders(<AiAutonomySettings />);
 
     expect(await screen.findByRole("link", { name: "Open AI setup" })).toHaveAttribute("href", "/inbox?ai-setup=1");
     expect(await screen.findByRole("checkbox", { name: /work@example\.com/ })).toBeChecked();
     const headings = screen.getAllByRole("heading").map((heading) => heading.textContent);
-    expect(headings).toEqual(["Setup", "Mailboxes", "Permissions", "Inbox analysis"]);
+    expect(headings).toEqual(["Inbox analysis", "Setup", "Mailboxes", "Permissions"]);
   });
 
   it("holds the inbox analysis (moved here from AI Models)", async () => {

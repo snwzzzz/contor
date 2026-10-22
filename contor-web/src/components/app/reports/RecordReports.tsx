@@ -127,7 +127,7 @@ interface AskStartProps {
   onAsk: (prompt: string) => void;
 }
 
-/** A new question: the question line, the input and ready-made questions (like the home page's quick actions). */
+/** A new question: the question line, the input and ready-made questions. */
 function AskStart({ recordTitle, disabledReason, pending, onAsk }: AskStartProps) {
   return (
     // Centered in its area, like a chat start page.

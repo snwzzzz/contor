@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleUser, LogOut, Settings } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +17,7 @@ import { useGetCurrentUser } from "@/lib/api/generated/endpoints/auth/auth";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
 import { settingsHref } from "@/lib/navigation";
 
-/** Current user, My account (a settings section), settings (where the theme is chosen), logout. */
+/** Current user, settings (where My account and the theme live), logout. */
 export function UserMenu() {
   const pathname = usePathname();
   const { data: user } = useGetCurrentUser();
@@ -40,12 +40,6 @@ export function UserMenu() {
           <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href={settingsHref(pathname, "account")} scroll={false}>
-            <CircleUser aria-hidden="true" />
-            My account
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={settingsHref(pathname, "general")} scroll={false}>
             <Settings aria-hidden="true" />

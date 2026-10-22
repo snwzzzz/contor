@@ -13,16 +13,21 @@ describe("NavigateLinks", () => {
     renderWithProviders(<NavigateLinks />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Navigate" })).toBeInTheDocument();
-    for (const [name, href] of [
+    const links = [
+      ["Inbox", "/inbox"],
+      ["Calendar", "/calendar"],
+      ["To-dos", "/tasks"],
       ["Collections", "/collections"],
       ["Proposals", "/proposals"],
-      ["Findings", "/findings"],
-      ["Relations", "/relations"],
-      ["Queries", "/queries"],
-      ["Rules & Labels", "/rules"],
       ["Chat", "/chat"],
-    ]) {
+    ];
+    for (const [name, href] of links) {
       expect(screen.getByRole("link", { name: new RegExp(`^${name}`) })).toHaveAttribute("href", href);
+    }
+    expect(screen.getAllByRole("link")).toHaveLength(links.length);
+    // The rarer pages stay in the sidebar.
+    for (const name of ["Findings", "Relations", "Queries", "Rules & Labels"]) {
+      expect(screen.queryByRole("link", { name: new RegExp(`^${name}`) })).not.toBeInTheDocument();
     }
     // Settings open from the search bar or the account menu.
     expect(screen.queryByRole("link", { name: /^Settings/ })).not.toBeInTheDocument();

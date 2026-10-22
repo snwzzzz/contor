@@ -33,14 +33,14 @@ describe("UserMenu", () => {
     expect(clear).toHaveBeenCalled();
   });
 
-  it("opens the settings (General); the theme is chosen there, not here", async () => {
+  it("opens the settings (General); My account and the theme are reached there, not here", async () => {
     mockApi({ "GET /api/auth/me": { body: { id: 1, username: "owner", email: "owner@example.com", role: "OWNER", totpEnabled: false } } });
     renderWithProviders(<UserMenu />);
 
     await userEvent.click(await screen.findByRole("button", { name: /owner/ }));
 
-    expect(await screen.findByRole("menuitem", { name: "My account" })).toHaveAttribute("href", "/inbox?settings=account");
-    expect(screen.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/inbox?settings=general");
+    expect(await screen.findByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/inbox?settings=general");
+    expect(screen.queryByRole("menuitem", { name: "My account" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /Dark|Light|System/ })).not.toBeInTheDocument();
   });
 });

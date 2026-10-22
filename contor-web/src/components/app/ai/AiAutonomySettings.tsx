@@ -15,8 +15,8 @@ import { InboxAnalysisSection } from "./InboxAnalysisSection";
 import { MailboxAiPicker } from "./MailboxAiPicker";
 
 /**
- * Settings → Autonomy: everything about the assistant except the models. The setup wizard, which mailboxes it reads,
- * the permissions (the same as in the wizard, editable at any time) and the inbox analysis.
+ * Settings → Autonomy: everything about the assistant except the models. The inbox analysis first (the top-bar
+ * progress links here), then the setup wizard, which mailboxes it reads and the permissions (editable at any time).
  */
 export function AiAutonomySettings() {
   const queryClient = useQueryClient();
@@ -42,6 +42,7 @@ export function AiAutonomySettings() {
   const value = draft ?? permissionsOf(settings);
   return (
     <div className="grid gap-10">
+      <InboxAnalysisSection />
       <SettingsSection title="Setup">
         <p className="text-sm text-muted-foreground">
           {settings.onboardedAt
@@ -66,7 +67,6 @@ export function AiAutonomySettings() {
           Save
         </AppButton>
       </SettingsSection>
-      <InboxAnalysisSection />
     </div>
   );
 }

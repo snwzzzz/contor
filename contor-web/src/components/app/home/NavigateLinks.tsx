@@ -12,17 +12,17 @@ interface Destination {
 
 const COLLECTIONS: NavItem = { title: "Collections", href: "/collections", icon: Database, tint: 4 };
 
+// The everyday pages; findings, relations, queries and rules stay in the sidebar.
 const DESTINATIONS: readonly Destination[] = [
+  { item: navItem("/inbox"), description: "Mail from all your connected mailboxes." },
+  { item: navItem("/calendar"), description: "Appointments and deadlines." },
+  { item: navItem("/tasks"), description: "What is still to do." },
   { item: COLLECTIONS, description: "Records the assistant keeps, grouped by type." },
   { item: navItem("/proposals"), description: "What the assistant suggests to do with your mail." },
-  { item: navItem("/findings"), description: "People, organizations and data found in your mail." },
-  { item: navItem("/relations"), description: "How records connect to each other." },
-  { item: navItem("/queries"), description: "Saved filters across your collections." },
-  { item: navItem("/rules"), description: "Sort incoming mail automatically." },
   { item: CHAT_NAV, description: "Ask the assistant about your data." },
 ];
 
-/** "Navigate" at the bottom of the home page: four columns of small icon, title and a one-line description. */
+/** "Navigate" at the top of the home page: three columns of small icon, title and a one-line description. */
 export function NavigateLinks() {
   const pathname = usePathname();
   return (
@@ -30,7 +30,7 @@ export function NavigateLinks() {
       <h2 id="home-navigate" className="flex h-8 items-center border-b text-sm font-medium">
         Navigate
       </h2>
-      <ul className="-mx-2 grid gap-x-6 sm:grid-cols-2 xl:grid-cols-4">
+      <ul className="-mx-2 grid gap-x-6 sm:grid-cols-2 xl:grid-cols-3">
         {DESTINATIONS.map(({ item, description }) => (
           <li key={item.href}>
             <Link

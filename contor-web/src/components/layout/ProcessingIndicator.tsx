@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import type { AnalysisRunDto } from "@/lib/api/generated/model/analysisRunDto";
 import { isActiveRun, useLatestAnalysis } from "@/lib/hooks/useLatestAnalysis";
-import { aiSetupHref } from "@/lib/navigation";
+import { aiSetupHref, settingsHref } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 function activeText(run: AnalysisRunDto): string {
@@ -21,7 +21,7 @@ function activeText(run: AnalysisRunDto): string {
   }
 }
 
-/** AI status in the top bar: invites to the setup, shows a running analysis, or that the assistant is active. */
+/** AI status in the top bar: invites to the setup, shows a running analysis (→ Settings → Autonomy), or that the assistant is active. */
 export function ProcessingIndicator() {
   const pathname = usePathname();
   const { data: settings } = useGetAiSettings();
@@ -36,7 +36,7 @@ export function ProcessingIndicator() {
 
   if (run && isActiveRun(run)) {
     return (
-      <Link href={aiSetupHref(pathname)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+      <Link href={settingsHref(pathname, "autonomy")} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
         {dot(true)}
         <span>
           {activeText(run)}

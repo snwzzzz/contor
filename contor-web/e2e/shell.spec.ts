@@ -65,10 +65,6 @@ test.describe("app shell", () => {
     await page.getByRole("tab", { name: "Unread" }).click();
     await expect(page.getByRole("tab", { name: "Unread" })).toHaveAttribute("aria-selected", "true");
 
-    await page.getByRole("button", { name: "More" }).click();
-    await expect(page.getByRole("listbox")).toBeVisible();
-    await page.keyboard.press("Escape");
-
     await page.getByRole("link", { name: /^View mailbox/ }).click();
     await expect(page).toHaveURL(/\/inbox$/);
   });

@@ -85,8 +85,8 @@ squares. The one exception is the page icon in the page header: `size-6`, bare, 
 - Responsive: 4 → 2 → 1 columns for stat-like grids (`sm:grid-cols-2 xl:grid-cols-4`), 3 → 1 for content. No sideways
   scrolling at 390px (e2e guards the home page).
 
-Home page order: hero (greeting, status line, quick actions) → stat strip → row 1 (*Recent activity* | *Today*,
-*Connected mailboxes*) → row 2 (*Pending actions* | *AI status*) → *Navigate*.
+Home page order: hero (greeting, status line) → stat strip → *Navigate* → row 1 (*Recent activity* | *Today*,
+*Connected mailboxes*) → row 2 (*Pending actions* | *AI status*).
 
 ## 6. Building blocks
 
@@ -101,7 +101,6 @@ Home page order: hero (greeting, status line, quick actions) → stat strip → 
 | Settings sections | `settings/SettingsSection.tsx` | A settings page with several parts (Autonomy: Setup, Mailboxes, Permissions, Inbox analysis) splits them with a small `font-medium` heading over a hairline (`h-8 border-b`), like the home page's sections; no cards. |
 | Settings rows | `settings/GeneralSettings.tsx` | A setting is a plain row: label (`font-medium`) with a muted hint on the left, the control on the right, rows divided by hairlines (`divide-y`), no cards. Few fixed choices (theme) are a segmented radio group on `bg-muted` (the checked one on `bg-background`); longer lists are a native select in the `FIELD` look (`settings/SettingsRow.tsx`: `SettingsRow`, `SETTINGS_SELECT`). |
 | Search bar | `layout/CommandPalette.tsx` | The top bar's one search: an `h-9` field (`FIELD` look) up to `max-w-xl` in the middle, the shortcut as a small `kbd` on the right. It is the command input itself; its list opens directly underneath (same width, `bg-popover`, hairline border, `shadow-md`), never as a centered dialog. |
-| Quick actions | `home/QuickActions.tsx` | `outline sm` buttons with a muted icon, `font-normal shadow-none`; a ghost "More" opens the command palette (`openCommandPalette()`). |
 | List rows | Recent activity, Today, mailboxes | `rounded-md px-2 py-1.5–2.5` + `ROW_HOVER`; the list is `-mx-2` so the hover background bleeds to the column edge while text stays aligned with the heading. Avatars at 24px. |
 | Tabs | Recent activity | Owned shadcn `Tabs` with `variant="line"`, `text-xs` triggers. Each tab mounts its own query. |
 | Link lists | `home/NavigateLinks.tsx` | Icon + title + one-line description. Hover: `bg-muted`, icon turns `text-foreground`, title underlines (`group-hover:underline`). |
@@ -142,7 +141,7 @@ and `ghost` for tertiary ones and icon buttons. Inside lists use `size="xs"`, el
 - Whole-row and whole-cell links have a readable accessible name (title first). Decorative icons, dots and separators
   are `aria-hidden`.
 - Respect `motion-reduce:transition-none` on transitions.
-- Visually hidden headings (`sr-only`) are fine where a visible one would be noise (quick actions).
+- Visually hidden headings (`sr-only`) are fine where a visible one would be noise.
 
 ## 9. Do / don't
 
