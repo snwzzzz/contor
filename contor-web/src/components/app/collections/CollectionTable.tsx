@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SearchField } from "@/components/app/SearchField";
 import { useGetCollection } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
@@ -32,11 +34,14 @@ import { formatValue } from "@/lib/proposal-format";
 import { buildFilters, countActiveFilters, filterKind, type ColumnFilter, type FilterState } from "@/lib/record-filters";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
+import { LoadingTable } from "@/components/app/LoadingSkeletons";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 25;
 const SEARCH_DELAY_MS = 300;
 const TITLE_COLUMN = "title";
+/** A hairline between the data columns (not before the first one). */
+const COLUMN_SEPARATOR = "border-l first:border-l-0";
 const NO_HIDDEN: readonly string[] = [];
 
 interface Column {
@@ -85,7 +90,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
     return <ErrorMessage message={collectionError.message} />;
   }
   if (!collection) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <LoadingTable label="Loading collection" />;
   }
 
   const allColumns: Column[] = [{ key: TITLE_COLUMN, name: "Title" }, ...fields.map((field) => ({ key: field.slug, name: field.name, field }))];
@@ -166,19 +171,17 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                 Clear filters
               </AppButton>
             ) : null}
-            <label className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm hover:bg-accent">
-              <span className="text-muted-foreground">Show</span>
-              <select
-                aria-label="Rows per page"
-                value={pageSize}
-                onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }}
-                className="bg-transparent outline-none"
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>{size} rows</option>
-                ))}
-              </select>
-            </label>
+            <NativeSelect
+              aria-label="Rows per page"
+              variant="ghost"
+              className="w-auto [&>select]:h-9"
+              value={pageSize}
+              onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }}
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size} rows</option>
+              ))}
+            </NativeSelect>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <AppButton variant="ghost" size="sm" className="h-9">
@@ -220,14 +223,15 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
         {error ? <ErrorMessage message={error.message} /> : null}
 
         <div className="min-h-0 flex-1 overflow-auto">
-          <table aria-label={collection.name} className="w-full border-collapse text-sm">
+          {/* Separate borders on the cells: collapsed ones stay behind when the sticky header scrolls. */}
+          <table aria-label={collection.name} className="w-full border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10 bg-background text-left">
               <tr>
                 {columns.map((column) => {
                   const direction = sort === column.key ? "ascending" : sort === `-${column.key}` ? "descending" : "none";
                   const SortIcon = direction === "ascending" ? ArrowUp : direction === "descending" ? ArrowDown : ArrowUpDown;
                   return (
-                    <th key={column.key} scope="col" aria-sort={direction} className="h-9 border-b px-3 font-normal whitespace-nowrap">
+                    <th key={column.key} scope="col" aria-sort={direction} className={cn("h-9 border-b px-3 font-normal whitespace-nowrap", COLUMN_SEPARATOR)}>
                       <button
                         type="button"
                         aria-label={`Sort by ${column.name}`}
@@ -245,7 +249,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
               {filtersOpen ? (
                 <tr>
                   {columns.map((column) => (
-                    <td key={column.key} className="border-b px-2 py-1.5 align-top">
+                    <td key={column.key} className={cn("border-b px-2 py-1.5 align-top", COLUMN_SEPARATOR)}>
                       {column.field ? (
                         <ColumnFilterInput field={column.field} value={filters[column.key] ?? {}} onChange={(input) => setFilter(column.key, input)} />
                       ) : null}
@@ -255,7 +259,8 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                 </tr>
               ) : null}
             </thead>
-            <tbody>
+            <tbody aria-busy={isPending || undefined}>
+              {isPending ? <SkeletonRows columns={columns.length} rows={Math.min(pageSize, 12)} /> : null}
               {(records?.items ?? []).map((record) => (
                 <tr
                   key={record.id}
@@ -265,14 +270,14 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                   onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
                     if (event.key === "Enter" && event.target === event.currentTarget) open(record);
                   }}
-                  className="group cursor-pointer border-b last:border-b-0 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                  className="group cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className={cn("max-w-72 truncate px-3 py-1.5", column.key === TITLE_COLUMN && "font-medium")}>
+                    <td key={column.key} className={cn("max-w-72 truncate border-b px-3 py-3.5", COLUMN_SEPARATOR, column.key === TITLE_COLUMN && "font-medium")}>
                       <CellValue value={column.field ? record.values[column.key] : record.title} />
                     </td>
                   ))}
-                  <td className="px-1 py-0.5 text-right">
+                  <td className="border-b px-1 py-0.5 text-right">
                     <AppButton
                       variant="ghost"
                       size="icon"
@@ -385,7 +390,24 @@ function CellValue({ value }: { value: unknown }) {
   return <>{formatValue(value)}</>;
 }
 
-const FILTER_INPUT = "min-w-28 px-2 text-xs font-normal";
+const SKELETON_WIDTHS = ["w-3/4", "w-1/2", "w-2/3", "w-3/5"] as const;
+
+/** Placeholder rows in the real table (same cells, same height) while the first page of records loads. */
+function SkeletonRows({ columns, rows }: { columns: number; rows: number }) {
+  return Array.from({ length: rows }, (_, row) => (
+    <tr key={row} data-testid="skeleton-row">
+      {Array.from({ length: columns }, (_, column) => (
+        <td key={column} className={cn("border-b px-3 py-3.5", COLUMN_SEPARATOR)}>
+          <Skeleton className={cn("h-5", SKELETON_WIDTHS[(row + column) % SKELETON_WIDTHS.length])} />
+        </td>
+      ))}
+      <td className="border-b" />
+    </tr>
+  ));
+}
+
+const FILTER_INPUT ="min-w-28 px-2 text-xs font-normal";
+const FILTER_SELECT = "min-w-28 font-normal";
 
 function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldDto; value: ColumnFilter; onChange: (input: ColumnFilter) => void }) {
   const kind = filterKind(field);
@@ -396,23 +418,23 @@ function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldD
     case "choice": {
       const options = field.options[field.type === "STATUS" ? "states" : "values"];
       return (
-        <select aria-label={label} className={FILTER_INPUT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
+        <NativeSelect aria-label={label} size="sm" className={FILTER_SELECT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
           <option value="">Any</option>
           {(Array.isArray(options) ? options : []).map((option) => (
             <option key={String(option)} value={String(option)}>
               {String(option)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       );
     }
     case "boolean":
       return (
-        <select aria-label={label} className={FILTER_INPUT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
+        <NativeSelect aria-label={label} size="sm" className={FILTER_SELECT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
           <option value="">Any</option>
           <option value="true">Yes</option>
           <option value="false">No</option>
-        </select>
+        </NativeSelect>
       );
     case "number":
     case "date":

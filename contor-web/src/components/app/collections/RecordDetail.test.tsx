@@ -74,6 +74,24 @@ describe("RecordDetail", () => {
     expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
+  it("has a sidebar version: the same summary and tabs, without breadcrumbs, page title or page commands", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const details = await screen.findByRole("form", { name: "Details" });
+    expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
+    expect(screen.getByRole("tablist", { name: "Record sections" })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Emails", "Reports", "Connections"]);
+    // The sidebar's own header names the collection and the title.
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+    expect(screen.getByText(/^Added by the assistant/)).toBeInTheDocument();
+    expect(screen.getByTestId("record-initial")).toHaveStyle({ width: "40px" });
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Table view" })).not.toBeInTheDocument();
+  });
+
   it("leads through the calendar for an event, not through the collection table", async () => {
     const events = { ...people, id: 3, slug: "events", name: "Calendar", matchKeys: [], fields: [field(1, "starts_at", "Starts", "DATETIME")] };
     mockApi({

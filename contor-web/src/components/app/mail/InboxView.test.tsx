@@ -454,7 +454,7 @@ describe("InboxView", () => {
     expect(within(pane).getByRole("heading", { name: "Project Update" })).toBeInTheDocument();
     expect(within(pane).getByText("Alice")).toBeInTheDocument();
     expect(within(pane).getByText("Here is the latest status...")).toBeInTheDocument();
-    expect(within(pane).getByText("Loading conversation…")).toBeInTheDocument();
+    expect(within(pane).getByRole("status", { name: "Loading conversation" })).toBeInTheDocument();
   });
 
   it("keeps the current page visible while the next one loads", async () => {
@@ -470,7 +470,14 @@ describe("InboxView", () => {
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     expect(screen.getByText("First page mail")).toBeInTheDocument();
-    expect(screen.queryByText("Loading emails…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading emails" })).not.toBeInTheDocument();
+  });
+
+  it("shows placeholder rows while the first page loads", async () => {
+    mockApi({ "GET /api/mail/accounts": { body: [] }, "GET /api/emails": () => new Promise(() => {}) });
+    renderWithProviders(<InboxView />);
+
+    expect(await screen.findByRole("status", { name: "Loading emails" })).toBeInTheDocument();
   });
 
   it("pages through all emails", async () => {

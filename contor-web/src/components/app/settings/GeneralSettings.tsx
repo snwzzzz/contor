@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useId, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetAiSettingsQueryKey, useGetAiSettings, useUpdateAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
+import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { SETTINGS_SELECT, SettingsRow } from "./SettingsRow";
 
@@ -69,9 +70,9 @@ export function GeneralSettings() {
         </div>
       </SettingsRow>
       <SettingsRow title="Language" hint="More languages will follow." labelId={languageId}>
-        <select aria-labelledby={languageId} value="en" disabled className={SETTINGS_SELECT} onChange={() => undefined}>
+        <NativeSelect aria-labelledby={languageId} value="en" disabled className={SETTINGS_SELECT} onChange={() => undefined}>
           <option value="en">English</option>
-        </select>
+        </NativeSelect>
       </SettingsRow>
       <SettingsRow
         title="AI reads hidden mailboxes"

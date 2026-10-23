@@ -7,6 +7,7 @@ import { KanbanBoard, type BoardColumn } from "@/components/app/board/KanbanBoar
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import type { RecordPageDto } from "@/lib/api/generated/model/recordPageDto";
@@ -41,6 +42,30 @@ function columnsOf(tasks: readonly RecordDto[]): Record<State, RecordDto[]> {
   return columns;
 }
 
+const SKELETON_CARDS = [3, 2, 2] as const;
+
+/** The three columns with a few placeholder cards, so the board keeps its shape while the to-dos load. */
+function BoardSkeleton() {
+  return (
+    <div role="status" aria-label="Loading to-dos" aria-busy="true" className="grid gap-4 md:grid-cols-3">
+      {COLUMNS.map((column, columnIndex) => (
+        <div key={column.key} className="grid content-start gap-2">
+          <div className="flex h-8 items-center gap-2">
+            <column.icon aria-hidden="true" className={cn("size-4", column.iconClass)} />
+            <span className="text-sm font-medium">{column.title}</span>
+          </div>
+          {Array.from({ length: SKELETON_CARDS[columnIndex] }, (_, index) => (
+            <div key={index} className="grid gap-2 rounded-lg border p-3">
+              <Skeleton className={cn("h-4", index % 2 === 0 ? "w-3/4" : "w-1/2")} />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * The assistant's to-do list (system collection `tasks`) as a board: To do, In progress and Done side by side. Cards
  * are dragged within and between columns (the order is kept per to-do in `extra.boardPosition`); the checkbox moves a
@@ -65,7 +90,7 @@ export function TaskList() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading to-dos…</p>;
+    return <BoardSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;
@@ -136,7 +161,7 @@ export function TaskList() {
         />
       </form>
 
-      <KanbanBoard
+      {!data ? <BoardSkeleton /> : <KanbanBoard
         columns={COLUMNS}
         items={columns}
         getId={(task) => task.id}
@@ -145,7 +170,7 @@ export function TaskList() {
         )}
         renderPreview={(task, state) => <TaskPreview task={{ ...task, values: { ...task.values, state } }} today={today} />}
         onMove={(task, state, index) => void move(task, state, index)}
-      />
+      />}
 
       {selected ? (
         <TaskDetail

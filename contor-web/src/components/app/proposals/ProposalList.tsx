@@ -22,6 +22,7 @@ import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { describeProposal, GROUPS, type Description, type Group } from "@/lib/proposal-describe";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
+import { LoadingCards } from "@/components/app/LoadingSkeletons";
 
 const PENDING_ACTIONS = { status: "PENDING", group: "ACTIONS", size: 50 } as const;
 const PREVIEW_VALUES = 4;
@@ -79,7 +80,7 @@ export function ProposalList() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading proposals…</p>;
+    return <LoadingCards label="Loading proposals" count={6} />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;

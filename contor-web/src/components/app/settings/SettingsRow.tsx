@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { FIELD, FIELD_FOCUS, FIELD_STATES } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
-/** A native select in the shared field look (`components/ui/input.tsx`), sized for a settings row. */
-export const SETTINGS_SELECT = cn("h-8 w-44 px-2.5 text-sm", FIELD, FIELD_FOCUS, FIELD_STATES);
+/** Width of a `NativeSelect` in a settings row. */
+export const SETTINGS_SELECT = "w-44";
 
 interface SettingsRowProps {
   title: string;

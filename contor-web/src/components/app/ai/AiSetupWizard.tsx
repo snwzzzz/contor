@@ -24,6 +24,7 @@ import { ACCESS_LABEL, AiPermissionsForm, AREAS, historyLabel, permissionsOf, ty
 import { AiModelStatus } from "./AiModelStatus";
 import { AnalysisProgress } from "./AnalysisProgress";
 import { MailboxAiPicker } from "./MailboxAiPicker";
+import { LoadingForm } from "@/components/app/LoadingSkeletons";
 
 const STEPS = ["Welcome", "Model", "Permissions", "Mailboxes", "Start", "Analysis"] as const;
 const MODEL_STEP = 1;
@@ -129,7 +130,7 @@ function WizardSteps({ onDone }: { onDone: () => void }) {
           permissions ? (
             <AiPermissionsForm value={permissions} onChange={setDraft} />
           ) : (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <LoadingForm label="Loading permissions" sections={1} />
           )
         ) : null}
         {step === MAILBOX_STEP ? <MailboxStep /> : null}

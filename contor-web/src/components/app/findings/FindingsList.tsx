@@ -21,6 +21,7 @@ import { useSenderPictures, isFreeMailDomain } from "@/lib/hooks/useSenderPictur
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { RelationLine, type RelationAnchor, type RelationPayload } from "./RelationLine";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const PENDING_FINDINGS = { status: "PENDING", group: "FINDINGS", size: 60 } as const;
 const MAX_VALUES = 4;
@@ -71,7 +72,7 @@ export function FindingsList() {
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading findings…</p>;
+    return <LoadingList label="Loading findings" rows={8} avatar twoLines />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;

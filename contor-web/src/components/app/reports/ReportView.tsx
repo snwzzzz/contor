@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ReportBody } from "./ReportBody";
 import { ReportPrompt } from "./ReportPrompt";
 import { SourcePanel } from "./SourcePanel";
+import { LoadingDetail } from "@/components/app/LoadingSkeletons";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -110,7 +111,7 @@ export function ReportView({ collectionId, recordId, reportId, embedded = false,
   });
 
   if (error) return <ErrorMessage message="This report does not exist (anymore)." />;
-  if (!report) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (!report) return <LoadingDetail label="Loading report" />;
 
   const busy = anyGenerating(report);
   const shown = selection ? [report, ...report.followUps].find((candidate) => candidate.id === selection.reportId) ?? report : report;

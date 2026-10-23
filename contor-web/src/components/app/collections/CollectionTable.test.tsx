@@ -68,6 +68,25 @@ describe("CollectionTable", () => {
     expect(screen.getByText("2 records")).toBeInTheDocument();
   });
 
+  it("shows placeholder rows in the table while the records load, then the records", async () => {
+    let release: (value: unknown) => void = () => undefined;
+    mockApi({
+      "GET /api/collections/1": { body: deliveries },
+      "GET /api/collections/1/records": () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }).then(() => ({ body: { items: records, page: 0, size: 50, totalElements: 2, totalPages: 1 } })),
+    });
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    await screen.findByRole("table", { name: "Deliveries" });
+    expect((await screen.findAllByTestId("skeleton-row")).length).toBeGreaterThan(0);
+
+    release(undefined);
+    expect(await screen.findByRole("row", { name: /Shoes/ })).toBeInTheDocument();
+    expect(screen.queryByTestId("skeleton-row")).not.toBeInTheDocument();
+  });
+
   it("searches across the collection", async () => {
     const urls: URL[] = [];
     const calls = mockApi({
@@ -148,7 +167,7 @@ describe("CollectionTable", () => {
     return urls;
   }
 
-  it("is a compact, plain table (no colors) and opens a record from its row action", async () => {
+  it("is a plain table (no colors) with column separators and opens a record from its row action", async () => {
     setup();
     renderWithProviders(<CollectionTable collectionId={1} />);
 
@@ -156,8 +175,13 @@ describe("CollectionTable", () => {
     // Choice values are plain text; nothing in the table carries a tint.
     expect(within(shoes).getByText("DHL").className).not.toMatch(/tint/);
     expect(screen.getByRole("table").querySelector("[class*='tint-']")).toBeNull();
-    // Small rows, sentence-case headers.
-    expect(within(shoes).getAllByRole("cell")[0]).toHaveClass("py-1.5");
+    // Roomy rows with hairlines between the columns, sentence-case headers.
+    const [first, second] = within(shoes).getAllByRole("cell");
+    expect(first).toHaveClass("py-3.5", "first:border-l-0");
+    expect(second).toHaveClass("border-l");
+    // Separate borders: with collapsed ones the sticky header leaves its lines behind while scrolling.
+    expect(screen.getByRole("table")).toHaveClass("border-separate", "border-spacing-0");
+    expect(first).toHaveClass("border-b");
     expect(screen.getByRole("button", { name: "Sort by Title" })).not.toHaveClass("uppercase");
     // The reports do not take room on the page: they open from a toolbar button.
     expect(screen.queryByRole("textbox", { name: /Ask about/ })).not.toBeInTheDocument();

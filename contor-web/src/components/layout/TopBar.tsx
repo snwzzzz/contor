@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { HOME_HREF } from "@/lib/navigation";
 import { CommandPalette } from "./CommandPalette";
+import { LoadingBar } from "./LoadingBar";
 import { ProcessingIndicator } from "./ProcessingIndicator";
 import { NavDrawer } from "./NavDrawer";
 import { AppLauncher, ChatLink } from "./TopBarButtons";
@@ -35,6 +36,7 @@ export function TopBar() {
         <ChatLink />
         <UserMenu />
       </div>
+      <LoadingBar />
     </header>
   );
 }

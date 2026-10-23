@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AiAccess } from "@/lib/api/generated/model/aiAccess";
 import type { AiSettingsDto } from "@/lib/api/generated/model/aiSettingsDto";
@@ -86,9 +87,9 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
         <label htmlFor={historyId} className="text-sm font-medium">
           How far back should the first analysis read?
         </label>
-        <select
+        <NativeSelect
           id={historyId}
-          className="h-9 w-56 rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-56"
           value={value.historyDays}
           disabled={!value.mailAccess}
           onChange={(event) => onChange({ ...value, historyDays: Number(event.target.value) })}
@@ -98,7 +99,7 @@ export function AiPermissionsForm({ value, onChange }: AiPermissionsFormProps) {
               {option.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       <div className="grid gap-2">

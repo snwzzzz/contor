@@ -31,6 +31,8 @@ interface DetailSheetProps {
   tint?: Tint;
   /** Content right of the title (e.g. a confidence bar). */
   aside?: ReactNode;
+  /** Icon buttons in the top right corner, left of the close button and the same size (ghost `icon-sm`), e.g. full screen. */
+  actions?: ReactNode;
   /** Sticky action bar at the bottom. */
   footer?: ReactNode;
   children: ReactNode;
@@ -42,7 +44,7 @@ interface DetailSheetProps {
  * and can be resized by dragging its left edge (or with the arrow keys on it; double click resets). Focus trap, Escape
  * and the overlay come from the sheet primitive.
  */
-export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint, aside, footer, children }: DetailSheetProps) {
+export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint, aside, actions, footer, children }: DetailSheetProps) {
   const stored = useStoredValue<number | null>(WIDTH_KEY, null, parseWidth);
   // While dragging, the width follows the pointer; it is saved when the pointer is released.
   const [dragged, setDragged] = useState<number | null>(null);
@@ -118,7 +120,9 @@ export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint
             dragging && "after:bg-ring",
           )}
         />
-        <SheetHeader className="shrink-0 border-b pr-14">
+        {/* Pinned like the close button (top-3 right-3, 32px), one button width to its left. */}
+        {actions ? <div className="absolute top-3 right-12 z-10 flex items-center gap-1">{actions}</div> : null}
+        <SheetHeader className={cn("shrink-0 border-b", actions ? "pr-24" : "pr-14")}>
           <div className="flex items-start gap-3">
             <div className="grid min-w-0 flex-1 gap-1">
               {/* What kind of thing this is: a small bare icon in its color next to the label, like the page headers. */}

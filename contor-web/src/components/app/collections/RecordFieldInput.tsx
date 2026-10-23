@@ -3,12 +3,12 @@
 import { ExternalLink, Mail, Phone, type LucideIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { FIELD, FIELD_FOCUS, FIELD_STATES, Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import { humanize } from "@/lib/proposal-format";
-import { cn } from "@/lib/utils";
 
 interface RecordFieldInputProps {
   field: CollectionFieldDto;
@@ -24,9 +24,6 @@ function choicesOf(field: CollectionFieldDto): string[] {
   const list = field.type === "STATUS" ? field.options.states : field.options.values;
   return Array.isArray(list) ? list.filter((choice): choice is string => typeof choice === "string") : [];
 }
-
-/** A native select in the shared field look (`components/ui/input.tsx`). */
-const SELECT_CLASS = cn("h-8 w-full px-2.5 text-sm", FIELD, FIELD_FOCUS, FIELD_STATES);
 
 function numberOrNull(text: string): number | null {
   if (text.trim() === "") return null;
@@ -136,29 +133,28 @@ export function RecordFieldInput({ field, value, onChange, error }: RecordFieldI
     }
     case "BOOLEAN":
       input = (
-        <select
+        <NativeSelect
           {...common}
-          className={SELECT_CLASS}
           value={value === true ? "yes" : value === false ? "no" : ""}
           onChange={(event) => onChange(event.target.value === "" ? null : event.target.value === "yes")}
         >
           <option value="">–</option>
           <option value="yes">Yes</option>
           <option value="no">No</option>
-        </select>
+        </NativeSelect>
       );
       break;
     case "ENUM":
     case "STATUS":
       input = (
-        <select {...common} value={text} className={SELECT_CLASS} onChange={(event) => emptyToNull(event.target.value)}>
+        <NativeSelect {...common} value={text} onChange={(event) => emptyToNull(event.target.value)}>
           <option value="">–</option>
           {choicesOf(field).map((choice) => (
             <option key={choice} value={choice}>
               {humanize(choice)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       );
       break;
     default:

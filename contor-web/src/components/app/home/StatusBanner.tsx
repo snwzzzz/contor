@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCountProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import type { AnalysisRunDto } from "@/lib/api/generated/model/analysisRunDto";
 import { isActiveRun, useLatestAnalysis } from "@/lib/hooks/useLatestAnalysis";
-import { aiSetupHref } from "@/lib/navigation";
+import { settingsHref } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 const PENDING_ACTIONS = { status: "PENDING", group: "ACTIONS" } as const;
@@ -47,7 +47,7 @@ export function StatusBanner() {
         active
         title={runTitle(run)}
         action={
-          <StatusLink href={aiSetupHref(pathname)} overlay>
+          <StatusLink href={settingsHref(pathname, "autonomy")} overlay>
             View progress
           </StatusLink>
         }

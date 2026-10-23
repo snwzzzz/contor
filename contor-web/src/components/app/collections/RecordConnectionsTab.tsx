@@ -12,6 +12,7 @@ import { collectionTint } from "@/lib/collection-tint";
 import { formatValue, humanize } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 import { recordHref } from "./CollectionTable";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" });
 
@@ -65,7 +66,7 @@ export function RecordConnectionsTab({ collectionId, recordId, recordTitle, rela
   });
 
   if (!relations) {
-    return <p className="text-sm text-muted-foreground">Loading connections…</p>;
+    return <LoadingList label="Loading connections" rows={4} avatar />;
   }
   if (connections.length === 0) {
     return <EmptyState icon={Network} title="No connections yet" description="People, organizations and other records linked to this one show up here." />;

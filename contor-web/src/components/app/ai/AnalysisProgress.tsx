@@ -13,6 +13,7 @@ import type { AnalysisState } from "@/lib/api/generated/model/analysisState";
 import { formatDuration, secondsPerEmail, type ProgressSample } from "@/lib/analysis-eta";
 import { isActiveRun, useLatestAnalysis } from "@/lib/hooks/useLatestAnalysis";
 import { CategoryReview } from "./CategoryReview";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const STATE_TEXT: Record<AnalysisState, string> = {
   QUEUED: "Waiting to start",
@@ -33,7 +34,7 @@ export function AnalysisProgress() {
   const resume = useContinueAnalysis(onRun);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <LoadingList label="Loading the analysis" rows={3} />;
   }
   if (!run) {
     return <p className="text-sm text-muted-foreground">No analysis has run yet.</p>;

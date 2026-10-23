@@ -3,6 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { LoadingDetail, LoadingList } from "@/components/app/LoadingSkeletons";
 import { AppButton } from "@/components/app/AppButton";
 import { useGetEmailThread } from "@/lib/api/generated/endpoints/mail/mail";
 import type { EmailDto } from "@/lib/api/generated/model/emailDto";
@@ -39,9 +40,7 @@ export function EmailThread({ emailId, preview, picture }: EmailThreadProps) {
   const [allOpen, setAllOpen] = useState(false);
 
   if (isLoading) {
-    return preview ? <ThreadPreview email={preview} picture={picture(preview.fromAddress)} /> : (
-      <p className="text-sm text-muted-foreground">Loading conversation…</p>
-    );
+    return preview ? <ThreadPreview email={preview} picture={picture(preview.fromAddress)} /> : <LoadingDetail label="Loading conversation" />;
   }
   if (error || !data) {
     return <ErrorMessage message={error?.message ?? "The conversation could not be loaded."} />;
@@ -110,9 +109,10 @@ function ThreadPreview({ email, picture }: { email: EmailSummaryDto; picture: st
             </time>
           </span>
           {email.snippet ? <span className="line-clamp-2 text-xs text-muted-foreground">{email.snippet}</span> : null}
-          <span className="mt-2 text-xs text-muted-foreground">Loading conversation…</span>
         </span>
       </article>
+      {/* The body and the earlier messages are on their way. */}
+      <LoadingList label="Loading conversation" rows={3} avatar twoLines className="rounded-lg border bg-card px-5 py-1 shadow-xs" />
     </section>
   );
 }

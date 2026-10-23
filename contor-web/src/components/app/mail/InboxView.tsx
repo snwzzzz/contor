@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 import { getGetEmailThreadQueryOptions, useListEmails, useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import type { EmailFolder } from "@/lib/api/generated/model/emailFolder";
@@ -148,7 +149,7 @@ export function InboxView() {
 
         <div ref={listScroll} data-testid="email-list-scroll" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]">
           {isLoading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading emails…</div>
+            <LoadingList label="Loading emails" rows={10} avatar twoLines />
           ) : error ? (
             <ErrorMessage message={error.message} />
           ) : emails.length === 0 ? (

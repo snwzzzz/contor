@@ -13,6 +13,7 @@ import { getGetAiSettingsQueryKey, useGetAiSettings, useUpdateAiSettings } from 
 import { AiPermissionsForm, permissionsOf, type AiPermissions } from "./AiPermissionsForm";
 import { InboxAnalysisSection } from "./InboxAnalysisSection";
 import { MailboxAiPicker } from "./MailboxAiPicker";
+import { LoadingForm } from "@/components/app/LoadingSkeletons";
 
 /**
  * Settings → Autonomy: everything about the assistant except the models. The inbox analysis first (the top-bar
@@ -33,7 +34,7 @@ export function AiAutonomySettings() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <LoadingForm label="Loading AI settings" sections={3} />;
   }
   if (error || !settings) {
     return <ErrorMessage message={error?.message ?? "Could not load the AI settings."} />;

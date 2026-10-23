@@ -14,6 +14,7 @@ import { useListRecordEmails } from "@/lib/api/generated/endpoints/records/recor
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
 import { cn } from "@/lib/utils";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 function emailCount(count: number): string {
   return `${count} ${count === 1 ? "email" : "emails"}`;
@@ -57,7 +58,7 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
   }
 
   if (!emails) {
-    return <p className="text-sm text-muted-foreground">Loading emails…</p>;
+    return <LoadingList label="Loading emails" rows={5} avatar twoLines />;
   }
   if (items.length === 0) {
     return <EmptyState icon={Mail} title="No emails yet" description="Emails from this record's addresses or domain, and the ones it was found in, show up here." />;

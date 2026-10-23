@@ -8,6 +8,7 @@ import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto"
 import { formatValue } from "@/lib/proposal-format";
 import { highlightQuote, sourceHref } from "@/lib/report";
 import { cn } from "@/lib/utils";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail } satisfies Record<CitationKind, unknown>;
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -103,7 +104,7 @@ function SourceDetail({ source, quote }: { source: ReportSourceDto; quote: strin
 /** The email's paragraphs around the cited one, which is highlighted with the quote marked inside it. */
 function EmailParagraphs({ emailId, index, quote }: { emailId: number; index: number; quote: string | undefined }) {
   const { data: paragraphs, isPending } = useGetEmailParagraphs(emailId, { query: { retry: false } });
-  if (isPending) return <p className="text-xs text-muted-foreground">Loading the email…</p>;
+  if (isPending) return <LoadingList label="Loading the email" rows={3} />;
   const shown = (paragraphs ?? []).filter((paragraph) => Math.abs(paragraph.index - index) <= 1);
   if (shown.length === 0) return quote ? <p className="border-l-2 border-primary pl-2">{quote}</p> : null;
   return (

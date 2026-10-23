@@ -7,6 +7,7 @@ import { useMailboxUpdate } from "@/components/app/mail/useMailboxUpdate";
 import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import { useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import { settingsHref } from "@/lib/navigation";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 /**
  * Which mailboxes the AI reads (the analysis and new mail), one checkbox per connected mailbox, saved right away.
@@ -20,7 +21,7 @@ export function MailboxAiPicker() {
   const readHidden = settings?.readHiddenMailboxes ?? true;
 
   if (!accounts) {
-    return <p className="text-sm text-muted-foreground">Loading mailboxes…</p>;
+    return <LoadingList label="Loading mailboxes" rows={2} avatar />;
   }
   const connected = accounts.filter((account) => account.status !== "DISABLED");
   if (connected.length === 0) {
@@ -40,10 +41,11 @@ export function MailboxAiPicker() {
         const skipped = account.hidden && !readHidden;
         return (
           <li key={account.id}>
-            <label className="flex items-start gap-3">
+            {/* Checkbox and avatar centered on the address and the name below it. */}
+            <label className="flex items-center gap-3">
               <input
                 type="checkbox"
-                className="mt-1 size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="size-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                 checked={account.aiEnabled && !skipped}
                 disabled={skipped || (update.isPending && update.variables?.accountId === account.id)}
                 onChange={(event) => update.mutate({ accountId: account.id, data: { aiEnabled: event.target.checked } })}

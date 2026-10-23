@@ -53,7 +53,7 @@ describe("HomeHero", () => {
 
     expect(await screen.findByText("AI is analyzing 224 of 229 emails")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Analysis progress" })).toHaveAttribute("aria-valuenow", "98");
-    expect(screen.getByRole("link", { name: "View progress" })).toHaveAttribute("href", "/?ai-setup=1");
+    expect(screen.getByRole("link", { name: "View progress" })).toHaveAttribute("href", "/?settings=autonomy");
   });
 
   it("invites to review waiting proposals", async () => {
