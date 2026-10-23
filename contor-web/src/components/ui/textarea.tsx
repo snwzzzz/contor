@@ -1,16 +1,16 @@
 import * as React from "react"
 import { cn } from "cn"
-import { FIELD, FIELD_FOCUS, FIELD_STATES } from "@/components/ui/input"
+import { FIELD_STATES, fieldLook, type FieldVariant } from "@/components/ui/input"
 
-function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+function Textarea({ className, variant = "field", ...props }: React.ComponentProps<"textarea"> & { variant?: FieldVariant }) {
   return (
     <textarea
       data-slot="textarea"
+      data-variant={variant}
       className={cn(
-        // contor: the shared FIELD look of `input.tsx`.
+        // contor: the shared FIELD look of `input.tsx` (or its ghost).
         "flex field-sizing-content min-h-16 w-full px-2.5 py-2 text-sm",
-        FIELD,
-        FIELD_FOCUS,
+        fieldLook(variant),
         FIELD_STATES,
         className
       )}

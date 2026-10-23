@@ -1,16 +1,15 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { Sparkles, Type } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AppButton } from "@/components/app/AppButton";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getGetRecordQueryKey, getListRecordsQueryKey, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
-import { cn } from "@/lib/utils";
-import { RecordFieldInput } from "./RecordFieldInput";
+import { PROPERTY_ROW, PropertyName, RecordFieldInput } from "./RecordFieldInput";
 
 /** Values are compared as JSON, so money objects with equal content count as unchanged. */
 function same(a: unknown, b: unknown): boolean {
@@ -24,13 +23,16 @@ function initialValues(fields: readonly CollectionFieldDto[], record: RecordDto)
 interface RecordDetailsFormProps {
   fields: readonly CollectionFieldDto[];
   record: RecordDto;
+  /** Who added the record and when ("by the assistant on 1 Oct 2026"), the last, read-only row. */
+  added: string;
 }
 
 /**
- * The record's Details tab: the title and every field as an input (by field type). Save appears with the number of
- * changes once something is edited and sends only what changed; Discard goes back to the saved values.
+ * The record's Details tab as a property list: one row per value, its icon and name on the left, the value on the
+ * right as a field that reads like text until it is hovered or focused (the title first, who added it last). Save
+ * appears with the number of changes once something is edited and sends only what changed; Discard goes back.
  */
-export function RecordDetailsForm({ fields, record }: RecordDetailsFormProps) {
+export function RecordDetailsForm({ fields, record, added }: RecordDetailsFormProps) {
   const queryClient = useQueryClient();
   const titleId = useId();
   const [title, setTitle] = useState(record.title ?? "");
@@ -75,20 +77,27 @@ export function RecordDetailsForm({ fields, record }: RecordDetailsFormProps) {
 
   return (
     <form aria-label="Details" onSubmit={save} className="grid gap-6">
-      <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="grid min-w-0 gap-1.5 sm:col-span-2 xl:col-span-3">
-          <Label htmlFor={titleId}>Title</Label>
-          <Input id={titleId} value={title} onChange={(event) => setTitle(event.target.value)} />
+      <div className="grid gap-1">
+        <div data-slot="property-row" className={PROPERTY_ROW}>
+          <PropertyName icon={Type} htmlFor={titleId}>
+            Title
+          </PropertyName>
+          <Input id={titleId} variant="ghost" value={title} onChange={(event) => setTitle(event.target.value)} />
         </div>
         {fields.map((field) => (
-          <div key={field.slug} className={cn("min-w-0", field.type === "LONG_TEXT" && "sm:col-span-2 xl:col-span-3")}>
-            <RecordFieldInput
-              field={field}
-              value={values[field.slug]}
-              onChange={(next) => setValues((current) => ({ ...current, [field.slug]: next }))}
-            />
-          </div>
+          <RecordFieldInput
+            key={field.slug}
+            field={field}
+            layout="row"
+            value={values[field.slug]}
+            onChange={(next) => setValues((current) => ({ ...current, [field.slug]: next }))}
+          />
         ))}
+        <div data-slot="property-row" className={PROPERTY_ROW}>
+          <PropertyName icon={Sparkles}>Added</PropertyName>
+          {/* The same invisible border and padding as the fields above, so the text lines up with their values. */}
+          <span className="flex h-8 items-center border border-transparent px-2.5 text-sm">{added}</span>
+        </div>
       </div>
 
       {update.error ? (

@@ -218,3 +218,27 @@
     }
   }
 }
+
+/*
+ * Small scrolling boxes inside the page (month cells): a 2px thumb in the subtle color, shown only while the pointer is
+ * over the box's parent. scrollbar-color only for Firefox: Chromium ignores ::-webkit-scrollbar once it is set.
+ */
+@layer utilities {
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 2px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  :hover > .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-subtle);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .scrollbar-subtle {
+      scrollbar-color: transparent transparent;
+    }
+    :hover > .scrollbar-subtle {
+      scrollbar-color: var(--scrollbar-subtle) transparent;
+    }
+  }
+}

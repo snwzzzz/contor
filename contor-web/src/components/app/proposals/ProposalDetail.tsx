@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { AppButton } from "@/components/app/AppButton";
-import { recordHref } from "@/components/app/collections/CollectionTable";
+import { recordHref } from "@/lib/record-sheet";
 import { RecordFieldInput } from "@/components/app/collections/RecordFieldInput";
 import { DetailSheet } from "@/components/app/DetailSheet";
 import { EmailBody } from "@/components/app/mail/EmailReader";

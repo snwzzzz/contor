@@ -2,22 +2,18 @@
 
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus } from "lucide-react";
-import Link from "next/link";
 import {
-  createContext,
-  useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
-  type ComponentProps,
   type FormEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { RecordSheet } from "@/components/app/collections/RecordSheet";
 import { AppButton } from "@/components/app/AppButton";
-import { recordHref } from "@/components/app/collections/CollectionTable";
+import { RecordLink } from "@/components/app/collections/RecordLink";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { QuietEmpty } from "@/components/app/home/HomeSection";
@@ -45,11 +41,23 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ROW_HOVER } from "@/lib/card-hover";
 import { describeDue, type DueDescription } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
+import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { formatClock, formatTime, useTimeFormat, type TimeFormat } from "@/lib/time-format";
 import { cn } from "@/lib/utils";
 
-/** Height of one hour in the week grid (px). */
+/** Height of one hour in the week grid (px) until it is zoomed (Ctrl + wheel), and the limits of the zoom. */
 export const HOUR_HEIGHT = 48;
+const MIN_HOUR_HEIGHT = 16;
+const MAX_HOUR_HEIGHT = 160;
+/** One wheel step changes the hour height by this factor. */
+const ZOOM_STEP = 1.15;
+/** The zoomed hour height, a per-browser preference. */
+const HOUR_HEIGHT_KEY = "contor.calendar.hourHeight";
+const parseHourHeight = (raw: unknown) =>
+  typeof raw === "number" && raw >= MIN_HOUR_HEIGHT && raw <= MAX_HOUR_HEIGHT ? raw : undefined;
+const clampHourHeight = (height: number) => Math.min(Math.max(Math.round(height), MIN_HOUR_HEIGHT), MAX_HOUR_HEIGHT);
+/** Zoomed far out, only every second or third hour gets a label, so the labels never overlap. */
+const labelEvery = (hourHeight: number) => (hourHeight < 22 ? 3 : hourHeight < 32 ? 2 : 1);
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const DAY_MINUTES = 24 * 60;
 /** Events without an end take an hour; very short ones still get room for their title. */
@@ -110,28 +118,6 @@ function useNow(): Date {
     return () => clearInterval(timer);
   }, []);
   return now;
-}
-
-/** Opens an event in the detail sidebar; provided by CalendarView to every event link inside it. */
-const OpenEventContext = createContext<(eventId: number) => void>(() => undefined);
-
-/**
- * An event's link to its page. A plain click opens the event in the detail sidebar instead; Ctrl/⌘/Shift-click and the
- * middle button still open the page (new tab or window), and the address stays for "copy link".
- */
-function EventLink({ eventId, onClick, ...props }: ComponentProps<typeof Link> & { eventId: number }) {
-  const openEvent = useContext(OpenEventContext);
-  return (
-    <Link
-      {...props}
-      onClick={(event) => {
-        onClick?.(event);
-        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
-        openEvent(eventId);
-      }}
-    />
-  );
 }
 
 type View = "week" | "month";
@@ -223,8 +209,6 @@ export function CalendarView() {
   // A day inside what is shown (from the URL, else today); the week or month around it is displayed.
   const cursor = parseDay(searchParams.get(DATE_PARAM)) ?? startOfDay(now);
   const [open, setOpen] = useState<OpenDay | null>(null);
-  // The event shown in the detail sidebar.
-  const [shownEvent, setShownEvent] = useState<number | null>(null);
 
   const weekStart = startOfWeek(cursor);
   const month = startOfMonth(cursor);
@@ -262,18 +246,7 @@ export function CalendarView() {
   const openTasks = (taskPage?.items ?? []).filter((task) => stateOf(task) !== "done");
 
   return (
-    <OpenEventContext value={setShownEvent}>
-      {shownEvent !== null ? (
-        <RecordSheet
-          key={shownEvent}
-          collectionId={events.collection.id}
-          recordId={shownEvent}
-          icon={CalendarDays}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setShownEvent(null);
-          }}
-        />
-      ) : null}
+    <>
       {/* From lg the calendar is exactly the rest of the screen (main is a flex column): one row of a fixed height, the
           grid filling its column and the agenda scrolling on its own. Smaller screens scroll the page as usual. */}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
@@ -345,7 +318,7 @@ export function CalendarView() {
           />
         )}
       </div>
-    </OpenEventContext>
+    </>
   );
 }
 
@@ -417,7 +390,7 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
               key={day.getTime()}
               aria-label={dayTitleWithYear(day)}
               className={cn(
-                "group/cell relative flex h-28 min-w-0 flex-col gap-1 overflow-hidden p-1.5 transition-colors hover:bg-muted/40 motion-reduce:transition-none lg:h-auto lg:min-h-0",
+                "relative flex h-28 min-w-0 flex-col gap-1 overflow-hidden p-1.5 sm:flex-row sm:gap-1.5 transition-colors hover:bg-muted/40 motion-reduce:transition-none lg:h-auto lg:min-h-0",
                 index % 7 !== 0 && "border-l",
                 index >= 7 && "border-t",
                 // Weekends shaded lightly; the neighbouring months' days greyed out clearly.
@@ -445,17 +418,16 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
                 {day.getDate()}
               </span>
               {dayEvents.length > 0 ? (
-                // Scrolls when the events do not fit; a click on its empty space still opens the day.
+                // Beside the date (under it on phones, where the cells are too narrow). Scrolls when the events do not
+                // fit; a click on its empty space still opens the day.
                 <div
                   data-testid="cell-events"
                   onClick={(event) => {
                     if (event.target === event.currentTarget) onOpen(day);
                   }}
                   className={cn(
-                    "relative -mr-1 grid min-h-0 flex-1 content-start gap-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]",
-                    // The thumb only shows while the pointer is over the cell (Chromium/WebKit and Firefox).
-                    "[scrollbar-color:transparent_transparent] group-hover/cell:[scrollbar-color:var(--scrollbar)_transparent]",
-                    "[&::-webkit-scrollbar-thumb]:bg-transparent group-hover/cell:[&::-webkit-scrollbar-thumb]:bg-(--scrollbar)",
+                    // scrollbar-subtle: a 2px thumb in a faint color, only while the pointer is over the cell (globals.css).
+                    "scrollbar-subtle relative -mr-1 grid min-h-0 min-w-0 flex-1 content-start gap-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]",
                   )}
                 >
                   {dayEvents.map((event) => (
@@ -477,8 +449,9 @@ function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectio
   const start = startsAt(event);
   const allDay = isAllDay(event);
   return (
-    <EventLink eventId={event.id}
-      href={recordHref(collectionId, event.id)}
+    <RecordLink
+      collectionId={collectionId}
+      recordId={event.id}
       title={`${event.title} · ${timeRange(event, format)}`}
       className={cn(
         "relative flex min-w-0 items-start gap-1.5 rounded-sm px-1.5 py-0.5 text-xs leading-4 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-ring",
@@ -487,12 +460,15 @@ function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectio
       )}
     >
       {allDay ? null : <span aria-hidden="true" className="mt-[5px] size-1.5 shrink-0 rounded-full bg-tint-1-vivid" />}
-      {/* Narrow cells keep the room for the title; the time is in the tooltip and the agenda. */}
-      {start && !allDay ? <span className="hidden shrink-0 text-muted-foreground tabular-nums xl:inline">{formatTime(start, format)}</span> : null}
-      {/* The whole title, wrapped between words (the cell scrolls when it gets long); a word only breaks when it is
-          wider than the cell itself. */}
-      <span className="min-w-0 break-words hyphens-auto">{event.title || "(Untitled event)"}</span>
-    </EventLink>
+      <span className="grid min-w-0 flex-1">
+        {/* Above the title, so the title keeps the chip's width beside the date; narrow cells leave it to the tooltip
+            and the agenda. */}
+        {start && !allDay ? <span className="hidden text-muted-foreground tabular-nums xl:block">{formatTime(start, format)}</span> : null}
+        {/* The whole title, wrapped between words (the cell scrolls when it gets long); a word only breaks when it is
+            wider than the cell itself. */}
+        <span className="min-w-0 break-words hyphens-auto">{event.title || "(Untitled event)"}</span>
+      </span>
+    </RecordLink>
   );
 }
 
@@ -513,12 +489,18 @@ interface WeekGridProps {
 /**
  * Seven day columns over 24 hour rows; scrolls on its own (both ways on small screens) with a sticky day header.
  * Pressing on an hour and dragging up or down over others plans an event over all of them (one hour on a click).
+ * Ctrl (or Cmd) + wheel zooms the hours, keeping the time under the pointer in place; the zoom is remembered.
  */
 function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, onOpenDay }: WeekGridProps) {
   const format = useTimeFormat();
+  const hourHeight = useStoredValue(HOUR_HEIGHT_KEY, HOUR_HEIGHT, parseHourHeight);
   const scroller = useRef<HTMLDivElement>(null);
   const thisWeek = days.some((day) => sameDay(day, now));
   const firstHour = thisWeek ? Math.min(Math.max(now.getHours() - 3, 0), 15) : 7;
+  // The wheel listener reads the current zoom without being re-added on every step.
+  const hourHeightRef = useRef(hourHeight);
+  // While zooming: the hour under the pointer and its offset below the day header, to keep it there.
+  const zoomAnchor = useRef<{ hours: number; offset: number } | null>(null);
   // The slot pressed first and the one the pointer is over now (same day only). The ref is what the release reads:
   // it is up to date even when the pointer is released before React re-rendered.
   const [drag, setDrag] = useState<{ day: Date; anchor: number; current: number } | null>(null);
@@ -528,9 +510,37 @@ function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, 
 
   // Start at the working day (or a little before now) instead of midnight; once per week shown.
   useEffect(() => {
-    if (scroller.current) scroller.current.scrollTop = firstHour * HOUR_HEIGHT;
+    if (scroller.current) scroller.current.scrollTop = firstHour * hourHeightRef.current;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount (the grid is keyed by its week)
   }, []);
+
+  // Ctrl + wheel zooms the hours instead of the page: a native listener, since React's wheel listener is passive.
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    function onWheel(event: WheelEvent) {
+      if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0 || !element) return;
+      event.preventDefault();
+      const current = hourHeightRef.current;
+      const next = clampHourHeight(event.deltaY < 0 ? current * ZOOM_STEP : current / ZOOM_STEP);
+      if (next === current) return;
+      const header = element.querySelector<HTMLElement>("[data-week-header]")?.offsetHeight ?? 0;
+      const offset = event.clientY - element.getBoundingClientRect().top - header;
+      zoomAnchor.current = { hours: (element.scrollTop + offset) / current, offset };
+      hourHeightRef.current = next;
+      writeStoredValue(HOUR_HEIGHT_KEY, next);
+    }
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, []);
+
+  // After a zoom, scroll so that the hour that was under the pointer is there again.
+  useLayoutEffect(() => {
+    hourHeightRef.current = hourHeight;
+    const anchor = zoomAnchor.current;
+    zoomAnchor.current = null;
+    if (anchor && scroller.current) scroller.current.scrollTop = anchor.hours * hourHeight - anchor.offset;
+  }, [hourHeight]);
 
   const moveDrag = (next: typeof drag) => {
     dragRef.current = next;
@@ -590,12 +600,12 @@ function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, 
       <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
         {/* Hour labels. */}
         <div aria-hidden="true">
-          <div className="sticky top-0 z-20 flex flex-col justify-end border-b bg-background" style={{ height: 48 + allDayHeight }}>
+          <div data-week-header="" className="sticky top-0 z-20 flex flex-col justify-end border-b bg-background" style={{ height: 48 + allDayHeight }}>
             {allDayRows > 0 ? <span className="px-2 pb-2 text-xs text-muted-foreground">All day</span> : null}
           </div>
-          <div className="relative" style={{ height: 24 * HOUR_HEIGHT }}>
-            {HOURS.slice(1).map((hour) => (
-              <span key={hour} className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums" style={{ top: hour * HOUR_HEIGHT }}>
+          <div className="relative" style={{ height: 24 * hourHeight }}>
+            {HOURS.slice(1).filter((hour) => hour % labelEvery(hourHeight) === 0).map((hour) => (
+              <span key={hour} className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums" style={{ top: hour * hourHeight }}>
                 {hourLabel(hour, format)}
               </span>
             ))}
@@ -614,6 +624,7 @@ function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, 
             now={now}
             selected={selected !== null && sameDay(day, selected)}
             range={range && sameDay(range.day, day) ? range : null}
+            hourHeight={hourHeight}
             slots={slotHandlers}
             onOpenDay={onOpenDay}
           />
@@ -640,11 +651,12 @@ interface DayColumnProps {
   selected: boolean;
   /** Hours being dragged over or planned on this day. */
   range: HourRange | null;
+  hourHeight: number;
   slots: SlotHandlers;
   onOpenDay: (day: Date) => void;
 }
 
-function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, now, selected, range, slots, onOpenDay }: DayColumnProps) {
+function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, now, selected, range, hourHeight, slots, onOpenDay }: DayColumnProps) {
   const format = useTimeFormat();
   const today = sameDay(day, now);
   const placed = layoutDay(
@@ -682,20 +694,21 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
           <ul data-all-day="" className="grid content-start gap-1 px-1 pb-2" style={{ height: allDayHeight }}>
             {allDay.map((event) => (
               <li key={event.id}>
-                <EventLink eventId={event.id}
-                  href={recordHref(collectionId, event.id)}
+                <RecordLink
+                  collectionId={collectionId}
+                  recordId={event.id}
                   title={event.title}
                   className="block truncate rounded-sm border-l-2 border-tint-1-vivid bg-tint-1 px-1.5 py-0.5 text-xs text-tint-1-foreground transition-opacity hover:opacity-80"
                 >
                   {event.title || "(Untitled event)"}
-                </EventLink>
+                </RecordLink>
               </li>
             ))}
           </ul>
         ) : null}
       </div>
 
-      <div className="relative" style={{ height: 24 * HOUR_HEIGHT }}>
+      <div className="relative" style={{ height: 24 * hourHeight }}>
         {/* The hour rows are the lines of the grid; a click plans that hour, a drag the hours it sweeps over. */}
         {HOURS.map((hour) => (
           <button
@@ -707,13 +720,13 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
             onPointerEnter={() => slots.onPointerEnter(day, hour)}
             onClick={() => slots.onClick(day, hour)}
             className="block w-full touch-none border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/40 motion-reduce:transition-none"
-            style={{ height: HOUR_HEIGHT }}
+            style={{ height: hourHeight }}
           />
         ))}
 
         {placed.map((entry) => {
           const event = byId.get(entry.id);
-          return event ? <EventBlock key={entry.id} event={event} placed={entry} collectionId={collectionId} past={entry.end <= now} /> : null;
+          return event ? <EventBlock key={entry.id} event={event} placed={entry} collectionId={collectionId} hourHeight={hourHeight} past={entry.end <= now} /> : null;
         })}
 
         {range ? (
@@ -722,7 +735,7 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
             data-testid="planned-event"
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0.5 z-[6] rounded-sm border border-dashed border-foreground/60 bg-background/80 px-1.5 py-1 text-xs"
-            style={{ top: range.from * HOUR_HEIGHT, height: (range.to - range.from) * HOUR_HEIGHT }}
+            style={{ top: range.from * hourHeight, height: (range.to - range.from) * hourHeight }}
           >
             <span className="block font-medium">New event</span>
             <span className="block text-muted-foreground tabular-nums">
@@ -736,7 +749,7 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
             data-testid="now-line"
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-primary"
-            style={{ top: (minutesOf(now) / 60) * HOUR_HEIGHT }}
+            style={{ top: (minutesOf(now) / 60) * hourHeight }}
           >
             <span className="absolute -top-[3px] -left-1 size-2 rounded-full bg-primary" />
           </div>
@@ -747,17 +760,19 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
 }
 
 /** A timed event in its day column: placed by start and end, side by side with the events it overlaps. */
-function EventBlock({ event, placed, collectionId, past }: { event: RecordDto; placed: PlacedEvent; collectionId: number; past: boolean }) {
+function EventBlock({ event, placed, collectionId, hourHeight, past }: { event: RecordDto; placed: PlacedEvent; collectionId: number; hourHeight: number; past: boolean }) {
   const format = useTimeFormat();
-  const top = (minutesOf(placed.start) / 60) * HOUR_HEIGHT;
+  const top = (minutesOf(placed.start) / 60) * hourHeight;
   const endMinutes = sameDay(placed.start, placed.end) ? minutesOf(placed.end) : DAY_MINUTES;
-  const height = Math.max(((endMinutes - minutesOf(placed.start)) / 60) * HOUR_HEIGHT, MIN_EVENT_HEIGHT);
+  // Room for the title, but zoomed far out never more than an hour (blocks would cover the next ones).
+  const height = Math.max(((endMinutes - minutesOf(placed.start)) / 60) * hourHeight, Math.min(MIN_EVENT_HEIGHT, hourHeight));
   const short = height < 40;
   // 16px lines inside 4px padding: the time takes one, the title gets the rest (at least one), so nothing is cut.
   const titleLines = Math.max(1, Math.floor((height - 8) / 16) - 1);
   return (
-    <EventLink eventId={event.id}
-      href={recordHref(collectionId, event.id)}
+    <RecordLink
+      collectionId={collectionId}
+      recordId={event.id}
       title={`${event.title} · ${timeRange(event, format)}`}
       className={cn(
         "absolute z-[5] overflow-hidden rounded-sm border-l-2 border-tint-1-vivid bg-tint-1 px-1.5 text-xs text-tint-1-foreground outline-none ring-background transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring",
@@ -778,7 +793,7 @@ function EventBlock({ event, placed, collectionId, past }: { event: RecordDto; p
         {event.title || "(Untitled event)"}
       </span>
       <span className={cn("leading-4 tabular-nums opacity-75", short ? "shrink-0" : "block truncate")}>{timeRange(event, format)}</span>
-    </EventLink>
+    </RecordLink>
   );
 }
 
@@ -847,7 +862,7 @@ function WeekAgenda({ days, events, eventsId, tasks, tasksId, now }: WeekAgendaP
         >
           {group.events.map((event) => (
             <li key={`event-${event.id}`}>
-              <EventLink eventId={event.id} href={recordHref(eventsId, event.id)} className={cn("flex items-start gap-3 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", ROW_HOVER)}>
+              <RecordLink collectionId={eventsId} recordId={event.id} className={cn("flex items-start gap-3 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", ROW_HOVER)}>
                 <CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
                   <span className="text-sm break-words">{event.title || "(Untitled event)"}</span>
@@ -859,7 +874,7 @@ function WeekAgenda({ days, events, eventsId, tasks, tasksId, now }: WeekAgendaP
                     </span>
                   ) : null}
                 </span>
-              </EventLink>
+              </RecordLink>
             </li>
           ))}
           {group.tasks.map((entry) => (
@@ -904,9 +919,9 @@ function TaskRow({ entry, tasksId, busy, onDone }: { entry: DueTask; tasksId: nu
         className="mt-0.5 size-4 shrink-0 rounded-full border border-muted-foreground/60 transition-colors hover:border-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
       />
       <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
-        <Link href={recordHref(tasksId, task.id)} className="text-sm break-words underline-offset-4 hover:underline">
+        <RecordLink collectionId={tasksId} recordId={task.id} className="text-sm break-words underline-offset-4 hover:underline">
           {task.title || "(Untitled to-do)"}
-        </Link>
+        </RecordLink>
         <span className={cn("text-xs", DUE_TONE[due.tone])}>{due.label}</span>
       </span>
     </li>
@@ -983,13 +998,13 @@ function DayAgenda({ day, initialStart, initialEnd, collectionId, events, onClos
         <ul className="-mx-2 grid">
           {events.map((event) => (
             <li key={event.id}>
-              <EventLink eventId={event.id} href={recordHref(collectionId, event.id)} className={cn("flex items-start gap-3 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", ROW_HOVER)}>
+              <RecordLink collectionId={collectionId} recordId={event.id} className={cn("flex items-start gap-3 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", ROW_HOVER)}>
                 <CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
                   <span className="text-sm break-words">{event.title || "(Untitled event)"}</span>
                   <span className="text-xs text-muted-foreground tabular-nums">{timeRange(event, format)}</span>
                 </span>
-              </EventLink>
+              </RecordLink>
             </li>
           ))}
         </ul>

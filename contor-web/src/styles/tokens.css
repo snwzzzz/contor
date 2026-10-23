@@ -31,6 +31,8 @@
   /* Scrollbars: thin, no track. */
   --scrollbar: oklch(0.85 0 0);
   --scrollbar-hover: oklch(0.7 0 0);
+  /* Fainter still, for small scrolling boxes inside the page (month cells). */
+  --scrollbar-subtle: oklch(0.91 0 0);
   /* Tints: same lightness and chroma, only the hue changes (collections, records, sections). */
   --tint-1: oklch(0.94 0.05 25);
   --tint-1-foreground: oklch(0.5 0.14 25);
@@ -121,6 +123,7 @@
   --warning-foreground: oklch(0.22 0.04 70);
   --scrollbar: oklch(1 0 0 / 15%);
   --scrollbar-hover: oklch(1 0 0 / 28%);
+  --scrollbar-subtle: oklch(1 0 0 / 9%);
   /* Tints: same lightness and chroma, only the hue changes (collections, records, sections). */
   --tint-1: oklch(0.32 0.06 25);
   --tint-1-foreground: oklch(0.86 0.1 25);

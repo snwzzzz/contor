@@ -1,9 +1,10 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { XIcon, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { KindLabel } from "./KindLabel";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Tint } from "@/lib/collection-tint";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,11 @@ interface DetailSheetProps {
   aside?: ReactNode;
   /** Icon buttons in the top right corner, left of the close button and the same size (ghost `icon-sm`), e.g. full screen. */
   actions?: ReactNode;
+  /**
+   * Where the thing lives (e.g. a link to its collection). With it the sheet has a compact bar instead of the header:
+   * the trail, then the title as the last crumb, the actions and close, all in one row; the body shows the rest.
+   */
+  trail?: ReactNode;
   /** Sticky action bar at the bottom. */
   footer?: ReactNode;
   children: ReactNode;
@@ -44,7 +50,7 @@ interface DetailSheetProps {
  * and can be resized by dragging its left edge (or with the arrow keys on it; double click resets). Focus trap, Escape
  * and the overlay come from the sheet primitive.
  */
-export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint, aside, actions, footer, children }: DetailSheetProps) {
+export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint, aside, actions, trail, footer, children }: DetailSheetProps) {
   const stored = useStoredValue<number | null>(WIDTH_KEY, null, parseWidth);
   // While dragging, the width follows the pointer; it is saved when the pointer is released.
   const [dragged, setDragged] = useState<number | null>(null);
@@ -90,9 +96,13 @@ export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint
         side="right"
         // A clear overlay: the page stays as it is, a click on it still closes the sheet.
         overlayClassName="bg-transparent supports-backdrop-filter:backdrop-blur-none"
+        // The bar has its own close button in its row.
+        showCloseButton={trail === undefined}
         className={cn(
           // Full width on phones; from sm a third of the window, or the width the user dragged it to.
           "gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[90vw]",
+          // From sm it floats 8px inside the window: a slight border all around and rounded corners.
+          "data-[side=right]:sm:inset-y-2 data-[side=right]:sm:right-2 data-[side=right]:sm:h-auto data-[side=right]:sm:rounded-xl data-[side=right]:sm:border sm:overflow-hidden",
           width === null ? "data-[side=right]:sm:w-[max(33.333vw,24rem)]" : "data-[side=right]:sm:w-(--sheet-width)",
           // No slide transition fighting the pointer while the edge is dragged.
           dragging && "transition-none",
@@ -120,25 +130,50 @@ export function DetailSheet({ open, onOpenChange, title, label, icon: Icon, tint
             dragging && "after:bg-ring",
           )}
         />
-        {/* Pinned like the close button (top-3 right-3, 32px), one button width to its left. */}
-        {actions ? <div className="absolute top-3 right-12 z-10 flex items-center gap-1">{actions}</div> : null}
-        <SheetHeader className={cn("shrink-0 border-b", actions ? "pr-24" : "pr-14")}>
-          <div className="flex items-start gap-3">
-            <div className="grid min-w-0 flex-1 gap-1">
-              {/* What kind of thing this is: a small bare icon in its color next to the label, like the page headers. */}
-              {Icon ? (
-                <KindLabel icon={Icon} tint={tint}>
-                  {label}
-                </KindLabel>
-              ) : label ? (
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
-              ) : null}
-              <SheetTitle className="leading-snug [overflow-wrap:anywhere]">{title}</SheetTitle>
-            </div>
-            {aside}
+        {trail !== undefined ? (
+          <div data-slot="sheet-bar" className="flex h-12 shrink-0 items-center gap-1 border-b pr-3 pl-4">
+            <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
+              <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                <li className="shrink-0">{trail}</li>
+                <li aria-hidden="true">/</li>
+                <li className="min-w-0">
+                  <SheetTitle aria-current="page" className="truncate text-sm font-medium text-foreground">
+                    {title}
+                  </SheetTitle>
+                </li>
+              </ol>
+            </nav>
+            <SheetDescription className="sr-only">Details of {title}</SheetDescription>
+            {actions}
+            <SheetClose asChild>
+              <Button variant="ghost" size="icon-sm">
+                <XIcon aria-hidden="true" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </SheetClose>
           </div>
-          <SheetDescription className="sr-only">Details of {title}</SheetDescription>
-        </SheetHeader>
+        ) : null}
+        {/* Pinned like the close button (top-3 right-3, 32px), one button width to its left. */}
+        {actions && trail === undefined ? <div className="absolute top-3 right-12 z-10 flex items-center gap-1">{actions}</div> : null}
+        {trail !== undefined ? null : (
+          <SheetHeader className={cn("shrink-0 border-b", actions ? "pr-24" : "pr-14")}>
+            <div className="flex items-start gap-3">
+              <div className="grid min-w-0 flex-1 gap-1">
+                {/* What kind of thing this is: a small bare icon in its color next to the label, like the page headers. */}
+                {Icon ? (
+                  <KindLabel icon={Icon} tint={tint}>
+                    {label}
+                  </KindLabel>
+                ) : label ? (
+                  <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                ) : null}
+                <SheetTitle className="leading-snug [overflow-wrap:anywhere]">{title}</SheetTitle>
+              </div>
+              {aside}
+            </div>
+            <SheetDescription className="sr-only">Details of {title}</SheetDescription>
+          </SheetHeader>
+        )}
         {/* Nothing may widen the sheet: long values wrap, a wide mail scrolls in its own frame. */}
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">{children}</div>
         {footer ? <SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t">{footer}</SheetFooter> : null}

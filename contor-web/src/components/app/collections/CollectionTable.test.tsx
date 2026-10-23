@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi, type RecordedCall } from "@/test/api-mock";
-import { resetNavigation, router } from "@/test/next-navigation";
+import { navigationState, resetNavigation, router } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { CollectionTable } from "./CollectionTable";
 
@@ -143,16 +143,35 @@ describe("CollectionTable", () => {
     expect(screen.getByRole("columnheader", { name: /ETA/ })).toHaveAttribute("aria-sort", "descending");
   });
 
-  it("opens a record on double click or Enter", async () => {
+  it("opens a record in the detail sidebar with one click or Enter", async () => {
     setup();
     renderWithProviders(<CollectionTable collectionId={1} />);
 
-    fireEvent.doubleClick(await screen.findByRole("row", { name: /Shoes/ }));
-    expect(router.push).toHaveBeenCalledWith("/collections/1/records/5");
+    const shoes = await screen.findByRole("row", { name: /Shoes/ });
+    expect(shoes).not.toHaveAttribute("title");
+    await userEvent.click(within(shoes).getByText("Shoes"));
+    expect(router.push).toHaveBeenCalledWith("/collections/1?record=1-5", { scroll: false });
 
     screen.getByRole("row", { name: /Books/ }).focus();
     await userEvent.keyboard("{Enter}");
-    expect(router.push).toHaveBeenCalledWith("/collections/1/records/6");
+    expect(router.push).toHaveBeenCalledWith("/collections/1?record=1-6", { scroll: false });
+  });
+
+  it("marks the row open in the sidebar, and switches records in place instead of adding history", async () => {
+    setup();
+    navigationState.search = "record=1-5&recordTab=emails";
+    renderWithProviders(<CollectionTable collectionId={1} />);
+
+    const shoes = await screen.findByRole("row", { name: /Shoes/ });
+    expect(shoes).toHaveAttribute("aria-current", "true");
+    expect(shoes).toHaveClass("bg-accent");
+    const books = screen.getByRole("row", { name: /Books/ });
+    expect(books).not.toHaveAttribute("aria-current");
+    expect(books).not.toHaveClass("bg-accent");
+
+    await userEvent.click(within(books).getByText("Books"));
+    expect(router.replace).toHaveBeenCalledWith("/collections/1?record=1-6", { scroll: false });
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   function recording(totalPages = 1) {
@@ -192,7 +211,7 @@ describe("CollectionTable", () => {
     expect(scroller?.parentElement).toHaveClass("flex-1", "flex-col");
 
     await userEvent.click(within(shoes).getByRole("button", { name: "Open Shoes" }));
-    expect(router.push).toHaveBeenCalledWith("/collections/1/records/5");
+    expect(router.push).toHaveBeenCalledWith("/collections/1?record=1-5", { scroll: false });
   });
 
   it("changes the number of rows per page", async () => {

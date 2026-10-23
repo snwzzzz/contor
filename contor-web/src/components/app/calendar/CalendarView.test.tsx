@@ -80,7 +80,7 @@ describe("CalendarView", () => {
 
     expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
     const friday = await screen.findByRole("listitem", { name: "Friday, 9 October 2026" });
-    expect(await within(friday).findByRole("link", { name: /Interview at Acme/ })).toHaveAttribute("href", "/collections/3/records/1");
+    expect(await within(friday).findByRole("link", { name: /Interview at Acme/ })).toHaveAttribute("href", "/calendar?view=month&date=2026-10-01&record=3-1");
     expect(within(screen.getByRole("listitem", { name: "Thursday, 8 October 2026" })).getByText("8")).toHaveAttribute("aria-current", "date");
     // Days of the neighbouring months fill the grid, muted.
     expect(screen.getByRole("listitem", { name: "Monday, 28 September 2026" })).toHaveClass("text-muted-foreground");
@@ -194,7 +194,24 @@ describe("CalendarView", () => {
     expect(await within(tuesday).findAllByRole("link")).toHaveLength(5);
     expect(within(tuesday).getByRole("link", { name: /Meeting 1/ })).toHaveAttribute("title", "Meeting 1 · 09:00 – 10:00");
     expect(within(tuesday).queryByRole("button", { name: /more on/ })).not.toBeInTheDocument();
-    expect(within(tuesday).getByTestId("cell-events")).toHaveClass("overflow-y-auto", "overflow-x-hidden");
+    const list = within(tuesday).getByTestId("cell-events");
+    expect(list).toHaveClass("overflow-y-auto", "overflow-x-hidden");
+    // A barely-there scrollbar (globals.css); an inline scrollbar-color would make Chromium draw its wide native one.
+    expect(list).toHaveClass("scrollbar-subtle");
+    expect(list.className).not.toMatch(/scrollbar-color/);
+  });
+
+  it("puts a day's events beside its date in the month (below it only on phones)", async () => {
+    api();
+    navigationState.search = "view=month";
+    renderWithProviders(<CalendarView />);
+
+    const friday = await screen.findByRole("listitem", { name: "Friday, 9 October 2026" });
+    const list = await within(friday).findByTestId("cell-events");
+    const date = within(friday).getByText("9");
+    expect(friday).toHaveClass("flex-col", "sm:flex-row");
+    expect(list.parentElement).toBe(date.parentElement);
+    expect(list).toHaveClass("flex-1", "min-w-0");
   });
 
   it("never scrolls sideways: week and month fit their width", async () => {
@@ -211,7 +228,7 @@ describe("CalendarView", () => {
     expect(month.innerHTML).not.toMatch(/min-w-\[/);
   });
 
-  it("shows the current week with the events at their time, as links to their records", async () => {
+  it("shows the current week with the events at their time, as links that open them in the detail sidebar", async () => {
     const urls: URL[] = [];
     api({
       "GET /api/collections/3/records": ({ url }) => {
@@ -224,7 +241,7 @@ describe("CalendarView", () => {
     expect(await screen.findByRole("heading", { name: "5 – 11 October 2026" })).toBeInTheDocument();
     const friday = screen.getByRole("group", { name: "Friday, 9 October 2026" });
     const interview = await within(friday).findByRole("link", { name: /Interview at Acme/ });
-    expect(interview).toHaveAttribute("href", "/collections/3/records/1");
+    expect(interview).toHaveAttribute("href", "/calendar?record=3-1");
     expect(interview).toHaveStyle({ top: `${10 * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` });
     expect(interview).toHaveTextContent("10:00 – 11:00");
 
@@ -232,6 +249,44 @@ describe("CalendarView", () => {
       `starts_at:gte:${new Date(2026, 9, 5).toISOString()}`,
       `starts_at:lt:${new Date(2026, 9, 12).toISOString()}`,
     ]);
+  });
+
+  it("zooms the hours with Ctrl and the mouse wheel, remembered, within limits", async () => {
+    api();
+    renderWithProviders(<CalendarView />);
+    const friday = await screen.findByRole("group", { name: "Friday, 9 October 2026" });
+    const interview = await within(friday).findByRole("link", { name: /Interview at Acme/ });
+    const scroller = screen.getByTestId("week-scroller");
+    const height = () => Number.parseFloat(interview.style.height);
+    expect(height()).toBe(HOUR_HEIGHT);
+
+    // A plain wheel scrolls as usual; the page is not zoomed.
+    expect(fireEvent.wheel(scroller, { deltaY: -100 })).toBe(true);
+    expect(height()).toBe(HOUR_HEIGHT);
+
+    // Ctrl + wheel down: smaller hours (the browser's own zoom is prevented).
+    expect(fireEvent.wheel(scroller, { deltaY: 100, ctrlKey: true })).toBe(false);
+    const smaller = height();
+    expect(smaller).toBeLessThan(HOUR_HEIGHT);
+    expect(interview).toHaveStyle({ top: `${10 * smaller}px` });
+    expect(Number(window.localStorage.getItem("contor.calendar.hourHeight"))).toBe(smaller);
+
+    // Ctrl + wheel up: bigger again; never below or above the limits.
+    fireEvent.wheel(scroller, { deltaY: -100, ctrlKey: true });
+    expect(height()).toBeGreaterThan(smaller);
+    for (let step = 0; step < 40; step++) fireEvent.wheel(scroller, { deltaY: 100, ctrlKey: true });
+    expect(height()).toBe(16);
+    for (let step = 0; step < 40; step++) fireEvent.wheel(scroller, { deltaY: -100, ctrlKey: true });
+    expect(height()).toBe(160);
+  });
+
+  it("opens the week at the remembered zoom", async () => {
+    window.localStorage.setItem("contor.calendar.hourHeight", "24");
+    api();
+    renderWithProviders(<CalendarView />);
+    const friday = await screen.findByRole("group", { name: "Friday, 9 October 2026" });
+
+    expect(await within(friday).findByRole("link", { name: /Interview at Acme/ })).toHaveStyle({ top: "240px", height: "24px" });
   });
 
   it("shows all-day events above the hours", async () => {
@@ -308,26 +363,17 @@ describe("CalendarView", () => {
     expect(await within(agenda).findByRole("link", { name: /Night shift/ })).toHaveTextContent("22:00 – 10 Oct 02:00");
   });
 
-  it("opens an event in the detail sidebar from the grid and from the agenda, keeping its link for a new tab", async () => {
-    api({
-      "GET /api/collections/3": { body: { ...collections[0], fields: [] } },
-      "GET /api/collections/3/records/1": { body: events.items[0] },
-      "GET /api/senders/contact-photos": { body: [] },
-      "GET /api/senders/logos": { body: [] },
-    });
+  it("opens events and to-dos in the detail sidebar (an address, so a new tab or a copied link shows it too)", async () => {
+    api();
+    navigationState.search = "view=week&date=2026-10-05";
     renderWithProviders(<CalendarView />);
 
+    const sheetHref = "/calendar?view=week&date=2026-10-05&record=3-1";
     const friday = await screen.findByRole("group", { name: "Friday, 9 October 2026" });
-    await userEvent.click(await within(friday).findByRole("link", { name: /Interview at Acme/ }));
-    const sheet = await screen.findByRole("dialog", { name: "Interview at Acme" });
-    expect(within(sheet).getByRole("link", { name: "Open full screen" })).toHaveAttribute("href", "/collections/3/records/1");
-    expect(router.push).not.toHaveBeenCalled();
-
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await within(friday).findByRole("link", { name: /Interview at Acme/ })).toHaveAttribute("href", sheetHref);
     const agenda = screen.getByRole("region", { name: "Agenda" });
-    await userEvent.click(within(agenda).getByRole("link", { name: /Interview at Acme/ }));
-    expect(await screen.findByRole("dialog", { name: "Interview at Acme" })).toBeInTheDocument();
+    expect(within(agenda).getByRole("link", { name: /Interview at Acme/ })).toHaveAttribute("href", sheetHref);
+    expect(within(agenda).getByRole("link", { name: "Send invoice" })).toHaveAttribute("href", "/calendar?view=week&date=2026-10-05&record=4-11");
   });
 
   it("marks a to-do done from the agenda", async () => {

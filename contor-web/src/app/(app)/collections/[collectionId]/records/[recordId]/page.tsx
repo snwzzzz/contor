@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { RecordDetail } from "@/components/app/collections/RecordDetail";
+import { RecordPage as RecordPageView } from "@/components/app/collections/RecordPage";
 
 function positiveId(value: string): number | null {
   const id = Number(value);
@@ -11,5 +11,5 @@ export default async function RecordPage({ params }: PageProps<"/collections/[co
   const collection = positiveId(collectionId);
   const record = positiveId(recordId);
   if (collection === null || record === null) notFound();
-  return <RecordDetail collectionId={collection} recordId={record} />;
+  return <RecordPageView collectionId={collection} recordId={record} />;
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppButton } from "@/components/app/AppButton";
-import { recordHref } from "@/components/app/collections/CollectionTable";
+import { recordHref } from "@/lib/record-sheet";
 import { RecordFieldInput } from "@/components/app/collections/RecordFieldInput";
 import { DetailSheet } from "@/components/app/DetailSheet";
 import { Input } from "@/components/ui/input";

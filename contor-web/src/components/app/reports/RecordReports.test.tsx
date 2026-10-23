@@ -57,6 +57,9 @@ describe("RecordReports", () => {
     expect(workspace).toHaveClass("lg:h-full");
     expect(workspace.className).not.toMatch(/100dvh/);
     expect(list).toHaveClass("lg:h-full", "lg:border-r");
+    // Both columns pad their own top, so the divider reaches the tabs above.
+    expect(list.firstElementChild).toHaveClass("lg:pt-4");
+    expect(screen.getByTestId("report-detail")).toHaveClass("lg:pt-4");
     expect(screen.getByRole("heading", { name: /What do you want to know/ }).parentElement).toHaveClass("mx-auto", "justify-center");
   });
 

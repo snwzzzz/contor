@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -100,12 +100,57 @@ describe("RecordFieldInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 
-  it("edits a date and time and reports it as an ISO instant", () => {
-    render(<RecordFieldInput field={field("DATETIME")} value="2026-10-19T08:30:00Z" onChange={vi.fn()} />);
+  it("edits a date and time as a date and a time in the chosen format, and reports an ISO instant", async () => {
+    const onChange = vi.fn();
+    function Harness() {
+      const [value, setValue] = useState<unknown>(new Date(2026, 9, 19, 8, 30).toISOString());
+      return (
+        <RecordFieldInput
+          field={field("DATETIME")}
+          value={value}
+          onChange={(next) => {
+            setValue(next);
+            onChange(next);
+          }}
+        />
+      );
+    }
+    render(<Harness />);
 
-    const input = screen.getByLabelText("Field");
-    expect(input).toHaveAttribute("type", "datetime-local");
-    expect((input as HTMLInputElement).value).toMatch(/^2026-10-19T\d{2}:30$/);
+    const date = screen.getByLabelText("Field");
+    expect(date).toHaveAttribute("type", "date");
+    expect(date).toHaveValue("2026-10-19");
+    // Not the browser's date-time field, which shows AM/PM by the system's locale: the time follows Settings.
+    const time = screen.getByRole("textbox", { name: "Field time" });
+    expect(time).toHaveValue("08:30");
+
+    await userEvent.tripleClick(time);
+    await userEvent.keyboard("14:15");
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 9, 19, 14, 15).toISOString());
+
+    fireEvent.change(date, { target: { value: "2026-10-20" } });
+    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 9, 20, 14, 15).toISOString());
+
+    fireEvent.change(date, { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("shows the time of a date and time with AM/PM when that format is chosen", () => {
+    window.localStorage.setItem("contor.timeFormat", "\"12h\"");
+    try {
+      render(<RecordFieldInput field={field("DATETIME")} value={new Date(2026, 9, 19, 14, 30).toISOString()} onChange={vi.fn()} />);
+
+      expect(screen.getByRole("textbox", { name: "Field time" })).toHaveValue("2:30 PM");
+    } finally {
+      window.localStorage.clear();
+    }
+  });
+
+  it("asks for the day first: the time is disabled until there is a date", () => {
+    render(<RecordFieldInput field={field("DATETIME")} value={null} onChange={vi.fn()} />);
+
+    expect(screen.getByLabelText("Field")).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Field time" })).toBeDisabled();
   });
 
   it("edits a related record by its id, and a file by its name", async () => {

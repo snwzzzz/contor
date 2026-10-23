@@ -2,12 +2,16 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
+import { resetNavigation } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { TodayCard } from "./TodayCard";
 import { COLLECTIONS, NOW, page, record, todayAt } from "./test-fixtures";
 
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
+
 describe("TodayCard", () => {
   beforeEach(() => {
+    resetNavigation("/");
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(NOW);
   });
@@ -42,6 +46,9 @@ describe("TodayCard", () => {
     expect(screen.queryByText("Later")).not.toBeInTheDocument();
     expect(screen.queryByText("Finished")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Calendar" })).toHaveAttribute("href", "/calendar");
+    // Each entry opens in the detail sidebar over the home page.
+    expect(screen.getByRole("link", { name: /Standup/ })).toHaveAttribute("href", "/?record=4-5");
+    expect(screen.getByRole("link", { name: /Pay invoice/ })).toHaveAttribute("href", "/?record=3-1");
   });
 
   it("pages through a busy day", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
-import Link from "next/link";
+import { RecordLink } from "@/components/app/collections/RecordLink";
 import { DUE_TONE } from "@/components/app/tasks/task-model";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +20,7 @@ type AgendaRow = { kind: "event"; event: RecordDto } | { kind: "task"; entry: Du
 
 const ROW = cn("flex items-baseline gap-3 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", ROW_HOVER);
 
-/** Today's calendar entries and the to-dos that are due today or overdue. */
+/** Today's calendar entries and the to-dos that are due today or overdue; each opens in the detail sidebar. */
 export function TodayCard() {
   const { events, dueTasks, eventsLoading, tasksLoading, error } = useTodayAgenda();
   const rows: AgendaRow[] = [
@@ -74,21 +74,21 @@ function EventRow({ event }: { event: RecordDto }) {
   const format = useTimeFormat();
   const start = eventStart(event);
   return (
-    <Link href="/calendar" className={ROW}>
+    <RecordLink collectionId={event.collectionId} recordId={event.id} className={ROW}>
       <span className="w-16 shrink-0 text-xs text-muted-foreground tabular-nums">
         {event.values.all_day === true || !start ? "All day" : formatTime(start, format)}
       </span>
       <span className="min-w-0 truncate text-sm">{event.title || "(Untitled event)"}</span>
-    </Link>
+    </RecordLink>
   );
 }
 
 function TaskRow({ entry }: { entry: DueTask }) {
   return (
-    <Link href="/tasks" className={ROW}>
+    <RecordLink collectionId={entry.task.collectionId} recordId={entry.task.id} className={ROW}>
       <span className="w-16 shrink-0 text-xs text-muted-foreground">To-do</span>
       <span className="min-w-0 flex-1 truncate text-sm">{entry.task.title || "(Untitled to-do)"}</span>
       <span className={cn("shrink-0 text-xs", entry.due.tone === "overdue" ? DUE_TONE.overdue : "text-muted-foreground")}>{entry.due.label}</span>
-    </Link>
+    </RecordLink>
   );
 }

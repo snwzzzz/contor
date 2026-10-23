@@ -2,7 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, FolderPlus, ListFilter, SearchX, Table2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
@@ -31,6 +31,7 @@ import { collectionTintNumber } from "@/lib/collection-tint";
 import { navItem, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { pageItems } from "@/lib/pagination";
 import { formatValue } from "@/lib/proposal-format";
+import { parseRecordParam, RECORD_PARAM, recordSheetHref } from "@/lib/record-sheet";
 import { buildFilters, countActiveFilters, filterKind, type ColumnFilter, type FilterState } from "@/lib/record-filters";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
@@ -50,10 +51,6 @@ interface Column {
   field?: CollectionFieldDto;
 }
 
-export function recordHref(collectionId: number, recordId: number): string {
-  return `/collections/${collectionId}/records/${recordId}`;
-}
-
 function hiddenColumnsKey(collectionId: number): string {
   return `contor.table.${collectionId}.hiddenColumns`;
 }
@@ -62,9 +59,15 @@ function parseHidden(raw: unknown): readonly string[] | undefined {
   return Array.isArray(raw) && raw.every((key) => typeof key === "string") ? raw : undefined;
 }
 
-/** A collection's records as a table: search, column filters and visibility, sorting, numbered paging; double click opens. */
+/**
+ * A collection's records as a table: search, column filters and visibility, sorting, numbered paging; a click, Enter or
+ * the row's open button shows the record in the detail sidebar, and its row stays marked while it is open there.
+ */
 export function CollectionTable({ collectionId }: { collectionId: number }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const shown = parseRecordParam(searchParams.get(RECORD_PARAM));
   const { data: collection, error: collectionError } = useGetCollection(collectionId);
   const hidden = useStoredValue(hiddenColumnsKey(collectionId), NO_HIDDEN, parseHidden);
   const [search, setSearch] = useState("");
@@ -131,7 +134,10 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
   }
 
   function open(record: RecordDto) {
-    router.push(recordHref(collectionId, record.id));
+    const href = recordSheetHref(pathname, searchParams, collectionId, record.id);
+    // From one record to the next the sidebar stays one history entry, so Back closes it instead of stepping through.
+    if (shown) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
   }
 
   return (
@@ -261,35 +267,44 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
             </thead>
             <tbody aria-busy={isPending || undefined}>
               {isPending ? <SkeletonRows columns={columns.length} rows={Math.min(pageSize, 12)} /> : null}
-              {(records?.items ?? []).map((record) => (
-                <tr
-                  key={record.id}
-                  tabIndex={0}
-                  title="Double-click to open"
-                  onDoubleClick={() => open(record)}
-                  onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
-                    if (event.key === "Enter" && event.target === event.currentTarget) open(record);
-                  }}
-                  className="group cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
-                >
-                  {columns.map((column) => (
-                    <td key={column.key} className={cn("max-w-72 truncate border-b px-3 py-3.5", COLUMN_SEPARATOR, column.key === TITLE_COLUMN && "font-medium")}>
-                      <CellValue value={column.field ? record.values[column.key] : record.title} />
+              {(records?.items ?? []).map((record) => {
+                const selected = shown?.collectionId === collectionId && shown.recordId === record.id;
+                return (
+                  <tr
+                    key={record.id}
+                    tabIndex={0}
+                    aria-current={selected ? "true" : undefined}
+                    onClick={(event) => {
+                      // The row's own open button handles its click.
+                      if (!(event.target as HTMLElement).closest("button")) open(record);
+                    }}
+                    onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" && event.target === event.currentTarget) open(record);
+                    }}
+                    className={cn(
+                      "group cursor-pointer focus-visible:outline-none",
+                      selected ? "bg-accent" : "hover:bg-muted/50 focus-visible:bg-muted/50",
+                    )}
+                  >
+                    {columns.map((column) => (
+                      <td key={column.key} className={cn("max-w-72 truncate border-b px-3 py-3.5", COLUMN_SEPARATOR, column.key === TITLE_COLUMN && "font-medium")}>
+                        <CellValue value={column.field ? record.values[column.key] : record.title} />
+                      </td>
+                    ))}
+                    <td className="border-b px-1 py-0.5 text-right">
+                      <AppButton
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100"
+                        aria-label={`Open ${record.title ?? `record ${record.id}`}`}
+                        onClick={() => open(record)}
+                      >
+                        <ArrowUpRight aria-hidden="true" />
+                      </AppButton>
                     </td>
-                  ))}
-                  <td className="border-b px-1 py-0.5 text-right">
-                    <AppButton
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100"
-                      aria-label={`Open ${record.title ?? `record ${record.id}`}`}
-                      onClick={() => open(record)}
-                    >
-                      <ArrowUpRight aria-hidden="true" />
-                    </AppButton>
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {!isPending && records?.items.length === 0 ? (

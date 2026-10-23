@@ -44,14 +44,17 @@ describe("RecordSheet", () => {
     renderWithProviders(<RecordSheet collectionId={3} recordId={1} onOpenChange={onOpenChange} />);
 
     const sheet = await screen.findByRole("dialog", { name: "Interview at Acme" });
-    expect(within(sheet).getByText("Calendar")).toBeInTheDocument();
+    // A bar on top: where the record lives, then its title.
+    const trail = within(sheet).getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Calendar" })).toHaveAttribute("href", "/calendar");
+    expect(within(trail).getByText("Interview at Acme")).toHaveAttribute("aria-current", "page");
     const fullScreen = within(sheet).getByRole("link", { name: "Open full screen" });
     expect(fullScreen).toHaveAttribute("href", "/collections/3/records/1");
     // Same size and row as the close button: both pinned to the sheet's top right.
     const close = within(sheet).getByRole("button", { name: "Close" });
     expect(fullScreen).toHaveClass("size-7");
     expect(close).toHaveClass("size-7");
-    expect(fullScreen.parentElement).toHaveClass("absolute", "top-3");
+    expect(fullScreen.closest("[data-slot=sheet-bar]")).toBe(close.closest("[data-slot=sheet-bar]"));
     const details = await within(sheet).findByRole("form", { name: "Details" });
     expect(within(details).getByRole("textbox", { name: "Location" })).toHaveValue("Acme HQ");
     expect(within(sheet).getByRole("tablist", { name: "Record sections" })).toBeInTheDocument();

@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
+import { navigationState, resetNavigation } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { RecordDetail } from "./RecordDetail";
 
@@ -44,6 +45,8 @@ function api(contactPhotos: unknown[], logos: string[]) {
 }
 
 describe("RecordDetail", () => {
+  beforeEach(() => resetNavigation("/collections/1/records/5"));
+
   it("shows the record as a profile without a banner: breadcrumbs, the picture next to title | collection, and every field", async () => {
     api([{ id: 9, emailAddress: "anna.berger@acme.com" }], ["acme.com"]);
 
@@ -55,16 +58,18 @@ describe("RecordDetail", () => {
     expect(picture).toHaveAttribute("width", "64");
     const header = screen.getByRole("heading", { level: 1, name: "Anna Berger" }).closest("header") as HTMLElement;
     expect(within(header).getByText("People")).toBeInTheDocument();
-    expect(within(header).getByText(/^Added by/)).toBeInTheDocument();
     expect(within(header).getByRole("link", { name: "Table view" })).toHaveAttribute("href", "/collections/1");
+    // A rounded square, not a circle.
+    expect(picture).toHaveClass("rounded-lg");
     expect(picture.getAttribute("src")).toContain("/api/senders/contact-photos/9");
     const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(within(trail).getByRole("link", { name: "People" })).toHaveAttribute("href", "/collections/1");
     expect(within(trail).getByText("Anna Berger")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
 
-    // Every field is an input with its current value.
+    // Every field is an input with its current value, in a row of label and value.
     const details = screen.getByRole("form", { name: "Details" });
+    expect(within(details).getByText(/^by the assistant on/)).toBeInTheDocument();
     expect(within(details).getByRole("textbox", { name: "Title" })).toHaveValue("Anna Berger");
     expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
     expect(within(details).getByRole("textbox", { name: "Phone" })).toHaveValue("+49 89 1234567");
@@ -72,6 +77,64 @@ describe("RecordDetail", () => {
     expect(within(details).getByRole("link", { name: "Send email to Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
     // Nothing to save until something changes.
     expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("shows the profile: the website or email under the title, and quick actions for what the record has", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const profile = (await screen.findByTestId("record-profile")) as HTMLElement;
+    expect(within(profile).getByText("Anna Berger")).toHaveClass("text-lg", "font-semibold");
+    expect(within(profile).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
+    const actions = within(profile).getByRole("group", { name: "Quick actions" });
+    expect(within(actions).getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
+    expect(within(actions).getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+49891234567");
+    expect(within(actions).getByRole("button", { name: "Ask" })).toBeInTheDocument();
+    expect(screen.getByTestId("record-initial")).toHaveClass("rounded-lg");
+  });
+
+  it("asks about the record from the quick actions: the Reports tab", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": { body: [] },
+    });
+    const onTabChange = vi.fn();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" onTabChange={onTabChange} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ask" }));
+
+    expect(onTabChange).toHaveBeenCalledWith("reports");
+    expect(screen.getByRole("tab", { name: /Reports/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("lists the details as rows: an icon and the name on the left, the value to edit on the right", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const details = await screen.findByRole("form", { name: "Details" });
+    const rows = details.querySelectorAll("[data-slot=property-row]");
+    // Title, the five fields and who added it.
+    expect(rows).toHaveLength(7);
+    // The list takes the whole width of the sidebar or page.
+    expect(rows[0].parentElement?.className).not.toMatch(/max-w-/);
+    const email = within(details).getByRole("textbox", { name: "Email" });
+    const row = email.closest("[data-slot=property-row]") as HTMLElement;
+    // Room for names like "Customer number".
+    expect(row).toHaveClass("grid-cols-[10rem_minmax(0,1fr)]");
+    expect(within(row).getByText("Email").parentElement?.querySelector("svg")).not.toBeNull();
+    // The value looks like text until it is hovered or focused.
+    expect(email).toHaveAttribute("data-variant", "ghost");
+    expect(email).toHaveClass("border-transparent");
+    // An empty value says so (and is still clickable); long text grows instead of having a resize handle.
+    const notes = within(details).getByRole("textbox", { name: "Notes" });
+    expect(notes).toHaveAttribute("placeholder", "Empty");
+    expect(notes).toHaveClass("resize-none");
   });
 
   it("has a sidebar version: the same summary and tabs, without breadcrumbs, page title or page commands", async () => {
@@ -83,10 +146,11 @@ describe("RecordDetail", () => {
     expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
     expect(screen.getByRole("tablist", { name: "Record sections" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Emails", "Reports", "Connections"]);
-    // The sidebar's own header names the collection and the title.
+    // The sidebar's own bar names the collection.
     expect(screen.queryByText("People")).not.toBeInTheDocument();
-    expect(screen.getByText(/^Added by the assistant/)).toBeInTheDocument();
-    expect(screen.getByTestId("record-initial")).toHaveStyle({ width: "40px" });
+    expect(screen.getByTestId("record-initial")).toHaveStyle({ width: "48px" });
+    // The tabs carry their icons here too.
+    for (const tab of screen.getAllByRole("tab")) expect(tab.querySelector("svg")).not.toBeNull();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Table view" })).not.toBeInTheDocument();
@@ -204,8 +268,27 @@ describe("RecordDetail", () => {
     // On the Reports tab the record page is exactly as high as the screen: a column whose panel takes the rest.
     expect(panel.closest("article")).toHaveClass("lg:flex", "lg:flex-1", "lg:min-h-0", "lg:flex-col");
     expect(panel).toHaveClass("lg:min-h-0", "lg:flex-1");
+    // The list's divider starts right at the tabs' hairline: no gap above it (the columns pad themselves).
+    expect(panel).toHaveClass("lg:pt-0");
     const list = within(panel).getByRole("complementary", { name: "Report list" });
     expect(await within(list).findByRole("button", { name: /Overview/ })).toBeInTheDocument();
+  });
+
+  it("fills the sidebar's height on the Reports tab, so the list's divider runs to the bottom", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": { body: [] },
+    });
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" tab="reports" />);
+
+    const panel = await screen.findByRole("tabpanel", { name: /Reports/ });
+    expect(panel.closest("article")).toHaveClass("flex", "min-h-full", "flex-col");
+    expect(panel).toHaveClass("flex", "flex-1", "flex-col", "pb-0");
+    expect(within(panel).getByRole("region", { name: "Reports" })).toHaveClass("flex-1");
   });
 
   it("opens on the details tab and switches to the emails the record comes up in", async () => {
@@ -428,11 +511,17 @@ describe("RecordDetail", () => {
       "GET /api/collections/2/records/8": { body: { ...anna, id: 8, collectionId: 2, title: "Acme GmbH", values: {} } },
     });
 
+    navigationState.pathname = "/collections/1/records/5";
+    navigationState.search = "tab=connections";
     renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     await userEvent.click(await screen.findByRole("tab", { name: /Connections/ }));
     const panel = screen.getByRole("tabpanel", { name: /Connections/ });
-    expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute("href", "/collections/2/records/8");
+    // Opens in the detail sidebar over the current page, which keeps its own tab.
+    expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute(
+      "href",
+      "/collections/1/records/5?tab=connections&record=2-8",
+    );
     expect(within(panel).getByText("works at")).toBeInTheDocument();
     expect(within(panel).getByText("Organizations")).toBeInTheDocument();
     expect(within(panel).getByLabelText("Added by the assistant")).toBeInTheDocument();

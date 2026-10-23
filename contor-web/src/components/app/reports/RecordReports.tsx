@@ -71,7 +71,7 @@ export function RecordReports({ collectionId, recordId, recordTitle }: RecordRep
     <section
       aria-label="Reports"
       className={cn(
-        "grid gap-6 lg:h-full lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:gap-0",
+        "grid flex-1 gap-6 lg:h-full lg:min-h-0 lg:grid-rows-[minmax(0,1fr)] lg:gap-0",
         // The list slides in and out: its column animates between 16rem and 0 (it stays mounted while it moves).
         "lg:transition-[grid-template-columns] lg:duration-200 lg:ease-out motion-reduce:transition-none",
         listOpen ? "lg:grid-cols-[16rem_minmax(0,1fr)]" : "lg:grid-cols-[0rem_minmax(0,1fr)]",
@@ -90,7 +90,8 @@ export function RecordReports({ collectionId, recordId, recordTitle }: RecordRep
       <div
         data-testid="report-detail"
         className={cn(
-          "flex min-h-0 min-w-0 flex-col gap-4 lg:overflow-x-hidden lg:overflow-y-auto lg:pb-6 lg:transition-[padding] lg:duration-200",
+          // lg:pt-4: the columns pad their own top, so the divider between them reaches the tabs above.
+          "flex min-h-0 min-w-0 flex-col gap-4 lg:overflow-x-hidden lg:overflow-y-auto lg:pt-4 lg:pb-6 lg:transition-[padding] lg:duration-200",
           listOpen && "lg:pl-6",
         )}
       >
@@ -188,7 +189,7 @@ function ReportList({ open, reports, selected, onSelect, onNew, onHide }: Report
       )}
     >
       {/* Fixed width, so the content does not reflow while the column slides. */}
-      <div className="flex h-full min-h-0 flex-col gap-2 lg:w-60">
+      <div className="flex h-full min-h-0 flex-col gap-2 lg:w-60 lg:pt-4">
         <div className="flex h-8 items-center gap-1">
           <h3 className="mr-auto text-sm font-medium">Reports</h3>
           <Button variant="ghost" size="icon-sm" aria-label="New report" title="New report" className="text-muted-foreground" onClick={onNew}>

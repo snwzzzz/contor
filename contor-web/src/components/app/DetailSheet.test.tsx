@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ListTodo } from "lucide-react";
+import Link from "next/link";
 import { DetailSheet } from "./DetailSheet";
 
 describe("DetailSheet", () => {
@@ -16,6 +17,31 @@ describe("DetailSheet", () => {
     expect(dialog).toHaveTextContent("New to-do");
     expect(dialog).toHaveTextContent("Body text");
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+  });
+
+  it("can show a compact bar instead of the header: the trail, then the title, the actions and close in one row", () => {
+    render(
+      <DetailSheet
+        open
+        onOpenChange={() => {}}
+        title="Vertex Financial"
+        trail={<Link href="/collections/3">Customers</Link>}
+        actions={<button type="button">Full screen</button>}
+      >
+        <p>Body</p>
+      </DetailSheet>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Vertex Financial" });
+    const bar = dialog.querySelector("[data-slot=sheet-bar]") as HTMLElement;
+    expect(bar).toHaveClass("h-12", "border-b");
+    const trail = within(bar).getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Customers" })).toHaveAttribute("href", "/collections/3");
+    // The title is the last crumb (and still names the dialog).
+    expect(within(trail).getByText("Vertex Financial")).toHaveAttribute("aria-current", "page");
+    expect(within(bar).getByRole("button", { name: "Full screen" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Close" })).toBeInTheDocument();
+    expect(dialog.querySelector("[data-slot=sheet-header]")).toBeNull();
   });
 
   it("shows the icon bare and small next to the label, like the page headers: no colored tile", () => {
@@ -89,6 +115,20 @@ describe("DetailSheet", () => {
       expect(overlay?.className).toMatch(/backdrop-blur-none/);
       expect(overlay?.className).toMatch(/bg-transparent/);
       expect(overlay?.className).not.toMatch(/bg-black/);
+    });
+
+    it("floats inside the window with a slight border all around and rounded corners (edge to edge on phones)", () => {
+      open();
+
+      const dialog = screen.getByRole("dialog", { name: "Details" });
+      expect(dialog).toHaveClass(
+        "data-[side=right]:sm:inset-y-2",
+        "data-[side=right]:sm:right-2",
+        "data-[side=right]:sm:h-auto",
+        "data-[side=right]:sm:rounded-xl",
+        "data-[side=right]:sm:border",
+        "sm:overflow-hidden",
+      );
     });
 
     it("opens at a third of the window (at least 24rem), full width on phones", () => {
