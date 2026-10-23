@@ -6,6 +6,7 @@ import { useId, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetAiSettingsQueryKey, useGetAiSettings, useUpdateAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import { NativeSelect } from "@/components/ui/native-select";
+import { setTimeFormat, useTimeFormat, type TimeFormat } from "@/lib/time-format";
 import { cn } from "@/lib/utils";
 import { SETTINGS_SELECT, SettingsRow } from "./SettingsRow";
 
@@ -14,6 +15,18 @@ const THEMES: readonly { value: string; label: string; icon: LucideIcon }[] = [
   { value: "dark", label: "Dark", icon: Moon },
   { value: "system", label: "System", icon: Monitor },
 ];
+
+const TIME_FORMATS: readonly { value: TimeFormat; label: string }[] = [
+  { value: "24h", label: "24-hour" },
+  { value: "12h", label: "12-hour (AM/PM)" },
+];
+
+const SEGMENT = cn(
+  // relative: the hidden radio stays inside its label, so focusing it never scrolls the dialog.
+  "relative flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm text-muted-foreground hover:text-foreground",
+  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+);
+const SEGMENT_CHECKED = "bg-background text-foreground shadow-xs";
 
 const noSubscribe = () => () => {};
 
@@ -26,11 +39,16 @@ function useMounted(): boolean {
   );
 }
 
-/** The General section of the settings: the color theme (light, dark or the system's), the language and whether the AI reads hidden mailboxes. */
+/**
+ * The General section of the settings: the color theme (light, dark or the system's), the time format (24- or 12-hour),
+ * the language and whether the AI reads hidden mailboxes.
+ */
 export function GeneralSettings() {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
   const themeId = useId();
+  const timeFormatId = useId();
+  const timeFormat = useTimeFormat();
   const languageId = useId();
   const hiddenId = useId();
   const current = mounted ? (theme ?? "system") : undefined;
@@ -48,12 +66,7 @@ export function GeneralSettings() {
           {THEMES.map((option) => (
             <label
               key={option.value}
-              className={cn(
-                // relative: the hidden radio stays inside its label, so focusing it never scrolls the dialog.
-                "relative flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm text-muted-foreground hover:text-foreground",
-                "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
-                current === option.value && "bg-background text-foreground shadow-xs",
-              )}
+              className={cn(SEGMENT, current === option.value && SEGMENT_CHECKED)}
             >
               <input
                 type="radio"
@@ -64,6 +77,23 @@ export function GeneralSettings() {
                 className="sr-only"
               />
               <option.icon aria-hidden="true" className="size-3.5" />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </SettingsRow>
+      <SettingsRow title="Time format" hint="How times are shown and typed, e.g. 14:30 or 2:30 PM." labelId={timeFormatId}>
+        <div role="radiogroup" aria-labelledby={timeFormatId} className="flex rounded-lg bg-muted p-0.5">
+          {TIME_FORMATS.map((option) => (
+            <label key={option.value} className={cn(SEGMENT, timeFormat === option.value && SEGMENT_CHECKED)}>
+              <input
+                type="radio"
+                name={`${timeFormatId}-time-format`}
+                value={option.value}
+                checked={timeFormat === option.value}
+                onChange={() => setTimeFormat(option.value)}
+                className="sr-only"
+              />
               {option.label}
             </label>
           ))}

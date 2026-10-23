@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { QuietEmpty } from "@/components/app/home/HomeSection";
 import { DUE_TONE, stateOf, TASK_LIST_PARAMS } from "@/components/app/tasks/task-model";
+import { TimeInput } from "@/components/app/TimeInput";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
@@ -44,6 +45,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ROW_HOVER } from "@/lib/card-hover";
 import { describeDue, type DueDescription } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
+import { formatClock, formatTime, useTimeFormat, type TimeFormat } from "@/lib/time-format";
 import { cn } from "@/lib/utils";
 
 /** Height of one hour in the week grid (px). */
@@ -55,7 +57,6 @@ const DEFAULT_MINUTES = 60;
 const MIN_EVENT_HEIGHT = 22;
 const ALL_DAY_ROW = 24;
 
-const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
 const WEEKDAY_SHORT = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
@@ -90,15 +91,15 @@ function span(record: RecordDto, start: Date): { start: Date; end: Date } {
   return { start, end: end > midnight ? midnight : end };
 }
 
-/** "10:00 – 11:00"; an end on another day carries its date ("22:00 – 24 Oct 02:00"). */
-function timeRange(record: RecordDto): string {
+/** "10:00 – 11:00" (or "10:00 AM – 11:00 AM"); an end on another day carries its date ("22:00 – 24 Oct 02:00"). */
+function timeRange(record: RecordDto, format: TimeFormat): string {
   const start = startsAt(record);
   if (!start || isAllDay(record)) return "All day";
   const value = record.values.ends_at;
   const given = typeof value === "string" ? new Date(value) : null;
   const end = given && given > start ? given : new Date(start.getTime() + DEFAULT_MINUTES * 60_000);
-  const endText = sameDay(start, end) ? TIME.format(end) : `${DAY_MONTH_SHORT.format(end)} ${TIME.format(end)}`;
-  return `${TIME.format(start)} – ${endText}`;
+  const endText = sameDay(start, end) ? formatTime(end, format) : `${DAY_MONTH_SHORT.format(end)} ${formatTime(end, format)}`;
+  return `${formatTime(start, format)} – ${endText}`;
 }
 
 /** The current time, moving on every minute (for the now line). */
@@ -189,6 +190,11 @@ interface HourRange {
 /** "09:00"; the end of the day is the last minute ("23:59"), so it stays a time of that day. */
 function hourText(hour: number): string {
   return hour >= 24 ? "23:59" : `${String(hour).padStart(2, "0")}:00`;
+}
+
+/** An hour in the grid's narrow gutter: "14:00", or "2 PM" in the 12-hour format. */
+function hourLabel(hour: number, format: TimeFormat): string {
+  return format === "24h" ? hourText(hour) : `${hour % 12 === 0 ? 12 : hour % 12} ${hour < 12 ? "AM" : "PM"}`;
 }
 
 /** The hours of an opened day ("14:00"–"17:00") back as a range, for the planned block in the week grid. */
@@ -467,12 +473,13 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
 
 /** An event in a month cell: all-day ones as a tinted bar, timed ones as a tinted dot, the time and the title. */
 function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectionId: number; faded: boolean }) {
+  const format = useTimeFormat();
   const start = startsAt(event);
   const allDay = isAllDay(event);
   return (
     <EventLink eventId={event.id}
       href={recordHref(collectionId, event.id)}
-      title={`${event.title} · ${timeRange(event)}`}
+      title={`${event.title} · ${timeRange(event, format)}`}
       className={cn(
         "relative flex min-w-0 items-start gap-1.5 rounded-sm px-1.5 py-0.5 text-xs leading-4 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-ring",
         allDay ? "border-l-2 border-tint-1-vivid bg-tint-1 text-tint-1-foreground hover:opacity-80" : "text-foreground hover:bg-muted",
@@ -481,7 +488,7 @@ function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectio
     >
       {allDay ? null : <span aria-hidden="true" className="mt-[5px] size-1.5 shrink-0 rounded-full bg-tint-1-vivid" />}
       {/* Narrow cells keep the room for the title; the time is in the tooltip and the agenda. */}
-      {start && !allDay ? <span className="hidden shrink-0 text-muted-foreground tabular-nums xl:inline">{TIME.format(start)}</span> : null}
+      {start && !allDay ? <span className="hidden shrink-0 text-muted-foreground tabular-nums xl:inline">{formatTime(start, format)}</span> : null}
       {/* The whole title, wrapped between words (the cell scrolls when it gets long); a word only breaks when it is
           wider than the cell itself. */}
       <span className="min-w-0 break-words hyphens-auto">{event.title || "(Untitled event)"}</span>
@@ -508,6 +515,7 @@ interface WeekGridProps {
  * Pressing on an hour and dragging up or down over others plans an event over all of them (one hour on a click).
  */
 function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, onOpenDay }: WeekGridProps) {
+  const format = useTimeFormat();
   const scroller = useRef<HTMLDivElement>(null);
   const thisWeek = days.some((day) => sameDay(day, now));
   const firstHour = thisWeek ? Math.min(Math.max(now.getHours() - 3, 0), 15) : 7;
@@ -588,7 +596,7 @@ function WeekGrid({ days, events, collectionId, now, selected, planned, onOpen, 
           <div className="relative" style={{ height: 24 * HOUR_HEIGHT }}>
             {HOURS.slice(1).map((hour) => (
               <span key={hour} className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums" style={{ top: hour * HOUR_HEIGHT }}>
-                {String(hour).padStart(2, "0")}:00
+                {hourLabel(hour, format)}
               </span>
             ))}
           </div>
@@ -637,6 +645,7 @@ interface DayColumnProps {
 }
 
 function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, now, selected, range, slots, onOpenDay }: DayColumnProps) {
+  const format = useTimeFormat();
   const today = sameDay(day, now);
   const placed = layoutDay(
     timed.flatMap((event) => {
@@ -693,7 +702,7 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
             key={hour}
             type="button"
             tabIndex={-1}
-            aria-label={`New event on ${dayTitle(day)} at ${hourText(hour)}`}
+            aria-label={`New event on ${dayTitle(day)} at ${formatClock(hourText(hour), format)}`}
             onPointerDown={(event) => slots.onPointerDown(day, hour, event)}
             onPointerEnter={() => slots.onPointerEnter(day, hour)}
             onClick={() => slots.onClick(day, hour)}
@@ -717,7 +726,7 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
           >
             <span className="block font-medium">New event</span>
             <span className="block text-muted-foreground tabular-nums">
-              {hourText(range.from)} – {hourText(range.to)}
+              {formatClock(hourText(range.from), format)} – {formatClock(hourText(range.to), format)}
             </span>
           </div>
         ) : null}
@@ -739,6 +748,7 @@ function DayColumn({ day, weekend, allDay, allDayHeight, timed, collectionId, no
 
 /** A timed event in its day column: placed by start and end, side by side with the events it overlaps. */
 function EventBlock({ event, placed, collectionId, past }: { event: RecordDto; placed: PlacedEvent; collectionId: number; past: boolean }) {
+  const format = useTimeFormat();
   const top = (minutesOf(placed.start) / 60) * HOUR_HEIGHT;
   const endMinutes = sameDay(placed.start, placed.end) ? minutesOf(placed.end) : DAY_MINUTES;
   const height = Math.max(((endMinutes - minutesOf(placed.start)) / 60) * HOUR_HEIGHT, MIN_EVENT_HEIGHT);
@@ -748,7 +758,7 @@ function EventBlock({ event, placed, collectionId, past }: { event: RecordDto; p
   return (
     <EventLink eventId={event.id}
       href={recordHref(collectionId, event.id)}
-      title={`${event.title} · ${timeRange(event)}`}
+      title={`${event.title} · ${timeRange(event, format)}`}
       className={cn(
         "absolute z-[5] overflow-hidden rounded-sm border-l-2 border-tint-1-vivid bg-tint-1 px-1.5 text-xs text-tint-1-foreground outline-none ring-background transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring",
         short ? "flex items-center gap-1.5 py-0" : "py-1",
@@ -767,7 +777,7 @@ function EventBlock({ event, placed, collectionId, past }: { event: RecordDto; p
       >
         {event.title || "(Untitled event)"}
       </span>
-      <span className={cn("leading-4 tabular-nums opacity-75", short ? "shrink-0" : "block truncate")}>{timeRange(event)}</span>
+      <span className={cn("leading-4 tabular-nums opacity-75", short ? "shrink-0" : "block truncate")}>{timeRange(event, format)}</span>
     </EventLink>
   );
 }
@@ -788,6 +798,7 @@ interface DueTask {
 
 /** Overdue to-dos, then each day of the week that has events or to-dos due; quiet rows under small day headings. */
 function WeekAgenda({ days, events, eventsId, tasks, tasksId, now }: WeekAgendaProps) {
+  const format = useTimeFormat();
   const queryClient = useQueryClient();
   const update = useUpdateRecord({
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListRecordsQueryKey(tasksId) }) },
@@ -840,7 +851,7 @@ function WeekAgenda({ days, events, eventsId, tasks, tasksId, now }: WeekAgendaP
                 <CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
                   <span className="text-sm break-words">{event.title || "(Untitled event)"}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">{timeRange(event)}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{timeRange(event, format)}</span>
                   {typeof event.values.location === "string" && event.values.location ? (
                     <span className="flex items-start gap-1 text-xs break-words text-muted-foreground">
                       <MapPin aria-hidden="true" className="mt-0.5 size-3 shrink-0" />
@@ -921,6 +932,7 @@ function atTime(day: Date, time: string): Date | null {
 
 /** One day: its events and a quick form to add an event (from–until, or all day). */
 function DayAgenda({ day, initialStart, initialEnd, collectionId, events, onClose }: DayAgendaProps) {
+  const format = useTimeFormat();
   const queryClient = useQueryClient();
   const headingId = useId();
   const [title, setTitle] = useState("");
@@ -975,7 +987,7 @@ function DayAgenda({ day, initialStart, initialEnd, collectionId, events, onClos
                 <CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                 <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0.5">
                   <span className="text-sm break-words">{event.title || "(Untitled event)"}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">{timeRange(event)}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{timeRange(event, format)}</span>
                 </span>
               </EventLink>
             </li>
@@ -990,11 +1002,11 @@ function DayAgenda({ day, initialStart, initialEnd, collectionId, events, onClos
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           <label className="flex items-center gap-2">
             <span className="text-muted-foreground">Time</span>
-            <Input type="time" value={time} disabled={allDay} onChange={(event) => setTime(event.target.value)} className="w-auto px-2" />
+            <TimeInput value={time} disabled={allDay} onChange={setTime} />
           </label>
           <label className="flex items-center gap-2">
             <span className="text-muted-foreground">Until</span>
-            <Input type="time" value={until} disabled={allDay} onChange={(event) => setUntil(event.target.value)} className="w-auto px-2" />
+            <TimeInput value={until} disabled={allDay} onChange={setUntil} />
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} className="size-4 accent-primary" />

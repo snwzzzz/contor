@@ -363,6 +363,34 @@ describe("CalendarView", () => {
     );
   });
 
+  it("shows times with AM/PM when the 12-hour format is chosen, and still adds the event at that time", async () => {
+    window.localStorage.setItem("contor.timeFormat", "\"12h\"");
+    const calls = api({ "POST /api/collections/3/records": { status: 201, body: events.items[0] } });
+    renderWithProviders(<CalendarView />);
+    const friday = await screen.findByRole("group", { name: "Friday, 9 October 2026" });
+    expect(await within(friday).findByRole("link", { name: /Interview at Acme/ })).toHaveTextContent("10:00 AM – 11:00 AM");
+
+    await userEvent.click(screen.getByRole("button", { name: "New event on Tuesday, 6 October at 2:00 PM" }));
+    const day = screen.getByRole("region", { name: "Tuesday, 6 October" });
+    expect(within(day).getByLabelText("Time")).toHaveValue("2:00 PM");
+    expect(within(day).getByLabelText("Until")).toHaveValue("3:00 PM");
+    await userEvent.clear(within(day).getByLabelText("Until"));
+    await userEvent.type(within(day).getByLabelText("Until"), "4:30 pm");
+    await userEvent.type(within(day).getByRole("textbox", { name: "Event title" }), "Dentist");
+    await userEvent.click(within(day).getByRole("button", { name: "Add event" }));
+
+    await waitFor(() =>
+      expect(calls.find((call) => call.method === "POST")?.body).toEqual({
+        title: "Dentist",
+        values: {
+          starts_at: new Date(2026, 9, 6, 14, 0).toISOString(),
+          ends_at: new Date(2026, 9, 6, 16, 30).toISOString(),
+          all_day: false,
+        },
+      }),
+    );
+  });
+
   it("drags across hours to plan an event over all of them, shown in the grid while it is planned", async () => {
     const calls = api({ "POST /api/collections/3/records": { status: 201, body: events.items[0] } });
     renderWithProviders(<CalendarView />);

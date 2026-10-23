@@ -58,6 +58,19 @@ describe("GeneralSettings", () => {
     expect(screen.getByRole("radio", { name: "Light" })).toBeChecked();
   });
 
+  it("picks the time format: 24-hour by default, or 12-hour with AM/PM, remembered", async () => {
+    renderWithProviders(<GeneralSettings />);
+
+    expect(screen.getByRole("radiogroup", { name: "Time format" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "24-hour" })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("radio", { name: "12-hour (AM/PM)" }));
+
+    expect(screen.getByRole("radio", { name: "12-hour (AM/PM)" })).toBeChecked();
+    expect(window.localStorage.getItem("contor.timeFormat")).toBe("\"12h\"");
+    window.localStorage.clear();
+  });
+
   it("shows the language: English only for now, not changeable yet", () => {
     renderWithProviders(<GeneralSettings />);
 
