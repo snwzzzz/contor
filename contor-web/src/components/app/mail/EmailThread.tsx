@@ -61,7 +61,7 @@ export function EmailThread({ emailId, preview, picture }: EmailThreadProps) {
 
   return (
     <section aria-label="Conversation" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-5 py-3.5 shadow-xs">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border bg-surface-email px-5 py-3.5 shadow-xs">
         <h2 className="text-lg leading-snug font-semibold tracking-tight">{subject}</h2>
         {messages.length > 1 ? (
           <AppButton size="sm" variant="ghost" onClick={() => setAllOpen((open) => !open)}>
@@ -96,10 +96,10 @@ function ThreadPreview({ email, picture }: { email: EmailSummaryDto; picture: st
   const sender = own ? "You" : email.fromName || email.fromAddress || "Unknown sender";
   return (
     <section aria-label="Conversation" aria-busy="true" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-      <header className="flex shrink-0 items-center rounded-lg border bg-card px-5 py-3.5 shadow-xs">
+      <header className="flex shrink-0 items-center rounded-lg border bg-surface-email px-5 py-3.5 shadow-xs">
         <h2 className="text-lg leading-snug font-semibold tracking-tight">{email.subject || "(No subject)"}</h2>
       </header>
-      <article className="flex shrink-0 items-start gap-3 rounded-lg border border-primary/40 bg-card px-5 py-3.5 shadow-xs">
+      <article className="flex shrink-0 items-start gap-3 rounded-lg border border-primary/40 bg-surface-email px-5 py-3.5 shadow-xs">
         <PictureAvatar label={sender} src={own ? undefined : picture} size={40} className="self-start" />
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="flex items-baseline justify-between gap-3">
@@ -134,7 +134,7 @@ function ThreadMessage({ message, current, open, picture, onToggle }: ThreadMess
     <article
       aria-label={label}
       aria-current={current ? "true" : undefined}
-      className={cn("relative shrink-0 overflow-hidden rounded-lg border bg-card shadow-xs", current && "border-primary/40")}
+      className={cn("relative shrink-0 overflow-hidden rounded-lg border bg-surface-email shadow-xs", current && "border-primary/40")}
     >
       {current ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" /> : null}
       <button

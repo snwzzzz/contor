@@ -10,6 +10,8 @@
   /* Surfaces: plain white page; raised panels only where content needs a frame, with a barely visible shadow. */
   --surface-page: oklch(1 0 0);
   --surface-raised: oklch(1 0 0);
+  /* Email boxes (list rows, thread messages): like cards in light mode, a little darker than cards in dark mode. */
+  --surface-email: oklch(1 0 0);
   --shadow-card: 0 1px 2px oklch(0 0 0 / 4%);
   /* The opened list of a select (same weight as Tailwind's shadow-md on the dropdown menus). */
   --shadow-popover: 0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
@@ -105,6 +107,7 @@
 .dark {
   --surface-page: oklch(0.145 0 0);
   --surface-raised: oklch(0.145 0 0);
+  --surface-email: oklch(0.18 0 0);
   --shadow-card: 0 1px 2px oklch(0 0 0 / 30%);
   --shadow-popover: 0 4px 6px -1px oklch(0 0 0 / 40%), 0 2px 4px -2px oklch(0 0 0 / 40%);
   --background: oklch(0.145 0 0);

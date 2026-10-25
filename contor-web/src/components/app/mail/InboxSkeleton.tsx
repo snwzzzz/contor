@@ -6,7 +6,7 @@ import { ReadingPanePlaceholder } from "./ReadingPanePlaceholder";
 /** One `EmailRow` box: the 36px picture, sender and time, subject and one line of preview. */
 function EmailBoxSkeleton({ index }: { index: number }) {
   return (
-    <div data-skeleton="email" className="flex gap-3 rounded-lg border bg-card px-3.5 py-3">
+    <div data-skeleton="email" className="flex gap-3 rounded-lg border bg-surface-email px-3.5 py-3">
       <Skeleton className="mt-0.5 size-9 shrink-0 rounded-full" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <div className="flex h-5 items-center justify-between gap-2">
@@ -80,14 +80,14 @@ export function ThreadSkeleton({ subject = true, messages = 3 }: { subject?: boo
     <LoadingStatus label="Loading conversation" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
       {subject ? (
         // The subject's line box (text-lg, leading-snug) inside the header's padding.
-        <div data-skeleton="subject" className="shrink-0 rounded-lg border bg-card px-5 py-3.5 shadow-xs">
+        <div data-skeleton="subject" className="shrink-0 rounded-lg border bg-surface-email px-5 py-3.5 shadow-xs">
           <div className="flex h-[1.547rem] items-center">
             <Skeleton className="h-5 w-2/3" />
           </div>
         </div>
       ) : null}
       {Array.from({ length: messages }, (_, index) => (
-        <div key={index} data-skeleton="message" className="flex shrink-0 items-start gap-3 rounded-lg border bg-card px-5 py-3.5 shadow-xs">
+        <div key={index} data-skeleton="message" className="flex shrink-0 items-start gap-3 rounded-lg border bg-surface-email px-5 py-3.5 shadow-xs">
           <Skeleton className="size-10 shrink-0 rounded-full" />
           <div className="grid min-w-0 flex-1 gap-0.5">
             <div className="flex h-5 items-center justify-between gap-3">

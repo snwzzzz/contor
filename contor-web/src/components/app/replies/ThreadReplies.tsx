@@ -96,7 +96,7 @@ function KeptDraft({ draft }: { draft: ReplyDraftDto }) {
     );
 
   return (
-    <article aria-label="Draft — not sent" className={cn("overflow-hidden rounded-lg border border-primary/40 bg-card shadow-xs", discard.isPending && "opacity-60")}>
+    <article aria-label="Draft — not sent" className={cn("overflow-hidden rounded-lg border border-primary/40 bg-surface-email shadow-xs", discard.isPending && "opacity-60")}>
       <div className="grid gap-2 px-5 py-3.5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="text-sm font-medium">Draft — not sent</span>

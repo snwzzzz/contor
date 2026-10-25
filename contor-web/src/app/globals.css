@@ -34,6 +34,7 @@
   --color-background: var(--background);
   --color-surface-page: var(--surface-page);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-email: var(--surface-email);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);

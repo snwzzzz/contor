@@ -46,7 +46,7 @@ export function EmailRow({ email, selected, account, picture, now, onSelect, onP
       aria-current={selected ? "true" : undefined}
       data-unread={unread ? "true" : undefined}
       className={cn(
-        "relative flex w-full gap-3 overflow-hidden rounded-lg border bg-card px-3.5 py-3 text-left transition-colors",
+        "relative flex w-full gap-3 overflow-hidden rounded-lg border bg-surface-email px-3.5 py-3 text-left transition-colors",
         selected ? "border-primary/60 bg-primary/5" : "hover:bg-muted/40",
       )}
     >

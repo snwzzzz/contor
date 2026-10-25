@@ -303,6 +303,8 @@ describe("InboxView", () => {
 
     const list = await screen.findByRole("region", { name: "Email list" });
     expect(await within(list).findByText("Pane mail")).toBeInTheDocument();
+    // Email boxes have their own surface (a little darker than cards in dark mode).
+    expect(within(list).getByText("Pane mail").closest("button")).toHaveClass("bg-surface-email");
     // Search and filter sit compactly on top of the list, not across the page.
     expect(within(list).getByRole("combobox", { name: "Search emails" })).toBeInTheDocument();
     expect(within(list).getByRole("button", { name: /^Filter/ })).toBeInTheDocument();

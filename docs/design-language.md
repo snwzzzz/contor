@@ -24,6 +24,7 @@ shadows. Components use token classes only (`bg-background`, `text-muted-foregro
 |---|---|
 | `--background` / `--surface-page` | The page: plain white (near-black in dark mode). |
 | `--surface-raised` | The rare framed panel (same as the page; the border does the work). |
+| `--surface-email` | Email boxes (list rows, thread messages, the kept draft): like cards in light mode, a little darker than cards in dark mode. |
 | `--shadow-card` | Barely visible 1px shadow on framed panels. No other shadows on the page. |
 | `--primary` | Near-black (white in dark mode): primary buttons, active tab, focus. Not a brand color. |
 | `--muted` / `--muted-foreground` | Hover backgrounds, secondary text, icons. |

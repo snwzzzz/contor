@@ -22,6 +22,7 @@ describe("InboxSkeleton", () => {
     const emails = status.querySelectorAll("[data-skeleton=email]");
     expect(emails).toHaveLength(5);
     expect(emails[0].querySelector(".rounded-full")).not.toBeNull();
+    expect(emails[0]).toHaveClass("bg-surface-email");
   });
 
   it("a conversation is the subject and one box per message", () => {
