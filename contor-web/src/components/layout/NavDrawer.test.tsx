@@ -102,7 +102,8 @@ describe("NavDrawer", () => {
     const drawer = await openDrawer();
 
     const inbox = within(drawer).getByRole("link", { name: /^Inbox/ });
-    expect(inbox).toHaveClass("h-8");
+    expect(inbox).toHaveClass("h-7");
+    expect(drawer).toHaveClass("bg-background");
     expect(inbox.querySelector("svg")).toHaveClass("text-tint-8-vivid");
     const people = within(drawer).getByRole("link", { name: "People" });
     expect(people.querySelector("svg")).toHaveClass("text-tint-2-vivid");

@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
 const PROPOSAL_COUNT_REFRESH_MS = 60_000;
 const COLLECTION_ORDER_KEY = "contor.sidebar.collectionOrder";
 const NO_ORDER: readonly number[] = [];
-/** Compact rows (shadcn sidebar style): inset and rounded; color only on the icon; the current page gets the accent background. */
-const ROW = "mx-2 flex h-8 items-center gap-2.5 rounded-md px-2 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent";
+/** Compact rows (shadcn sidebar style): inset and rounded; color only on the icon; hover like every other row, the current page gets the accent background. */
+const ROW = "mx-2 flex h-7 items-center gap-2.5 rounded-md px-2 text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:bg-muted/50";
 const ACTIVE_ROW = "bg-accent font-medium text-accent-foreground";
 
 function parseOrder(raw: unknown): readonly number[] | undefined {
@@ -81,8 +81,8 @@ export function NavDrawer() {
         onCloseAutoFocus={(event) => {
           if (document.activeElement && document.activeElement !== document.body) event.preventDefault();
         }}
-        // Starts below the top bar, like a flyout.
-        className="gap-0 p-0 data-[side=left]:top-(--header-height) data-[side=left]:h-[calc(100svh-var(--header-height))] data-[side=left]:w-72 data-[side=left]:sm:max-w-72"
+        // Starts below the top bar, like a flyout; on the page background with the dropdowns' light shadow, not a raised popover.
+        className="gap-0 bg-background p-0 shadow-(--shadow-popover) data-[side=left]:top-(--header-height) data-[side=left]:h-[calc(100svh-var(--header-height))] data-[side=left]:w-72 data-[side=left]:sm:max-w-72"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <SheetDescription className="sr-only">Go to a page or collection</SheetDescription>
@@ -130,7 +130,7 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
           onClear={() => setQuery("")}
         />
       </div>
-      <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto pb-2">
+      <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto pb-1.5">
         {primary.length > 0 ? <NavGroup>{navLinks(primary)}</NavGroup> : null}
         {insights.length > 0 ? <NavGroup label="AI insights">{navLinks(insights)}</NavGroup> : null}
         {foundCollections === null ? (
@@ -155,9 +155,9 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
 function NavGroup({ label, children }: { label?: string; children: ReactNode }) {
   const id = label ? `nav-${label.toLowerCase().replaceAll(/[^a-z]+/g, "-")}` : undefined;
   return (
-    <div className="pt-2">
+    <div className="pt-1.5">
       {label ? (
-        <h3 id={id} className="px-4 pt-2 pb-1 text-xs text-muted-foreground">
+        <h3 id={id} className="px-4 pt-1.5 pb-0.5 text-xs text-muted-foreground">
           {label}
         </h3>
       ) : null}
@@ -237,8 +237,8 @@ function CollectionsGroup({ collections, isPending, pathname, onNavigate }: Coll
   return (
     <NavGroup label="Collections">
       {isPending ? (
-        <li className="px-4 py-2">
-          <Skeleton className="h-5" />
+        <li className="px-4 py-1.5">
+          <Skeleton className="h-4" />
         </li>
       ) : null}
       {shown.map((collection, index) => (
@@ -307,7 +307,7 @@ function CollectionItem({ collection, pathname, onNavigate, preview, onDragStart
         aria-label={`Move ${collection.name}`}
         title="Drag, or Alt+Up/Down to move"
         onKeyDown={onGripKeyDown}
-        className="absolute top-1.5 right-3 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute top-1 right-3 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GripVertical className="size-3.5" aria-hidden="true" />
       </button>
