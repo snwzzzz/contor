@@ -21,10 +21,10 @@ import { collectionHref } from "@/lib/navigation";
 import type { RecordTab } from "@/lib/record-sheet";
 import { cn } from "@/lib/utils";
 import { RecordReports, useRecordReports } from "@/components/app/reports/RecordReports";
+import { RecordSkeleton } from "./CollectionSkeletons";
 import { RecordConnectionsTab } from "./RecordConnectionsTab";
 import { RecordDetailsForm } from "./RecordDetailsForm";
 import { RECORD_EMAIL_PAGE_SIZE, RecordEmailsTab } from "./RecordEmailsTab";
-import { LoadingDetail } from "@/components/app/LoadingSkeletons";
 
 const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const PICTURE_SIZE = 64;
@@ -110,7 +110,7 @@ export function RecordDetail({ collectionId, recordId, variant = "page", tab, on
     return <ErrorMessage message="This record does not exist (anymore)." />;
   }
   if (!record || !collection) {
-    return <LoadingDetail label="Loading record" fields={6} />;
+    return <RecordSkeleton variant={variant} />;
   }
   return <RecordView collection={collection} record={record} variant={variant} tab={tab} onTabChange={onTabChange} />;
 }

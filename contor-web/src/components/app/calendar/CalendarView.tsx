@@ -16,11 +16,11 @@ import { AppButton } from "@/components/app/AppButton";
 import { RecordLink } from "@/components/app/collections/RecordLink";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
+import { CalendarSkeleton } from "./CalendarSkeleton";
 import { QuietEmpty } from "@/components/app/home/HomeSection";
 import { DUE_TONE, stateOf, TASK_LIST_PARAMS } from "@/components/app/tasks/task-model";
 import { TimeInput } from "@/components/app/TimeInput";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import {
@@ -1056,45 +1056,5 @@ function DayAgenda({ day, initialStart, initialEnd, collectionId, events, onClos
         </AppButton>
       </form>
     </section>
-  );
-}
-
-/** The week header and the hour grid as placeholders, so the page keeps its shape while the calendar loads. */
-function CalendarSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading calendar"
-      aria-busy="true"
-      className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)]"
-    >
-      <div className="grid gap-3 lg:flex lg:min-h-0 lg:flex-col">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="ml-auto size-8" />
-          <Skeleton className="h-8 w-16" />
-          <Skeleton className="size-8" />
-        </div>
-        <div className="grid h-[40rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))] overflow-hidden rounded-lg border lg:h-auto lg:min-h-0 lg:flex-1">
-          <div />
-          {Array.from({ length: 7 }, (_, index) => (
-            <div key={index} className="grid content-start gap-3 border-l p-2">
-              <Skeleton className="mx-auto h-5 w-12" />
-              {index % 3 === 1 ? <Skeleton className="mt-16 h-20 w-full" /> : null}
-              {index % 4 === 2 ? <Skeleton className="mt-32 h-10 w-full" /> : null}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="grid content-start gap-3">
-        <Skeleton className="h-8 w-full" />
-        {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="grid gap-2">
-            <Skeleton className="h-7 w-full" />
-            <Skeleton className={cn("h-4", index % 2 === 0 ? "w-3/4" : "w-1/2")} />
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

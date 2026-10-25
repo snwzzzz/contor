@@ -1,7 +1,16 @@
+import { CircleCheck, CircleDashed, CircleDot } from "lucide-react";
+import type { BoardColumn } from "@/components/app/board/KanbanBoard";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import type { DueTone } from "@/lib/due";
 
 export type State = "open" | "in_progress" | "done";
+
+/** The board's columns, in order (the board and its skeleton). */
+export const TASK_COLUMNS: readonly BoardColumn<State>[] = [
+  { key: "open", title: "To do", icon: CircleDashed, iconClass: "text-muted-foreground", empty: "Nothing to do." },
+  { key: "in_progress", title: "In progress", icon: CircleDot, iconClass: "text-tint-8-vivid", empty: "Nothing started." },
+  { key: "done", title: "Done", icon: CircleCheck, iconClass: "text-tint-5-vivid", empty: "Nothing done yet." },
+];
 
 /** The to-do list query (to-do page and home page share its cache entry). */
 export const TASK_LIST_PARAMS = { sort: "due_date", size: 200 } as const;

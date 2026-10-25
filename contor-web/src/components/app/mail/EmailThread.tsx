@@ -3,7 +3,6 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { LoadingDetail, LoadingList } from "@/components/app/LoadingSkeletons";
 import { AppButton } from "@/components/app/AppButton";
 import { useGetEmailThread } from "@/lib/api/generated/endpoints/mail/mail";
 import type { EmailDto } from "@/lib/api/generated/model/emailDto";
@@ -11,6 +10,7 @@ import type { EmailSummaryDto } from "@/lib/api/generated/model/emailSummaryDto"
 import { cn } from "@/lib/utils";
 import { ThreadReplies } from "@/components/app/replies/ThreadReplies";
 import { EmailBody, Recipients } from "./EmailReader";
+import { ThreadSkeleton } from "./InboxSkeleton";
 import { PictureAvatar } from "./PictureAvatar";
 
 const SUGGESTION_POLL_MS = 3000;
@@ -40,7 +40,7 @@ export function EmailThread({ emailId, preview, picture }: EmailThreadProps) {
   const [allOpen, setAllOpen] = useState(false);
 
   if (isLoading) {
-    return preview ? <ThreadPreview email={preview} picture={picture(preview.fromAddress)} /> : <LoadingDetail label="Loading conversation" />;
+    return preview ? <ThreadPreview email={preview} picture={picture(preview.fromAddress)} /> : <ThreadSkeleton />;
   }
   if (error || !data) {
     return <ErrorMessage message={error?.message ?? "The conversation could not be loaded."} />;
@@ -112,7 +112,7 @@ function ThreadPreview({ email, picture }: { email: EmailSummaryDto; picture: st
         </span>
       </article>
       {/* The body and the earlier messages are on their way. */}
-      <LoadingList label="Loading conversation" rows={3} avatar twoLines className="rounded-lg border bg-card px-5 py-1 shadow-xs" />
+      <ThreadSkeleton subject={false} messages={2} />
     </section>
   );
 }

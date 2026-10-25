@@ -16,6 +16,7 @@ import { ROW_HOVER } from "@/lib/card-hover";
 import { collectionTintNumber, tintVividClass } from "@/lib/collection-tint";
 import { collectionHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { CollectionsOverviewSkeleton } from "./CollectionSkeletons";
 
 type Origin = "all" | "builtin" | "yours" | "ai";
 
@@ -28,7 +29,6 @@ const ORIGINS: readonly { value: Origin; label: string; matches: (collection: Co
 
 /** Only the total matters: one row is the smallest page. */
 const COUNT_ONLY = { size: 1 } as const;
-const SKELETON_WIDTHS = ["w-40", "w-32", "w-48", "w-36"] as const;
 
 function originLabel(collection: CollectionDto): string {
   if (collection.system) return "Built-in";
@@ -49,7 +49,7 @@ export function CollectionsOverview() {
   const text = useDeferredValue(query);
 
   if (error) return <ErrorMessage message={error.message} />;
-  if (isPending) return <LoadingRows />;
+  if (isPending) return <CollectionsOverviewSkeleton />;
   if (collections.length === 0) {
     return (
       <EmptyState
@@ -170,19 +170,4 @@ function CollectionRow({ collection }: { collection: CollectionDto }) {
 function RecordCount({ collectionId }: { collectionId: number }) {
   const { data } = useListRecords(collectionId, COUNT_ONLY);
   return data ? <>{data.totalElements}</> : <Skeleton className="ml-auto h-4 w-8" />;
-}
-
-function LoadingRows() {
-  return (
-    <div aria-label="Loading collections" className="grid gap-3 py-2">
-      <Skeleton className="h-9 w-80" />
-      {SKELETON_WIDTHS.map((width) => (
-        <div key={width} className="flex items-center gap-3 border-b py-2.5">
-          <Skeleton className="size-4" />
-          <Skeleton className={cn("h-4", width)} />
-          <Skeleton className="ml-auto h-4 w-8" />
-        </div>
-      ))}
-    </div>
-  );
 }

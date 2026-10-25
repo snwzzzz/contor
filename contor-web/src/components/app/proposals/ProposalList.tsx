@@ -12,6 +12,7 @@ import { FilterChip } from "@/components/app/FilterChip";
 import { ImportanceBadge } from "@/components/app/proposals/ImportanceBadge";
 import { InsightCard } from "@/components/app/proposals/InsightCard";
 import { ProposalDetail } from "@/components/app/proposals/ProposalDetail";
+import { ProposalsSkeleton } from "@/components/app/proposals/ProposalsSkeleton";
 import { ReplySuggestionCard } from "@/components/app/replies/ReplySuggestionCard";
 import { getInsightRun, requestInsights } from "@/lib/api/generated/endpoints/ai/ai";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
@@ -22,7 +23,6 @@ import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { describeProposal, GROUPS, type Description, type Group } from "@/lib/proposal-describe";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
-import { LoadingCards } from "@/components/app/LoadingSkeletons";
 
 const PENDING_ACTIONS = { status: "PENDING", group: "ACTIONS", size: 50 } as const;
 const PREVIEW_VALUES = 4;
@@ -80,7 +80,7 @@ export function ProposalList() {
   }
 
   if (isLoading) {
-    return <LoadingCards label="Loading proposals" count={6} />;
+    return <ProposalsSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;

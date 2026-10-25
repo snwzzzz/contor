@@ -1,13 +1,12 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDashed, CircleDot, CircleCheck, ListTodo } from "lucide-react";
+import { Check, ListTodo } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { KanbanBoard, type BoardColumn } from "@/components/app/board/KanbanBoard";
+import { KanbanBoard } from "@/components/app/board/KanbanBoard";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getListRecordsQueryKey, useCreateRecord, useListRecords, useUpdateRecord } from "@/lib/api/generated/endpoints/records/records";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
 import type { RecordPageDto } from "@/lib/api/generated/model/recordPageDto";
@@ -17,13 +16,8 @@ import { describeDue } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
 import { cn } from "@/lib/utils";
 import { TaskDetail } from "./TaskDetail";
-import { DUE_TONE, PRIORITY, stateOf, stringValue, TASK_LIST_PARAMS, type State } from "./task-model";
-
-const COLUMNS: readonly BoardColumn<State>[] = [
-  { key: "open", title: "To do", icon: CircleDashed, iconClass: "text-muted-foreground", empty: "Nothing to do." },
-  { key: "in_progress", title: "In progress", icon: CircleDot, iconClass: "text-tint-8-vivid", empty: "Nothing started." },
-  { key: "done", title: "Done", icon: CircleCheck, iconClass: "text-tint-5-vivid", empty: "Nothing done yet." },
-];
+import { TaskBoardSkeleton, TasksSkeleton } from "./TaskBoardSkeleton";
+import { DUE_TONE, PRIORITY, stateOf, stringValue, TASK_COLUMNS, TASK_LIST_PARAMS, type State } from "./task-model";
 
 /** Fallback order of cards never moved by hand: earliest deadline first (overdue on top), none last, then by priority. */
 function byUrgency(a: RecordDto, b: RecordDto): number {
@@ -40,30 +34,6 @@ function columnsOf(tasks: readonly RecordDto[]): Record<State, RecordDto[]> {
   for (const task of tasks) columns[stateOf(task)].push(task);
   for (const state of Object.keys(columns) as State[]) columns[state] = sortForBoard(columns[state], byUrgency);
   return columns;
-}
-
-const SKELETON_CARDS = [3, 2, 2] as const;
-
-/** The three columns with a few placeholder cards, so the board keeps its shape while the to-dos load. */
-function BoardSkeleton() {
-  return (
-    <div role="status" aria-label="Loading to-dos" aria-busy="true" className="grid gap-4 md:grid-cols-3">
-      {COLUMNS.map((column, columnIndex) => (
-        <div key={column.key} className="grid content-start gap-2">
-          <div className="flex h-8 items-center gap-2">
-            <column.icon aria-hidden="true" className={cn("size-4", column.iconClass)} />
-            <span className="text-sm font-medium">{column.title}</span>
-          </div>
-          {Array.from({ length: SKELETON_CARDS[columnIndex] }, (_, index) => (
-            <div key={index} className="grid gap-2 rounded-lg border p-3">
-              <Skeleton className={cn("h-4", index % 2 === 0 ? "w-3/4" : "w-1/2")} />
-              <Skeleton className="h-3 w-20" />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 /**
@@ -90,7 +60,7 @@ export function TaskList() {
   });
 
   if (isLoading) {
-    return <BoardSkeleton />;
+    return <TasksSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;
@@ -161,8 +131,8 @@ export function TaskList() {
         />
       </form>
 
-      {!data ? <BoardSkeleton /> : <KanbanBoard
-        columns={COLUMNS}
+      {!data ? <TaskBoardSkeleton /> : <KanbanBoard
+        columns={TASK_COLUMNS}
         items={columns}
         getId={(task) => task.id}
         renderCard={(task) => (

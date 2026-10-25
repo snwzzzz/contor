@@ -35,7 +35,7 @@ import { parseRecordParam, RECORD_PARAM, recordSheetHref } from "@/lib/record-sh
 import { buildFilters, countActiveFilters, filterKind, type ColumnFilter, type FilterState } from "@/lib/record-filters";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
-import { LoadingTable } from "@/components/app/LoadingSkeletons";
+import { CollectionTableSkeleton } from "./CollectionSkeletons";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 25;
@@ -93,7 +93,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
     return <ErrorMessage message={collectionError.message} />;
   }
   if (!collection) {
-    return <LoadingTable label="Loading collection" />;
+    return <CollectionTableSkeleton />;
   }
 
   const allColumns: Column[] = [{ key: TITLE_COLUMN, name: "Title" }, ...fields.map((field) => ({ key: field.slug, name: field.name, field }))];

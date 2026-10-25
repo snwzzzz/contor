@@ -20,8 +20,8 @@ import { collectionTint } from "@/lib/collection-tint";
 import { useSenderPictures, isFreeMailDomain } from "@/lib/hooks/useSenderPictures";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
+import { FindingsSkeleton } from "./FindingsSkeleton";
 import { RelationLine, type RelationAnchor, type RelationPayload } from "./RelationLine";
-import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const PENDING_FINDINGS = { status: "PENDING", group: "FINDINGS", size: 60 } as const;
 const MAX_VALUES = 4;
@@ -72,7 +72,7 @@ export function FindingsList() {
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
   if (isLoading) {
-    return <LoadingList label="Loading findings" rows={8} avatar twoLines />;
+    return <FindingsSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;
