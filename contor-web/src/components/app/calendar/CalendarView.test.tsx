@@ -113,6 +113,51 @@ describe("CalendarView", () => {
     expect(screen.getByRole("heading", { name: "November 2026" })).toBeInTheDocument();
   });
 
+  it("opens the week of a date double-clicked in the month, with that date selected", async () => {
+    api();
+    navigationState.search = "view=month";
+    renderWithProviders(<CalendarView />);
+    await screen.findByRole("heading", { name: "October 2026" });
+
+    // A day of the next month at the end of October's grid: a double click shows its week with it open.
+    await userEvent.dblClick(screen.getByRole("button", { name: "Open Monday, 2 November" }));
+
+    expect(screen.getByRole("heading", { name: "2 – 8 November 2026" })).toBeInTheDocument();
+    expect(router.push).toHaveBeenLastCalledWith("/calendar?view=week&date=2026-11-02", { scroll: false });
+    expect(screen.getByRole("button", { name: "Open Monday, 2 November" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("region", { name: "Monday, 2 November" })).toBeInTheDocument();
+  });
+
+  it("stays in the month when an event in a cell is double-clicked", async () => {
+    api({
+      "GET /api/collections/3/records": {
+        body: page([record(5, 3, "Kick-off", { starts_at: new Date(2026, 10, 2, 9, 0).toISOString(), all_day: false })]),
+      },
+    });
+    navigationState.search = "view=month";
+    renderWithProviders(<CalendarView />);
+    const monday = await screen.findByRole("listitem", { name: "Monday, 2 November 2026" });
+
+    await userEvent.dblClick(await within(monday).findByRole("link", { name: /Kick-off/ }));
+
+    expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
+    expect(router.push).not.toHaveBeenCalledWith("/calendar?view=week&date=2026-11-02", { scroll: false });
+  });
+
+  it("makes an event's hover visible on the selected day (its background is the hover color)", async () => {
+    api();
+    navigationState.search = "view=month";
+    renderWithProviders(<CalendarView />);
+    const friday = await screen.findByRole("listitem", { name: "Friday, 9 October 2026" });
+    const chip = await within(friday).findByRole("link", { name: /Interview at Acme/ });
+    expect(chip).toHaveClass("hover:bg-muted");
+
+    await userEvent.click(screen.getByRole("button", { name: "Open Friday, 9 October" }));
+
+    expect(chip).toHaveClass("hover:bg-background");
+    expect(chip).not.toHaveClass("hover:bg-muted");
+  });
+
   it("greys out the days of the neighbouring months", async () => {
     api();
     navigationState.search = "view=month";

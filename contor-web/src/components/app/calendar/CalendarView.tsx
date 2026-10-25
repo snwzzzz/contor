@@ -289,6 +289,10 @@ export function CalendarView() {
               now={now}
               selected={open?.day ?? null}
               onOpen={(day) => setOpen({ day, start: "", end: "" })}
+              onShowDay={(day) => {
+                setOpen({ day, start: "", end: "" });
+                show("week", day);
+              }}
             />
           )}
         </section>
@@ -360,14 +364,17 @@ interface MonthGridProps {
   /** The day open in the side panel, marked in the grid. */
   selected: Date | null;
   onOpen: (day: Date) => void;
+  /** A day was double-clicked: show its week with the day open. */
+  onShowDay: (day: Date) => void;
 }
 
 /**
  * Six weeks of day cells (the month's own days in front, the neighbouring ones greyed out). Each cell lists all its
  * events (all-day ones first) and scrolls them on its own when they do not fit, with a scrollbar that only shows while
- * the pointer is over the cell; the cell itself opens the day. From lg it fills the page; it never scrolls sideways.
+ * the pointer is over the cell; the cell itself opens the day, a double click goes to the day's week. From lg it
+ * fills the page; it never scrolls sideways.
  */
-function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }: MonthGridProps) {
+function MonthGrid({ days, month, events, collectionId, now, selected, onOpen, onShowDay }: MonthGridProps) {
   return (
     <div data-testid="month-grid" className="overflow-x-hidden rounded-lg border lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div className="grid grid-cols-7 border-b" aria-hidden="true">
@@ -405,6 +412,7 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
                 aria-label={`Open ${dayTitle(day)}`}
                 aria-pressed={isSelected}
                 onClick={() => onOpen(day)}
+                onDoubleClick={() => onShowDay(day)}
                 className="absolute inset-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               />
               <span
@@ -419,11 +427,14 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
               </span>
               {dayEvents.length > 0 ? (
                 // Beside the date (under it on phones, where the cells are too narrow). Scrolls when the events do not
-                // fit; a click on its empty space still opens the day.
+                // fit; a click (or double click) on its empty space still acts on the day, one on an event does not.
                 <div
                   data-testid="cell-events"
                   onClick={(event) => {
                     if (event.target === event.currentTarget) onOpen(day);
+                  }}
+                  onDoubleClick={(event) => {
+                    if (event.target === event.currentTarget) onShowDay(day);
                   }}
                   className={cn(
                     // scrollbar-subtle: a 2px thumb in a faint color, only while the pointer is over the cell (globals.css).
@@ -431,7 +442,13 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
                   )}
                 >
                   {dayEvents.map((event) => (
-                    <MonthChip key={event.id} event={event} collectionId={collectionId} faded={!inMonth || (startsAt(event) ?? now) < now} />
+                    <MonthChip
+                      key={event.id}
+                      event={event}
+                      collectionId={collectionId}
+                      faded={!inMonth || (startsAt(event) ?? now) < now}
+                      onSelectedDay={isSelected}
+                    />
                   ))}
                 </div>
               ) : null}
@@ -443,8 +460,11 @@ function MonthGrid({ days, month, events, collectionId, now, selected, onOpen }:
   );
 }
 
-/** An event in a month cell: all-day ones as a tinted bar, timed ones as a tinted dot, the time and the title. */
-function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectionId: number; faded: boolean }) {
+/**
+ * An event in a month cell: all-day ones as a tinted bar, timed ones as a tinted dot, the time and the title. On the
+ * selected day the cell already has the muted (accent) background, so a timed event hovers with the page background.
+ */
+function MonthChip({ event, collectionId, faded, onSelectedDay }: { event: RecordDto; collectionId: number; faded: boolean; onSelectedDay: boolean }) {
   const format = useTimeFormat();
   const start = startsAt(event);
   const allDay = isAllDay(event);
@@ -455,7 +475,9 @@ function MonthChip({ event, collectionId, faded }: { event: RecordDto; collectio
       title={`${event.title} · ${timeRange(event, format)}`}
       className={cn(
         "relative flex min-w-0 items-start gap-1.5 rounded-sm px-1.5 py-0.5 text-xs leading-4 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-ring",
-        allDay ? "border-l-2 border-tint-1-vivid bg-tint-1 text-tint-1-foreground hover:opacity-80" : "text-foreground hover:bg-muted",
+        allDay
+          ? "border-l-2 border-tint-1-vivid bg-tint-1 text-tint-1-foreground hover:opacity-80"
+          : cn("text-foreground", onSelectedDay ? "hover:bg-background hover:shadow-xs" : "hover:bg-muted"),
         faded && "opacity-60",
       )}
     >
