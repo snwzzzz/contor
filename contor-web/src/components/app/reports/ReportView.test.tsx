@@ -146,6 +146,12 @@ describe("ReportView", () => {
     const cited = await within(panel).findByTestId("cited-paragraph");
     expect(within(cited).getByText("held at customs", { selector: "mark" })).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Open in inbox" })).toHaveAttribute("href", "/inbox?email=7&paragraph=1");
+    // Nothing is cut off: names and the surrounding paragraphs wrap in full, and the panel only takes its content's
+    // height (so it can stay in view) instead of a scroll area of its own.
+    expect(within(panel).getByText("Hello Tom,")).not.toHaveClass("line-clamp-2");
+    expect(within(panel).getByText("Delivered at", { selector: "span" })).not.toHaveClass("truncate");
+    expect(panel).toHaveClass("lg:self-start");
+    expect(panel.className).not.toMatch(/overflow|max-h/);
   });
 
   it("marks a field that changed since the report and links to it", async () => {
@@ -229,6 +235,30 @@ describe("ReportView", () => {
     expect(calls.some((call) => call.method === "DELETE")).toBe(true);
   });
 
+  it("embeds in the record's Reports tab: h2 title, Open full screen, and deleting or regenerating stays in the tab", async () => {
+    const calls = mockApi({
+      "GET /api/reports/5": { body: report },
+      "DELETE /api/reports/5": { status: 204 },
+    });
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(<ReportView collectionId={1} recordId={4711} reportId={5} embedded onNavigate={onNavigate} />);
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Order 4711 review" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open full screen" })).toHaveAttribute("href", "/collections/1/records/4711/reports/5");
+    // Wide tables or long words scroll in their own box; the report column never widens past its space.
+    expect(screen.getByRole("region", { name: "Assistant's answer" }).parentElement).toHaveClass("grid-cols-[minmax(0,1fr)]");
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete report" }));
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith(null));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(calls.some((call) => call.method === "DELETE")).toBe(true);
+  });
+
   it("shows a collection report with its scope and returns to the collection", async () => {
     const collectionReport = {
       ...report, id: 6, recordId: undefined, records: [], emailCount: 0, filters: ["state:eq:delivered"], search: "acme",
@@ -239,7 +269,8 @@ describe("ReportView", () => {
     renderWithProviders(<ReportView collectionId={1} reportId={6} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Top customers" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to the collection" })).toHaveAttribute("href", "/collections/1");
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", { name: "Collections" })).toHaveAttribute("href", "/collections");
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
     expect(screen.getByText("Whole collection")).toBeInTheDocument();
     expect(screen.getByText("state:eq:delivered")).toBeInTheDocument();
     expect(screen.getByText("“acme”")).toBeInTheDocument();

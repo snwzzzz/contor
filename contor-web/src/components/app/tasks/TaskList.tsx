@@ -1,9 +1,9 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDashed, CircleDot, CircleCheck, ListTodo } from "lucide-react";
+import { Check, ListTodo } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { KanbanBoard, type BoardColumn } from "@/components/app/board/KanbanBoard";
+import { KanbanBoard } from "@/components/app/board/KanbanBoard";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,8 @@ import { describeDue } from "@/lib/due";
 import { useSystemCollection } from "@/lib/hooks/useSystemCollection";
 import { cn } from "@/lib/utils";
 import { TaskDetail } from "./TaskDetail";
-import { DUE_TONE, PRIORITY, stateOf, stringValue, type State } from "./task-model";
-
-const PARAMS = { sort: "due_date", size: 200 } as const;
-
-const COLUMNS: readonly BoardColumn<State>[] = [
-  { key: "open", title: "To do", icon: CircleDashed, iconClass: "text-muted-foreground", empty: "Nothing to do." },
-  { key: "in_progress", title: "In progress", icon: CircleDot, iconClass: "text-tint-8-vivid", empty: "Nothing started." },
-  { key: "done", title: "Done", icon: CircleCheck, iconClass: "text-tint-5-vivid", empty: "Nothing done yet." },
-];
+import { TaskBoardSkeleton, TasksSkeleton } from "./TaskBoardSkeleton";
+import { DUE_TONE, PRIORITY, stateOf, stringValue, TASK_COLUMNS, TASK_LIST_PARAMS, type State } from "./task-model";
 
 /** Fallback order of cards never moved by hand: earliest deadline first (overdue on top), none last, then by priority. */
 function byUrgency(a: RecordDto, b: RecordDto): number {
@@ -52,7 +45,7 @@ export function TaskList() {
   const queryClient = useQueryClient();
   const { collection, isLoading, error } = useSystemCollection("tasks");
   const collectionId = collection?.id ?? 0;
-  const { data } = useListRecords(collectionId, PARAMS, { query: { enabled: collection !== undefined } });
+  const { data } = useListRecords(collectionId, TASK_LIST_PARAMS, { query: { enabled: collection !== undefined } });
   const [title, setTitle] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: getListRecordsQueryKey(collectionId) });
@@ -67,7 +60,7 @@ export function TaskList() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading to-dos…</p>;
+    return <TasksSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;
@@ -92,7 +85,7 @@ export function TaskList() {
     const stateChanged = stateOf(task) !== state;
 
     // Optimistic: the card lands in its new place right away; the refresh afterwards shows what the server has.
-    queryClient.setQueryData<RecordPageDto>(getListRecordsQueryKey(collectionId, PARAMS), (page) => page && {
+    queryClient.setQueryData<RecordPageDto>(getListRecordsQueryKey(collectionId, TASK_LIST_PARAMS), (page) => page && {
       ...page,
       items: page.items.map((item) => {
         const position = positions.get(item.id);
@@ -138,8 +131,8 @@ export function TaskList() {
         />
       </form>
 
-      <KanbanBoard
-        columns={COLUMNS}
+      {!data ? <TaskBoardSkeleton /> : <KanbanBoard
+        columns={TASK_COLUMNS}
         items={columns}
         getId={(task) => task.id}
         renderCard={(task) => (
@@ -147,7 +140,7 @@ export function TaskList() {
         )}
         renderPreview={(task, state) => <TaskPreview task={{ ...task, values: { ...task.values, state } }} today={today} />}
         onMove={(task, state, index) => void move(task, state, index)}
-      />
+      />}
 
       {selected ? (
         <TaskDetail

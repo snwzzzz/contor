@@ -89,6 +89,23 @@ function CommandInput({
   )
 }
 
+// contor: the input alone, without the dialog's wrapper, for a palette whose search bar is the field itself (top bar).
+function CommandBareInput({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  return (
+    <CommandPrimitive.Input
+      data-slot="command-input"
+      className={cn(
+        "w-full min-w-0 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function CommandList({
   className,
   ...props
@@ -187,6 +204,7 @@ export {
   Command,
   CommandDialog,
   CommandInput,
+  CommandBareInput,
   CommandList,
   CommandEmpty,
   CommandGroup,

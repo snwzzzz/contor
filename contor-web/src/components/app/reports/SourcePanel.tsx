@@ -8,6 +8,7 @@ import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto"
 import { formatValue } from "@/lib/proposal-format";
 import { highlightQuote, sourceHref } from "@/lib/report";
 import { cn } from "@/lib/utils";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail } satisfies Record<CitationKind, unknown>;
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -23,7 +24,8 @@ interface SourcePanelProps {
 /** Every source of a report by marker; the selected one shows exactly what was cited, with a link to its place. */
 export function SourcePanel({ sources, selected, quotes, onSelect }: SourcePanelProps) {
   return (
-    <aside aria-label="Sources" className="grid content-start gap-2 lg:sticky lg:top-4">
+    // self-start: only as tall as its content (a stretched panel never sticks); nothing inside is clipped or scrolls.
+    <aside aria-label="Sources" className="grid min-w-0 content-start gap-2 lg:sticky lg:top-4 lg:self-start">
       <h2 className="text-sm font-semibold">Sources</h2>
       {sources.length === 0 ? <p className="text-sm text-muted-foreground">No sources cited yet.</p> : null}
       <ol className="grid gap-1.5">
@@ -36,11 +38,11 @@ export function SourcePanel({ sources, selected, quotes, onSelect }: SourcePanel
                 type="button"
                 aria-expanded={open}
                 onClick={() => onSelect(source.marker)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50"
+                className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50"
               >
                 <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-xs tabular-nums">{source.marker}</span>
-                <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="truncate">{source.label}</span>
+                <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 break-words">{source.label}</span>
               </button>
               {open ? <SourceDetail source={source} quote={quotes.get(source.marker)} /> : null}
             </li>
@@ -54,7 +56,7 @@ export function SourcePanel({ sources, selected, quotes, onSelect }: SourcePanel
 function SourceDetail({ source, quote }: { source: ReportSourceDto; quote: string | undefined }) {
   const href = sourceHref(source);
   return (
-    <div className="grid gap-2 border-t px-3 py-3 text-sm">
+    <div className="grid min-w-0 gap-2 border-t px-3 py-3 text-sm break-words">
       {source.sourceState === "CHANGED" ? (
         <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-warning">Changed since the report</p>
       ) : source.sourceState === "DELETED" ? (
@@ -102,18 +104,18 @@ function SourceDetail({ source, quote }: { source: ReportSourceDto; quote: strin
 /** The email's paragraphs around the cited one, which is highlighted with the quote marked inside it. */
 function EmailParagraphs({ emailId, index, quote }: { emailId: number; index: number; quote: string | undefined }) {
   const { data: paragraphs, isPending } = useGetEmailParagraphs(emailId, { query: { retry: false } });
-  if (isPending) return <p className="text-xs text-muted-foreground">Loading the email…</p>;
+  if (isPending) return <LoadingList label="Loading the email" rows={3} />;
   const shown = (paragraphs ?? []).filter((paragraph) => Math.abs(paragraph.index - index) <= 1);
   if (shown.length === 0) return quote ? <p className="border-l-2 border-primary pl-2">{quote}</p> : null;
   return (
     <div className="grid gap-1.5">
       {shown.map((paragraph) => {
         if (paragraph.index !== index) {
-          return <p key={paragraph.index} className="line-clamp-2 text-xs text-muted-foreground whitespace-pre-line">{paragraph.text}</p>;
+          return <p key={paragraph.index} className="text-xs break-words text-muted-foreground whitespace-pre-line">{paragraph.text}</p>;
         }
         const split = highlightQuote(paragraph.text, quote);
         return (
-          <p key={paragraph.index} data-testid="cited-paragraph" className="rounded-md bg-primary/10 px-2 py-1 whitespace-pre-line">
+          <p key={paragraph.index} data-testid="cited-paragraph" className="rounded-md bg-primary/10 px-2 py-1 break-words whitespace-pre-line">
             {split ? (
               <>
                 {split.before}

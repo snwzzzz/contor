@@ -80,6 +80,18 @@ describe("ProposalList", () => {
     expect(within(screen.getByRole("article", { name: "Send certificates" })).queryByText(/Urgent|High/)).not.toBeInTheDocument();
   });
 
+  it("shows each card's kind as a small bare icon with the label, and the reasoning as plain text", async () => {
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "Interview at Acme" });
+    // No icon on a colored tile and no gray box: the kind is a small bare icon next to its label.
+    expect(card.querySelector("[class*='bg-tint']")).toBeNull();
+    expect([...card.querySelectorAll("*")].some((element) => element.classList.contains("bg-muted/50"))).toBe(false);
+    expect(card.querySelector("svg[class*='size-3.5']")).not.toBeNull();
+    expect(within(card).getByText("Invitation to an interview on Friday")).toHaveClass("text-muted-foreground");
+  });
+
   it("explains the importance in the detail sidebar", async () => {
     const user = userEvent.setup();
     mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });

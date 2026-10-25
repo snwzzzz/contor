@@ -128,7 +128,7 @@ First run: `SetupTokenInitializer` prints a one-time token while `app_user` is e
 ```
 src/proxy.ts            CSP nonce + optimistic auth redirect (every page request)
 src/app/(auth)/…        /login, /setup  (server components check setup status against the backend, then render forms)
-src/app/(app)/…         AppShell (sidebar, top bar, command palette) + pages; pages only compose components
+src/app/(app)/…         AppShell (top bar, navigation drawer, command palette) + pages; pages only compose components
 src/components/app      owned composites (AppButton, FormField, PageHeader, EmptyState, ErrorMessage, auth forms)
 src/components/layout   shell pieces
 src/components/ui       shadcn primitives (owned)

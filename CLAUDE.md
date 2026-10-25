@@ -122,6 +122,7 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - `app_readonly` (NOLOGIN) gets `SELECT` per generated collection table, granted by the collection engine; never on fixed tables.
 
 ## 4. Frontend rules
+- **Design language:** follow `docs/design-language.md` (quiet shadcn black/white, few boxes, color only for status marks, stable layouts); update it when the look changes.
 - **Redesign-ready layering:** tokens in `src/styles/tokens.css` (the only place with colors/radii/fonts) → owned shadcn primitives `components/ui/` → app composites `components/app/` → shell `components/layout/` → pages `src/app/` (composition only). Pages never import `components/ui` (ESLint `no-restricted-imports` on `src/app/**`). No hard-coded colors anywhere; use token classes (`bg-primary`, `text-muted-foreground`).
 - Edits to owned `components/ui` files are marked with a `// contor:` comment (e.g. deterministic sidebar skeleton width, CommandDialog title inside the content, `use-mobile` via `useSyncExternalStore`) so a later `shadcn add --overwrite` does not silently undo them.
 - API access only through the generated orval hooks (`src/lib/api/generated/endpoints/<tag>/<tag>.ts`, import the concrete module, no barrels) and the `src/lib/api/fetcher.ts` mutator (same-origin, CSRF header, fetches the CSRF cookie when missing, throws `ApiError`). Errors are typed `ApiError` (`ErrorType` export in the mutator).

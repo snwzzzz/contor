@@ -33,7 +33,9 @@ public class MailMapper {
                 .displayName(account.getDisplayName())
                 .status(account.getStatus() != null ? MailAccountState.valueOf(account.getStatus().name()) : null)
                 .lastSyncedAt(MapperSupport.toOffset(account.getLastSyncedAt()))
-                .hasPhoto(account.getPhoto() != null);
+                .hasPhoto(account.getPhoto() != null)
+                .aiEnabled(account.isAiEnabled())
+                .hidden(account.isHidden());
     }
 
     public static EmailLabelDto toDto(EmailLabel emailLabel, Label label) {

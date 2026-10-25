@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Unlink,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
@@ -29,7 +31,10 @@ import {
   useListMailAccounts,
   useSyncMailAccount,
 } from "@/lib/api/generated/endpoints/mail/mail";
+import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
+import { settingsHref } from "@/lib/navigation";
 import { AccountAvatar } from "./AccountAvatar";
+import { useMailboxUpdate } from "./useMailboxUpdate";
 
 const STATUS_LABEL = {
   ACTIVE: "Active",
@@ -49,7 +54,11 @@ export function AccountsList({
   mailError,
 }: AccountsListProps) {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const { data: accounts, isLoading, error } = useListMailAccounts();
+  const { data: aiSettings } = useGetAiSettings();
+  const readHidden = aiSettings?.readHiddenMailboxes ?? true;
+  const update = useMailboxUpdate();
 
   const connectMutation = useConnectMailAccount({
     mutation: {
@@ -180,7 +189,8 @@ export function AccountsList({
 
           return (
             <Card key={account.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              {/* The badge sits on the address line; the details stack under the address. */}
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <AccountAvatar account={account} size={36} />
                   <div className="min-w-0 space-y-1">
@@ -195,6 +205,11 @@ export function AccountsList({
                         Fictional demo mailbox (dev only), never synced
                       </CardDescription>
                     ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      {account.lastSyncedAt
+                        ? `Last synced: ${new Date(account.lastSyncedAt).toLocaleString()}`
+                        : "Not synced yet"}
+                    </p>
                   </div>
                 </div>
                 <Badge
@@ -205,7 +220,7 @@ export function AccountsList({
                         ? "default"
                         : "destructive"
                   }
-                  className="gap-1"
+                  className="mt-0.5 shrink-0 gap-1"
                 >
                   {isDemo ? (
                     <FlaskConical className="size-3" />
@@ -217,11 +232,29 @@ export function AccountsList({
                   {isDemo && isActive ? "Demo" : STATUS_LABEL[account.status]}
                 </Badge>
               </CardHeader>
-              <CardContent className="flex items-center justify-between pt-4">
-                <div className="text-xs text-muted-foreground">
-                  {account.lastSyncedAt
-                    ? `Last synced: ${new Date(account.lastSyncedAt).toLocaleString()}`
-                    : "Not synced yet"}
+              <CardContent className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4">
+                {/* One row: the checkbox and the buttons share a center line. */}
+                <div className="grid gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      checked={account.hidden}
+                      disabled={update.isPending && update.variables?.accountId === account.id}
+                      onChange={(event) => update.mutate({ accountId: account.id, data: { hidden: event.target.checked } })}
+                    />
+                    <span className="grid gap-0.5">
+                      <span>Hide in contor</span>
+                      {account.hidden ? (
+                        <span className="text-xs text-muted-foreground">
+                          {readHidden ? "Its mail is not shown anywhere, but the AI still reads it. " : "Its mail is not shown anywhere, and the AI skips it. "}
+                          <Link href={settingsHref(pathname, "general")} replace scroll={false} className="font-medium text-foreground underline-offset-4 hover:underline">
+                            Settings › General
+                          </Link>
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
                 </div>
                 <div className="flex gap-2">
                   {isDemo ? null : isActive ? (

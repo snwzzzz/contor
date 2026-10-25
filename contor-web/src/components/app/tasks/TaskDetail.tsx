@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppButton } from "@/components/app/AppButton";
-import { recordHref } from "@/components/app/collections/CollectionTable";
+import { recordHref } from "@/lib/record-sheet";
 import { RecordFieldInput } from "@/components/app/collections/RecordFieldInput";
 import { DetailSheet } from "@/components/app/DetailSheet";
 import { Input } from "@/components/ui/input";
@@ -138,7 +138,7 @@ export function TaskDetail({ collection, task, today, onMove, onChanged, onClose
           </div>
         ) : null}
 
-        <Input aria-label="Title" value={title} onChange={(event) => setTitle(event.target.value)} className="h-10 text-base font-medium" />
+        <Input aria-label="Title" value={title} onChange={(event) => setTitle(event.target.value)} className="font-medium" />
 
         <div className="flex flex-wrap gap-2">
           {state === "open" ? <AppButton size="sm" variant="outline" onClick={() => onMove("in_progress")}>Start</AppButton> : null}

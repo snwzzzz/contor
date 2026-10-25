@@ -74,6 +74,16 @@ public class MailAccount extends AuditableEntity {
     @Column(nullable = false)
     private MailAccountStatus status = MailAccountStatus.ACTIVE;
 
+    /** The AI reads this mailbox (the analysis and new mail); off = its mail is never given to the model. */
+    @Builder.Default
+    @Column(name = "ai_enabled", nullable = false)
+    private boolean aiEnabled = true;
+
+    /** Its mail is not shown in the app; whether the AI still reads it is {@link AiSettings#isReadHiddenMailboxes()}. */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean hidden = false;
+
     @Embeddable
     public record MailAccountId(@GeneratedValue Long id) {}
 }

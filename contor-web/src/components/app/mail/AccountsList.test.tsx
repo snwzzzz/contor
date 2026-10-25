@@ -5,6 +5,8 @@ import { AccountsList } from "./AccountsList";
 import { mockApi } from "@/test/api-mock";
 import { renderWithProviders } from "@/test/render";
 
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
+
 describe("AccountsList", () => {
   it("renders empty state when no accounts connected", async () => {
     mockApi({
@@ -147,6 +149,27 @@ describe("AccountsList", () => {
     renderWithProviders(<AccountsList connected />);
 
     expect(await screen.findByRole("status")).toHaveTextContent("Mailbox connected");
+  });
+
+  it("hides a mailbox's mail in contor with a toggle, and says the AI still reads it", async () => {
+    const user = userEvent.setup();
+    const account = { id: 4, provider: "MICROSOFT_GRAPH", emailAddress: "archive@example.com", status: "ACTIVE", aiEnabled: true, hidden: false };
+    const calls = mockApi({
+      "GET /api/mail/accounts": { body: [account] },
+      "GET /api/ai/settings": { body: { mailAccess: true, historyDays: 90, categories: "SUGGEST", records: "SUGGEST", calendar: "SUGGEST",
+        tasks: "SUGGEST", replies: "OFF", courtesyReplies: false, readHiddenMailboxes: true } },
+      "PATCH /api/mail/accounts/4": { body: { ...account, hidden: true } },
+    });
+
+    renderWithProviders(<AccountsList />);
+    const toggle = await screen.findByRole("checkbox", { name: /hide in contor/i });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ hidden: true }));
+    expect(screen.getByRole("checkbox", { name: /hide in contor/i })).toBeChecked();
+    expect(await screen.findByText(/the AI still reads it/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings › General" })).toHaveAttribute("href", expect.stringContaining("settings=general"));
   });
 
   it("shows the mailbox's profile picture", async () => {

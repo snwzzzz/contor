@@ -197,6 +197,27 @@ class AiSettingsServiceTest {
     }
 
     @Test
+    void getSettings_ReadsHiddenMailboxesByDefault() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.empty());
+
+        assertThat(service.getSettings().getReadHiddenMailboxes()).isTrue();
+    }
+
+    @Test
+    void updateSettings_ReadHiddenMailboxesRoundTripsAndIsAudited() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().readHiddenMailboxes(false));
+
+        assertThat(dto.getReadHiddenMailboxes()).isFalse();
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("readHiddenMailboxes", true);
+        assertThat(captor.getValue().after()).containsEntry("readHiddenMailboxes", false);
+    }
+
+    @Test
     void updateSettings_RepliesAutoRejected() {
         when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
 

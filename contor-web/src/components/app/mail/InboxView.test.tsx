@@ -303,6 +303,8 @@ describe("InboxView", () => {
 
     const list = await screen.findByRole("region", { name: "Email list" });
     expect(await within(list).findByText("Pane mail")).toBeInTheDocument();
+    // Email boxes have their own surface (a little darker than cards in dark mode).
+    expect(within(list).getByText("Pane mail").closest("button")).toHaveClass("bg-surface-email");
     // Search and filter sit compactly on top of the list, not across the page.
     expect(within(list).getByRole("combobox", { name: "Search emails" })).toBeInTheDocument();
     expect(within(list).getByRole("button", { name: /^Filter/ })).toBeInTheDocument();
@@ -454,7 +456,7 @@ describe("InboxView", () => {
     expect(within(pane).getByRole("heading", { name: "Project Update" })).toBeInTheDocument();
     expect(within(pane).getByText("Alice")).toBeInTheDocument();
     expect(within(pane).getByText("Here is the latest status...")).toBeInTheDocument();
-    expect(within(pane).getByText("Loading conversation…")).toBeInTheDocument();
+    expect(within(pane).getByRole("status", { name: "Loading conversation" })).toBeInTheDocument();
   });
 
   it("keeps the current page visible while the next one loads", async () => {
@@ -470,7 +472,14 @@ describe("InboxView", () => {
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     expect(screen.getByText("First page mail")).toBeInTheDocument();
-    expect(screen.queryByText("Loading emails…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading emails" })).not.toBeInTheDocument();
+  });
+
+  it("shows placeholder rows while the first page loads", async () => {
+    mockApi({ "GET /api/mail/accounts": { body: [] }, "GET /api/emails": () => new Promise(() => {}) });
+    renderWithProviders(<InboxView />);
+
+    expect(await screen.findByRole("status", { name: "Loading emails" })).toBeInTheDocument();
   });
 
   it("pages through all emails", async () => {

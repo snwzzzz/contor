@@ -14,6 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -85,6 +86,9 @@ class MailServiceTest {
 
     @Mock
     private ReplySuggestionService replySuggestionService;
+
+    @Mock
+    private AuditService auditService;
 
     @Spy
     private WebProperties webProperties = new WebProperties("http://localhost:3000");
@@ -208,6 +212,36 @@ class MailServiceTest {
     }
 
     @Test
+    void updateMailAccount_ChangesOnlyTheGivenFlagsAndIsAudited() {
+        var acc = account(1L);
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
+        when(mailAccountRepository.saveAndFlush(acc)).thenAnswer(inv -> inv.getArgument(0));
+
+        MailAccountDto dto = mailService.updateMailAccount(2L, new UpdateMailAccountCommand().hidden(true));
+
+        assertTrue(dto.getHidden());
+        assertTrue(dto.getAiEnabled());
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertEquals(AuditAction.MAIL_ACCOUNT_CHANGED, captor.getValue().action());
+        assertEquals(Map.of("aiEnabled", true, "hidden", false), captor.getValue().before());
+        assertEquals(Map.of("aiEnabled", true, "hidden", true), captor.getValue().after());
+
+        dto = mailService.updateMailAccount(2L, new UpdateMailAccountCommand().aiEnabled(false));
+        assertFalse(dto.getAiEnabled());
+        assertTrue(dto.getHidden());
+    }
+
+    @Test
+    void updateMailAccount_OfAnotherUserIsNotFound() {
+        when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(account(9L)));
+
+        assertThrows(MailAccountNotFoundException.class, () -> mailService.updateMailAccount(2L, new UpdateMailAccountCommand().hidden(true)));
+        verify(mailAccountRepository, never()).saveAndFlush(any());
+        verify(auditService, never()).record(any());
+    }
+
+    @Test
     void disconnectAccount_Success() {
         var acc = account(1L);
         acc.setDeltaLink("inbox-delta");
@@ -245,7 +279,7 @@ class MailServiceTest {
         when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, email(1L)));
         labelled();
 
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, null);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(1L, page.getTotalElements());
         assertEquals("Shipped", page.getItems().get(0).getSubject());
@@ -264,7 +298,7 @@ class MailServiceTest {
                 new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-09T10:00:00Z"))));
         labelled();
 
-        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, EmailFolder.SENT, null, null).getItems().get(0);
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, EmailFolder.SENT, null, null).getItems().get(0);
 
         assertEquals("sent", summary.getFolder());
         assertEquals(3, summary.getThreadSize());
@@ -437,7 +471,7 @@ class MailServiceTest {
                 .thenReturn(List.of(Proposal.builder().sourceEmail(suggested).build()));
         when(replyDraftRepository.findEmailIdsWithStatus(List.of(5L, 6L, 7L), ReplyDraftStatus.READY)).thenReturn(List.of(6L));
 
-        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems();
+        List<EmailSummaryDto> items = mailService.listEmails(null, null, null, null, null, null, null, null, null, null).getItems();
 
         assertEquals(ReplyMarker.SUGGESTED, items.get(0).getReplyState());
         assertEquals(ReplyMarker.DRAFT_READY, items.get(1).getReplyState());
@@ -473,7 +507,7 @@ class MailServiceTest {
                 new ThreadStat(2L, "conv-1", 3L, Instant.parse("2026-01-02T10:00:00Z"))));
         labelled();
 
-        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null, null).getItems().get(0);
+        EmailSummaryDto summary = mailService.listEmails(null, null, null, null, null, null, null, null, null, null).getItems().get(0);
 
         assertEquals(3, summary.getThreadSize());
         assertTrue(summary.getAnswered());

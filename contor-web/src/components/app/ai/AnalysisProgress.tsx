@@ -13,6 +13,7 @@ import type { AnalysisState } from "@/lib/api/generated/model/analysisState";
 import { formatDuration, secondsPerEmail, type ProgressSample } from "@/lib/analysis-eta";
 import { isActiveRun, useLatestAnalysis } from "@/lib/hooks/useLatestAnalysis";
 import { CategoryReview } from "./CategoryReview";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const STATE_TEXT: Record<AnalysisState, string> = {
   QUEUED: "Waiting to start",
@@ -33,7 +34,7 @@ export function AnalysisProgress() {
   const resume = useContinueAnalysis(onRun);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <LoadingList label="Loading the analysis" rows={3} />;
   }
   if (!run) {
     return <p className="text-sm text-muted-foreground">No analysis has run yet.</p>;
@@ -101,7 +102,8 @@ export function AnalysisProgress() {
       ) : null}
 
       {run.status === "COMPLETED" ? (
-        <nav aria-label="Results" className="flex flex-wrap gap-2">
+        // The same grid as the counters above, so each link sits under a counter.
+        <nav aria-label="Results" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <ResultLink href="/findings" icon={ScanSearch} label="Review findings" />
           <ResultLink href="/proposals" icon={Sparkles} label="Review proposals" />
           <ResultLink href="/calendar" icon={CalendarDays} label="Open calendar" />
@@ -188,8 +190,8 @@ function Counter({ label, value }: { label: string; value: number }) {
 
 function ResultLink({ href, icon: Icon, label }: { href: string; icon: typeof Sparkles; label: string }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
-      <Icon className="size-4" aria-hidden="true" />
+    <Link href={href} className="inline-flex w-full min-w-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
       {label}
     </Link>
   );

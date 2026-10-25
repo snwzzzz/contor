@@ -13,6 +13,12 @@ import { domainOf, matchesEmail } from "@/components/app/mail/mail-format";
 import { useListRecordEmails } from "@/lib/api/generated/endpoints/records/records";
 import type { EmailSearchField } from "@/lib/api/generated/model/emailSearchField";
 import { useSenderPictures } from "@/lib/hooks/useSenderPictures";
+import { cn } from "@/lib/utils";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
+
+function emailCount(count: number): string {
+  return `${count} ${count === 1 ? "email" : "emails"}`;
+}
 
 /** Emails per page of the record's Emails tab; page 1 is also what the tab's count comes from (same query, fetched once). */
 export const RECORD_EMAIL_PAGE_SIZE = 50;
@@ -23,8 +29,8 @@ interface RecordEmailsTabProps {
 }
 
 /**
- * Emails the record comes up in, laid out like the inbox: a filterable list of email boxes (the filter applies to the
- * loaded page) with the pager at its end, and the reading pane.
+ * Emails the record comes up in, laid out like the inbox but in the page flow: a filterable list of email boxes (the
+ * filter applies to the loaded page) with the pager at its end, and a reading pane that stays in view beside it.
  */
 export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps) {
   const [pageIndex, setPageIndex] = useState(0);
@@ -32,7 +38,7 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
     // Keep showing the current page while the next one loads, instead of blanking the tab.
     query: { retry: false, placeholderData: keepPreviousData },
   });
-  const listScroll = useRef<HTMLDivElement>(null);
+  const listTop = useRef<HTMLElement>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [field, setField] = useState<EmailSearchField>("ALL");
@@ -40,10 +46,10 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
   const items = emails?.items ?? [];
   const pictures = useSenderPictures(items.flatMap((item) => domainOf(item.fromAddress) ?? []));
 
-  /** The pager sits at the end of the list: start the next page at its top. */
+  /** The pager sits at the end of the list: bring the top of the list back into view for the next page. */
   function goToPage(index: number) {
     setPageIndex(index);
-    if (listScroll.current) listScroll.current.scrollTop = 0;
+    listTop.current?.scrollIntoView?.({ block: "start" });
   }
 
   /** Contact photo first, then the sender domain's logo. */
@@ -52,7 +58,7 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
   }
 
   if (!emails) {
-    return <p className="text-sm text-muted-foreground">Loading emails…</p>;
+    return <LoadingList label="Loading emails" rows={5} avatar twoLines />;
   }
   if (items.length === 0) {
     return <EmptyState icon={Mail} title="No emails yet" description="Emails from this record's addresses or domain, and the ones it was found in, show up here." />;
@@ -62,10 +68,11 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
   const filtering = deferredText.trim() !== "";
 
   return (
-    <div className="flex min-h-[32rem] flex-col gap-6 lg:h-[calc(100svh-18rem)] lg:flex-row">
-      {/* Message list: filter on top, the email boxes below in their own scroll area */}
-      <section aria-label="Email list" className="flex min-h-0 flex-col gap-3 max-lg:max-h-[55svh] lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
-        <div className="flex shrink-0 items-center gap-2">
+    // Part of the page: the list grows and the page scrolls; on large screens the reading pane stays in view beside it.
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+      {/* Message list: filter on top, the email boxes and the pager below */}
+      <section ref={listTop} aria-label="Email list" className="grid min-w-0 scroll-mt-4 gap-3">
+        <div className="flex items-center gap-2">
           <EmailSearchBar
             text={text}
             field={field}
@@ -77,10 +84,10 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
             }}
           />
           <p className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {filtering ? `${visible.length} of ${items.length} emails` : `${items.length} emails`}
+            {filtering ? `${visible.length} of ${emailCount(items.length)}` : emailCount(items.length)}
           </p>
         </div>
-        <div ref={listScroll} data-testid="email-list-scroll" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+        <div data-testid="email-list" className="grid min-w-0 gap-3">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
               <SearchX className="size-5" aria-hidden="true" />
@@ -93,8 +100,15 @@ export function RecordEmailsTab({ collectionId, recordId }: RecordEmailsTabProps
         </div>
       </section>
 
-      {/* Reading pane: the subject box and one box per message (like Outlook); the thread scrolls its history itself */}
-      <section aria-label="Email details" className="flex min-h-0 min-w-0 flex-1 flex-col max-lg:min-h-[60svh]">
+      {/* Reading pane: sticky beside the list, below it on small screens. An open conversation takes the height it
+          needs, at most the screen (then the thread scrolls its history itself); the placeholder stays compact. */}
+      <section
+        aria-label="Email details"
+        className={cn(
+          "flex min-w-0 flex-col lg:sticky lg:top-3",
+          selected === null ? "min-h-60" : "lg:max-h-[calc(100dvh-var(--header-height)-3rem)]",
+        )}
+      >
         {selected === null ? <ReadingPanePlaceholder /> : <EmailThread key={selected} emailId={selected} picture={picture} />}
       </section>
     </div>

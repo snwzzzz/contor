@@ -71,6 +71,7 @@ public class MailService {
     private final ReplyDraftRepository replyDraftRepository;
     private final ProposalRepository proposalRepository;
     private final ReplySuggestionService replySuggestionService;
+    private final AuditService auditService;
 
     @Transactional
     public List<MailAccountDto> listMailAccounts() {
@@ -149,6 +150,29 @@ public class MailService {
         return mailSyncService.syncAccount(account);
     }
 
+    /** Turns one of the current user's mailboxes on/off for the AI and hides/shows its mail; {@code null} = unchanged. */
+    @Transactional
+    public MailAccountDto updateMailAccount(Long accountId, UpdateMailAccountCommand command) {
+        MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
+                .filter(candidate -> candidate.getOwner().getId().equals(currentUser()))
+                .orElseThrow(() -> new MailAccountNotFoundException(accountId));
+        Map<String, Object> before = flags(account);
+
+        if (command.getAiEnabled() != null) account.setAiEnabled(command.getAiEnabled());
+        if (command.getHidden() != null) account.setHidden(command.getHidden());
+        MailAccount saved = mailAccountRepository.saveAndFlush(account);
+
+        auditService.record(AuditEvent.currentActor(AuditAction.MAIL_ACCOUNT_CHANGED)
+                .entity("mail_account", accountId)
+                .before(before)
+                .after(flags(saved)));
+        return MailMapper.toDto(saved);
+    }
+
+    private static Map<String, Object> flags(MailAccount account) {
+        return Map.of("aiEnabled", account.isAiEnabled(), "hidden", account.isHidden());
+    }
+
     @Transactional
     public void disconnectAccount(Long accountId) {
         MailAccount account = mailAccountRepository.findById(new MailAccount.MailAccountId(accountId))
@@ -187,7 +211,7 @@ public class MailService {
 
     @Transactional
     public EmailPageDto listEmails(Long accountId, Long labelId, EmailProcessingState processingState, String q,
-                                   EmailSearchField field, Boolean answered, EmailFolder folder, Integer page, Integer size) {
+                                   EmailSearchField field, Boolean answered, Boolean read, EmailFolder folder, Integer page, Integer size) {
         var criteria = new EmailSpecifications.Criteria(
                 currentUser(),
                 accountId != null ? new MailAccount.MailAccountId(accountId) : null,
@@ -196,7 +220,8 @@ public class MailService {
                 q,
                 field != null ? SearchField.valueOf(field.name()) : SearchField.ALL,
                 answered,
-                folder == EmailFolder.SENT);
+                folder == EmailFolder.SENT,
+                read);
         Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "receivedAt"));
         Page<EmailSummary> result = emailMessageRepository.findSummaries(EmailSpecifications.matching(criteria), pageable);

@@ -24,6 +24,13 @@ describe("PictureAvatar", () => {
     fireEvent.error(container.querySelector("img")!);
 
     expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByText("M")).toHaveStyle({ width: "32px", height: "32px" });
+    expect(container.firstElementChild).toHaveStyle({ width: "32px", height: "32px" });
+    expect(container.firstElementChild).toHaveTextContent("M");
+  });
+
+  it("trims the initial to its cap height so the letter itself sits in the middle of the circle", () => {
+    render(<PictureAvatar label="Nordhafen" />);
+
+    expect(screen.getByText("N")).toHaveClass("leading-none", "[text-box:trim-both_cap_alphabetic]");
   });
 });

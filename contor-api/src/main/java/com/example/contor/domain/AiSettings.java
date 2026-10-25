@@ -67,6 +67,11 @@ public class AiSettings extends AuditableEntity {
     @Column(name = "courtesy_replies", nullable = false)
     private boolean courtesyReplies = false;
 
+    /** The AI also reads mailboxes hidden in the app ({@link MailAccount#isHidden()}), as long as they are AI-enabled. */
+    @Builder.Default
+    @Column(name = "read_hidden_mailboxes", nullable = false)
+    private boolean readHiddenMailboxes = true;
+
     @Column(name = "onboarded_at")
     private Instant onboardedAt;
 
