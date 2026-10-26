@@ -30,7 +30,7 @@ Fixed tables: JPA + Flyway. Generated collection tables: jOOQ only (`persistence
 |---|---|---|
 | Users & security | `app_user`, `recovery_code`, `spring_session*` | TOTP secret encrypted; recovery codes hashed |
 | Audit | `audit_log` | append-only (trigger), records referenced as (collection_id, entity_id) |
-| Mail | `mail_account`, `email_message`, `email_embedding` | tokens encrypted; embeddings per (email, model), `vector(768)` + HNSW; trigram index on subject |
+| Mail | `mail_account`, `email_message`, `email_embedding` | provider `MICROSOFT_GRAPH`/`GMAIL`/`DEMO`, opaque per-folder sync cursors (ADR 0011); tokens encrypted; embeddings per (email, model), `vector(768)` + HNSW; trigram index on subject |
 | Labels & rules | `label`, `email_label`, `rule` | `email_label` composite key |
 | Collections | `collection`, `collection_field`, `collection_schema_change` | metadata for generated `c_<slug>` tables; schema history append-only |
 | Record links | `record_source` | (collection_id, record_id) ↔ email |

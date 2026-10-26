@@ -1,6 +1,11 @@
-package com.example.contor.service;
+package com.example.contor.mailprovider;
 
 import com.example.contor.domain.EmailRecipient;
+import com.example.contor.domain.MailProvider;
+import com.example.contor.domain.SyncFolder;
+import com.example.contor.exception.SyncCursorExpiredException;
+import com.example.contor.service.ImageData;
+import com.microsoft.graph.models.BodyType;
 import com.microsoft.graph.models.Contact;
 import com.microsoft.graph.models.ContactCollectionResponse;
 import com.microsoft.graph.models.EmailAddress;
@@ -14,7 +19,7 @@ import com.microsoft.graph.users.item.mailfolders.item.messages.delta.DeltaReque
 import com.microsoft.kiota.ApiException;
 import com.microsoft.kiota.authentication.AuthenticationProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,27 +30,28 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+/** Outlook mailboxes through Microsoft Graph: folder delta queries, profile and contact photos. */
 @Slf4j
-@Service
-public class MsGraphMailService {
-
-    public record UserProfile(String emailAddress, String displayName) {}
-
-    public record DeltaResult(List<Message> messages, String nextLink, String newDeltaLink) {}
-
-    public record ContactPhotoData(String emailAddress, ImageData photo) {}
+@Component
+public class MicrosoftGraphMailboxClient implements MailboxClient {
 
     private static final String PHOTO_SIZE = "96x96";
     private static final int MAX_CONTACTS = 500;
     private static final Pattern VALID_ADDRESS = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    public GraphServiceClient createClient(String accessToken) {
+    @Override
+    public MailProvider provider() {
+        return MailProvider.MICROSOFT_GRAPH;
+    }
+
+    GraphServiceClient createClient(String accessToken) {
         AuthenticationProvider authProvider = (request, context) ->
                 request.headers.add("Authorization", "Bearer " + accessToken);
         return new GraphServiceClient(authProvider);
     }
 
-    public UserProfile fetchUserProfile(String accessToken) {
+    @Override
+    public MailboxProfile fetchProfile(String accessToken) {
         GraphServiceClient client = createClient(accessToken);
         User user = client.me().get();
         if (user == null) {
@@ -58,6 +64,7 @@ public class MsGraphMailService {
      * The signed-in user's profile photo: the 96x96 version if Graph offers sizes, else the original. Empty when the
      * account has none (404) or Graph does not answer; a missing photo must never break a sync.
      */
+    @Override
     public Optional<ImageData> fetchProfilePhoto(String accessToken) {
         GraphServiceClient client = createClient(accessToken);
         try {
@@ -86,6 +93,7 @@ public class MsGraphMailService {
      * Photos of the signed-in user's Outlook contacts (up to {@value #MAX_CONTACTS} contacts), one entry per contact
      * address. Needs the Contacts.Read permission; a missing permission surfaces as an exception for the caller.
      */
+    @Override
     public List<ContactPhotoData> fetchContactPhotos(String accessToken) {
         GraphServiceClient client = createClient(accessToken);
         ContactCollectionResponse page = client.me().contacts().get(config -> {
@@ -140,57 +148,87 @@ public class MsGraphMailService {
             if (bytes.length == 0) {
                 throw new IOException("Empty photo response");
             }
-            return new ImageData(bytes, contentTypeOf(bytes));
+            return new ImageData(bytes, ImageData.contentTypeOf(bytes));
         }
     }
 
-    /** Image type from the file signature (Graph returns JPEG for nearly all photos). */
-    public static String contentTypeOf(byte[] bytes) {
-        if (bytes.length >= 4 && (bytes[0] & 0xFF) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G') {
-            return "image/png";
-        }
-        if (bytes.length >= 3 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F') {
-            return "image/gif";
-        }
-        return "image/jpeg";
-    }
-
-    public static UserProfile extractProfile(User user) {
+    static MailboxProfile extractProfile(User user) {
         String email = user.getMail() != null && !user.getMail().isBlank()
                 ? user.getMail()
                 : user.getUserPrincipalName();
-        return new UserProfile(email, user.getDisplayName());
+        return new MailboxProfile(email, user.getDisplayName());
     }
 
-    public DeltaResult fetchMessagesDelta(String accessToken, String deltaLinkOrNextLink) {
-        return fetchFolderDelta(accessToken, "inbox", deltaLinkOrNextLink);
-    }
-
-    /** Delta of the Sent Items folder (covered by the Mail.Read scope). */
-    public DeltaResult fetchSentMessagesDelta(String accessToken, String deltaLinkOrNextLink) {
-        return fetchFolderDelta(accessToken, "sentitems", deltaLinkOrNextLink);
-    }
-
-    private DeltaResult fetchFolderDelta(String accessToken, String wellKnownFolder, String deltaLinkOrNextLink) {
+    /**
+     * Delta of the inbox or the Sent Items folder (both covered by Mail.Read). The cursor is a Graph next link or
+     * delta link; an expired delta link answers 410 Gone.
+     */
+    @Override
+    public FolderChanges fetchChanges(String accessToken, SyncFolder folder, String cursor) {
         GraphServiceClient client = createClient(accessToken);
         DeltaGetResponse response;
-        if (deltaLinkOrNextLink == null || deltaLinkOrNextLink.isBlank()) {
-            response = client.me().mailFolders().byMailFolderId(wellKnownFolder).messages().delta().get();
-        } else {
-            response = new DeltaRequestBuilder(deltaLinkOrNextLink, client.getRequestAdapter()).get();
+        try {
+            if (cursor == null || cursor.isBlank()) {
+                String wellKnownFolder = folder == SyncFolder.SENT ? "sentitems" : "inbox";
+                response = client.me().mailFolders().byMailFolderId(wellKnownFolder).messages().delta().get();
+            } else {
+                response = new DeltaRequestBuilder(cursor, client.getRequestAdapter()).get();
+            }
+        } catch (RuntimeException e) {
+            if (cursor != null && isGone(e)) {
+                throw new SyncCursorExpiredException("Graph delta link of " + folder + " expired");
+            }
+            throw e;
         }
 
         if (response == null) {
-            return new DeltaResult(Collections.emptyList(), null, null);
+            return new FolderChanges(List.of(), null, null);
         }
-        return new DeltaResult(
-                response.getValue() != null ? response.getValue() : Collections.emptyList(),
-                response.getOdataNextLink(),
-                response.getOdataDeltaLink()
-        );
+        List<SyncedMessage> messages = response.getValue() == null ? List.of() : response.getValue().stream()
+                .filter(message -> message.getId() != null)
+                .map(message -> toSyncedMessage(message, folder))
+                .toList();
+        return new FolderChanges(messages, response.getOdataNextLink(), response.getOdataDeltaLink());
     }
 
-    public static List<EmailRecipient> mapRecipients(List<Recipient> recipients) {
+    private static boolean isGone(RuntimeException e) {
+        if (e instanceof ApiException api && api.getResponseStatusCode() == 410) {
+            return true;
+        }
+        return e.getMessage() != null && e.getMessage().contains("410");
+    }
+
+    static SyncedMessage toSyncedMessage(Message message, SyncFolder folder) {
+        boolean sent = folder == SyncFolder.SENT;
+        var builder = SyncedMessage.builder()
+                .providerMessageId(message.getId())
+                .internetMessageId(message.getInternetMessageId())
+                .conversationId(message.getConversationId())
+                .to(mapRecipients(message.getToRecipients()))
+                .cc(mapRecipients(message.getCcRecipients()))
+                .subject(message.getSubject())
+                .snippet(message.getBodyPreview())
+                .read(message.getIsRead())
+                .hasAttachments(message.getHasAttachments());
+        if (message.getFrom() != null && message.getFrom().getEmailAddress() != null) {
+            builder.from(new EmailRecipient(message.getFrom().getEmailAddress().getName(), message.getFrom().getEmailAddress().getAddress()));
+        }
+        if (message.getBody() != null) {
+            if (message.getBody().getContentType() == BodyType.Html) {
+                builder.bodyHtml(message.getBody().getContent());
+            } else {
+                builder.bodyText(message.getBody().getContent());
+            }
+        }
+        if (sent && message.getSentDateTime() != null) {
+            builder.receivedAt(message.getSentDateTime().toInstant());
+        } else if (message.getReceivedDateTime() != null) {
+            builder.receivedAt(message.getReceivedDateTime().toInstant());
+        }
+        return builder.build();
+    }
+
+    static List<EmailRecipient> mapRecipients(List<Recipient> recipients) {
         if (recipients == null || recipients.isEmpty()) {
             return Collections.emptyList();
         }

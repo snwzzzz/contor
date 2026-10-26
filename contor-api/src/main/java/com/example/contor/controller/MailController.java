@@ -612,6 +612,11 @@ public class MailController implements MailApi {
 
     private final MailService mailService;
 
+    @Override
+    public ResponseEntity<List<MailProviderDto>> listMailProviders() {
+        return ResponseEntity.ok(mailService.listMailProviders());
+    }
+
     @PreAuthorize("hasRole('OWNER')")
     @Override
     public ResponseEntity<MailAuthorizeUrlDto> connectMailAccount(ConnectMailAccountCommand command) {

@@ -8,6 +8,11 @@ import com.example.contor.exception.EmailNotFoundException;
 import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
+import com.example.contor.mailprovider.MailOAuthClient;
+import com.example.contor.mailprovider.MailProviderRegistry;
+import com.example.contor.mailprovider.MailboxProfile;
+import com.example.contor.mailprovider.OAuthStateCodec;
+import com.example.contor.mailprovider.OAuthTokens;
 import com.example.contor.mapper.MailMapper;
 import com.example.contor.mapper.ProposalMapper;
 import com.example.contor.mapper.ReplyDraftMapper;
@@ -38,8 +43,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Mail service managing connected mailboxes, OAuth2 flow with Microsoft Graph,
- * incremental message synchronization, and email queries.
+ * Mail service managing connected mailboxes, the OAuth2 sign-in of every mail provider (through
+ * {@link MailProviderRegistry}), incremental message synchronization, and email queries.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -61,8 +66,8 @@ public class MailService {
     private final EmailLabelRepository emailLabelRepository;
     private final LabelRepository labelRepository;
     private final AppUserRepository appUserRepository;
-    private final MsGraphAuthService msGraphAuthService;
-    private final MsGraphMailService msGraphMailService;
+    private final MailProviderRegistry mailProviderRegistry;
+    private final OAuthStateCodec oauthStateCodec;
     private final MailSyncService mailSyncService;
     private final WebProperties webProperties;
     private final RecordService recordService;
@@ -80,10 +85,30 @@ public class MailService {
                 .toList();
     }
 
+    /** Every connectable provider (the demo mailbox is none) and whether this server has its OAuth client. */
+    @Transactional
+    public List<MailProviderDto> listMailProviders() {
+        return mailProviderRegistry.oauthClients().stream()
+                .map(client -> new MailProviderDto(MailProviderKind.valueOf(client.provider().name()), client.displayName(), client.isConfigured()))
+                .toList();
+    }
+
+    /** Starts the sign-in of the requested provider (default Microsoft Graph) with a fresh PKCE verifier in the state. */
     @Transactional
     public MailAuthorizeUrlDto connectAccount(ConnectMailAccountCommand command) {
         String emailHint = command != null ? command.getEmailHint() : null;
-        String url = msGraphAuthService.buildAuthorizeUrl(currentUser().id(), emailHint);
+        MailProvider provider = command != null && command.getProvider() != null
+                ? MailProvider.valueOf(command.getProvider().name())
+                : MailProvider.MICROSOFT_GRAPH;
+        if (!provider.synced()) {
+            throw new IllegalArgumentException("This mailbox type cannot be connected");
+        }
+        MailOAuthClient client = mailProviderRegistry.oauth(provider);
+        if (!client.isConfigured()) {
+            throw new IllegalArgumentException(client.displayName() + " is not configured on this server");
+        }
+        OAuthStateCodec.OAuthState state = oauthStateCodec.start(currentUser().id(), provider);
+        String url = client.authorizeUrl(oauthStateCodec.encode(state), OAuthStateCodec.codeChallenge(state.codeVerifier()), emailHint);
         return new MailAuthorizeUrlDto(url);
     }
 
@@ -95,25 +120,27 @@ public class MailService {
     @Transactional
     public String handleCallback(String state, String code, String error, String errorDescription) {
         if (error != null && !error.isBlank()) {
-            throw callbackFailed("access_denied".equals(error) ? "Microsoft sign-in was cancelled." : "Microsoft sign-in failed.", null);
+            throw callbackFailed("access_denied".equals(error) ? "Sign-in was cancelled." : "Sign-in failed.", null);
         }
         if (state == null || state.isBlank() || code == null || code.isBlank()) {
-            throw callbackFailed("The Microsoft sign-in response was incomplete. Please try again.", null);
+            throw callbackFailed("The sign-in response was incomplete. Please try again.", null);
         }
         try {
-            Long userId = msGraphAuthService.validateStateAndExtractUserId(state);
-            MsGraphAuthService.TokenResult tokens = msGraphAuthService.exchangeCode(code);
-            MsGraphMailService.UserProfile profile = msGraphMailService.fetchUserProfile(tokens.accessToken());
+            OAuthStateCodec.OAuthState oauthState = oauthStateCodec.decode(state);
+            MailProvider provider = oauthState.provider();
+            OAuthTokens tokens = mailProviderRegistry.oauth(provider).exchangeCode(code, oauthState.codeVerifier());
+            MailboxProfile profile = mailProviderRegistry.mailbox(provider).fetchProfile(tokens.accessToken());
 
+            Long userId = oauthState.userId();
             AppUser.AppUserId ownerId = new AppUser.AppUserId(userId);
             AppUser owner = appUserRepository.findById(ownerId)
                     .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
 
             Email email = new Email(profile.emailAddress());
-            MailAccount account = mailAccountRepository.findByOwner_IdAndEmailAddress(ownerId, email)
+            MailAccount account = mailAccountRepository.findByOwner_IdAndProviderAndEmailAddress(ownerId, provider, email)
                     .orElseGet(() -> MailAccount.builder()
                             .owner(owner)
-                            .provider(MailProvider.MICROSOFT_GRAPH)
+                            .provider(provider)
                             .emailAddress(email)
                             .build());
 
@@ -183,8 +210,8 @@ public class MailService {
         account.setAccessToken(null);
         account.setRefreshToken(null);
         account.setTokenExpiresAt(null);
-        account.setDeltaLink(null);
-        account.setSentDeltaLink(null);
+        account.setSyncCursor(null);
+        account.setSentSyncCursor(null);
         mailAccountRepository.saveAndFlush(account);
     }
 

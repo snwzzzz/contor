@@ -8,6 +8,12 @@ import com.example.contor.exception.MailCallbackException;
 import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.RecordNotFoundException;
+import com.example.contor.mailprovider.MailOAuthClient;
+import com.example.contor.mailprovider.MailProviderRegistry;
+import com.example.contor.mailprovider.MailboxClient;
+import com.example.contor.mailprovider.MailboxProfile;
+import com.example.contor.mailprovider.OAuthStateCodec;
+import com.example.contor.mailprovider.OAuthTokens;
 import com.example.contor.persistence.*;
 import com.example.contor.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
@@ -61,10 +67,16 @@ class MailServiceTest {
     private AppUserRepository appUserRepository;
 
     @Mock
-    private MsGraphAuthService msGraphAuthService;
+    private MailProviderRegistry mailProviderRegistry;
 
     @Mock
-    private MsGraphMailService msGraphMailService;
+    private OAuthStateCodec oauthStateCodec;
+
+    @Mock
+    private MailOAuthClient oauthClient;
+
+    @Mock
+    private MailboxClient mailboxClient;
 
     @Mock
     private MailSyncService mailSyncService;
@@ -136,9 +148,18 @@ class MailServiceTest {
         assertEquals(1, mailService.listMailAccounts().size());
     }
 
+    private static final OAuthStateCodec.OAuthState GRAPH_STATE =
+            new OAuthStateCodec.OAuthState(1L, MailProvider.MICROSOFT_GRAPH, "verifier");
+
     @Test
     void connectAccount_ReturnsAuthorizeUrl() {
-        when(msGraphAuthService.buildAuthorizeUrl(1L, "test@example.com")).thenReturn("https://login.microsoft.com/auth");
+        var state = new OAuthStateCodec.OAuthState(1L, MailProvider.MICROSOFT_GRAPH, "verifier");
+        when(mailProviderRegistry.oauth(MailProvider.MICROSOFT_GRAPH)).thenReturn(oauthClient);
+        when(oauthClient.isConfigured()).thenReturn(true);
+        when(oauthStateCodec.start(1L, MailProvider.MICROSOFT_GRAPH)).thenReturn(state);
+        when(oauthStateCodec.encode(state)).thenReturn("encoded-state");
+        when(oauthClient.authorizeUrl("encoded-state", OAuthStateCodec.codeChallenge("verifier"), "test@example.com"))
+                .thenReturn("https://login.microsoft.com/auth");
 
         var cmd = new ConnectMailAccountCommand().emailHint("test@example.com");
         var result = mailService.connectAccount(cmd);
@@ -147,22 +168,98 @@ class MailServiceTest {
     }
 
     @Test
+    void connectAccount_UsesTheRequestedProvider() {
+        var state = new OAuthStateCodec.OAuthState(1L, MailProvider.GMAIL, "verifier");
+        when(mailProviderRegistry.oauth(MailProvider.GMAIL)).thenReturn(oauthClient);
+        when(oauthClient.isConfigured()).thenReturn(true);
+        when(oauthStateCodec.start(1L, MailProvider.GMAIL)).thenReturn(state);
+        when(oauthStateCodec.encode(state)).thenReturn("encoded-state");
+        when(oauthClient.authorizeUrl(eq("encoded-state"), any(), eq(null))).thenReturn("https://accounts.google.com/o/oauth2/v2/auth?x");
+
+        var result = mailService.connectAccount(new ConnectMailAccountCommand().provider(MailProviderKind.GMAIL));
+
+        assertEquals("https://accounts.google.com/o/oauth2/v2/auth?x", result.getAuthorizeUrl());
+    }
+
+    @Test
+    void connectAccount_UnconfiguredProviderRejected() {
+        when(mailProviderRegistry.oauth(MailProvider.GMAIL)).thenReturn(oauthClient);
+        when(oauthClient.isConfigured()).thenReturn(false);
+        when(oauthClient.displayName()).thenReturn("Gmail");
+
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> mailService.connectAccount(new ConnectMailAccountCommand().provider(MailProviderKind.GMAIL)));
+
+        assertTrue(ex.getMessage().contains("Gmail"));
+        verify(oauthStateCodec, never()).start(any(), any());
+    }
+
+    @Test
+    void connectAccount_DemoProviderRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> mailService.connectAccount(new ConnectMailAccountCommand().provider(MailProviderKind.DEMO)));
+        verifyNoInteractions(mailProviderRegistry);
+    }
+
+    @Test
+    void listMailProviders_ReportsEveryConnectableProvider() {
+        var gmail = mock(MailOAuthClient.class);
+        when(gmail.provider()).thenReturn(MailProvider.GMAIL);
+        when(gmail.displayName()).thenReturn("Gmail");
+        when(gmail.isConfigured()).thenReturn(false);
+        when(oauthClient.provider()).thenReturn(MailProvider.MICROSOFT_GRAPH);
+        when(oauthClient.displayName()).thenReturn("Outlook");
+        when(oauthClient.isConfigured()).thenReturn(true);
+        when(mailProviderRegistry.oauthClients()).thenReturn(List.of(oauthClient, gmail));
+
+        var providers = mailService.listMailProviders();
+
+        assertEquals(List.of(
+                new MailProviderDto(MailProviderKind.MICROSOFT_GRAPH, "Outlook", true),
+                new MailProviderDto(MailProviderKind.GMAIL, "Gmail", false)), providers);
+    }
+
+    private void signedIn(OAuthStateCodec.OAuthState state, String email) {
+        when(oauthStateCodec.decode("state123")).thenReturn(state);
+        when(mailProviderRegistry.oauth(state.provider())).thenReturn(oauthClient);
+        when(mailProviderRegistry.mailbox(state.provider())).thenReturn(mailboxClient);
+        when(oauthClient.exchangeCode("code123", "verifier"))
+                .thenReturn(new OAuthTokens("access1", "refresh1", Instant.now().plusSeconds(3600)));
+        when(mailboxClient.fetchProfile("access1")).thenReturn(new MailboxProfile(email, "Test User"));
+    }
+
+    @Test
     void handleCallback_SuccessCreatesAccountAndSyncs() {
-        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
-        when(msGraphAuthService.exchangeCode("code123"))
-                .thenReturn(new MsGraphAuthService.TokenResult("access1", "refresh1", Instant.now().plusSeconds(3600)));
-        when(msGraphMailService.fetchUserProfile("access1"))
-                .thenReturn(new MsGraphMailService.UserProfile("test@outlook.com", "Test User"));
+        signedIn(GRAPH_STATE, "test@outlook.com");
         var user = AppUser.builder().id(new AppUser.AppUserId(1L)).build();
         when(appUserRepository.findById(new AppUser.AppUserId(1L))).thenReturn(Optional.of(user));
-        when(mailAccountRepository.findByOwner_IdAndEmailAddress(eq(new AppUser.AppUserId(1L)), any(Email.class)))
+        when(mailAccountRepository.findByOwner_IdAndProviderAndEmailAddress(eq(new AppUser.AppUserId(1L)), eq(MailProvider.MICROSOFT_GRAPH), any(Email.class)))
                 .thenReturn(Optional.empty());
 
         String next = mailService.handleCallback("state123", "code123", null, null);
 
         assertEquals("http://localhost:3000/settings/accounts?connected=true", next);
-        verify(mailAccountRepository).saveAndFlush(any(MailAccount.class));
+        var saved = ArgumentCaptor.forClass(MailAccount.class);
+        verify(mailAccountRepository).saveAndFlush(saved.capture());
+        assertEquals(MailProvider.MICROSOFT_GRAPH, saved.getValue().getProvider());
+        assertEquals("refresh1", saved.getValue().getRefreshToken());
         verify(mailSyncService).syncAccount(any(MailAccount.class));
+    }
+
+    @Test
+    void handleCallback_GmailSignInCreatesAGmailAccount() {
+        signedIn(new OAuthStateCodec.OAuthState(1L, MailProvider.GMAIL, "verifier"), "me@gmail.com");
+        when(appUserRepository.findById(new AppUser.AppUserId(1L))).thenReturn(Optional.of(AppUser.builder().id(new AppUser.AppUserId(1L)).build()));
+        when(mailAccountRepository.findByOwner_IdAndProviderAndEmailAddress(new AppUser.AppUserId(1L), MailProvider.GMAIL, new Email("me@gmail.com")))
+                .thenReturn(Optional.empty());
+
+        mailService.handleCallback("state123", "code123", null, null);
+
+        var saved = ArgumentCaptor.forClass(MailAccount.class);
+        verify(mailAccountRepository).saveAndFlush(saved.capture());
+        assertEquals(MailProvider.GMAIL, saved.getValue().getProvider());
+        assertEquals("me@gmail.com", saved.getValue().getEmailAddress().value());
+        assertEquals("Test User", saved.getValue().getDisplayName());
     }
 
     @Test
@@ -170,7 +267,7 @@ class MailServiceTest {
         var ex = assertThrows(MailCallbackException.class,
                 () -> mailService.handleCallback("state123", null, "access_denied", "User canceled"));
 
-        assertEquals("http://localhost:3000/settings/accounts?mailError=Microsoft+sign-in+was+cancelled.", ex.getForwardUrl());
+        assertEquals("http://localhost:3000/settings/accounts?mailError=Sign-in+was+cancelled.", ex.getForwardUrl());
         verify(mailAccountRepository, never()).saveAndFlush(any());
     }
 
@@ -179,13 +276,14 @@ class MailServiceTest {
         var ex = assertThrows(MailCallbackException.class, () -> mailService.handleCallback(null, "code123", null, null));
 
         assertTrue(ex.getForwardUrl().startsWith("http://localhost:3000/settings/accounts?mailError="));
-        verify(msGraphAuthService, never()).exchangeCode(any());
+        verifyNoInteractions(mailProviderRegistry);
     }
 
     @Test
     void handleCallback_TokenExchangeFailureForwardsWithError() {
-        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
-        when(msGraphAuthService.exchangeCode("code123")).thenThrow(new IllegalStateException("AADSTS70008 internal detail"));
+        when(oauthStateCodec.decode("state123")).thenReturn(GRAPH_STATE);
+        when(mailProviderRegistry.oauth(MailProvider.MICROSOFT_GRAPH)).thenReturn(oauthClient);
+        when(oauthClient.exchangeCode("code123", "verifier")).thenThrow(new IllegalStateException("AADSTS70008 internal detail"));
 
         var ex = assertThrows(MailCallbackException.class, () -> mailService.handleCallback("state123", "code123", null, null));
 
@@ -244,14 +342,14 @@ class MailServiceTest {
     @Test
     void disconnectAccount_Success() {
         var acc = account(1L);
-        acc.setDeltaLink("inbox-delta");
-        acc.setSentDeltaLink("sent-delta");
+        acc.setSyncCursor("inbox-delta");
+        acc.setSentSyncCursor("sent-delta");
         when(mailAccountRepository.findById(new MailAccount.MailAccountId(2L))).thenReturn(Optional.of(acc));
 
         mailService.disconnectAccount(2L);
 
-        assertNull(acc.getDeltaLink());
-        assertNull(acc.getSentDeltaLink());
+        assertNull(acc.getSyncCursor());
+        assertNull(acc.getSentSyncCursor());
 
         assertEquals(MailAccountStatus.DISABLED, acc.getStatus());
         assertNull(acc.getAccessToken());
@@ -553,12 +651,9 @@ class MailServiceTest {
     void handleCallback_ReconnectFetchesThePhotoAgain() {
         var existing = account(1L);
         existing.setPhotoCheckedAt(Instant.now());
-        when(msGraphAuthService.validateStateAndExtractUserId("state123")).thenReturn(1L);
-        when(msGraphAuthService.exchangeCode("code123"))
-                .thenReturn(new MsGraphAuthService.TokenResult("access1", "refresh1", Instant.now().plusSeconds(3600)));
-        when(msGraphMailService.fetchUserProfile("access1")).thenReturn(new MsGraphMailService.UserProfile("me@example.com", "Me"));
+        signedIn(GRAPH_STATE, "me@example.com");
         when(appUserRepository.findById(new AppUser.AppUserId(1L))).thenReturn(Optional.of(existing.getOwner()));
-        when(mailAccountRepository.findByOwner_IdAndEmailAddress(eq(new AppUser.AppUserId(1L)), any(Email.class)))
+        when(mailAccountRepository.findByOwner_IdAndProviderAndEmailAddress(eq(new AppUser.AppUserId(1L)), eq(MailProvider.MICROSOFT_GRAPH), any(Email.class)))
                 .thenReturn(Optional.of(existing));
 
         mailService.handleCallback("state123", "code123", null, null);

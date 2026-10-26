@@ -31,6 +31,13 @@
 }
 
 @theme inline {
+  --color-brand-google-blue: var(--brand-google-blue);
+  --color-brand-google-red: var(--brand-google-red);
+  --color-brand-google-yellow: var(--brand-google-yellow);
+  --color-brand-google-green: var(--brand-google-green);
+  --color-brand-outlook: var(--brand-outlook);
+  --color-brand-outlook-dark: var(--brand-outlook-dark);
+  --color-brand-outlook-foreground: var(--brand-outlook-foreground);
   --color-background: var(--background);
   --color-surface-page: var(--surface-page);
   --color-surface-raised: var(--surface-raised);

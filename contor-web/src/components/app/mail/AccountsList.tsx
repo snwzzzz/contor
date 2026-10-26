@@ -29,11 +29,16 @@ import {
   useConnectMailAccount,
   useDisconnectMailAccount,
   useListMailAccounts,
+  useListMailProviders,
   useSyncMailAccount,
 } from "@/lib/api/generated/endpoints/mail/mail";
+import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
+import type { MailProviderKind } from "@/lib/api/generated/model/mailProviderKind";
 import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
 import { settingsHref } from "@/lib/navigation";
 import { AccountAvatar } from "./AccountAvatar";
+import { AddAccountMenu } from "./AddAccountMenu";
+import { providerLabel } from "./mail-providers";
 import { useMailboxUpdate } from "./useMailboxUpdate";
 
 const STATUS_LABEL = {
@@ -43,9 +48,9 @@ const STATUS_LABEL = {
 } as const;
 
 interface AccountsListProps {
-  /** The Microsoft sign-in just completed (`?connected=true` from the OAuth callback). */
+  /** The provider sign-in just completed (`?connected=true` from the OAuth callback). */
   connected?: boolean;
-  /** Why the Microsoft sign-in failed (`?mailError=` from the OAuth callback). */
+  /** Why the provider sign-in failed (`?mailError=` from the OAuth callback). */
   mailError?: string;
 }
 
@@ -56,6 +61,7 @@ export function AccountsList({
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const { data: accounts, isLoading, error } = useListMailAccounts();
+  const { data: providers } = useListMailProviders();
   const { data: aiSettings } = useGetAiSettings();
   const readHidden = aiSettings?.readHiddenMailboxes ?? true;
   const update = useMailboxUpdate();
@@ -90,13 +96,22 @@ export function AccountsList({
     },
   });
 
-  function handleConnect() {
-    connectMutation.mutate({});
+  function handleConnect(provider: MailProviderKind) {
+    connectMutation.mutate({ data: { provider } });
   }
 
   /** Signs in again with the same mailbox; the callback re-activates the existing account. */
-  function handleReconnect(emailAddress: string) {
-    connectMutation.mutate({ data: { emailHint: emailAddress } });
+  function handleReconnect(account: MailAccountDto) {
+    connectMutation.mutate({ data: { provider: account.provider, emailHint: account.emailAddress } });
+  }
+
+  // a new mailbox, not a reconnect (that one shows its spinner on the card)
+  const adding = connectMutation.isPending && !connectMutation.variables?.data?.emailHint;
+
+  function addAccountMenu(variant: "default" | "outline") {
+    return providers ? (
+      <AddAccountMenu providers={providers} onSelect={handleConnect} loading={adding} variant={variant} />
+    ) : null;
   }
 
   function handleSync(accountId: number) {
@@ -137,15 +152,8 @@ export function AccountsList({
         <EmptyState
           icon={Mail}
           title="No accounts connected"
-          description="Connect your Microsoft 365 or Outlook account to sync emails."
-          action={
-            <AppButton
-              onClick={handleConnect}
-              loading={connectMutation.isPending}
-            >
-              Connect Outlook
-            </AppButton>
-          }
+          description="Connect an Outlook (Microsoft 365) or Gmail mailbox to sync emails."
+          action={addAccountMenu("default")}
         />
       </div>
     );
@@ -158,17 +166,10 @@ export function AccountsList({
         <div>
           <h2 className="text-base font-medium">Mailboxes</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your connected Microsoft Graph accounts and email
-            synchronization.
+            Manage your connected mailboxes and email synchronization.
           </p>
         </div>
-        <AppButton
-          onClick={handleConnect}
-          loading={connectMutation.isPending}
-          variant="outline"
-        >
-          Connect Another Account
-        </AppButton>
+        {addAccountMenu("outline")}
       </div>
 
       <div className="grid gap-4">
@@ -206,6 +207,12 @@ export function AccountsList({
                       </CardDescription>
                     ) : null}
                     <p className="text-xs text-muted-foreground">
+                      {isDemo ? null : (
+                        <>
+                          <span>{providerLabel(account.provider)}</span>
+                          {" · "}
+                        </>
+                      )}
                       {account.lastSyncedAt
                         ? `Last synced: ${new Date(account.lastSyncedAt).toLocaleString()}`
                         : "Not synced yet"}
@@ -271,7 +278,7 @@ export function AccountsList({
                     <AppButton
                       size="sm"
                       variant="outline"
-                      onClick={() => handleReconnect(account.emailAddress)}
+                      onClick={() => handleReconnect(account)}
                       loading={isReconnecting}
                     >
                       <RotateCcw className="size-3.5" />
