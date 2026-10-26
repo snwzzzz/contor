@@ -264,6 +264,18 @@ emails points at its source, down to a record field or an email paragraph. Plan 
 - Not yet: picking connections in the Connections tab, opening a cited field or paragraph highlighted on its own page,
   and the report evaluation (plan steps R9, R11, R7).
 
+## Chat (AI, in progress)
+
+Ask the local model about anything in contor (records, people, connections, mail, calendar, to-dos) on `/chat`;
+answers link to the people, records and emails they are about and cite their sources like reports. Plan:
+[`docs/ai-chat-plan.md`](docs/ai-chat-plan.md). The page is still a placeholder.
+
+- **Storage** (`V1_0_34__chat.sql`, done): `chat_conversation` (private to its user, deleted with them; `focus` = the
+  records the next question may refer to), `chat_message` (question or answer at a `position`; an answer's `state`
+  PENDING → RETRIEVING → WRITING → DONE/FAILED, its Markdown `blocks`, `mentions` (record/email links) and retrieval
+  `plan` as JSON) and `chat_citation` (same targets as `report_citation`).
+- Not yet: the plan/retrieve/answer pipeline, the API and the page (plan steps H3–H12).
+
 ## Local AI (Ollama)
 
 The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and
