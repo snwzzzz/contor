@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { AccountAvatar } from "@/components/app/mail/AccountAvatar";
+import { providerLabel } from "@/components/app/mail/mail-providers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListMailAccounts } from "@/lib/api/generated/endpoints/mail/mail";
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
@@ -88,7 +89,13 @@ function MailboxRow({ account, now }: { account: MailAccountDto; now: Date }) {
         </Link>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", state.dot)} />
-          {status}
+          {account.provider === "DEMO" ? null : (
+            <>
+              <span>{providerLabel(account.provider)}</span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
+          <span className="truncate">{status}</span>
         </span>
       </div>
     </div>

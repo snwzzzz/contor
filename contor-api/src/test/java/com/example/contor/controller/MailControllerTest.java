@@ -93,6 +93,45 @@ public class MailControllerTest {
     }
 
     @Test
+    void connect_mail_account_passes_the_provider() throws Exception {
+        when(mailService.connectAccount(any())).thenReturn(new MailAuthorizeUrlDto("https://accounts.google.com/o/oauth2/v2/auth"));
+
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"provider\":\"GMAIL\"}"))
+                .andExpect(status().isOk());
+        verify(mailService).connectAccount(argThat(command -> command.getProvider() == MailProviderKind.GMAIL));
+    }
+
+    @Test
+    void connect_mail_account_unconfigured_provider_returns_400() throws Exception {
+        when(mailService.connectAccount(any())).thenThrow(new IllegalArgumentException("Gmail is not configured on this server"));
+
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"provider\":\"GMAIL\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Gmail is not configured on this server"));
+    }
+
+    @Test
+    void list_mail_providers_returns_200() throws Exception {
+        when(mailService.listMailProviders()).thenReturn(List.of(
+                new MailProviderDto(MailProviderKind.MICROSOFT_GRAPH, "Outlook", true),
+                new MailProviderDto(MailProviderKind.GMAIL, "Gmail", false)));
+
+        mockMvc.perform(get("/api/mail/providers").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].kind").value("GMAIL"))
+                .andExpect(jsonPath("$[1].displayName").value("Gmail"))
+                .andExpect(jsonPath("$[1].configured").value(false));
+    }
+
+    @Test
+    void list_mail_providers_unauthenticated_returns_401() throws Exception {
+        mockMvc.perform(get("/api/mail/providers"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void connect_mail_account_user_forbidden() throws Exception {
         mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.user()).with(csrf()))
                 .andExpect(status().isForbidden());

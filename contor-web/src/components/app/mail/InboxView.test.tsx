@@ -329,12 +329,30 @@ describe("InboxView", () => {
     await user.click(screen.getByRole("button", { name: /^Filter/ }));
     expect(await screen.findByRole("menuitemradio", { name: "All accounts" })).toHaveAttribute("aria-checked", "true");
 
-    await user.click(screen.getByRole("menuitemradio", { name: "home@outlook.com" }));
+    const home = screen.getByRole("menuitemradio", { name: /home@outlook\.com/ });
+    expect(home).toHaveTextContent("Outlook");
+    await user.click(home);
 
     await waitFor(() => expect(requested.some((search) => search.includes("accountId=2"))).toBe(true));
     expect(screen.getByRole("button", { name: /^Filter/ })).toHaveTextContent("1");
     await user.click(screen.getByRole("button", { name: /^Filter/ }));
-    expect(await screen.findByRole("menuitemradio", { name: "home@outlook.com" })).toHaveAttribute("aria-checked", "true");
+    expect(await screen.findByRole("menuitemradio", { name: /home@outlook\.com/ })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("names the provider of each mailbox in the filter", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [...ACCOUNTS, { id: 3, provider: "GMAIL", emailAddress: "me@gmail.com", status: "ACTIVE", hasPhoto: false }],
+      },
+      "GET /api/emails": { body: page([email(101, 1, "From work")], 1) },
+    });
+
+    renderWithProviders(<InboxView />);
+    await screen.findByText("From work");
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+
+    expect(await screen.findByRole("menuitemradio", { name: /me@gmail\.com/ })).toHaveTextContent("Gmail");
   });
 
   it("shows the profile picture of accounts that have one", async () => {
@@ -346,9 +364,9 @@ describe("InboxView", () => {
     renderWithProviders(<InboxView />);
 
     await userEvent.click(await screen.findByRole("button", { name: /^Filter/ }));
-    const home = await screen.findByRole("menuitemradio", { name: "home@outlook.com" });
+    const home = await screen.findByRole("menuitemradio", { name: /home@outlook\.com/ });
     expect(home.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/mail/accounts/2/photo"));
-    expect(screen.getByRole("menuitemradio", { name: "work@outlook.com" }).querySelector("img")).toBeNull();
+    expect(screen.getByRole("menuitemradio", { name: /work@outlook\.com/ }).querySelector("img")).toBeNull();
   });
 
   it("shows sender pictures: contact photo first, then the company logo, else the initial", async () => {

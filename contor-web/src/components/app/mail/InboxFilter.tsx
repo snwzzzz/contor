@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
 import { AccountAvatar } from "./AccountAvatar";
+import { providerLabel } from "./mail-providers";
 
 const ALL = "all";
 
@@ -55,6 +56,7 @@ export function InboxFilter({ accounts, accountId, onAccountChange, unanswered, 
                 <DropdownMenuRadioItem key={account.id} value={String(account.id)} className="gap-2">
                   <AccountAvatar account={account} size={18} />
                   <span className="truncate">{account.emailAddress}</span>
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">{providerLabel(account.provider)}</span>
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

@@ -35,6 +35,24 @@ describe("HomeMailboxes", () => {
     expect(screen.getByRole("link", { name: "Manage" })).toHaveAttribute("href", "/?settings=accounts");
   });
 
+  it("names the provider of each mailbox", async () => {
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [
+          { id: 1, provider: "MICROSOFT_GRAPH", emailAddress: "me@outlook.com", status: "ACTIVE", lastSyncedAt: "2026-10-19T11:55:00Z" },
+          { id: 2, provider: "GMAIL", emailAddress: "me@gmail.com", status: "ACTIVE", lastSyncedAt: "2026-10-19T11:55:00Z" },
+        ],
+      },
+    });
+    renderWithProviders(<HomeMailboxes />);
+
+    const outlook = (await screen.findByRole("link", { name: "me@outlook.com" })).closest("li") as HTMLElement;
+    expect(within(outlook).getByText("Outlook")).toBeInTheDocument();
+    const gmail = screen.getByRole("link", { name: "me@gmail.com" }).closest("li") as HTMLElement;
+    expect(within(gmail).getByText("Gmail")).toBeInTheDocument();
+    expect(within(gmail).getByText("Synced 5 min. ago")).toBeInTheDocument();
+  });
+
   it("pages through many mailboxes", async () => {
     mockApi({
       "GET /api/mail/accounts": {

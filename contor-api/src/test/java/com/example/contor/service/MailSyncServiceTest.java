@@ -2,12 +2,17 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.MailAccountState;
 import com.example.contor.domain.*;
+import com.example.contor.exception.SyncCursorExpiredException;
+import com.example.contor.mailprovider.ContactPhotoData;
+import com.example.contor.mailprovider.FolderChanges;
+import com.example.contor.mailprovider.MailOAuthClient;
+import com.example.contor.mailprovider.MailProviderRegistry;
+import com.example.contor.mailprovider.MailboxClient;
+import com.example.contor.mailprovider.OAuthTokens;
+import com.example.contor.mailprovider.SyncedMessage;
 import com.example.contor.persistence.ContactPhotoRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.MailAccountRepository;
-import com.microsoft.graph.models.EmailAddress;
-import com.microsoft.graph.models.Message;
-import com.microsoft.graph.models.Recipient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,10 +39,13 @@ class MailSyncServiceTest {
     private EmailMessageRepository emailMessageRepository;
 
     @Mock
-    private MsGraphAuthService msGraphAuthService;
+    private MailProviderRegistry mailProviderRegistry;
 
     @Mock
-    private MsGraphMailService msGraphMailService;
+    private MailOAuthClient oauthClient;
+
+    @Mock
+    private MailboxClient mailboxClient;
 
     @Mock
     private ContactPhotoRepository contactPhotoRepository;
@@ -63,74 +70,107 @@ class MailSyncServiceTest {
                 .tokenExpiresAt(Instant.now().plusSeconds(3600))
                 .status(MailAccountStatus.ACTIVE)
                 .build();
+        lenient().when(mailProviderRegistry.oauth(any())).thenReturn(oauthClient);
+        lenient().when(mailProviderRegistry.mailbox(any())).thenReturn(mailboxClient);
+    }
+
+    private static FolderChanges last(String syncCursor, SyncedMessage... messages) {
+        return new FolderChanges(List.of(messages), null, syncCursor);
+    }
+
+    private void emptyInbox() {
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.INBOX), any())).thenReturn(last("inbox-cursor"));
+    }
+
+    private void emptyFolders() {
+        when(mailboxClient.fetchChanges(eq("valid-token"), any(), any())).thenReturn(last("cursor"));
     }
 
     @Test
     void syncAccount_RefreshesTokenWhenExpired() {
         account.setTokenExpiresAt(Instant.now().minusSeconds(10));
-        when(msGraphAuthService.refreshToken("valid-refresh"))
-                .thenReturn(new MsGraphAuthService.TokenResult("new-access", "new-refresh", Instant.now().plusSeconds(3600)));
-        when(msGraphMailService.fetchMessagesDelta(eq("new-access"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta-link-1"));
+        when(oauthClient.refresh("valid-refresh")).thenReturn(new OAuthTokens("new-access", "new-refresh", Instant.now().plusSeconds(3600)));
+        when(mailboxClient.fetchChanges(eq("new-access"), any(), any())).thenReturn(last("cursor-1"));
 
         var status = mailSyncService.syncAccount(account);
 
         assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
         assertThat(account.getAccessToken()).isEqualTo("new-access");
         assertThat(account.getRefreshToken()).isEqualTo("new-refresh");
-        assertThat(account.getDeltaLink()).isEqualTo("delta-link-1");
+        assertThat(account.getSyncCursor()).isEqualTo("cursor-1");
         verify(mailAccountRepository, atLeastOnce()).saveAndFlush(account);
+    }
+
+    @Test
+    void syncAccount_RefreshWithoutNewRefreshTokenKeepsTheOldOne() {
+        account.setProvider(MailProvider.GMAIL);
+        account.setTokenExpiresAt(Instant.now().minusSeconds(10));
+        when(oauthClient.refresh("valid-refresh")).thenReturn(new OAuthTokens("new-access", null, Instant.now().plusSeconds(3600)));
+        when(mailboxClient.fetchChanges(eq("new-access"), any(), any())).thenReturn(last("500"));
+
+        mailSyncService.syncAccount(account);
+
+        verify(mailProviderRegistry).oauth(MailProvider.GMAIL);
+        assertThat(account.getRefreshToken()).isEqualTo("valid-refresh");
     }
 
     @Test
     void syncAccount_MarksNeedsReauthOnRefreshFailure() {
         account.setTokenExpiresAt(Instant.now().minusSeconds(10));
-        when(msGraphAuthService.refreshToken("valid-refresh"))
-                .thenThrow(new IllegalStateException("Invalid refresh token"));
+        when(oauthClient.refresh("valid-refresh")).thenThrow(new IllegalStateException("Invalid refresh token"));
 
         var status = mailSyncService.syncAccount(account);
 
         assertThat(status.getStatus()).isEqualTo(MailAccountState.NEEDS_REAUTH);
         assertThat(account.getStatus()).isEqualTo(MailAccountStatus.NEEDS_REAUTH);
         verify(mailAccountRepository).saveAndFlush(account);
-        verifyNoInteractions(msGraphMailService);
+        verifyNoInteractions(mailboxClient);
     }
 
     @Test
     void syncAccount_PaginatesAndSavesMessages() {
-        var msg1 = new Message();
-        msg1.setId("m1");
-        msg1.setSubject("Hello");
-        msg1.setReceivedDateTime(OffsetDateTime.now());
-        var sender = new Recipient();
-        var emailAddr = new EmailAddress();
-        emailAddr.setAddress("alice@example.com");
-        emailAddr.setName("Alice");
-        sender.setEmailAddress(emailAddr);
-        msg1.setFrom(sender);
-
-        when(msGraphMailService.fetchMessagesDelta("valid-token", null))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(msg1), "next-page-url", null));
-        when(msGraphMailService.fetchMessagesDelta("valid-token", "next-page-url"))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta-link-final"));
-        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "m1"))
-                .thenReturn(Optional.empty());
+        var message = SyncedMessage.builder().providerMessageId("m1").subject("Hello").receivedAt(Instant.now())
+                .from(new EmailRecipient("Alice", "alice@example.com")).build();
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.INBOX, null))
+                .thenReturn(new FolderChanges(List.of(message), "next-page", null));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.INBOX, "next-page")).thenReturn(last("cursor-final"));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null)).thenReturn(last("sent-cursor"));
+        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "m1")).thenReturn(Optional.empty());
 
         var status = mailSyncService.syncAccount(account);
 
         assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
         assertThat(status.getMessagesSynced()).isEqualTo(1);
-        assertThat(account.getDeltaLink()).isEqualTo("delta-link-final");
-        verify(emailMessageRepository).saveAndFlush(any(EmailMessage.class));
+        assertThat(account.getSyncCursor()).isEqualTo("cursor-final");
+        var saved = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailMessageRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getFromAddress()).isEqualTo("alice@example.com");
+        assertThat(saved.getValue().getFromName()).isEqualTo("Alice");
+        assertThat(saved.getValue().getSubject()).isEqualTo("Hello");
+    }
+
+    @Test
+    void syncAccount_UpdatesAnExistingMessageAndKeepsWhatTheProviderDidNotSend() {
+        var existing = EmailMessage.builder().providerMessageId("m1").subject("Kept").receivedAt(Instant.parse("2026-01-01T00:00:00Z"))
+                .processingState(ProcessingState.DONE).build();
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.INBOX), any()))
+                .thenReturn(last("c", SyncedMessage.builder().providerMessageId("m1").read(true).build()));
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.SENT), any())).thenReturn(last("s"));
+        when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "m1")).thenReturn(Optional.of(existing));
+
+        mailSyncService.syncAccount(account);
+
+        assertThat(existing.getSubject()).isEqualTo("Kept");
+        assertThat(existing.isRead()).isTrue();
+        assertThat(existing.getProcessingState()).isEqualTo(ProcessingState.DONE);
+        assertThat(existing.getReceivedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
     }
 
     @Test
     void syncAccount_FetchesProfilePhotoOnce() {
         byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
-        when(msGraphMailService.fetchProfilePhoto("valid-token"))
-                .thenReturn(Optional.of(new ImageData(jpeg, "image/jpeg")));
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        when(mailboxClient.fetchProfilePhoto("valid-token")).thenReturn(Optional.of(new ImageData(jpeg, "image/jpeg")));
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
@@ -141,9 +181,8 @@ class MailSyncServiceTest {
 
     @Test
     void syncAccount_RemembersAccountsWithoutPhoto() {
-        when(msGraphMailService.fetchProfilePhoto("valid-token")).thenReturn(Optional.empty());
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        when(mailboxClient.fetchProfilePhoto("valid-token")).thenReturn(Optional.empty());
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
@@ -154,20 +193,18 @@ class MailSyncServiceTest {
     @Test
     void syncAccount_SkipsPhotoWhenAlreadyChecked() {
         account.setPhotoCheckedAt(Instant.now());
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
-        verify(msGraphMailService, never()).fetchProfilePhoto(any());
+        verify(mailboxClient, never()).fetchProfilePhoto(any());
     }
 
     @Test
     void syncAccount_ReplacesContactPhotosOncePerDay() {
-        when(msGraphMailService.fetchContactPhotos("valid-token")).thenReturn(List.of(
-                new MsGraphMailService.ContactPhotoData("bob@example.com", new ImageData(new byte[] {1}, "image/jpeg"))));
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        when(mailboxClient.fetchContactPhotos("valid-token")).thenReturn(List.of(
+                new ContactPhotoData("bob@example.com", new ImageData(new byte[] {1}, "image/jpeg"))));
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
@@ -182,20 +219,18 @@ class MailSyncServiceTest {
     @Test
     void syncAccount_SkipsContactPhotosCheckedToday() {
         account.setContactsCheckedAt(Instant.now().minusSeconds(3600));
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
-        verify(msGraphMailService, never()).fetchContactPhotos(any());
+        verify(mailboxClient, never()).fetchContactPhotos(any());
         verifyNoInteractions(contactPhotoRepository);
     }
 
     @Test
     void syncAccount_KeepsSyncingWhenContactsAreNotPermitted() {
-        when(msGraphMailService.fetchContactPhotos("valid-token")).thenThrow(new IllegalStateException("403 Forbidden"));
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "delta"));
+        when(mailboxClient.fetchContactPhotos("valid-token")).thenThrow(new IllegalStateException("403 Forbidden"));
+        emptyFolders();
 
         var status = mailSyncService.syncAccount(account);
 
@@ -204,37 +239,23 @@ class MailSyncServiceTest {
         verify(contactPhotoRepository, never()).deleteByAccount_Id(any());
     }
 
-    private static Message sentMessage(String id, OffsetDateTime sentAt) {
-        var message = new Message();
-        message.setId(id);
-        message.setSubject("Re: Interview");
-        message.setSentDateTime(sentAt);
-        message.setReceivedDateTime(sentAt.plusSeconds(5));
-        message.setConversationId("conv-1");
-        var recipient = new Recipient();
-        var address = new EmailAddress();
-        address.setAddress("anna@acme.com");
-        address.setName("Anna");
-        recipient.setEmailAddress(address);
-        message.setToRecipients(List.of(recipient));
-        var body = new com.microsoft.graph.models.ItemBody();
-        body.setContentType(com.microsoft.graph.models.BodyType.Text);
-        body.setContent("Thanks, Friday works.");
-        message.setBody(body);
-        return message;
-    }
-
-    private void emptyInbox() {
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "inbox-delta"));
+    private static SyncedMessage sentMessage(String id, Instant sentAt) {
+        return SyncedMessage.builder()
+                .providerMessageId(id)
+                .subject("Re: Interview")
+                .receivedAt(sentAt)
+                .conversationId("conv-1")
+                .to(List.of(new EmailRecipient("Anna", "anna@acme.com")))
+                .bodyText("Thanks, Friday works.")
+                .read(false)
+                .build();
     }
 
     @Test
     void syncAccount_StoresSentItemsAsSentFolderAndKeepsThemOutOfTheAiQueue() {
         emptyInbox();
-        var sentAt = OffsetDateTime.parse("2026-10-07T09:00:00Z");
-        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(sentMessage("s1", sentAt)), null, "sent-delta-1"));
+        var sentAt = Instant.parse("2026-10-07T09:00:00Z");
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null)).thenReturn(last("sent-cursor-1", sentMessage("s1", sentAt)));
         when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "s1")).thenReturn(Optional.empty());
 
         mailSyncService.syncAccount(account);
@@ -243,21 +264,20 @@ class MailSyncServiceTest {
         verify(emailMessageRepository).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getFolder()).isEqualTo("sent");
         assertThat(saved.getValue().getProcessingState()).isEqualTo(ProcessingState.SKIPPED);
-        assertThat(saved.getValue().getReceivedAt()).isEqualTo(sentAt.toInstant());
+        assertThat(saved.getValue().getReceivedAt()).isEqualTo(sentAt);
         assertThat(saved.getValue().isRead()).isTrue();
         assertThat(saved.getValue().getConversationId()).isEqualTo("conv-1");
+        assertThat(saved.getValue().getBodyText()).isEqualTo("Thanks, Friday works.");
         assertThat(saved.getValue().getToRecipients()).extracting(EmailRecipient::address).containsExactly("anna@acme.com");
-        assertThat(account.getSentDeltaLink()).isEqualTo("sent-delta-1");
-        assertThat(account.getDeltaLink()).isEqualTo("inbox-delta");
+        assertThat(account.getSentSyncCursor()).isEqualTo("sent-cursor-1");
+        assertThat(account.getSyncCursor()).isEqualTo("inbox-cursor");
     }
 
     @Test
     void syncAccount_InboxMessagesStayInTheInboxFolderAndAreQueuedForTheAi() {
-        var message = new Message();
-        message.setId("m1");
-        message.setReceivedDateTime(OffsetDateTime.now());
-        when(msGraphMailService.fetchMessagesDelta(eq("valid-token"), any()))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(message), null, "delta"));
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.INBOX), any()))
+                .thenReturn(last("c", SyncedMessage.builder().providerMessageId("m1").receivedAt(Instant.now()).build()));
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.SENT), any())).thenReturn(last("s"));
         when(emailMessageRepository.findByAccount_IdAndProviderMessageId(account.getId(), "m1")).thenReturn(Optional.empty());
 
         mailSyncService.syncAccount(account);
@@ -270,9 +290,7 @@ class MailSyncServiceTest {
 
     @Test
     void syncAccount_RetiresReplyDraftsOvertakenByTheSyncedMail() {
-        emptyInbox();
-        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "sent-delta"));
+        emptyFolders();
 
         mailSyncService.syncAccount(account);
 
@@ -282,8 +300,8 @@ class MailSyncServiceTest {
     @Test
     void syncAccount_SentItemsDoNotCountTowardsTheSyncedMessages() {
         emptyInbox();
-        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null)).thenReturn(new MsGraphMailService.DeltaResult(
-                List.of(sentMessage("s1", OffsetDateTime.parse("2026-10-07T09:00:00Z"))), null, "sent-delta"));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null))
+                .thenReturn(last("sent-cursor", sentMessage("s1", Instant.parse("2026-10-07T09:00:00Z"))));
         when(emailMessageRepository.findByAccount_IdAndProviderMessageId(any(), any())).thenReturn(Optional.empty());
 
         assertThat(mailSyncService.syncAccount(account).getMessagesSynced()).isZero();
@@ -292,38 +310,63 @@ class MailSyncServiceTest {
     @Test
     void syncAccount_AFailingSentSyncDoesNotFailTheInboxSync() {
         emptyInbox();
-        when(msGraphMailService.fetchSentMessagesDelta(eq("valid-token"), any())).thenThrow(new IllegalStateException("403 Forbidden"));
+        when(mailboxClient.fetchChanges(eq("valid-token"), eq(SyncFolder.SENT), any())).thenThrow(new IllegalStateException("403 Forbidden"));
 
         var status = mailSyncService.syncAccount(account);
 
         assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
         assertThat(status.getLastError()).isNull();
-        assertThat(account.getDeltaLink()).isEqualTo("inbox-delta");
-        assertThat(account.getSentDeltaLink()).isNull();
+        assertThat(account.getSyncCursor()).isEqualTo("inbox-cursor");
+        assertThat(account.getSentSyncCursor()).isNull();
     }
 
     @Test
-    void syncAccount_ExpiredSentDeltaLinkIsResetAndSyncedFromScratch() {
+    void syncAccount_ExpiredSentCursorIsResetAndSyncedFromScratch() {
         emptyInbox();
-        account.setSentDeltaLink("stale");
-        when(msGraphMailService.fetchSentMessagesDelta("valid-token", "stale")).thenThrow(new IllegalStateException("410 Gone"));
-        when(msGraphMailService.fetchSentMessagesDelta("valid-token", null))
-                .thenReturn(new MsGraphMailService.DeltaResult(List.of(), null, "fresh"));
+        account.setSentSyncCursor("stale");
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, "stale")).thenThrow(new SyncCursorExpiredException("410 Gone"));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null)).thenReturn(last("fresh"));
 
         mailSyncService.syncAccount(account);
 
-        assertThat(account.getSentDeltaLink()).isEqualTo("fresh");
+        assertThat(account.getSentSyncCursor()).isEqualTo("fresh");
     }
 
     @Test
-    void syncAccount_DemoAccountNeverCallsMicrosoft() {
+    void syncAccount_ExpiredInboxCursorIsResetAndSyncedFromScratch() {
+        account.setProvider(MailProvider.GMAIL);
+        account.setSyncCursor("123");
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.INBOX, "123")).thenThrow(new SyncCursorExpiredException("too old"));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.INBOX, null)).thenReturn(last("900"));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null)).thenReturn(last("900"));
+
+        var status = mailSyncService.syncAccount(account);
+
+        assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
+        assertThat(account.getSyncCursor()).isEqualTo("900");
+        verify(mailProviderRegistry, atLeastOnce()).mailbox(MailProvider.GMAIL);
+    }
+
+    @Test
+    void syncAccount_LastPageWithoutNewCursorKeepsTheStoredOne() {
+        account.setSyncCursor("kept");
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.INBOX, "kept")).thenReturn(last(null));
+        when(mailboxClient.fetchChanges("valid-token", SyncFolder.SENT, null)).thenReturn(last("s"));
+
+        mailSyncService.syncAccount(account);
+
+        assertThat(account.getSyncCursor()).isEqualTo("kept");
+    }
+
+    @Test
+    void syncAccount_DemoAccountNeverCallsAProvider() {
         account.setProvider(MailProvider.DEMO);
 
         var status = mailSyncService.syncAccount(account);
 
         assertThat(status.getStatus()).isEqualTo(MailAccountState.ACTIVE);
         assertThat(status.getMessagesSynced()).isZero();
-        verifyNoInteractions(msGraphAuthService, msGraphMailService, emailMessageRepository);
+        verifyNoInteractions(mailProviderRegistry, oauthClient, mailboxClient, emailMessageRepository);
     }
 
     @Test
@@ -333,6 +376,6 @@ class MailSyncServiceTest {
 
         mailSyncService.syncAllActiveAccounts();
 
-        verifyNoInteractions(msGraphAuthService, msGraphMailService, emailMessageRepository);
+        verifyNoInteractions(mailProviderRegistry, oauthClient, mailboxClient, emailMessageRepository);
     }
 }

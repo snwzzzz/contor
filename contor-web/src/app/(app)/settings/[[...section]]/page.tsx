@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { isSettingsSection, SETTINGS_PARAM } from "@/lib/navigation";
 
-/** Kept so /settings URLs (bookmarks, the Microsoft OAuth return) open the settings modal over the inbox. */
+/** Kept so /settings URLs (bookmarks, the mail provider OAuth return) open the settings modal over the inbox. */
 const FORWARDED_PARAMS = ["connected", "mailError"];
 
 export default async function SettingsRedirect({ params, searchParams }: PageProps<"/settings/[[...section]]">) {

@@ -9,7 +9,7 @@ import type { SettingsSection } from "@/lib/navigation";
 
 interface SettingsSectionContentProps {
   section: SettingsSection;
-  /** Result of the Microsoft OAuth callback, forwarded into the accounts section. */
+  /** Result of the mail provider OAuth callback, forwarded into the accounts section. */
   connected?: boolean;
   mailError?: string;
 }

@@ -1,6 +1,7 @@
 # 0006 – Microsoft Graph API integration and mail sync
 
-**Status:** accepted (Phase 1, step 7)
+**Status:** accepted (Phase 1, step 7); the Graph code now sits behind the provider interfaces of ADR 0011
+(`MicrosoftGraphOAuthClient`, `MicrosoftGraphMailboxClient`), the OAuth state and PKCE live in `OAuthStateCodec`.
 
 ## Context
 contor needs to connect to Microsoft 365 / Outlook accounts via Microsoft Graph to sync incoming emails,

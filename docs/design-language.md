@@ -67,6 +67,9 @@ Color appears only as small marks. Never as card or section backgrounds.
 | `bg-destructive` dot or `text-destructive` text | Broken or overdue (Ollama unreachable, "1 overdue"). |
 | `ImportanceBadge` | Only "Urgent" / "High"; normal and low show nothing. |
 
+Mail providers (Outlook, Gmail) are named in plain muted text next to a mailbox (`providerLabel`). Their brand logos
+(`ProviderLogo`, colors from the `--brand-*` tokens) appear only in the *Add account* menu, where you pick one.
+
 Icons are lucide, `size-4`, `strokeWidth={1.75}`, `text-muted-foreground`. They sit bare: no tinted tiles and no filled
 squares. The one exception is the page icon in the page header: `size-6`, bare, in its section's vivid tint
 (`tintVividClass`), so pages are recognizable at a glance.

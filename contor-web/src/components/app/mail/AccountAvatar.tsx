@@ -1,7 +1,7 @@
 import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
 import { PictureAvatar } from "./PictureAvatar";
 
-/** Profile picture of a connected mailbox (from Microsoft), or a tinted initial when it has none. */
+/** Profile picture of a connected mailbox (from its provider), or a tinted initial when it has none. */
 export function AccountAvatar({ account, size = 20, className }: { account: MailAccountDto; size?: number; className?: string }) {
   return (
     <PictureAvatar

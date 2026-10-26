@@ -1413,11 +1413,30 @@ paths:
                   $ref: '#/components/schemas/MailAccountDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/mail/providers:
+    get:
+      tags: [Mail]
+      operationId: listMailProviders
+      summary: The mail providers a mailbox can be connected from, and whether this server is configured for each
+      responses:
+        '200':
+          description: Connectable mail providers (never the demo mailbox)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MailProviderDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/mail/accounts/connect:
     post:
       tags: [Mail]
       operationId: connectMailAccount
-      summary: Initiate OAuth2 connection for Microsoft Graph. Returns the authorization URL. OWNER only.
+      summary: Initiate the OAuth2 sign-in (with PKCE) of a mail provider. Returns the authorization URL. OWNER only.
+      description: |
+        `provider` picks the mail provider (default MICROSOFT_GRAPH). 400 when the provider is DEMO or not configured
+        on this server (see GET /api/mail/providers).
       requestBody:
         required: false
         content:
@@ -1431,6 +1450,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MailAuthorizeUrlDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1439,10 +1460,11 @@ paths:
     get:
       tags: [Mail]
       operationId: mailAccountCallback
-      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and forwards to the web app.
+      summary: OAuth2 callback of every mail provider (Microsoft Entra ID, Google). Exchanges the authorization code for tokens and forwards to the web app.
       description: |
+        One redirect URI for all providers: the encrypted `state` names the provider and carries the PKCE verifier.
         Always answers with a small HTML page that forwards the browser (meta refresh) to `APP_WEB_URL/settings/accounts?connected=true`.
-        Not a 302: the browser arrives from Microsoft, so a redirect chain stays cross-site and the SameSite=Strict
+        Not a 302: the browser arrives from the provider, so a redirect chain stays cross-site and the SameSite=Strict
         session cookie would not be sent; a forward started by this localhost page is same-site.
         Failures (sign-in cancelled, expired state, token exchange) forward to `/settings/accounts?mailError=<message>`.
       security: []
@@ -3081,8 +3103,22 @@ components:
           type: boolean
     MailProviderKind:
       type: string
-      description: MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; DEMO = the dev-only fictional demo mailbox (never synced).
-      enum: [MICROSOFT_GRAPH, DEMO]
+      description: >
+        MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; GMAIL = a Gmail mailbox synced via the Gmail API;
+        DEMO = the dev-only fictional demo mailbox (never synced).
+      enum: [MICROSOFT_GRAPH, GMAIL, DEMO]
+    MailProviderDto:
+      type: object
+      required: [kind, displayName, configured]
+      properties:
+        kind:
+          $ref: '#/components/schemas/MailProviderKind'
+        displayName:
+          type: string
+          description: Short product name for the connect button ("Outlook", "Gmail").
+        configured:
+          type: boolean
+          description: The server has the provider's OAuth client id and secret; false = connecting is not possible.
     MailAccountState:
       type: string
       enum: [ACTIVE, NEEDS_REAUTH, DISABLED]
@@ -3179,6 +3215,8 @@ components:
     ConnectMailAccountCommand:
       type: object
       properties:
+        provider:
+          $ref: '#/components/schemas/MailProviderKind'
         emailHint:
           type: string
     MailAuthorizeUrlDto:

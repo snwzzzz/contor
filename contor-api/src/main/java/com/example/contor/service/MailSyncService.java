@@ -6,13 +6,18 @@ import com.example.contor.domain.ContactPhoto;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.MailAccountStatus;
-import com.example.contor.domain.MailProvider;
 import com.example.contor.domain.ProcessingState;
+import com.example.contor.domain.SyncFolder;
+import com.example.contor.exception.SyncCursorExpiredException;
+import com.example.contor.mailprovider.ContactPhotoData;
+import com.example.contor.mailprovider.FolderChanges;
+import com.example.contor.mailprovider.MailProviderRegistry;
+import com.example.contor.mailprovider.MailboxClient;
+import com.example.contor.mailprovider.OAuthTokens;
+import com.example.contor.mailprovider.SyncedMessage;
 import com.example.contor.persistence.ContactPhotoRepository;
 import com.example.contor.persistence.EmailMessageRepository;
 import com.example.contor.persistence.MailAccountRepository;
-import com.microsoft.graph.models.BodyType;
-import com.microsoft.graph.models.Message;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Provider-neutral mail sync: refreshes the token, then pages through the inbox and the sent mail with the account's
+ * {@link MailboxClient}, keeping one sync cursor per folder. Providers plug in through {@link MailProviderRegistry}.
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Service
@@ -34,8 +43,7 @@ public class MailSyncService {
 
     private final MailAccountRepository mailAccountRepository;
     private final EmailMessageRepository emailMessageRepository;
-    private final MsGraphAuthService msGraphAuthService;
-    private final MsGraphMailService msGraphMailService;
+    private final MailProviderRegistry mailProviderRegistry;
     private final ContactPhotoRepository contactPhotoRepository;
     private final ReplyLifecycleService replyLifecycleService;
 
@@ -43,11 +51,12 @@ public class MailSyncService {
 
     @Transactional
     public MailSyncStatusDto syncAccount(MailAccount account) {
-        if (account.getProvider() == MailProvider.DEMO) {
-            // the demo mailbox is imported once and has no Microsoft account behind it
+        if (!account.getProvider().synced()) {
+            // the demo mailbox is imported once and has no provider account behind it
             return new MailSyncStatusDto(account.getId().id(), MailAccountState.ACTIVE).messagesSynced(0)
                     .lastSyncedAt(account.getLastSyncedAt() != null ? account.getLastSyncedAt().atOffset(ZoneOffset.UTC) : null);
         }
+        MailboxClient mailbox = mailProviderRegistry.mailbox(account.getProvider());
         String token;
         try {
             token = ensureValidToken(account);
@@ -60,25 +69,25 @@ public class MailSyncService {
         }
 
         if (account.getPhotoCheckedAt() == null) {
-            refreshPhoto(account, token);
+            refreshPhoto(account, mailbox, token);
         }
         if (account.getContactsCheckedAt() == null
                 || account.getContactsCheckedAt().isBefore(Instant.now().minus(CONTACTS_REFRESH))) {
-            refreshContactPhotos(account, token);
+            refreshContactPhotos(account, mailbox, token);
         }
 
         try {
-            return doDeltaSync(account, token);
+            return doSync(account, mailbox, token);
         } catch (Exception e) {
-            log.error("Delta sync failed for account {}: {}", account.getId().id(), e.getMessage());
+            log.error("Mail sync failed for account {}: {}", account.getId().id(), e.getMessage());
             return new MailSyncStatusDto(account.getId().id(), MailAccountState.valueOf(account.getStatus().name()))
                     .lastError("Sync failed: " + e.getMessage());
         }
     }
 
     /** Once per (re)connect: store the profile photo, or remember that there is none (saved even if the sync fails). */
-    private void refreshPhoto(MailAccount account, String token) {
-        msGraphMailService.fetchProfilePhoto(token).ifPresentOrElse(photo -> {
+    private void refreshPhoto(MailAccount account, MailboxClient mailbox, String token) {
+        mailbox.fetchProfilePhoto(token).ifPresentOrElse(photo -> {
             account.setPhoto(photo.bytes());
             account.setPhotoContentType(photo.contentType());
         }, () -> {
@@ -90,13 +99,13 @@ public class MailSyncService {
     }
 
     /**
-     * Replaces the account's contact photos. Without the Contacts.Read permission (accounts connected before it was
-     * requested) Graph refuses; that is logged and retried a day later, the mail sync goes on.
+     * Replaces the account's contact photos. Without the contacts permission (accounts connected before it was
+     * requested) the provider refuses; that is logged and retried a day later, the mail sync goes on.
      */
-    private void refreshContactPhotos(MailAccount account, String token) {
+    private void refreshContactPhotos(MailAccount account, MailboxClient mailbox, String token) {
         try {
-            Map<String, MsGraphMailService.ContactPhotoData> byAddress = new LinkedHashMap<>();
-            msGraphMailService.fetchContactPhotos(token).forEach(contact -> byAddress.putIfAbsent(contact.emailAddress(), contact));
+            Map<String, ContactPhotoData> byAddress = new LinkedHashMap<>();
+            mailbox.fetchContactPhotos(token).forEach(contact -> byAddress.putIfAbsent(contact.emailAddress(), contact));
             List<ContactPhoto> photos = byAddress.values().stream()
                     .map(contact -> ContactPhoto.builder()
                             .account(account)
@@ -114,14 +123,14 @@ public class MailSyncService {
         mailAccountRepository.saveAndFlush(account);
     }
 
-    private MailSyncStatusDto doDeltaSync(MailAccount account, String token) {
-        FolderSync inbox = syncFolder(account, token, EmailMessage.FOLDER_INBOX);
-        account.setDeltaLink(inbox.deltaLink());
+    private MailSyncStatusDto doSync(MailAccount account, MailboxClient mailbox, String token) {
+        FolderSync inbox = syncFolder(account, mailbox, token, SyncFolder.INBOX);
+        account.setSyncCursor(inbox.cursor());
         try {
-            account.setSentDeltaLink(syncFolder(account, token, EmailMessage.FOLDER_SENT).deltaLink());
+            account.setSentSyncCursor(syncFolder(account, mailbox, token, SyncFolder.SENT).cursor());
         } catch (RuntimeException e) {
             // Sent mail is only context: a failure here must not fail the inbox sync, it is retried next time.
-            log.warn("Sent items sync failed for account {}: {}", account.getId().id(), e.getMessage());
+            log.warn("Sent mail sync failed for account {}: {}", account.getId().id(), e.getMessage());
         }
         Instant now = Instant.now();
         account.setLastSyncedAt(now);
@@ -135,101 +144,91 @@ public class MailSyncService {
                 .messagesSynced(inbox.messages());
     }
 
-    private record FolderSync(int messages, String deltaLink) {
+    private record FolderSync(int messages, String cursor) {
     }
 
-    /** Pages through one folder's delta; an expired delta link (410) restarts that folder from scratch. */
-    private FolderSync syncFolder(MailAccount account, String token, String folder) {
-        boolean sent = EmailMessage.FOLDER_SENT.equals(folder);
-        String storedLink = sent ? account.getSentDeltaLink() : account.getDeltaLink();
-        String currentLink = storedLink;
+    /** Pages through one folder's changes; an expired cursor restarts that folder from scratch. */
+    private FolderSync syncFolder(MailAccount account, MailboxClient mailbox, String token, SyncFolder folder) {
+        String storedCursor = folder == SyncFolder.SENT ? account.getSentSyncCursor() : account.getSyncCursor();
+        String currentCursor = storedCursor;
         int total = 0;
 
         while (true) {
-            MsGraphMailService.DeltaResult result;
+            FolderChanges changes;
             try {
-                result = fetch(token, sent, currentLink);
-            } catch (Exception e) {
-                if (currentLink != null && e.getMessage() != null && e.getMessage().contains("410")) {
-                    log.warn("Delta token of {} expired for account {}, resetting sync link", folder, account.getId().id());
-                    storedLink = null;
-                    currentLink = null;
-                    result = fetch(token, sent, null);
-                } else {
+                changes = mailbox.fetchChanges(token, folder, currentCursor);
+            } catch (SyncCursorExpiredException e) {
+                if (currentCursor == null) {
                     throw e;
                 }
+                log.warn("Sync cursor of {} expired for account {}, syncing it from scratch", folder, account.getId().id());
+                storedCursor = null;
+                currentCursor = null;
+                changes = mailbox.fetchChanges(token, folder, null);
             }
 
-            for (Message message : result.messages()) {
+            for (SyncedMessage message : changes.messages()) {
                 upsertMessage(account, message, folder);
                 total++;
             }
 
-            if (result.nextLink() != null && !result.nextLink().isBlank()) {
-                currentLink = result.nextLink();
+            if (changes.hasNextPage()) {
+                currentCursor = changes.nextPageCursor();
             } else {
-                return new FolderSync(total, result.newDeltaLink() != null ? result.newDeltaLink() : storedLink);
+                return new FolderSync(total, changes.newSyncCursor() != null ? changes.newSyncCursor() : storedCursor);
             }
         }
     }
 
-    private MsGraphMailService.DeltaResult fetch(String token, boolean sent, String link) {
-        return sent ? msGraphMailService.fetchSentMessagesDelta(token, link) : msGraphMailService.fetchMessagesDelta(token, link);
-    }
-
-    private void upsertMessage(MailAccount account, Message message, String folder) {
-        if (message.getId() == null) {
+    private void upsertMessage(MailAccount account, SyncedMessage message, SyncFolder folder) {
+        if (message.providerMessageId() == null) {
             return;
         }
-        boolean sent = EmailMessage.FOLDER_SENT.equals(folder);
+        boolean sent = folder == SyncFolder.SENT;
         Optional<EmailMessage> existing = emailMessageRepository.findByAccount_IdAndProviderMessageId(
-                account.getId(), message.getId());
+                account.getId(), message.providerMessageId());
 
         EmailMessage email = existing.orElseGet(() -> EmailMessage.builder()
                 .account(account)
-                .providerMessageId(message.getId())
+                .providerMessageId(message.providerMessageId())
                 .receivedAt(Instant.now())
                 .processingState(sent ? ProcessingState.SKIPPED : ProcessingState.NEW)
                 .build());
 
-        if (message.getInternetMessageId() != null) {
-            email.setInternetMessageId(message.getInternetMessageId());
+        if (message.internetMessageId() != null) {
+            email.setInternetMessageId(message.internetMessageId());
         }
-        if (message.getConversationId() != null) {
-            email.setConversationId(message.getConversationId());
+        if (message.conversationId() != null) {
+            email.setConversationId(message.conversationId());
         }
-        email.setFolder(folder);
-        if (message.getFrom() != null && message.getFrom().getEmailAddress() != null) {
-            email.setFromAddress(message.getFrom().getEmailAddress().getAddress());
-            email.setFromName(message.getFrom().getEmailAddress().getName());
+        email.setFolder(folder.storedName());
+        if (message.from() != null) {
+            email.setFromAddress(message.from().address());
+            email.setFromName(message.from().name());
         }
-        email.setToRecipients(MsGraphMailService.mapRecipients(message.getToRecipients()));
-        email.setCcRecipients(MsGraphMailService.mapRecipients(message.getCcRecipients()));
-        if (message.getSubject() != null) {
-            email.setSubject(message.getSubject());
+        email.setToRecipients(message.to() != null ? message.to() : List.of());
+        email.setCcRecipients(message.cc() != null ? message.cc() : List.of());
+        if (message.subject() != null) {
+            email.setSubject(message.subject());
         }
-        if (message.getBodyPreview() != null) {
-            email.setSnippet(message.getBodyPreview());
+        if (message.snippet() != null) {
+            email.setSnippet(message.snippet());
         }
-        if (message.getBody() != null) {
-            if (message.getBody().getContentType() == BodyType.Html) {
-                email.setBodyHtml(message.getBody().getContent());
-            } else {
-                email.setBodyText(message.getBody().getContent());
-            }
+        if (message.bodyHtml() != null) {
+            email.setBodyHtml(message.bodyHtml());
+        } else if (message.bodyText() != null) {
+            email.setBodyText(message.bodyText());
         }
-        if (sent && message.getSentDateTime() != null) {
-            email.setReceivedAt(message.getSentDateTime().toInstant());
-        } else if (message.getReceivedDateTime() != null) {
-            email.setReceivedAt(message.getReceivedDateTime().toInstant());
+        if (message.receivedAt() != null) {
+            email.setReceivedAt(message.receivedAt());
         }
         if (sent) {
             email.setRead(true);
-        } else if (message.getIsRead() != null) {
-            email.setRead(message.getIsRead());
+        } else if (message.read() != null) {
+            email.setRead(message.read());
         }
-        if (message.getHasAttachments() != null) {
-            email.setHasAttachments(message.getHasAttachments());
+        if (message.hasAttachments() != null) {
+            email.setHasAttachments(message.hasAttachments());
         }
         emailMessageRepository.saveAndFlush(email);
     }
@@ -244,7 +243,7 @@ public class MailSyncService {
             throw new IllegalStateException("No refresh token available");
         }
 
-        MsGraphAuthService.TokenResult refreshed = msGraphAuthService.refreshToken(account.getRefreshToken());
+        OAuthTokens refreshed = mailProviderRegistry.oauth(account.getProvider()).refresh(account.getRefreshToken());
         account.setAccessToken(refreshed.accessToken());
         if (refreshed.refreshToken() != null && !refreshed.refreshToken().isBlank()) {
             account.setRefreshToken(refreshed.refreshToken());
@@ -258,7 +257,7 @@ public class MailSyncService {
     public void syncAllActiveAccounts() {
         List<MailAccount> accounts = mailAccountRepository.findByStatus(MailAccountStatus.ACTIVE);
         for (MailAccount account : accounts) {
-            if (account.getProvider() == MailProvider.DEMO) {
+            if (!account.getProvider().synced()) {
                 continue;
             }
             try {
