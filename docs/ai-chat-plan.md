@@ -1,8 +1,8 @@
 # AI chat implementation plan (ask the local model about everything in contor, answers linked to the source)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** H1–H2 implemented (schema, domain, repositories, exceptions, audit action). Open:
-> H3–H12. Branch: `feature/ai-chat`. Defaults confirmed (2026-10-26): own tables, private per user, read-only.
+> in the same change. **Status:** H1–H2 implemented (schema, domain, repositories, exceptions, audit action), H6
+> implemented with a stub answerer (spec, `ChatService`, `ChatController`, `ChatMapper`). Open: H3–H5, H7–H12. Branch: `feature/ai-chat`. Defaults confirmed (2026-10-26): own tables, private per user, read-only.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - H1: `chat_message.position` (unique per conversation) orders the messages; timestamps can tie for a question and
@@ -12,6 +12,17 @@
 >   ids of its kind) are JSON value records validated in their constructors. `ChatConversationRepository.findByIdAndOwner_Id`
 >   gives the 404 for other users' conversations. A new message does not touch the conversation's `last_modified`; the
 >   service has to (H6), or the list order is off.
+> - H6: `createChatConversation` is 201, `askChatQuestion`/`retryChatMessage` 202. Service names follow the style guide
+>   (`findAll`, `findById`, `createConversation`, `askQuestion`, `retryAnswer`, `updateConversation`,
+>   `deleteConversation`). Busy is per conversation (`ChatBusyException`); the per-user limit is left to the single AI
+>   thread's queue. A retry that is not the failed last answer is `ChatRetryException` (409), an unknown message
+>   `ChatMessageNotFoundException` (404). Interrupted answers are failed on startup, not retried automatically.
+>   New messages of a loaded conversation are saved one by one: saving the conversation would `merge` them into copies
+>   without ids (found by `ChatIntegrationTest`). The source list is shared with reports: `domain/Citation` (implemented
+>   by `ReportCitation` and `ChatCitation`), `ReportMapper.source(Citation, …)` and `service/CitationSourceLookup`
+>   (moved out of `ReportService`). Block and item ids in `ChatMessageDto.blocks` are positions within the message.
+>   `ChatAnswerer` is a stub (placeholder answer, `chat-stub`); H5 replaces its body. Email mentions are not filtered by
+>   mailbox on read (conversations are private and mentions are built from the user's own mail); sources are.
 
 ## Goal
 

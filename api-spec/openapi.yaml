@@ -50,6 +50,8 @@ tags:
     description: Reply drafts the assistant wrote for inbox emails. Nothing is ever sent or written to the mailbox.
   - name: Reports
     description: AI reports on a record and the connections picked for it, or over a whole collection with figures the app computes; sentences cite their sources
+  - name: Chat
+    description: Conversations with the local model about everything in contor; answers link to the records, people and emails they are about and cite their sources
 paths:
   /api/system/version:
     get:
@@ -2128,6 +2130,164 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/chat/conversations:
+    get:
+      tags: [Chat]
+      operationId: listChatConversations
+      summary: Your chat conversations, most recently active first
+      responses:
+        '200':
+          description: The conversations (without messages)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatConversationSummaryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Chat]
+      operationId: createChatConversation
+      summary: Start a conversation with a first question; the answer is written in the background
+      description: |
+        Creates the conversation (titled after the question), the question and a PENDING answer. Poll
+        `GET /api/chat/conversations/{conversationId}` until the answer is DONE or FAILED. 409 when the AI model is not
+        ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatMessageCommand'
+      responses:
+        '201':
+          description: Created, with the pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/chat/conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+    get:
+      tags: [Chat]
+      operationId: getChatConversation
+      summary: One of your conversations with its questions and answers
+      responses:
+        '200':
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Chat]
+      operationId: updateChatConversation
+      summary: Rename a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChatConversationCommand'
+      responses:
+        '200':
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Chat]
+      operationId: deleteChatConversation
+      summary: Delete a conversation with its messages
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/chat/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+    post:
+      tags: [Chat]
+      operationId: askChatQuestion
+      summary: Ask the next question of a conversation; the answer is written in the background
+      description: 409 while the conversation's last answer is still being written, or when the AI model is not ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatMessageCommand'
+      responses:
+        '202':
+          description: Queued; the conversation with the question and its pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/chat/conversations/{conversationId}/messages/{messageId}/retry:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+      - $ref: '#/components/parameters/ChatMessageId'
+    post:
+      tags: [Chat]
+      operationId: retryChatMessage
+      summary: Write a FAILED answer again (only the conversation's last message)
+      responses:
+        '202':
+          description: Queued; the conversation with the pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /api/ai/eval/export:
     get:
       tags: [AI]
@@ -2166,6 +2326,20 @@ paths:
           $ref: '#/components/responses/Forbidden'
 components:
   parameters:
+    ChatConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ChatMessageId:
+      name: messageId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     ReportId:
       name: reportId
       in: path
@@ -4136,3 +4310,138 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChatMessageRole:
+      type: string
+      description: USER = your question · ASSISTANT = the answer
+      enum: [USER, ASSISTANT]
+    ChatMessageStatus:
+      type: string
+      description: |
+        PENDING (queued) - RETRIEVING (looking up records and emails) - WRITING (the model writes the answer) - DONE -
+        FAILED (`error` says why; retry with `POST .../messages/{messageId}/retry`). Questions are always DONE.
+      enum: [PENDING, RETRIEVING, WRITING, DONE, FAILED]
+    ChatMentionType:
+      type: string
+      description: RECORD = a record of any collection (people and organizations included) · EMAIL = an email
+      enum: [RECORD, EMAIL]
+    ChatMentionDto:
+      type: object
+      description: A record or email an answer is about, shown as a link (`/collections/{collectionId}/records/{recordId}`, `/inbox?email={emailId}`)
+      required: [type, label]
+      properties:
+        type:
+          $ref: '#/components/schemas/ChatMentionType'
+        collectionId:
+          type: integer
+          format: int64
+          description: RECORD only
+        recordId:
+          type: integer
+          format: int64
+          description: RECORD only
+        emailId:
+          type: integer
+          format: int64
+          description: EMAIL only
+        label:
+          type: string
+          description: The record's title or the email's subject
+        collectionName:
+          type: string
+          description: RECORD only
+    ChatMessageDto:
+      type: object
+      required: [id, role, status, blocks, sources, mentions, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        role:
+          $ref: '#/components/schemas/ChatMessageRole'
+        status:
+          $ref: '#/components/schemas/ChatMessageStatus'
+        text:
+          type: string
+          description: The question, or the answer as plain text (empty while the answer is written)
+        blocks:
+          type: array
+          description: ASSISTANT - the answer's paragraphs, lists, quotes and tables; block and item ids are positions within the message
+          items:
+            $ref: '#/components/schemas/ReportBlockDto'
+        sources:
+          type: array
+          description: ASSISTANT - the cited sources, once per marker
+          items:
+            $ref: '#/components/schemas/ReportSourceDto'
+        mentions:
+          type: array
+          description: ASSISTANT - the records and emails the answer is about
+          items:
+            $ref: '#/components/schemas/ChatMentionDto'
+        error:
+          type: string
+          description: FAILED - why, in words for the user
+        createdAt:
+          type: string
+          format: date-time
+    ChatConversationDto:
+      type: object
+      required: [id, title, messages, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        messages:
+          type: array
+          description: Questions and answers in order
+          items:
+            $ref: '#/components/schemas/ChatMessageDto'
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    ChatConversationSummaryDto:
+      type: object
+      required: [id, title, answering, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        answering:
+          type: boolean
+          description: An answer is still being written
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewChatMessageCommand:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: The question
+        recordRefs:
+          type: array
+          maxItems: 10
+          description: Records the question is about (picked with @); the answer uses them besides what it looks up
+          items:
+            $ref: '#/components/schemas/RecordRefDto'
+    UpdateChatConversationCommand:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: The new title; `null` = unchanged

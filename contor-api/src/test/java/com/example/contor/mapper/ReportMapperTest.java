@@ -12,6 +12,7 @@ import com.example.contor.api.model.ReportSectionType;
 import com.example.contor.api.model.ReportSourceDto;
 import com.example.contor.api.model.ReportState;
 import com.example.contor.api.model.SourceState;
+import com.example.contor.domain.Citation;
 import com.example.contor.domain.CitationType;
 import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.Collection;
@@ -47,7 +48,7 @@ public class ReportMapperTest {
 
     private static final ReportMapper.SourceLookup CURRENT = new ReportMapper.SourceLookup() {
         @Override
-        public SourceState state(ReportCitation citation) {
+        public SourceState state(Citation citation) {
             return citation.getType() == CitationType.FIELD ? SourceState.CHANGED : SourceState.CURRENT;
         }
 
@@ -111,7 +112,7 @@ public class ReportMapperTest {
     void an_unavailable_email_shows_no_text() {
         ReportMapper.SourceLookup hidden = new ReportMapper.SourceLookup() {
             @Override
-            public SourceState state(ReportCitation citation) {
+            public SourceState state(Citation citation) {
                 return citation.getType() == CitationType.EMAIL_PARAGRAPH ? SourceState.UNAVAILABLE : SourceState.CURRENT;
             }
 

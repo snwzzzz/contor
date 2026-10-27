@@ -16,6 +16,7 @@ import com.example.contor.api.model.ReportSourceDto;
 import com.example.contor.api.model.ReportState;
 import com.example.contor.api.model.ReportSummaryDto;
 import com.example.contor.api.model.SourceState;
+import com.example.contor.domain.Citation;
 import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.EmailMessage;
@@ -53,7 +54,7 @@ public final class ReportMapper {
     /** What the mapper cannot know from the report alone. */
     public interface SourceLookup {
 
-        SourceState state(ReportCitation citation);
+        SourceState state(Citation citation);
 
         /** The record's current title; {@code null} when unknown or deleted. */
         String recordTitle(Long collectionId, Long recordId);
@@ -190,7 +191,8 @@ public final class ReportMapper {
                 .note(claim.getVerifierNote());
     }
 
-    private static ReportSourceDto source(ReportCitation citation, SourceLookup lookup) {
+    /** A cited source for the source list (also used for chat answers). */
+    public static ReportSourceDto source(Citation citation, SourceLookup lookup) {
         SourceState state = lookup.state(citation);
         Long collectionId = citation.getCollection() != null ? citation.getCollection().getId().id() : null;
         ReportSourceDto dto = new ReportSourceDto(citation.getMarker(), CitationKind.valueOf(citation.getType().name()), "", state)
@@ -226,7 +228,7 @@ public final class ReportMapper {
         return dto;
     }
 
-    private static String fieldName(ReportCitation citation) {
+    private static String fieldName(Citation citation) {
         if (citation.getCollection() == null) {
             return citation.getFieldSlug();
         }

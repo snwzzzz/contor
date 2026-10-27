@@ -4,17 +4,12 @@ import com.example.contor.ai.AiExecutors;
 import com.example.contor.api.model.NewCollectionReportCommand;
 import com.example.contor.api.model.NewReportCommand;
 import com.example.contor.api.model.NewReportQuestionCommand;
-import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.ReportDto;
 import com.example.contor.api.model.ReportSummaryDto;
-import com.example.contor.api.model.SourceState;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Collection;
-import com.example.contor.domain.EmailMessage;
-import com.example.contor.domain.Relation;
 import com.example.contor.domain.Report;
-import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.domain.ReportStatus;
@@ -22,7 +17,6 @@ import com.example.contor.exception.AiUnavailableException;
 import com.example.contor.exception.CollectionNotFoundException;
 import com.example.contor.exception.ReportBusyException;
 import com.example.contor.exception.ReportNotFoundException;
-import com.example.contor.exception.ResourceNotFoundException;
 import com.example.contor.mapper.ReportMapper;
 import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.persistence.CollectionRepository;
@@ -37,14 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 /**
  * Reports on a record (R6) or over a collection's records (C6): create one over a checked scope, ask a follow-up question (a report of its own with the
@@ -244,75 +232,6 @@ public class ReportService {
 
     /** Source states and current record titles, each record and relation read once per request. */
     private ReportMapper.SourceLookup lookup() {
-        Long userId = CurrentActor.userId().orElse(null);
-        Map<RecordRef, Optional<RecordDto>> records = new HashMap<>();
-        Map<Long, Boolean> relations = new HashMap<>();
-        return new ReportMapper.SourceLookup() {
-            @Override
-            public SourceState state(ReportCitation citation) {
-                return switch (citation.getType()) {
-                    case EMAIL_PARAGRAPH -> email(citation.getEmail());
-                    case RELATION -> relations.computeIfAbsent(citation.getRelationId(),
-                            id -> relationRepository.existsById(new Relation.RelationId(id))) ? SourceState.CURRENT : SourceState.DELETED;
-                    case RECORD -> record(citation).isPresent() ? SourceState.CURRENT : SourceState.DELETED;
-                    case FIELD -> record(citation)
-                            .map(current -> same(citation.getValueSnapshot() != null ? citation.getValueSnapshot().get("value") : null,
-                                    current.getValues().get(citation.getFieldSlug())) ? SourceState.CURRENT : SourceState.CHANGED)
-                            .orElse(SourceState.DELETED);
-                };
-            }
-
-            @Override
-            public String recordTitle(Long collectionId, Long recordId) {
-                return record(collectionId, recordId).map(RecordDto::getTitle).orElse(null);
-            }
-
-            private SourceState email(EmailMessage email) {
-                if (email == null) {
-                    return SourceState.DELETED;
-                }
-                Long owner = email.getAccount() != null && email.getAccount().getOwner() != null ? email.getAccount().getOwner().getId().id() : null;
-                return Objects.equals(owner, userId) ? SourceState.CURRENT : SourceState.UNAVAILABLE;
-            }
-
-            private Optional<RecordDto> record(ReportCitation citation) {
-                return citation.getCollection() == null || citation.getRecordId() == null ? Optional.empty()
-                        : record(citation.getCollection().getId().id(), citation.getRecordId());
-            }
-
-            private Optional<RecordDto> record(Long collectionId, Long recordId) {
-                return records.computeIfAbsent(new RecordRef(collectionId, recordId), ref -> {
-                    try {
-                        return Optional.of(recordService.getRecord(collectionId, recordId));
-                    } catch (ResourceNotFoundException e) {
-                        return Optional.empty();
-                    }
-                });
-            }
-        };
-    }
-
-    /** Equal values, whatever number type or map order JSON gave them ({@code 110} = {@code 110.0}). */
-    static boolean same(Object a, Object b) {
-        return Objects.equals(normalize(a), normalize(b));
-    }
-
-    private static Object normalize(Object value) {
-        if (value instanceof Number number) {
-            try {
-                return new BigDecimal(number.toString()).stripTrailingZeros().toPlainString();
-            } catch (NumberFormatException e) {
-                return number.toString();
-            }
-        }
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> sorted = new TreeMap<>();
-            map.forEach((key, item) -> sorted.put(String.valueOf(key), normalize(item)));
-            return sorted;
-        }
-        if (value instanceof List<?> list) {
-            return list.stream().map(ReportService::normalize).collect(Collectors.toList());
-        }
-        return value;
+        return new CitationSourceLookup(recordService, relationRepository, CurrentActor.userId().orElse(null));
     }
 }

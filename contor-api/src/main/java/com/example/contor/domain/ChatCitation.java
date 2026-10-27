@@ -20,7 +20,7 @@ import java.util.Map;
 
 @Entity
 @Table(name = "\"chat_citation\"")
-public class ChatCitation {
+public class ChatCitation implements Citation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

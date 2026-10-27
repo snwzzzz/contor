@@ -274,7 +274,16 @@ answers link to the people, records and emails they are about and cite their sou
   records the next question may refer to), `chat_message` (question or answer at a `position`; an answer's `state`
   PENDING → RETRIEVING → WRITING → DONE/FAILED, its Markdown `blocks`, `mentions` (record/email links) and retrieval
   `plan` as JSON) and `chat_citation` (same targets as `report_citation`).
-- Not yet: the plan/retrieve/answer pipeline, the API and the page (plan steps H3–H12).
+- **API** (tag `Chat`, every logged-in user, only their own conversations — another user's is 404):
+  `GET/POST /api/chat/conversations` (POST 201 with the first question, `NewChatMessageCommand {text ≤ 2000, recordRefs ≤ 10}`),
+  `GET/PATCH/DELETE /api/chat/conversations/{id}` (PATCH renames), `POST /api/chat/conversations/{id}/messages` (202, the
+  next question; 409 while an answer is being written) and `POST …/messages/{messageId}/retry` (202, a failed last
+  answer). Answers are written on the AI thread after commit; poll the conversation until the answer is DONE or
+  FAILED. 409 when the AI model is not ready. Answers use the report shapes (`ReportBlockDto`, `ReportSourceDto`) plus
+  `mentions` (links to records and emails). Answers still being written when the backend stops are FAILED on the next
+  start and can be retried. Deleting a conversation is audited (`CHAT_CONVERSATION_DELETED`, no content).
+- **For now every answer is a placeholder** (`ChatAnswerer`, prompt version `chat-stub`); the model pipeline comes next.
+- Not yet: the plan/retrieve/answer pipeline and the page (plan steps H3–H5, H7–H12).
 
 ## Local AI (Ollama)
 
