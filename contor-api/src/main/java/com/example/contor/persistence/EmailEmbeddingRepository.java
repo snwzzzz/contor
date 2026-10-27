@@ -49,6 +49,30 @@ public interface EmailEmbeddingRepository extends JpaRepository<EmailEmbedding, 
                 .toList();
     }
 
+    @Query(value = "select x.email_id as emailId, (x.embedding <=> cast(:vector as vector)) as distance "
+            + "from \"email_embedding\" x "
+            + "join \"email_message\" e on e.id = x.email_id "
+            + "join \"mail_account\" a on a.id = e.account_id "
+            + "where x.model = :model and a.owner_user_id = :ownerId and (e.folder is null or e.folder <> 'sent') and"
+            + EmailMessageRepository.AI_READABLE_SQL
+            + "and (x.embedding <=> cast(:vector as vector)) <= :maxDistance "
+            + "order by x.embedding <=> cast(:vector as vector) limit :limit", nativeQuery = true)
+    List<NearRow> findNearestToRows(Long ownerId, String vector, String model, double maxDistance, int limit);
+
+    /**
+     * An owner's inbox emails in mailboxes the AI may read whose {@code model} vector is within {@code maxDistance}
+     * (cosine) of {@code vector} (e.g. a chat question's), closest first.
+     */
+    default List<NearEmail> findNearestTo(AppUser.AppUserId ownerId, float[] vector, String model, double maxDistance, int limit) {
+        StringBuilder literal = new StringBuilder("[");
+        for (int i = 0; i < vector.length; i++) {
+            literal.append(i == 0 ? "" : ",").append(vector[i]);
+        }
+        return findNearestToRows(ownerId.id(), literal.append(']').toString(), model, maxDistance, limit).stream()
+                .map(row -> new NearEmail(row.getEmailId(), row.getDistance()))
+                .toList();
+    }
+
     /** Drops the vectors of every other model (after a backfill with the current one completed). */
     void deleteById_ModelNot(String model);
 }

@@ -8,8 +8,11 @@ export function timeOfDay(date: Date): TimeOfDay {
   return "evening";
 }
 
-/** "Good morning, anna"; "Welcome back" while the time of day is not known yet (server render, hydration). */
+/**
+ * "Good morning, anna"; plain "Welcome back" while the time of day is not known yet (server render, hydration), without
+ * the name: the client may already have the user cached when the server rendered without it.
+ */
 export function greeting(period: TimeOfDay | null, name?: string): string {
-  const salutation = period ? `Good ${period}` : "Welcome back";
-  return name ? `${salutation}, ${name}` : salutation;
+  if (!period) return "Welcome back";
+  return name ? `Good ${period}, ${name}` : `Good ${period}`;
 }

@@ -16,6 +16,8 @@ describe("greeting", () => {
   it("greets by time of day, or neutrally before the time is known", () => {
     expect(greeting("morning", "anna")).toBe("Good morning, anna");
     expect(greeting("evening")).toBe("Good evening");
-    expect(greeting(null, "anna")).toBe("Welcome back, anna");
+    // Before the time of day is known (server render, hydration) the name is left out too: the user may be in the
+    // client cache already while the server rendered without it, and the two must match.
+    expect(greeting(null, "anna")).toBe("Welcome back");
   });
 });

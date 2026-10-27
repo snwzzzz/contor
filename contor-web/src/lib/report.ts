@@ -87,6 +87,14 @@ export interface InlineMark {
 const INLINE = /\*\*([^*]+?)\*\*|\*([^*\s][^*]*?)\*|`([^`]+)`/g;
 
 /** A sentence's Markdown emphasis (**bold**, *italic*, `code`) as plain runs; anything else stays text. */
+/**
+ * A list item that is only bold text and cites nothing ("**Tuesday, 2026-10-27**"): a label of the items after it. Models
+ * write nested lists, which arrive flat; the label is shown without a bullet so the groups stay readable.
+ */
+export function isListLabel(item: { text: string; markers: number[] }): boolean {
+  return item.markers.length === 0 && /^\*\*[^*]+\*\*$/.test(item.text.trim());
+}
+
 export function inlineMarks(text: string): InlineMark[] {
   const runs: InlineMark[] = [];
   let last = 0;

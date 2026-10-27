@@ -31,5 +31,7 @@ public enum AuditAction {
     AI_ANALYSIS_CANCELLED,
     /** Logged with the scope size and model only, never the prompt or mail text. */
     REPORT_GENERATED,
-    REPORT_DELETED
+    REPORT_DELETED,
+    /** Logged with the conversation id only, never its questions or answers. */
+    CHAT_CONVERSATION_DELETED
 }

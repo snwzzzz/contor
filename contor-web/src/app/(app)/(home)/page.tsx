@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AiStatusCard } from "@/components/app/home/AiStatusCard";
+import { HomeChat } from "@/components/app/home/HomeChat";
 import { HomeHero } from "@/components/app/home/HomeHero";
 import { HomeMailboxes } from "@/components/app/home/HomeMailboxes";
 import { KpiRow } from "@/components/app/home/KpiRow";
@@ -14,6 +15,7 @@ export default function Home() {
   return (
     <div className="mx-auto grid w-full max-w-[85rem] gap-8 py-2 sm:px-2">
       <HomeHero />
+      <HomeChat />
       <KpiRow />
       <NavigateLinks />
       {/* Two rows on one grid, so the second row starts on one line: activity | today + mailboxes, then proposals | AI. */}

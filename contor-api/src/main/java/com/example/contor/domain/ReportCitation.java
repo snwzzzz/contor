@@ -21,7 +21,7 @@ import java.util.Map;
 
 @Entity
 @Table(name = "\"report_citation\"")
-public class ReportCitation {
+public class ReportCitation implements Citation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

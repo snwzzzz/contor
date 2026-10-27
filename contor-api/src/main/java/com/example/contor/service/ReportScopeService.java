@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.ai.CollectionPlan;
 import com.example.contor.ai.EmailParagraphs;
+import com.example.contor.ai.EmbeddingClient;
 import com.example.contor.ai.EvidencePack;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.RecordPageDto;
@@ -11,6 +12,8 @@ import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.FieldType;
+import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.Relation;
 import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
@@ -19,10 +22,14 @@ import com.example.contor.exception.ResourceNotFoundException;
 import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailEmbeddingRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.EmailSpecifications;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.persistence.RelationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -45,6 +52,7 @@ import java.util.Set;
  * with their conversations, newest {@link ReportScope#MAX_EMAILS} first. For a report over a collection
  * ({@link #collectCollection}) the pack holds the figures, an overview and the collection's records instead.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class ReportScopeService {
@@ -58,6 +66,7 @@ public class ReportScopeService {
     private final AiProperties aiProperties;
     private final MailContextProperties mailContextProperties;
     private final CollectionAnalysisService collectionAnalysisService;
+    private final EmbeddingClient embeddingClient;
 
     /** Records of a collection report shown to the model (newest first), as far as they fit the budget. */
     static final int COLLECTION_RECORDS = 60;
@@ -72,6 +81,17 @@ public class ReportScopeService {
     private static final int SEARCH_SEEDS = 10;
     private static final Instant ALL_TIME_FROM = Instant.EPOCH;
     private static final Instant ALL_TIME_TO = Instant.parse("9999-01-01T00:00:00Z");
+
+    /** Records of a chat answer whose connections are followed (the first ones: the focus and the best search hits). */
+    static final int QUESTION_EXPANDED = 3;
+    /** Newest emails from each address of a record found for a chat question (a person's own mail). */
+    static final int CONTACT_EMAILS = 5;
+    /** Newest emails matching each search of a chat plan (sender, recipients, subject or text). */
+    static final int SEARCH_EMAILS = 5;
+    /** Emails closest in meaning to a chat question. */
+    static final int QUESTION_EMAILS = 10;
+    /** Cosine distance up to which an email counts as close to a question (a question is shorter than an email). */
+    static final double QUESTION_MAX_DISTANCE = 0.6;
 
     /**
      * The anchor first, then the connected records; each must be reachable from the anchor within {@code depth}
@@ -127,8 +147,115 @@ public class ReportScopeService {
             titles.put(ref, input.title());
             pack.record(input);
         }
+        relations(pack, titles);
+        if (mailAccess) {
+            List<EmailMessage> own = emails(scope.records(), owner);
+            own.forEach(email -> pack.email(emailInput(email, false)));
+            List<EmailMessage> related = related(own, owner);
+            related.forEach(email -> pack.email(emailInput(email, true)));
+            relatedRecords(related, titles.keySet()).forEach(pack::record);
+        }
+        return pack.build(prompt, EvidencePack.DEFAULT_BUDGET);
+    }
+
+    /**
+     * The evidence for a chat answer (no anchor): the records found for the question, the connections of the first
+     * {@link #QUESTION_EXPANDED} of them and the relations between all of them; with {@code mailAccess} the owner's
+     * emails linked to them, the newest emails from their email addresses, the newest emails matching each of
+     * {@code searches} (so mail is found without records or embeddings), the emails closest in meaning to the question
+     * and the records linked to those. Only mailboxes the AI may read; hidden ones only with {@code readHidden}.
+     * Deleted records are skipped; without the embedding model the question's emails are left out.
+     */
+    @Transactional
+    public EvidencePack collectQuestion(List<RecordRef> found, String question, List<String> searches, AppUser.AppUserId owner,
+                                        boolean mailAccess, boolean readHidden) {
+        Set<RecordRef> refs = new LinkedHashSet<>(found);
+        for (RecordRef ref : found.stream().limit(QUESTION_EXPANDED).toList()) {
+            for (RecordRef connected : reachable(ref, 1)) {
+                if (refs.size() >= ReportScope.MAX_RECORDS) {
+                    break;
+                }
+                refs.add(connected);
+            }
+        }
+        EvidencePack.Builder pack = EvidencePack.builder().recordsHeading("Records found for the question:", true);
+        Map<RecordRef, String> titles = new LinkedHashMap<>();
+        List<EvidencePack.RecordInput> inputs = new ArrayList<>();
+        for (RecordRef ref : refs) {
+            try {
+                EvidencePack.RecordInput input = recordInput(ref, false, false);
+                titles.put(ref, input.title());
+                inputs.add(input);
+                pack.record(input);
+            } catch (ResourceNotFoundException e) {
+                // deleted since it was found or focused
+            }
+        }
+        relations(pack, titles);
+        if (mailAccess && owner != null) {
+            Map<Long, EmailMessage> emails = new LinkedHashMap<>();
+            emails(List.copyOf(titles.keySet()), owner).forEach(email -> emails.putIfAbsent(email.getId().id(), email));
+            for (EvidencePack.RecordInput input : inputs) {
+                for (EvidencePack.FieldInput field : input.fields()) {
+                    if (field.type() == FieldType.EMAIL && field.value() instanceof String address && !address.isBlank()) {
+                        emailMessageRepository.findFromSenderBefore(owner, address.strip(), ALL_TIME_TO, PageRequest.of(0, CONTACT_EMAILS))
+                                .forEach(email -> emails.putIfAbsent(email.getId().id(), email));
+                    }
+                }
+            }
+            List<EmailMessage> searched = new ArrayList<>();
+            for (String search : searches) {
+                searched.addAll(emailMessageRepository.findAll(EmailSpecifications.matching(new EmailSpecifications.Criteria(owner, null, null, null, search)),
+                        PageRequest.of(0, SEARCH_EMAILS, Sort.by(Sort.Direction.DESC, "receivedAt"))).getContent());
+            }
+            searched.forEach(email -> emails.putIfAbsent(email.getId().id(), email));
+            List<EmailMessage> asked = asked(question, owner, emails.keySet());
+            asked.forEach(email -> emails.putIfAbsent(email.getId().id(), email));
+            List<EmailMessage> readable = emails.values().stream().filter(email -> readable(email.getAccount(), readHidden))
+                    .limit(ReportScope.MAX_EMAILS).toList();
+            readable.forEach(email -> pack.email(emailInput(email, false)));
+            List<EmailMessage> matched = new ArrayList<>(searched);
+            matched.addAll(asked);
+            relatedRecords(matched.stream().filter(readable::contains).distinct().toList(), titles.keySet()).forEach(pack::record);
+        }
+        return pack.build(question, EvidencePack.DEFAULT_BUDGET);
+    }
+
+    /** The owner's inbox emails closest in meaning to {@code question}, not yet in {@code known}; none without the embedding model. */
+    private List<EmailMessage> asked(String question, AppUser.AppUserId owner, Set<Long> known) {
+        float[] vector;
+        try {
+            vector = embeddingClient.embed(question);
+        } catch (RuntimeException e) {
+            log.warn("The question could not be embedded: {}", e.getClass().getSimpleName());
+            return List.of();
+        }
+        List<EmailMessage.EmailMessageId> ids = emailEmbeddingRepository.findNearestTo(owner, vector, aiProperties.models().embedding(),
+                        QUESTION_MAX_DISTANCE, QUESTION_EMAILS + known.size()).stream()
+                .map(near -> near.emailId())
+                .filter(id -> !known.contains(id))
+                .limit(QUESTION_EMAILS)
+                .map(EmailMessage.EmailMessageId::new)
+                .toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, EmailMessage> byId = new HashMap<>();
+        emailMessageRepository.findAllById(ids).forEach(email -> byId.put(email.getId().id(), email));
+        return ids.stream().map(id -> byId.get(id.id()))
+                .filter(email -> email != null && email.getAccount().getOwner().getId().equals(owner))
+                .toList();
+    }
+
+    /** Whether the AI may read mail of {@code account}: AI turned on for it, and not hidden unless hidden ones may be read. */
+    private static boolean readable(MailAccount account, boolean readHidden) {
+        return account != null && account.isAiEnabled() && (readHidden || !account.isHidden());
+    }
+
+    /** The relations between the records in {@code titles}, each once. */
+    private void relations(EvidencePack.Builder pack, Map<RecordRef, String> titles) {
         Map<Long, Relation> relations = new LinkedHashMap<>();
-        for (RecordRef ref : scope.records()) {
+        for (RecordRef ref : titles.keySet()) {
             for (Relation relation : relationsOf(ref)) {
                 if (titles.containsKey(otherEnd(relation, ref))) {
                     relations.putIfAbsent(relation.getId().id(), relation);
@@ -142,14 +269,6 @@ public class ReportScopeService {
                     relation.getRelationType().getName(), to.collectionId(), to.recordId(), titles.get(to),
                     date(relation.getValidFrom()), date(relation.getValidTo())));
         }
-        if (mailAccess) {
-            List<EmailMessage> own = emails(scope, owner);
-            own.forEach(email -> pack.email(emailInput(email, false)));
-            List<EmailMessage> related = related(own, owner);
-            related.forEach(email -> pack.email(emailInput(email, true)));
-            relatedRecords(related, titles.keySet()).forEach(pack::record);
-        }
-        return pack.build(prompt, EvidencePack.DEFAULT_BUDGET);
     }
 
     /**
@@ -247,9 +366,9 @@ public class ReportScopeService {
     }
 
     /** The owner's emails linked to the scope's records and the rest of their conversations, newest first. */
-    private List<EmailMessage> emails(ReportScope scope, AppUser.AppUserId owner) {
+    private List<EmailMessage> emails(List<RecordRef> records, AppUser.AppUserId owner) {
         Map<Long, EmailMessage> emails = new LinkedHashMap<>();
-        for (RecordRef ref : scope.records()) {
+        for (RecordRef ref : records) {
             recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(ref.collectionId()), ref.recordId()).stream()
                     .map(source -> source.getEmail())
                     .filter(email -> email.getAccount().getOwner().getId().equals(owner))
