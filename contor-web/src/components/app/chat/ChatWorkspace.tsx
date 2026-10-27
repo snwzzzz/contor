@@ -1,32 +1,16 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { LoaderCircle, SquarePen } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useGetAiStatus } from "@/lib/api/generated/endpoints/ai/ai";
-import {
-  getGetChatConversationQueryKey,
-  getListChatConversationsQueryKey,
-  useCreateChatConversation,
-  useListChatConversations,
-} from "@/lib/api/generated/endpoints/chat/chat";
+import { useListChatConversations } from "@/lib/api/generated/endpoints/chat/chat";
 import type { ChatConversationSummaryDto } from "@/lib/api/generated/model/chatConversationSummaryDto";
 import { ROW_HOVER } from "@/lib/card-hover";
-import { CHAT_POLL_MS, chatHref, MAX_QUESTION } from "@/lib/chat";
+import { CHAT_POLL_MS, chatHref } from "@/lib/chat";
 import { cn } from "@/lib/utils";
-import { ReportPrompt } from "../reports/ReportPrompt";
-import { REPORT_NOT_READY } from "../reports/ReportRow";
+import { ChatAsk, ChatSuggestions, useStartChat } from "./ChatAsk";
 import { ChatListSkeleton } from "./ChatSkeleton";
 import { ChatThread } from "./ChatThread";
-
-const SUGGESTIONS = [
-  "Who are our best customers?",
-  "Which complaints are still open?",
-  "What is on my calendar this week?",
-  "Which to-dos are overdue?",
-] as const;
 
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 
@@ -44,7 +28,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: number }) {
       className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[16rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-0"
     >
       <ConversationList current={conversationId} />
-      {/* Scrolls on its own, never sideways; pb-6 keeps room for the sticky follow-up input at the bottom. */}
+      {/* Never sideways; the start scrolls here, an open conversation scrolls its messages above the input. */}
       <div
         data-testid="chat-detail"
         className="flex min-h-0 min-w-0 flex-col max-lg:order-first lg:overflow-x-hidden lg:overflow-y-auto lg:pt-4 lg:pb-6 lg:pl-6"
@@ -57,20 +41,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: number }) {
 
 /** A new conversation: the question line, the input and ready-made questions. */
 function ChatStart() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { data: status } = useGetAiStatus({ query: { retry: false } });
-  const create = useCreateChatConversation({
-    mutation: {
-      onSuccess: (created) => {
-        queryClient.setQueryData(getGetChatConversationQueryKey(created.id), created);
-        void queryClient.invalidateQueries({ queryKey: getListChatConversationsQueryKey() });
-        router.push(chatHref(created.id));
-      },
-    },
-  });
-  const disabledReason = status !== undefined && !status.ready ? REPORT_NOT_READY : undefined;
-  const ask = (text: string) => create.mutate({ data: { text } });
+  const chat = useStartChat();
 
   return (
     // Centered in its area, like a chat start page.
@@ -79,30 +50,8 @@ function ChatStart() {
       <p className="text-center text-sm text-muted-foreground">
         Ask about your collections, people, connections, mail, calendar and to-dos. Answers link to what they are about.
       </p>
-      <ReportPrompt
-        label="Ask the assistant"
-        placeholder="Ask anything about your data…"
-        submitLabel="Ask"
-        maxLength={MAX_QUESTION}
-        disabledReason={disabledReason}
-        pending={create.isPending}
-        onSubmit={ask}
-      />
-      <ul aria-label="Suggestions" className="flex flex-wrap justify-center gap-2">
-        {SUGGESTIONS.map((suggestion) => (
-          <li key={suggestion}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="font-normal shadow-none"
-              disabled={disabledReason !== undefined || create.isPending}
-              onClick={() => ask(suggestion)}
-            >
-              {suggestion}
-            </Button>
-          </li>
-        ))}
-      </ul>
+      <ChatAsk chat={chat} />
+      <ChatSuggestions chat={chat} className="justify-center" />
     </div>
   );
 }

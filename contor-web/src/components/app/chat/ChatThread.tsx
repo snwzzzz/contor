@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ export function ChatThread({ conversationId }: { conversationId: number }) {
   });
   const { data: status } = useGetAiStatus({ query: { retry: false } });
   const [selection, setSelection] = useState<Selection>();
+  const end = useStickToEnd(conversation?.messages.length ?? 0, conversation?.messages.at(-1)?.status);
   const show = (updated: ChatConversationDto) => {
     queryClient.setQueryData(queryKey, updated);
     void queryClient.invalidateQueries({ queryKey: getListChatConversationsQueryKey() });
@@ -76,7 +77,7 @@ export function ChatThread({ conversationId }: { conversationId: number }) {
 
   return (
     // Fills the detail area (a flex column), so the follow-up input sits at the bottom even while the thread is short.
-    <article className="flex min-w-0 flex-1 flex-col gap-6">
+    <article className="flex min-w-0 flex-1 flex-col gap-6 lg:min-h-0">
       <ThreadHeader
         title={conversation.title}
         renaming={rename.isPending}
@@ -85,26 +86,30 @@ export function ChatThread({ conversationId }: { conversationId: number }) {
         onDelete={() => remove.mutate({ conversationId })}
       />
 
-      <div className="grid flex-1 gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* min-w-0: a wide table or a long word scrolls in its own box instead of widening the thread. */}
-        <div className="flex min-w-0 flex-col gap-6 break-words">
-          {conversation.messages.map((message) =>
-            message.role === "USER" ? (
-              <Question key={message.id} text={message.text ?? ""} />
-            ) : (
-              <ChatAnswer
-                key={message.id}
-                answer={message}
-                selected={selection?.messageId === message.id ? selection.marker : undefined}
-                onSelect={select(message.id)}
-                onRetry={message === last ? () => retry.mutate({ conversationId, messageId: message.id }) : undefined}
-                retrying={retry.isPending}
-              />
-            ),
-          )}
-          {/* Pushed to the bottom (mt-auto) and stays there while scrolling (-bottom-6 reaches past the scroll area's
-              padding); the fade lets text pass under it. */}
-          <div data-slot="chat-composer" className="sticky -bottom-6 z-10 -mb-6 mt-auto bg-linear-to-t from-background from-75% to-transparent pt-6 pb-6">
+      <div className="grid flex-1 gap-8 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col lg:min-h-0">
+          {/* The messages scroll on their own (from lg) above the input; min-w-0: a wide table or a long word scrolls in
+              its own box instead of widening the thread. */}
+          <div data-testid="chat-messages" className="flex min-w-0 flex-1 flex-col gap-6 break-words lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+            {conversation.messages.map((message) =>
+              message.role === "USER" ? (
+                <Question key={message.id} text={message.text ?? ""} />
+              ) : (
+                <ChatAnswer
+                  key={message.id}
+                  answer={message}
+                  selected={selection?.messageId === message.id ? selection.marker : undefined}
+                  onSelect={select(message.id)}
+                  onRetry={message === last ? () => retry.mutate({ conversationId, messageId: message.id }) : undefined}
+                  retrying={retry.isPending}
+                />
+              ),
+            )}
+            {/* The very end of the conversation: scrolled into view by useStickToEnd. */}
+            <div ref={end} data-slot="chat-end" aria-hidden="true" className="-mt-6 h-px shrink-0" />
+          </div>
+          {/* Below the messages, never over them; on small screens the page scrolls and it stays at the bottom. */}
+          <div data-slot="chat-composer" className="z-10 bg-background pt-3 max-lg:sticky max-lg:bottom-0 max-lg:pb-3">
             <ReportPrompt
               label="Ask a follow-up"
               placeholder="Ask a follow-up question…"
@@ -116,15 +121,48 @@ export function ChatThread({ conversationId }: { conversationId: number }) {
             />
           </div>
         </div>
-        <SourcePanel
-          sources={shown?.sources ?? []}
-          selected={shown && selection?.messageId === shown.id ? selection.marker : undefined}
-          quotes={quotesOf(shown?.sources ?? [])}
-          onSelect={shown ? select(shown.id) : () => {}}
-        />
+        {/* Long source lists scroll on their own beside the messages. */}
+        <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto">
+          <SourcePanel
+            sources={shown?.sources ?? []}
+            selected={shown && selection?.messageId === shown.id ? selection.marker : undefined}
+            quotes={quotesOf(shown?.sources ?? [])}
+            onSelect={shown ? select(shown.id) : () => {}}
+          />
+        </div>
       </div>
     </article>
   );
+}
+
+/**
+ * Keeps the end of the conversation in view, so the sticky input never covers the newest answer: on opening, when a
+ * question is sent (more messages), and when the last answer changes (it finished, failed) while you are at the end.
+ * Scrolled up to read, you stay where you are. Returns the ref for an element at the very end.
+ */
+function useStickToEnd(count: number, lastStatus: string | undefined) {
+  const element = useRef<HTMLDivElement | null>(null);
+  const atEnd = useRef(true);
+  const shown = useRef(0);
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    element.current = node;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      atEnd.current = entry.isIntersecting;
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const grew = count > shown.current;
+    shown.current = count;
+    if (count > 0 && (grew || atEnd.current)) {
+      element.current?.scrollIntoView({ block: "end" });
+    }
+  }, [count, lastStatus]);
+
+  return ref;
 }
 
 interface ThreadHeaderProps {

@@ -69,10 +69,13 @@ describe("ChatThread", () => {
 
     const input = await screen.findByRole("textbox", { name: "Ask a follow-up" });
     const bar = input.closest("[data-slot=chat-composer]");
-    // The conversation fills the detail area, so the bar is pushed down (mt-auto) and sticks there while scrolling.
-    expect(bar).toHaveClass("mt-auto", "sticky");
-    expect(screen.getByRole("article")).toHaveClass("flex-1", "flex-col");
-    expect(bar?.parentElement).toHaveClass("flex", "flex-col");
+    const messages = screen.getByTestId("chat-messages");
+    // The messages fill the column and scroll on their own; the bar sits below them, never over them (no fade).
+    expect(messages).toHaveClass("flex-1", "lg:overflow-y-auto", "lg:min-h-0");
+    expect(messages).not.toContainElement(input);
+    expect(bar?.previousElementSibling).toBe(messages);
+    expect(bar?.className).not.toMatch(/gradient|bg-linear|-mb-/);
+    expect(screen.getByRole("article")).toHaveClass("flex-1", "flex-col", "lg:min-h-0");
   });
 
   it("links the people, records and emails an answer is about", async () => {
@@ -132,6 +135,55 @@ describe("ChatThread", () => {
     await vi.waitFor(() => expect(calls.find((call) => call.method === "POST")?.body).toEqual({ text: "And where does she work?" }));
   });
 
+  it("scrolls to the end when a question is sent", async () => {
+    const scrolled = spyOnScroll();
+    api({
+      "POST /api/chat/conversations/5/messages": { status: 202, body: {
+        ...conversation(),
+        messages: [QUESTION, ANSWER, { ...QUESTION, id: 12, text: "And where does she work?" },
+          { ...ANSWER, id: 13, status: "PENDING", text: undefined, blocks: [], sources: [], mentions: [] }],
+      } },
+    });
+    renderThread();
+    const input = await screen.findByRole("textbox", { name: "Ask a follow-up" });
+    scrolled.length = 0;
+
+    await userEvent.type(input, "And where does she work?{Enter}");
+
+    await vi.waitFor(() => expect(scrolled.some((element) => element.matches("[data-slot=chat-end]"))).toBe(true));
+  });
+
+  it("keeps the end in view when an answer finishes, so the input never covers it", async () => {
+    const scrolled = spyOnScroll();
+    let polls = 0;
+    api({
+      "GET /api/chat/conversations/5": () => ({
+        body: polls++ === 0 ? conversation({ ...ANSWER, status: "WRITING", text: undefined, blocks: [], sources: [], mentions: [] }) : conversation(),
+      }),
+    });
+    renderThread();
+    await screen.findByText(/Writing the answer/);
+    scrolled.length = 0;
+
+    expect(await screen.findByRole("list", { name: "Mentioned" }, { timeout: 5000 })).toBeInTheDocument();
+    await vi.waitFor(() => expect(scrolled.some((element) => element.matches("[data-slot=chat-end]"))).toBe(true));
+  });
+
+  it("shows a table answer whose rows number their cells from 0 each", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const cell = (id: number, text: string) => ({ id, text, check: "SUPPORTED", markers: [] });
+    api({ "GET /api/chat/conversations/5": { body: conversation({
+      ...ANSWER, sources: [], mentions: [],
+      blocks: [{ id: 0, type: "TABLE", columns: ["Day", "Event"], items: [], rows: [[cell(0, "Tuesday"), cell(1, "Roundtable")], [cell(0, "Wednesday"), cell(1, "Kessler")]] }],
+    }) } });
+    renderThread();
+
+    expect(await screen.findByRole("cell", { name: "Wednesday" })).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(3);
+    expect(errors.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
+    errors.mockRestore();
+  });
+
   it("renames the conversation", async () => {
     const calls = api({
       "PATCH /api/chat/conversations/5": { body: { ...conversation(), title: "Anna" } },
@@ -166,3 +218,12 @@ describe("ChatThread", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("This conversation does not exist (anymore).");
   });
 });
+
+/** Records the elements scrolled into view (jsdom has no scrollIntoView). */
+function spyOnScroll(): Element[] {
+  const scrolled: Element[] = [];
+  Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+    scrolled.push(this);
+  });
+  return scrolled;
+}

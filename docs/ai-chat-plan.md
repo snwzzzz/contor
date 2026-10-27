@@ -28,7 +28,7 @@
 >   live run): talks to the user as "you" and is told when mail access is off, so it can say so instead of "nothing found".
 > - H8–H9: routes `chat/(new)` (start; route group so its skeleton never shows for a conversation) and
 >   `chat/[conversationId]`, both `ChatHeader` + `ChatWorkspace`. `components/app/chat/`: `ChatWorkspace` (side list +
->   start), `ChatThread` (title with Rename/Delete, messages, sticky follow-up input, `SourcePanel` of the selected or
+>   start), `ChatThread` (title with Rename/Delete, messages scrolling above the follow-up input and kept at the end (`useStickToEnd`), `SourcePanel` of the selected or
 >   last answer), `ChatAnswer`, `MentionChips` (records via `recordSheetHref`, emails `/inbox?email=`), `ChatSkeleton`.
 >   Reused from reports: `ReportPrompt` (new `maxLength`), `ReportBlocks` (new export of `ReportBody`), `SourcePanel`,
 >   `CitationMarker`; `lib/chat.ts` holds polling, steps and hrefs. The list is not closable (unlike the record's report

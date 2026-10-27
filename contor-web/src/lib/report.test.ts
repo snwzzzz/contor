@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
-import { highlightQuote, inlineMarks, isGenerating, reportHref, reportStep, sourceHref, sourcesLabel } from "./report";
+import { highlightQuote, inlineMarks, isGenerating, isListLabel, reportHref, reportStep, sourceHref, sourcesLabel } from "./report";
 
 function source(overrides: Partial<ReportSourceDto>): ReportSourceDto {
   return { marker: 1, kind: "RECORD", label: "Orders", sourceState: "CURRENT", ...overrides };
 }
 
 describe("report helpers", () => {
+  it("treats a list item that is only bold text as a label of the items after it", () => {
+    expect(isListLabel({ text: "**Tuesday, 2026-10-27**", markers: [] })).toBe(true);
+    expect(isListLabel({ text: "**Tuesday:**", markers: [] })).toBe(true);
+    expect(isListLabel({ text: "**Packaging:** the box was weak", markers: [] })).toBe(false);
+    // A cited item states something: it stays an item.
+    expect(isListLabel({ text: "**SO-26-0149**", markers: [1] })).toBe(false);
+    expect(isListLabel({ text: "Plain text", markers: [] })).toBe(false);
+  });
+
   it("knows which states are still being generated", () => {
     expect(isGenerating("QUEUED")).toBe(true);
     expect(isGenerating("FACT_CHECKING")).toBe(true);

@@ -10,7 +10,7 @@ import type { ReportFindingDto } from "@/lib/api/generated/model/reportFindingDt
 import type { ReportSectionDto } from "@/lib/api/generated/model/reportSectionDto";
 import type { ReportSectionType } from "@/lib/api/generated/model/reportSectionType";
 import type { ReportSourceDto } from "@/lib/api/generated/model/reportSourceDto";
-import { inlineMarks } from "@/lib/report";
+import { inlineMarks, isListLabel } from "@/lib/report";
 import { cn } from "@/lib/utils";
 import { CitationMarker } from "./CitationMarker";
 
@@ -135,7 +135,8 @@ function Block({ block, citations }: { block: ReportBlockDto; citations: Citatio
     case "BULLETS":
     case "NUMBERED": {
       const items = block.items.map((claim) => (
-        <li key={claim.id}>
+        // A label of the items after it (a flattened nested list): no bullet, flush left, a little space above.
+        <li key={claim.id} className={isListLabel(claim) ? "-ml-5 list-none pt-1 first:pt-0" : undefined}>
           <Claim claim={claim} citations={citations} />
         </li>
       ));
@@ -173,8 +174,9 @@ function Table({ block, citations }: { block: ReportBlockDto; citations: Citatio
           </thead>
         ) : null}
         <tbody>
-          {block.rows.map((row) => (
-            <tr key={row[0]?.id} className="border-t align-top">
+          {block.rows.map((row, index) => (
+            // Rows come from an immutable answer, and cell ids may repeat per row (chat): the position is the identity.
+            <tr key={`row-${index}`} className="border-t align-top">
               {row.map((cell) => (
                 <td key={cell.id} className="px-3 py-2">
                   <Claim claim={cell} citations={citations} />
