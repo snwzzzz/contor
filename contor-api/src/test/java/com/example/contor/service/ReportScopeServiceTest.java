@@ -1,7 +1,9 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.CollectionPlan;
+import com.example.contor.ai.EmbeddingClient;
 import com.example.contor.ai.EvidencePack;
+import com.example.contor.ai.OllamaException;
 import com.example.contor.api.model.RecordDto;
 import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.config.AiProperties;
@@ -28,6 +30,11 @@ import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.persistence.RelationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.mockito.ArgumentMatchers;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -54,6 +61,7 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +83,8 @@ class ReportScopeServiceTest {
     private EmailEmbeddingRepository emailEmbeddingRepository;
     @Mock
     private CollectionAnalysisService collectionAnalysisService;
+    @Mock
+    private EmbeddingClient embeddingClient;
     @Spy
     private AiProperties aiProperties = new AiProperties(null, new AiProperties.Models("router", "extractor", "embedder"), null,
             ZoneId.of("Europe/Berlin"));
@@ -213,6 +223,101 @@ class ReportScopeServiceTest {
     private static RecordDto recordDto(Collection collection, long recordId, String title, Map<String, Object> values) {
         return new RecordDto(recordId, collection.getId().id(), new HashMap<>(values), new HashMap<>(),
                 OffsetDateTime.of(2026, 8, 1, 0, 0, 0, 0, ZoneOffset.UTC), "USER").title(title);
+    }
+
+    @Test
+    void collectQuestion_FoundRecordsWithTheirConnectionsAndNoMailWithoutAccess() {
+        var pack = reportScopeService.collectQuestion(List.of(new RecordRef(1L, 4711L)), "Why was order 4711 late?", List.of(), owner, false, true);
+
+        assertThat(pack.render()).contains("Orders: Order 4711", "Deliveries: Delivery 88", "delivered by")
+                .doesNotContain("the record the report is about");
+        assertThat(pack.render()).as("connections of connections are not followed").doesNotContain("Fast Freight");
+        assertThat(pack.emailIds()).isEmpty();
+        verifyNoInteractions(embeddingClient);
+    }
+
+    @Test
+    void collectQuestion_NothingFoundGivesAnEmptyPackWithoutMail() {
+        var pack = reportScopeService.collectQuestion(List.of(), "Hello", List.of(), owner, false, true);
+
+        assertThat(pack.sources()).isEmpty();
+    }
+
+    @Test
+    void collectQuestion_AddsMailFromThePeopleFoundAndMailCloseToTheQuestion() {
+        var people = collection(6L, "people", "People");
+        field(people, "email", "Email", FieldType.EMAIL);
+        record(people, 9L, "Anna Kessler", Map.of("email", "anna@kessler.example"));
+        var account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(AppUser.builder().id(owner).build()).build();
+        var fromAnna = email(40L, account, null, "inbox", "Our order", "Where is our order?");
+        var close = email(41L, account, null, "inbox", "Late again", "The parcel is late again.");
+        when(emailMessageRepository.findFromSenderBefore(eq(owner), eq("anna@kessler.example"), any(), any())).thenReturn(List.of(fromAnna));
+        float[] vector = {0.1f, 0.2f};
+        when(embeddingClient.embed("What did Anna write?")).thenReturn(vector);
+        when(emailEmbeddingRepository.findNearestTo(eq(owner), eq(vector), eq("embedder"), anyDouble(), anyInt()))
+                .thenReturn(List.of(new NearEmail(40L, 0.2), new NearEmail(41L, 0.3)));
+        when(emailMessageRepository.findAllById(List.of(new EmailMessage.EmailMessageId(41L)))).thenReturn(List.of(close));
+
+        var pack = reportScopeService.collectQuestion(List.of(new RecordRef(6L, 9L)), "What did Anna write?", List.of(), owner, true, true);
+
+        assertThat(pack.emailIds()).containsExactly(40L, 41L);
+        assertThat(pack.render()).contains("Where is our order?", "The parcel is late again.");
+    }
+
+    @Test
+    void collectQuestion_SkipsMailboxesTheAiMayNotRead() {
+        var people = collection(6L, "people", "People");
+        field(people, "email", "Email", FieldType.EMAIL);
+        record(people, 9L, "Anna Kessler", Map.of("email", "anna@kessler.example"));
+        var off = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(AppUser.builder().id(owner).build()).aiEnabled(false).build();
+        var hidden = MailAccount.builder().id(new MailAccount.MailAccountId(4L)).owner(AppUser.builder().id(owner).build()).hidden(true).build();
+        when(emailMessageRepository.findFromSenderBefore(eq(owner), eq("anna@kessler.example"), any(), any())).thenReturn(List.of(
+                email(40L, off, null, "inbox", "Off", "Not for the AI."), email(42L, hidden, null, "inbox", "Hidden", "In a hidden mailbox.")));
+        when(embeddingClient.embed(any())).thenReturn(new float[]{0.1f});
+
+        assertThat(reportScopeService.collectQuestion(List.of(new RecordRef(6L, 9L)), "What did Anna write?", List.of(), owner, true, false).emailIds())
+                .isEmpty();
+        assertThat(reportScopeService.collectQuestion(List.of(new RecordRef(6L, 9L)), "What did Anna write?", List.of(), owner, true, true).emailIds())
+                .containsExactly(42L);
+    }
+
+    @Test
+    void collectQuestion_WithoutTheEmbeddingModelStillUsesTheRecordsMail() {
+        var people = collection(6L, "people", "People");
+        field(people, "email", "Email", FieldType.EMAIL);
+        record(people, 9L, "Anna Kessler", Map.of("email", "anna@kessler.example"));
+        var account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(AppUser.builder().id(owner).build()).build();
+        when(emailMessageRepository.findFromSenderBefore(eq(owner), eq("anna@kessler.example"), any(), any()))
+                .thenReturn(List.of(email(40L, account, null, "inbox", "Our order", "Where is our order?")));
+        when(embeddingClient.embed(any())).thenThrow(new OllamaException("model missing"));
+
+        assertThat(reportScopeService.collectQuestion(List.of(new RecordRef(6L, 9L)), "What did Anna write?", List.of(), owner, true, true).emailIds())
+                .containsExactly(40L);
+    }
+
+    @Test
+    void collectQuestion_FindsMailByThePlansSearchesWithoutRecordsOrEmbeddings() {
+        var account = MailAccount.builder().id(new MailAccount.MailAccountId(3L)).owner(AppUser.builder().id(owner).build()).build();
+        var fromHelga = email(50L, account, null, "inbox", "Budget 2027", "Please send the budget by Friday.");
+        when(emailMessageRepository.findAll(ArgumentMatchers.<Specification<EmailMessage>>any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(fromHelga)));
+        when(embeddingClient.embed(any())).thenThrow(new OllamaException("model missing"));
+
+        var pack = reportScopeService.collectQuestion(List.of(), "What did Helga write?", List.of("Helga Sommerfeld"), owner, true, true);
+
+        assertThat(pack.emailIds()).containsExactly(50L);
+        assertThat(pack.render()).contains("Please send the budget by Friday.");
+        ArgumentCaptor<Pageable> page = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailMessageRepository).findAll(ArgumentMatchers.<Specification<EmailMessage>>any(), page.capture());
+        assertThat(page.getValue().getPageSize()).isEqualTo(ReportScopeService.SEARCH_EMAILS);
+        assertThat(page.getValue().getSort().getOrderFor("receivedAt").isDescending()).isTrue();
+    }
+
+    @Test
+    void collectQuestion_DoesNotSearchMailWithoutAccess() {
+        reportScopeService.collectQuestion(List.of(), "What did Helga write?", List.of("Helga Sommerfeld"), owner, false, true);
+
+        verify(emailMessageRepository, never()).findAll(ArgumentMatchers.<Specification<EmailMessage>>any(), any(Pageable.class));
     }
 
     private static Collection collection(long id, String slug, String name) {

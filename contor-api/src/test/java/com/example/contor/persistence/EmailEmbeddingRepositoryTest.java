@@ -129,6 +129,35 @@ public class EmailEmbeddingRepositoryTest {
     }
 
     @Test
+    void finds_the_inbox_mail_closest_to_a_vector_in_mailboxes_the_ai_may_read() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var other = appUserRepository.save(Fixtures.user("other"));
+        var mine = mailAccountRepository.save(Fixtures.mailAccount(owner, "me@example.com"));
+        var off = Fixtures.mailAccount(owner, "off@example.com");
+        off.setAiEnabled(false);
+        off = mailAccountRepository.save(off);
+        var theirs = mailAccountRepository.save(Fixtures.mailAccount(other, "them@example.com"));
+        var closest = received(mine, "a", "2026-05-01T10:00:00Z");
+        var close = received(mine, "b", "2026-05-02T10:00:00Z");
+        var far = received(mine, "c", "2026-05-03T10:00:00Z");
+        var sent = Fixtures.email(mine, "e");
+        sent.setFolder("sent");
+        sent = emailMessageRepository.save(sent);
+        var notForAi = received(off, "h", "2026-05-04T10:00:00Z");
+        var foreign = received(theirs, "f", "2026-05-04T10:00:00Z");
+        emailEmbeddingRepository.saveAll(List.of(vector(closest, "nomic", 0.1f), vector(close, "nomic", 0.3f), vector(far, "nomic", 5f),
+                vector(sent, "nomic", 0f), vector(notForAi, "nomic", 0f), vector(foreign, "nomic", 0f), vector(closest, "old-model", 0f)));
+        emailEmbeddingRepository.flush();
+        var question = new float[EmailEmbedding.DIMENSIONS];
+        question[0] = 1f;
+
+        var nearest = emailEmbeddingRepository.findNearestTo(owner.getId(), question, "nomic", 0.25, 10);
+
+        assertThat(nearest).extracting(NearEmail::emailId).containsExactly(closest.getId().id(), close.getId().id());
+        assertThat(emailEmbeddingRepository.findNearestTo(owner.getId(), question, "nomic", 0.25, 1)).hasSize(1);
+    }
+
+    @Test
     void finds_nothing_for_an_email_without_a_vector_or_of_another_owner() {
         var owner = appUserRepository.save(Fixtures.user("owner"));
         var other = appUserRepository.save(Fixtures.user("other"));

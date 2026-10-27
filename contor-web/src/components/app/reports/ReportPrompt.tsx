@@ -7,7 +7,7 @@ import { FIELD, FIELD_FOCUS_WITHIN } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-/** The backend's limit for a request or question. */
+/** The backend's limit for a report request or question. */
 const MAX_PROMPT = 500;
 
 interface ReportPromptProps {
@@ -18,6 +18,8 @@ interface ReportPromptProps {
   suggestions?: readonly string[];
   /** Whether an empty input may be sent (the backend then asks for its default summary). */
   allowEmpty?: boolean;
+  /** The longest text the backend takes (default: a report request). */
+  maxLength?: number;
   /** Why asking is not possible right now; disables the input. */
   disabledReason?: string;
   pending?: boolean;
@@ -25,8 +27,8 @@ interface ReportPromptProps {
 }
 
 /** A small chat-style input for asking the assistant: Enter sends, Shift+Enter starts a new line. */
-export function ReportPrompt({ label, placeholder, submitLabel, suggestions = [], allowEmpty = false, disabledReason, pending = false,
-  onSubmit }: ReportPromptProps) {
+export function ReportPrompt({ label, placeholder, submitLabel, suggestions = [], allowEmpty = false, maxLength = MAX_PROMPT, disabledReason,
+  pending = false, onSubmit }: ReportPromptProps) {
   const [prompt, setPrompt] = useState("");
   const disabled = disabledReason !== undefined;
   const canSend = !disabled && !pending && (allowEmpty || prompt.trim() !== "");
@@ -57,7 +59,7 @@ export function ReportPrompt({ label, placeholder, submitLabel, suggestions = []
           aria-label={label}
           placeholder={placeholder}
           value={prompt}
-          maxLength={MAX_PROMPT}
+          maxLength={maxLength}
           rows={1}
           disabled={disabled}
           onChange={(event) => setPrompt(event.target.value)}

@@ -44,7 +44,7 @@ export const AI_INSIGHTS_NAV: readonly NavItem[] = [
   { title: "Findings", href: "/findings", icon: ScanSearch, tint: 6 },
 ];
 
-/** Chat with the assistant (top bar; a placeholder page for now). */
+/** Chat with the assistant about everything in contor (top bar). */
 export const CHAT_NAV: NavItem = { title: "Chat", href: "/chat", icon: MessagesSquare, tint: 7 };
 
 export const DATA_NAV: readonly NavItem[] = [

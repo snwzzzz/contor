@@ -49,6 +49,25 @@ export function ReportBody({ report, selected, onSelect }: { report: ReportDto; 
   );
 }
 
+interface ReportBlocksProps {
+  blocks: readonly ReportBlockDto[];
+  sources: readonly ReportSourceDto[];
+  selected: number | undefined;
+  onSelect: (marker: number) => void;
+}
+
+/** Paragraphs, lists, quotes and tables with their source markers, without sections (a chat answer). */
+export function ReportBlocks({ blocks, sources, selected, onSelect }: ReportBlocksProps) {
+  const citations: Citations = { sources: new Map(sources.map((source) => [source.marker, source])), selected, onSelect };
+  return (
+    <div className="grid gap-3">
+      {blocks.map((block) => (
+        <Block key={block.id} block={block} citations={citations} />
+      ))}
+    </div>
+  );
+}
+
 function Section({ section, citations }: { section: ReportSectionDto; citations: Citations }) {
   return (
     <section aria-labelledby={`report-section-${section.id}`} className="grid gap-3">

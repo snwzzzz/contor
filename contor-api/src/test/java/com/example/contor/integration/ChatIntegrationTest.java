@@ -1,6 +1,8 @@
 package com.example.contor.integration;
 
 import com.example.contor.PostgresTestcontainersConfiguration;
+import com.example.contor.ai.ChatPlan;
+import com.example.contor.ai.ReportDraft;
 import com.example.contor.api.model.ChatMessageDto;
 import com.example.contor.api.model.ChatMessageStatus;
 import com.example.contor.api.model.NewChatMessageCommand;
@@ -13,6 +15,7 @@ import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.security.AuthenticatedUser;
 import com.example.contor.service.AiModelService;
 import com.example.contor.service.ChatAnswerer;
+import com.example.contor.service.ChatModelService;
 import com.example.contor.service.ChatService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,11 +30,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
@@ -59,11 +67,19 @@ class ChatIntegrationTest {
     @MockitoBean
     private AiModelService aiModelService;
 
+    /** The model is stubbed: the retrieval and storage around it are real. */
+    @MockitoBean
+    private ChatModelService chatModelService;
+
     private AppUser owner;
 
     @BeforeEach
     void setUp() {
         when(aiModelService.isReady()).thenReturn(true);
+        when(chatModelService.plan(anyString(), anyList(), anyString(), anyList())).thenReturn(new ChatPlan(List.of("Anna"), List.of()));
+        when(chatModelService.answer(any(), anyString(), anyList(), anyBoolean())).thenReturn(
+                ReportDraft.parse(JsonMapper.builder().build().readTree("{\"document\": \"Anna works at Kessler GmbH.\"}")));
+        when(chatModelService.model()).thenReturn("test-model");
         owner = appUserRepository.saveAndFlush(user("chat-owner"));
         login(owner);
     }
@@ -74,7 +90,7 @@ class ChatIntegrationTest {
     }
 
     @Test
-    void a_conversation_takes_turns_and_the_answers_are_written() {
+    void a_conversation_takes_turns_and_the_answers_are_written_from_a_real_lookup() {
         var created = chatService.createConversation(new NewChatMessageCommand("Who is Anna Kessler?"));
         Long conversationId = created.getId();
         chatAnswerer.answer(created.getMessages().get(1).getId());
@@ -90,6 +106,7 @@ class ChatIntegrationTest {
                         conversation.getMessages().get(3).getText());
         assertThat(conversation.getMessages()).extracting(ChatMessageDto::getStatus).containsOnly(ChatMessageStatus.DONE);
         assertThat(conversation.getMessages().get(3).getBlocks()).hasSize(1);
+        assertThat(conversation.getMessages().get(3).getText()).isEqualTo("Anna works at Kessler GmbH.");
         assertThat(jdbcTemplate.queryForObject("select count(*) from chat_message where conversation_id = ?", Long.class, conversationId))
                 .isEqualTo(4L);
         assertThat(chatService.findAll()).extracting(summary -> summary.getId()).containsExactly(conversationId);

@@ -1,8 +1,9 @@
 # AI chat implementation plan (ask the local model about everything in contor, answers linked to the source)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** H1–H2 implemented (schema, domain, repositories, exceptions, audit action), H6
-> implemented with a stub answerer (spec, `ChatService`, `ChatController`, `ChatMapper`). Open: H3–H5, H7–H12. Branch: `feature/ai-chat`. Defaults confirmed (2026-10-26): own tables, private per user, read-only.
+> in the same change. **Status:** H1–H2, H6 and H8–H9 implemented (H8/H9 without the `@` record picker and the entry
+> points from the record page and command palette); H3–H5 implemented as a first slice (see the notes). Open: H7,
+> H10–H12, those H8/H9 parts, and analyses (figures) in chat answers.
 >
 > Implementation notes (where it differs from or refines the text below):
 > - H1: `chat_message.position` (unique per conversation) orders the messages; timestamps can tie for a question and
@@ -12,6 +13,27 @@
 >   ids of its kind) are JSON value records validated in their constructors. `ChatConversationRepository.findByIdAndOwner_Id`
 >   gives the 404 for other users' conversations. A new message does not touch the conversation's `last_modified`; the
 >   service has to (H6), or the list order is off.
+> - H3–H5 (first slice, 2026-10-27): `ai/ChatPlan` is `{searches ≤ 5, collections ≤ 2}` only; the analyses of the
+>   plan text above (`CollectionPlan` figures) are not in it yet. `ChatRetrievalService` does the record search (focus,
+>   then hits per search ranked exact title / title contains / other field, then the planned collections' newest 15,
+>   at most 25) and hands over to `ReportScopeService.collectQuestion`, which reuses the report helpers: depth-1
+>   connections of the first three records, relations between all, record emails with threads, the newest 5 from each
+>   EMAIL field's address, the 5 newest inbox emails matching each search (inbox search, `SEARCH_EMAILS`), the 10 inbox emails closest to the question's embedding (`EmailEmbeddingRepository.findNearestTo`,
+>   max distance 0.6, `AI_READABLE_SQL`) and the records linked to those; every email is filtered to mailboxes the AI may
+>   read (`aiEnabled`, hidden ones only with `readHiddenMailboxes`). A failed embedding only drops the question's
+>   emails. `ChatModelService.answer` reuses `ReportDraft` (Markdown, JSON `{document, title, timeline}`); a `##` heading
+>   becomes a bold paragraph (`ChatBlock` has no heading kind). Citations are built like report citations; mentions are
+>   the cited records and emails in marker order, else the first three records found. The history is the last six
+>   finished messages (answers cut to 600 characters). Failure reasons as in reports. `chat-answer-v2` (after the first
+>   live run): talks to the user as "you" and is told when mail access is off, so it can say so instead of "nothing found".
+> - H8–H9: routes `chat/(new)` (start; route group so its skeleton never shows for a conversation) and
+>   `chat/[conversationId]`, both `ChatHeader` + `ChatWorkspace`. `components/app/chat/`: `ChatWorkspace` (side list +
+>   start), `ChatThread` (title with Rename/Delete, messages, sticky follow-up input, `SourcePanel` of the selected or
+>   last answer), `ChatAnswer`, `MentionChips` (records via `recordSheetHref`, emails `/inbox?email=`), `ChatSkeleton`.
+>   Reused from reports: `ReportPrompt` (new `maxLength`), `ReportBlocks` (new export of `ReportBody`), `SourcePanel`,
+>   `CitationMarker`; `lib/chat.ts` holds polling, steps and hrefs. The list is not closable (unlike the record's report
+>   list) and sits below the detail on phones. Deferred: the `@` picker (needs a record search across collections, which
+>   the API does not have yet) and "Ask in chat" entry points.
 > - H6: `createChatConversation` is 201, `askChatQuestion`/`retryChatMessage` 202. Service names follow the style guide
 >   (`findAll`, `findById`, `createConversation`, `askQuestion`, `retryAnswer`, `updateConversation`,
 >   `deleteConversation`). Busy is per conversation (`ChatBusyException`); the per-user limit is left to the single AI
@@ -21,7 +43,7 @@
 >   without ids (found by `ChatIntegrationTest`). The source list is shared with reports: `domain/Citation` (implemented
 >   by `ReportCitation` and `ChatCitation`), `ReportMapper.source(Citation, …)` and `service/CitationSourceLookup`
 >   (moved out of `ReportService`). Block and item ids in `ChatMessageDto.blocks` are positions within the message.
->   `ChatAnswerer` is a stub (placeholder answer, `chat-stub`); H5 replaces its body. Email mentions are not filtered by
+>   `ChatAnswerer` was a stub (placeholder answer, `chat-stub`) until H5 replaced it. Email mentions are not filtered by
 >   mailbox on read (conversations are private and mentions are built from the user's own mail); sources are.
 
 ## Goal
