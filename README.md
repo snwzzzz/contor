@@ -155,6 +155,7 @@ later is answered from disk in milliseconds. Only calls whose prompt changed rea
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
+- Outbound requests to hosts from user input or the web (sender logos now, external APIs later) go through `security/OutboundRequestGuard`. It allows HTTPS on port 443 only, and only hosts that resolve to public addresses, checked again for every redirect (at most 3). Each request has a timeout and a size cap. Errors name the host, never the path or query. See ADR 0012.
 - Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
