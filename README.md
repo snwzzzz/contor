@@ -309,6 +309,23 @@ answers link to the people, records and emails they are about and cite their sou
 - Not yet: pinning records with `@` and "Ask in chat" from a record or the command palette, figures over whole
   collections in chat answers (reports have them), the evaluation, e2e tests and the ADR (H7, H10–H12).
 
+## External APIs ("Apps", in progress)
+
+Connect any HTTP API (a shop, a job platform, a parcel tracker) so the assistant can learn from it. contor calls only
+the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/external-apis-plan.md`, decisions: ADR 0012.
+
+- **Storage** (`V1_0_35__external_apis.sql`, done): `external_api` (an app, private to its user, deleted with them; base
+  URL, docs link, auth kind and its non-secret settings, plain headers, the encrypted `secret_enc` for credentials and
+  secret header values, interval of 15 min to 7 days (default 6 h), daily request limit, status ACTIVE / FAILING /
+  PAUSED / NEEDS_SETUP and the next call). Also `external_api_endpoint` (path below the base URL, fixed query, a body
+  only for POST read queries, where the items and their keys are in the answer), `external_api_mapping` (endpoint →
+  collection, field slug ← JSON path, PROPOSED / ACTIVE / OFF), `external_api_call` (history), `external_api_snapshot`
+  (last answers) and `external_api_item` (items by key and the record each became). Deleting an app removes all of it.
+  Paths, URLs and JSON paths are validated value objects (`ApiPath`, `BaseUrl`, `HttpsUrl`, `JsonPathExpr`). JSON paths
+  are a small subset (`$`, `.name`, `[0]`, `[*]`), so a path from a model answer can only select.
+- Outbound calls go through `OutboundRequestGuard` (see *Security overview*).
+- Not yet: the API, the Apps menu and modal, polling, docs discovery, mappings and insights (X4–X12).
+
 ## Local AI (Ollama)
 
 The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and

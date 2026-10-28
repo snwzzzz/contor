@@ -53,6 +53,23 @@ final class Fixtures {
                 .build();
     }
 
+    static ExternalApi externalApi(AppUser owner, String slug) {
+        return ExternalApi.builder()
+                .owner(owner)
+                .name(slug)
+                .slug(new Slug(slug))
+                .baseUrl(new BaseUrl("https://api." + slug + ".example/v1"))
+                .build();
+    }
+
+    static ExternalApiEndpoint endpoint(ExternalApi api, String name) {
+        return ExternalApiEndpoint.builder()
+                .api(api)
+                .name(name)
+                .path(new ApiPath("/" + name))
+                .build();
+    }
+
     static CollectionField field(Collection collection, String slug, FieldType type, int position) {
         return CollectionField.builder()
                 .collection(collection)

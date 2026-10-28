@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X2 implemented (2026-10-28). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X3 implemented (2026-10-28). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -11,6 +11,12 @@
 >   its own rules on top (status 200, not truncated, raster image). Address pinning against DNS rebinding is not in
 >   it yet: the JDK client resolves again when it connects. X4 has to close that before credentials are sent (ADR 0012,
 >   Consequences).
+> - X3 (where it differs from the data model below): the interval is `poll_interval_minutes` (15–10080), not an
+>   `interval` column. Endpoints are unique by `(api_id, name)`, so one path can be called with different queries. A
+>   snapshot stores the answer as `body text` (JSON is parsed when needed). No `icon` column yet (X11). Collection
+>   foreign keys are plain like everywhere else, because collections are never deleted. `ApiAuthConfig` (header name,
+>   query parameter, token URL, scope, username) and `ApiHeader` are validated JSON records. `ApiFieldMapping` has no
+>   `transform` yet. `ApiStatus.POLLED` (ACTIVE, FAILING) is what the scheduler picks up.
 
 ## Goal
 
