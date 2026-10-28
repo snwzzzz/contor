@@ -3,114 +3,119 @@ package com.example.contor.security;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.UnknownHostException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * The way contor calls hosts named by users or found on the web (sender logos; later external APIs, ADR 0012). Guards
- * against SSRF: HTTPS on port 443 only, no user info, every host – each redirect target included – must resolve to
- * public addresses only, at most {@value #MAX_REDIRECTS} redirects, a timeout per request and a cap on the bytes read.
- * Messages name the host only: paths and query strings may carry API keys.
- * <p>
- * The JDK client resolves the host again when it connects, so DNS rebinding (a public address for the check, a private
- * one for the connection) is not stopped here. ADR 0012 has the plan for that before credentials are sent.
+ * The way contor calls hosts named by users or found on the web (sender logos, external APIs; ADR 0012). Guards
+ * against SSRF: HTTPS on port 443 only, no user info, GET and POST only, at most {@value #MAX_REDIRECTS} redirects (GET
+ * only, each target checked again), a timeout per request and a cap on the bytes read. Every host must resolve to public
+ * addresses only, and the connection is made to exactly the addresses checked ({@link PublicAddressResolver}), so DNS
+ * rebinding cannot reach the machine or the local network. Messages name the host only: paths and query strings may
+ * carry API keys.
  */
 @Component
-public class OutboundRequestGuard {
+public class OutboundRequestGuard implements AutoCloseable {
 
     public static final int MAX_REDIRECTS = 3;
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Set<String> METHODS = Set.of("GET", "POST");
 
-    private final HttpClient client;
-    private final Resolver resolver;
+    private final Transport transport;
 
     public OutboundRequestGuard() {
-        this(HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build(),
-                InetAddress::getAllByName);
+        this(new ApacheTransport(new PublicAddressResolver()));
     }
 
-    OutboundRequestGuard(HttpClient client, Resolver resolver) {
-        this.client = client;
-        this.resolver = resolver;
-    }
-
-    /** Host name lookup (the test seam for DNS). */
-    @FunctionalInterface
-    interface Resolver {
-        InetAddress[] resolve(String host) throws UnknownHostException;
+    OutboundRequestGuard(Transport transport) {
+        this.transport = transport;
     }
 
     /**
-     * @param contentType the {@code Content-Type} header, {@code null} when missing
-     * @param truncated   the body was longer than the limit and is cut there
+     * @param body        {@code null} for none
+     * @param contentType of the body, {@code null} without one
      */
-    public record Response(int status, String contentType, byte[] body, boolean truncated) {
+    public record Request(String method, URI uri, Map<String, String> headers, byte[] body, String contentType,
+                          Duration timeout, int maxBytes) {
+
+        public static Request get(URI uri, Map<String, String> headers, Duration timeout, int maxBytes) {
+            return new Request("GET", uri, headers, null, null, timeout, maxBytes);
+        }
     }
 
     /**
-     * GETs {@code uri}, following redirects to allowed hosts. Any status is returned as it is.
-     *
-     * @throws OutboundRequestException when the URI or a redirect target is not allowed, or the request fails
+     * @param headers   first value per header, lower-case names
+     * @param truncated the body was longer than the limit and is cut there
      */
+    public record Response(int status, Map<String, String> headers, byte[] body, boolean truncated) {
+
+        public String contentType() {
+            return headers.get("content-type");
+        }
+
+        public Optional<String> header(String name) {
+            return Optional.ofNullable(headers.get(name.toLowerCase(Locale.ROOT)));
+        }
+    }
+
+    /** GETs {@code uri}; see {@link #send}. */
     public Response get(URI uri, Map<String, String> headers, Duration timeout, int maxBytes) {
-        URI current = uri;
+        return send(Request.get(uri, headers, timeout, maxBytes));
+    }
+
+    /**
+     * Sends {@code request}, following GET redirects to allowed hosts. Any status is returned as it is (a POST redirect
+     * too).
+     *
+     * @throws OutboundRequestException when the URI, a redirect target or the method is not allowed, the host does not
+     *                                  resolve to public addresses only, or the request fails
+     */
+    public Response send(Request request) {
+        if (!METHODS.contains(request.method())) {
+            throw new OutboundRequestException("Only GET and POST are allowed (" + request.uri().getHost() + ")");
+        }
+        URI current = request.uri();
         for (int redirects = 0; ; redirects++) {
             check(current);
-            HttpResponse<InputStream> response = send(current, headers, timeout);
-            String host = current.getHost();
-            try (InputStream body = response.body()) {
-                Optional<String> location = response.headers().firstValue("Location");
-                if (response.statusCode() >= 300 && response.statusCode() < 400 && location.isPresent()) {
-                    if (redirects == MAX_REDIRECTS) {
-                        throw new OutboundRequestException("More than " + MAX_REDIRECTS + " redirects from " + uri.getHost());
-                    }
-                    current = current.resolve(location.get());
-                    continue;
-                }
-                byte[] bytes = body.readNBytes(maxBytes + 1);
-                boolean truncated = bytes.length > maxBytes;
-                return new Response(response.statusCode(), response.headers().firstValue("Content-Type").orElse(null),
-                        truncated ? Arrays.copyOf(bytes, maxBytes) : bytes, truncated);
-            } catch (IOException e) {
-                throw new OutboundRequestException("Reading the answer of " + host + " failed", e);
+            Transport.Exchange exchange = exchange(request, current);
+            String location = exchange.headers().get("location");
+            boolean redirect = exchange.status() >= 300 && exchange.status() < 400 && location != null;
+            if (!redirect || !"GET".equals(request.method())) {
+                return new Response(exchange.status(), exchange.headers(), exchange.body(), exchange.truncated());
+            }
+            if (redirects == MAX_REDIRECTS) {
+                throw new OutboundRequestException("More than " + MAX_REDIRECTS + " redirects from " + request.uri().getHost());
+            }
+            try {
+                current = current.resolve(location);
             } catch (IllegalArgumentException e) {
-                throw new OutboundRequestException(host + " redirected to an invalid location", e);
+                throw new OutboundRequestException(current.getHost() + " redirected to an invalid location", e);
             }
         }
     }
 
-    private HttpResponse<InputStream> send(URI uri, Map<String, String> headers, Duration timeout) {
+    private Transport.Exchange exchange(Request request, URI uri) {
         try {
-            HttpRequest.Builder request = HttpRequest.newBuilder(uri).timeout(timeout).GET();
-            headers.forEach(request::header);
-            return client.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
+            return transport.exchange(request.method(), uri, request.headers(), request.body(), request.contentType(),
+                    request.timeout(), request.maxBytes());
+        } catch (NonPublicAddressException e) {
+            throw new OutboundRequestException(uri.getHost() + " does not resolve to public addresses only", e);
         } catch (IOException e) {
             throw new OutboundRequestException("Request to " + uri.getHost() + " failed", e);
         } catch (IllegalArgumentException e) {
             throw new OutboundRequestException("Request to " + uri.getHost() + " is invalid", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new OutboundRequestException("Request to " + uri.getHost() + " was interrupted", e);
         }
     }
 
-    private void check(URI uri) {
+    private static void check(URI uri) {
         if (!isAllowedUri(uri)) {
             throw new OutboundRequestException("Only HTTPS on port 443 is allowed (" + uri.getHost() + ")");
-        }
-        if (!resolvesToPublicAddresses(uri.getHost())) {
-            throw new OutboundRequestException(uri.getHost() + " does not resolve to public addresses only");
         }
     }
 
@@ -119,20 +124,6 @@ public class OutboundRequestGuard {
                 && uri.getHost() != null
                 && uri.getRawUserInfo() == null
                 && (uri.getPort() == -1 || uri.getPort() == 443);
-    }
-
-    private boolean resolvesToPublicAddresses(String host) {
-        try {
-            InetAddress[] addresses = resolver.resolve(host);
-            for (InetAddress address : addresses) {
-                if (!isPublicAddress(address)) {
-                    return false;
-                }
-            }
-            return addresses.length > 0;
-        } catch (UnknownHostException e) {
-            return false;
-        }
     }
 
     public static boolean isPublicAddress(InetAddress address) {
@@ -152,5 +143,10 @@ public class OutboundRequestGuard {
             return !uniqueLocal;
         }
         return false;
+    }
+
+    @Override
+    public void close() {
+        transport.close();
     }
 }

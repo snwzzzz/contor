@@ -155,7 +155,7 @@ later is answered from disk in milliseconds. Only calls whose prompt changed rea
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
-- Outbound requests to hosts from user input or the web (sender logos now, external APIs later) go through `security/OutboundRequestGuard`. It allows HTTPS on port 443 only, and only hosts that resolve to public addresses, checked again for every redirect (at most 3). Each request has a timeout and a size cap. Errors name the host, never the path or query. See ADR 0012.
+- Outbound requests to hosts from user input or the web (sender logos, external APIs) go through `security/OutboundRequestGuard` on Apache HttpClient 5. It allows GET and POST over HTTPS on port 443 only, and only hosts whose addresses are all public. The connection goes to exactly the addresses that were checked (`PublicAddressResolver`), so DNS rebinding cannot reach the machine or the local network. GET redirects are checked again (at most 3). Each request has a timeout and a size cap. Errors name the host, never the path or query. See ADR 0012.
 - Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
@@ -323,8 +323,15 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   (last answers) and `external_api_item` (items by key and the record each became). Deleting an app removes all of it.
   Paths, URLs and JSON paths are validated value objects (`ApiPath`, `BaseUrl`, `HttpsUrl`, `JsonPathExpr`). JSON paths
   are a small subset (`$`, `.name`, `[0]`, `[*]`), so a path from a model answer can only select.
-- Outbound calls go through `OutboundRequestGuard` (see *Security overview*).
-- Not yet: the API, the Apps menu and modal, polling, docs discovery, mappings and insights (X4–X12).
+- **Calls** (`externalapi/ExternalApiClient`, done): an endpoint's path below the base URL with its fixed query. The
+  client sends `Accept` and `User-Agent`, then the plain headers, then the secret headers, then the credentials (a later
+  header of the same name wins). A POST read query sends its body as JSON. The timeout is 10 s and answers are cut at
+  1 MB. `Retry-After` is read as seconds or as a date. Auth kinds (`ApiAuthHandler`, one bean each): NONE,
+  API_KEY_HEADER, API_KEY_QUERY, BEARER, BASIC (UTF-8), and OAUTH2_CLIENT_CREDENTIALS (token from the token URL, kept in
+  memory until a minute before it expires; 400/401/403 mean the credentials were rejected). The secret is stored as
+  encrypted JSON `{value, headers}` (`ApiSecret`). Everything goes through `OutboundRequestGuard` (see *Security
+  overview*).
+- Not yet: the API, the Apps menu and modal, polling, docs discovery, mappings and insights (X5–X12).
 
 ## Local AI (Ollama)
 

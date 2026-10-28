@@ -107,7 +107,7 @@ public class ExternalApiRepositoryTest {
         api.setDescription("Orders of the web shop");
         api.setDocsUrl(new HttpsUrl("https://docs.shop.example/api"));
         api.setAuthKind(ApiAuthKind.API_KEY_HEADER);
-        api.setAuthConfig(new ApiAuthConfig("X-Api-Key", null, null, null, null));
+        api.setAuthConfig(new ApiAuthConfig("X-Api-Key", null, null, null, null, null));
         api.setSecret("{\"apiKey\":\"key-plain\"}");
         api.setHeaders(List.of(new ApiHeader("Accept", "application/json"), new ApiHeader("X-Shop-Version", "2024-10")));
         var saved = externalApiRepository.saveAndFlush(api);

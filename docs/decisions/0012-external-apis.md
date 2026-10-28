@@ -35,10 +35,16 @@ logs or prompts. The single GPU thread cannot afford a model call per polled ite
    credentials. HTTP calls run on their own small executor, and model work queues on the AI thread behind mail.
 
 ## Consequences
-- The JDK `HttpClient` resolves the host again when it connects. A host that gives the guard a public address and the
-  connection a private one (DNS rebinding) passes the check. The logo fetch only reads images and accepts this risk.
-  Before external APIs send credentials (X4), the connection layer has to use the checked address, for example with
-  Apache HttpClient 5 and a guard-backed `DnsResolver` (version managed by Spring Boot). That choice is made in X4.
+- **DNS rebinding is closed by using one lookup.** The guard runs on Apache HttpClient 5 (version managed by Spring
+  Boot). Its only `DnsResolver` is `security/PublicAddressResolver`, which returns a host's addresses only when all of
+  them are public, and the connection goes to exactly those addresses. No proxy, redirects, retries or cookies. A body
+  over the cap is aborted, not read to the end. (X2 used the JDK client, which looks the host up again when it
+  connects, so a host could answer the check with a public address and the connection with a private one. X4 replaced
+  it.)
+- With `httpclient5` on the classpath, Spring's `RestClient.builder()` picks it by default. The Gmail and Graph OAuth
+  and mailbox clients now run on it too. Ollama sets its own JDK request factory.
+- Auth kinds are a plug-in engine (`externalapi/ApiAuthHandler` + `ApiAuthRegistry`). Client-credentials tokens are
+  fetched through the guard and kept in memory until shortly before they expire.
 - New proposal kind `MAP_API_ENDPOINT`. `record_source` gains a second origin (API item next to email), and insights
   can cite API items as evidence.
 - The top bar's Apps menu lists the user's apps. Adding and editing happen in a modal.

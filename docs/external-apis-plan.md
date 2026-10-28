@@ -1,22 +1,29 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X3 implemented (2026-10-28). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X4 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
 > - X2: `security/OutboundRequestGuard.get(uri, headers, timeout, maxBytes)` returns `Response(status, contentType,
 >   body, truncated)` for any status and throws `OutboundRequestException` (host only in the message) when a URI or
 >   redirect target is refused or the request fails. A 3xx without `Location` is returned as it is. `LogoFetcher` keeps
->   its own rules on top (status 200, not truncated, raster image). Address pinning against DNS rebinding is not in
->   it yet: the JDK client resolves again when it connects. X4 has to close that before credentials are sent (ADR 0012,
->   Consequences).
+>   its own rules on top (status 200, not truncated, raster image). X4 added address pinning (below).
 > - X3 (where it differs from the data model below): the interval is `poll_interval_minutes` (15–10080), not an
 >   `interval` column. Endpoints are unique by `(api_id, name)`, so one path can be called with different queries. A
 >   snapshot stores the answer as `body text` (JSON is parsed when needed). No `icon` column yet (X11). Collection
 >   foreign keys are plain like everywhere else, because collections are never deleted. `ApiAuthConfig` (header name,
 >   query parameter, token URL, scope, username) and `ApiHeader` are validated JSON records. `ApiFieldMapping` has no
 >   `transform` yet. `ApiStatus.POLLED` (ACTIVE, FAILING) is what the scheduler picks up.
+> - X4: the guard runs on Apache HttpClient 5 through a package-private `Transport` (`ApacheTransport`). Its only DNS
+>   lookup is `PublicAddressResolver`, so the check and the connection use the same addresses (`ApacheTransportTest`
+>   proves it with a host only the resolver knows). `send(Request)` adds POST (redirects are followed for GET only) and
+>   `Response` carries the headers. `ApiAuthConfig` gained `clientId`. The secret is `ApiSecret {value, headers}` as
+>   encrypted JSON. `ExternalApiClient.call(api, endpoint)` validates the credentials before sending anything and
+>   throws `OutboundRequestException`, `ApiAuthException` (`credentialsRejected`) or `IllegalArgumentException` for X7
+>   to map to call outcomes. Timeout (10 s) and size cap (1 MB) are constants until X7 adds `ExternalApiProperties`.
+>   There is no WireMock: the client is tested against a mocked guard, the guard against a fake transport, and the
+>   transport against a local socket.
 
 ## Goal
 

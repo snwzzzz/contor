@@ -25,9 +25,9 @@ class LogoFetcherTest {
     @Test
     void fetch_ReturnsTheFirstRasterImage() {
         when(guard.get(eq(URI.create("https://siemens.com/apple-touch-icon.png")), any(), any(), anyInt()))
-                .thenReturn(new OutboundRequestGuard.Response(404, "text/html", new byte[0], false));
+                .thenReturn(new OutboundRequestGuard.Response(404, Map.of("content-type", "text/html"), new byte[0], false));
         when(guard.get(eq(URI.create("https://siemens.com/favicon.ico")), any(), any(), anyInt()))
-                .thenReturn(new OutboundRequestGuard.Response(200, "image/png", PNG, false));
+                .thenReturn(new OutboundRequestGuard.Response(200, Map.of("content-type", "image/png"), PNG, false));
 
         assertThat(fetcher.fetch(new SenderDomain("siemens.com")))
                 .hasValueSatisfying(image -> assertThat(image.contentType()).isEqualTo("image/png"));
@@ -38,11 +38,11 @@ class LogoFetcherTest {
         when(guard.get(eq(URI.create("https://news.siemens.com/apple-touch-icon.png")), any(), any(), anyInt()))
                 .thenThrow(new OutboundRequestException("news.siemens.com is not a public address"));
         when(guard.get(eq(URI.create("https://news.siemens.com/favicon.ico")), any(), any(), anyInt()))
-                .thenReturn(new OutboundRequestGuard.Response(200, "image/png", PNG, true));
+                .thenReturn(new OutboundRequestGuard.Response(200, Map.of("content-type", "image/png"), PNG, true));
         when(guard.get(eq(URI.create("https://siemens.com/apple-touch-icon.png")), any(), any(), anyInt()))
-                .thenReturn(new OutboundRequestGuard.Response(200, "image/svg+xml", "<svg/>".getBytes(), false));
+                .thenReturn(new OutboundRequestGuard.Response(200, Map.of("content-type", "image/svg+xml"), "<svg/>".getBytes(), false));
         when(guard.get(eq(URI.create("https://siemens.com/favicon.ico")), any(), any(), anyInt()))
-                .thenReturn(new OutboundRequestGuard.Response(200, "text/html", "<!doctype html>".getBytes(), false));
+                .thenReturn(new OutboundRequestGuard.Response(200, Map.of("content-type", "text/html"), "<!doctype html>".getBytes(), false));
 
         assertThat(fetcher.fetch(new SenderDomain("news.siemens.com"))).isEmpty();
     }
@@ -50,7 +50,7 @@ class LogoFetcherTest {
     @Test
     void fetch_AsksForImagesOnly() {
         when(guard.get(any(), eq(Map.of("Accept", "image/png,image/x-icon,image/*;q=0.8", "User-Agent", "contor/1.0 (sender logo)")),
-                any(), eq(256 * 1024))).thenReturn(new OutboundRequestGuard.Response(200, "image/png", PNG, false));
+                any(), eq(256 * 1024))).thenReturn(new OutboundRequestGuard.Response(200, Map.of("content-type", "image/png"), PNG, false));
 
         assertThat(fetcher.fetch(new SenderDomain("siemens.com"))).isPresent();
     }
