@@ -1,6 +1,6 @@
 "use client";
 
-import { Grip, Plug, Plus } from "lucide-react";
+import { Grip, Plug, Plus, Settings2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type KeyboardEvent } from "react";
 import { SearchField } from "@/components/app/SearchField";
@@ -18,7 +18,7 @@ import { useListExternalApis } from "@/lib/api/generated/endpoints/external-apis
 import type { ExternalApiDto } from "@/lib/api/generated/model/externalApiDto";
 import { tintClass } from "@/lib/collection-tint";
 import { apiHost, appTint, statusMark } from "@/lib/external-apis";
-import { appHref } from "@/lib/navigation";
+import { APPS_HREF, appHref } from "@/lib/navigation";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,8 @@ const MENU_KEYS = new Set(["ArrowDown", "ArrowUp", "Escape", "Tab"]);
 
 /**
  * The top bar's app launcher: the connected apps (external APIs) as a dense IntelliJ-style list, each opening its
- * modal over the current page; "Add app…" opens the empty one. Arrow keys move, Enter opens (Radix menu).
+ * modal over the current page; "Add app…" opens the empty one, "Manage apps" the apps page. Arrow keys move, Enter opens
+ * (Radix menu).
  */
 export function AppsMenu() {
   return (
@@ -122,6 +123,10 @@ function AppsMenuContent() {
           <DropdownMenuItem onSelect={() => open("new")}>
             <Plus aria-hidden="true" />
             Add app…
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push(APPS_HREF)}>
+            <Settings2 aria-hidden="true" />
+            Manage apps
           </DropdownMenuItem>
         </>
       )}

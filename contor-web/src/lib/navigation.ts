@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   ScanSearch,
   Network,
+  Plug,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -47,7 +48,11 @@ export const AI_INSIGHTS_NAV: readonly NavItem[] = [
 /** Chat with the assistant about everything in contor (top bar). */
 export const CHAT_NAV: NavItem = { title: "Chat", href: "/chat", icon: MessagesSquare, tint: 7 };
 
+/** The apps page: connected external APIs (the top bar's Apps menu lists them too). */
+export const APPS_HREF = "/apps";
+
 export const DATA_NAV: readonly NavItem[] = [
+  { title: "Apps", href: APPS_HREF, icon: Plug, tint: 7 },
   { title: "Relations", href: "/relations", icon: Network, tint: 2 },
   { title: "Queries", href: "/queries", icon: ListFilter, tint: 9 },
   { title: "Rules & Labels", href: "/rules", icon: Tags, tint: 3 },
@@ -96,6 +101,11 @@ export function aiSetupHref(pathname: string): string {
 
 /** The add/edit app modal (external APIs) opens over the current page, addressed by `?app=new` or `?app=<id>`. */
 export const APP_PARAM = "app";
+
+/** The page of one app. */
+export function appPageHref(apiId: number): string {
+  return `${APPS_HREF}/${apiId}`;
+}
 
 /** The current page with the app modal opened: a new app, or the saved one with `apiId`. */
 export function appHref(pathname: string, apiId: number | "new"): string {

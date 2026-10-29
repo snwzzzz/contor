@@ -96,6 +96,15 @@ describe("AppsMenu", () => {
     expect(router.push).toHaveBeenCalledWith("/calendar?app=new", { scroll: false });
   });
 
+  it("leads to the apps page from the footer", async () => {
+    mockApi({ "GET /api/external-apis": { body: [app(1, "Shop")] } });
+    const menu = await openMenu();
+
+    await userEvent.click(await within(menu).findByRole("menuitem", { name: "Manage apps" }));
+
+    expect(router.push).toHaveBeenCalledWith("/apps");
+  });
+
   it("explains the empty list and offers to add the first app", async () => {
     mockApi({ "GET /api/external-apis": { body: [] } });
     const menu = await openMenu();
@@ -116,6 +125,7 @@ describe("AppsMenu", () => {
     expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
       expect.stringContaining("Music"),
       "Add app…",
+      "Manage apps",
     ]);
   });
 

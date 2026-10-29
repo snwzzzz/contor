@@ -428,6 +428,27 @@ describe("ProposalList", () => {
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
   });
+  it("names the app a record proposal comes from", async () => {
+    mockApi({
+      "GET /api/proposals": actionsPage([
+        {
+          id: 22,
+          kind: "CREATE_RECORD",
+          status: "PENDING",
+          payload: { collectionId: 4, title: "SO-155", values: {} },
+          sourceApp: { apiId: 7, apiName: "Shop", endpointName: "Orders" },
+          createdAt: "2026-10-29T12:00:00Z",
+        },
+      ]),
+      "GET /api/collections": { body: collections },
+    });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "SO-155" });
+    expect(within(card).getByRole("link", { name: "From Shop · Orders" })).toHaveAttribute("href", "/apps/7");
+  });
+
   it("shows where an app's items would go and which data fills which field", async () => {
     const people = { ...collection(5, "people", "People"), system: false };
     mockApi({

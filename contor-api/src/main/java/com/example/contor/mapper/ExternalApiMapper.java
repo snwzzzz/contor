@@ -5,9 +5,11 @@ import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiDiscoveryDto;
 import com.example.contor.api.model.ApiHeaderDto;
+import com.example.contor.api.model.ApiMappingStatus;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.DiscoveredEndpointDto;
 import com.example.contor.api.model.DiscoveryState;
+import com.example.contor.api.model.EndpointMappingDto;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiCallDto;
@@ -19,6 +21,7 @@ import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiMapping;
 import com.example.contor.externalapi.ApiDiscovery;
 import com.example.contor.externalapi.DiscoveredEndpoint;
 
@@ -68,6 +71,11 @@ public class ExternalApiMapper {
     }
 
     public static ExternalApiEndpointDto toDto(ExternalApiEndpoint endpoint) {
+        return toDto(endpoint, null);
+    }
+
+    /** The endpoint with the summary of {@code mapping} (the one that counts for it, or {@code null}). */
+    public static ExternalApiEndpointDto toDto(ExternalApiEndpoint endpoint, ExternalApiMapping mapping) {
         if (endpoint == null) return null;
 
         return new ExternalApiEndpointDto()
@@ -84,7 +92,13 @@ public class ExternalApiMapper {
                 .source(EndpointOrigin.valueOf(endpoint.getSource().name()))
                 .enabled(endpoint.isEnabled())
                 .createdAt(MapperSupport.toOffset(endpoint.getCreatedAt()))
-                .lastModified(MapperSupport.toOffset(endpoint.getLastModified()));
+                .lastModified(MapperSupport.toOffset(endpoint.getLastModified()))
+                .mapping(mapping == null ? null : new EndpointMappingDto()
+                        .id(mapping.getId() != null ? mapping.getId().id() : null)
+                        .collectionId(mapping.getCollection() != null && mapping.getCollection().getId() != null
+                                ? mapping.getCollection().getId().id() : null)
+                        .state(ApiMappingStatus.valueOf(mapping.getState().name()))
+                        .fieldCount(mapping.getFieldMap().size()));
     }
 
     public static ExternalApiCallDto toDto(ExternalApiCall call) {

@@ -3515,6 +3515,8 @@ components:
         sourceEmailId:
           type: integer
           format: int64
+        sourceApp:
+          $ref: '#/components/schemas/ProposalAppSourceDto'
         confidence:
           type: number
         reasoning:
@@ -4822,6 +4824,38 @@ components:
       type: string
       description: GET, or POST for read queries only (search, GraphQL)
       enum: [GET, POST]
+    ApiMappingStatus:
+      type: string
+      description: "PROPOSED: waiting for your approval (a Connect app data proposal). ACTIVE: items become records. OFF: replaced or switched off."
+      enum: [PROPOSED, ACTIVE, OFF]
+    EndpointMappingDto:
+      type: object
+      description: How the endpoint's items become records; the active mapping, else the proposed one, else the last one switched off
+      required: [id, collectionId, state, fieldCount]
+      properties:
+        id:
+          type: integer
+          format: int64
+        collectionId:
+          type: integer
+          format: int64
+        state:
+          $ref: '#/components/schemas/ApiMappingStatus'
+        fieldCount:
+          type: integer
+          description: Fields filled from the items (the title not counted)
+    ProposalAppSourceDto:
+      type: object
+      description: The app (external API) item a proposal was made from, instead of an email
+      required: [apiId, apiName, endpointName]
+      properties:
+        apiId:
+          type: integer
+          format: int64
+        apiName:
+          type: string
+        endpointName:
+          type: string
     EndpointOrigin:
       type: string
       description: Who added the endpoint, you or the documentation (parsed or read by the model)
@@ -5151,6 +5185,8 @@ components:
       type: object
       required: [id, apiId, name, method, path, query, source, enabled, createdAt]
       properties:
+        mapping:
+          $ref: '#/components/schemas/EndpointMappingDto'
         id:
           type: integer
           format: int64

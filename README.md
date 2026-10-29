@@ -412,7 +412,16 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   (`rule:gone-item`) proposes *"… is no longer in <app>"* with a to-do to check it tomorrow when an item disappears whose
   record you have emails about (a job posting you applied to). INSIGHT payloads carry `evidenceApiItemIds`, follow-ups
   are linked to those items too, and the insight card says how many app items it is based on.
-- Not yet: the `/apps` pages and chat (X11–X12). Known gap: mapped values go to the record as
+- **Apps pages** (done): **Apps** in the navigation (and *Manage apps* in the top bar's Apps menu) opens `/apps`, a
+  table of your apps with host, status (a dot for every state, *Off* when turned off), how often they are called, the
+  last call and the number of endpoints; *Add app* opens the modal. `/apps/<id>` shows the app's status (failures in a
+  row, last and next call, last error), its endpoints with where their items go (*Into People · 3 fields*, *Waiting for
+  your approval · Review*, or not connected yet; `ExternalApiEndpointDto.mapping`) and the last 50 calls (result, HTTP
+  status, items new/changed/gone, error), with **Call now**, **Pause**/**Resume** (turns the app off or on) and **Edit**.
+  Record proposals from an app say *From Shop · Orders* with a link to the app (`ProposalDto.sourceApp`), and the
+  command palette lists the apps.
+- Not yet: chat over app data (X12). Fetched app icons (the initial stands in), app origins on findings and on the
+  record page. Known gap: mapped values go to the record as
   they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
   rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
 

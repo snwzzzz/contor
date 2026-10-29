@@ -17,7 +17,19 @@ describe("CommandPalette", () => {
       "GET /api/collections": {
         body: [{ id: 2, slug: "organizations", name: "Organizations", system: true, matchKeys: [], displayConfig: {}, schemaVersion: 1, createdBy: "USER", fields: [] }],
       },
+      "GET /api/external-apis": { body: [{ id: 7, name: "Shop", slug: "app_shop", baseUrl: "https://api.shop.example", authKind: "NONE", authConfig: {}, hasSecret: false, headers: [], secretHeaderNames: [], pollIntervalMinutes: 360, enabled: true, aiAnalysis: true, status: "ACTIVE", failureCount: 0, dailyRequestLimit: 200, endpointCount: 1, createdAt: "2026-10-29T08:00:00Z" }] },
     });
+  });
+
+  it("jumps to an app by name", async () => {
+    renderWithProviders(<CommandPalette />);
+    await userEvent.keyboard("{Control>}k{/Control}");
+
+    await userEvent.keyboard("shop");
+    await screen.findByRole("option", { name: /^Shop$/ });
+    await userEvent.keyboard("{Enter}");
+
+    expect(router.push).toHaveBeenCalledWith("/apps/7");
   });
 
   it("opens its list under the bar with Ctrl+K and Cmd+K; Escape closes it", async () => {

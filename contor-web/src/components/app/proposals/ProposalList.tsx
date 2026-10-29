@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AppButton } from "@/components/app/AppButton";
@@ -21,6 +22,7 @@ import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { ProposalPriority } from "@/lib/api/generated/model/proposalPriority";
 import { CARD_HOVER, STRETCHED_BUTTON } from "@/lib/card-hover";
 import { describeProposal, GROUPS, type Description, type Group } from "@/lib/proposal-describe";
+import { appPageHref } from "@/lib/navigation";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
 
@@ -267,6 +269,12 @@ function ActionCard({ proposal, description, collectionName, busy, onOpen, onDec
               {label}
               <ImportanceBadge importance={proposal.importance} reason={proposal.importanceReason} />
             </KindLabel>
+            {proposal.sourceApp ? (
+              // Above the stretched button, so the app's page opens instead of the details.
+              <Link href={appPageHref(proposal.sourceApp.apiId)} className="relative z-10 w-fit text-xs text-muted-foreground underline-offset-2 hover:underline">
+                From {proposal.sourceApp.apiName} · {proposal.sourceApp.endpointName}
+              </Link>
+            ) : null}
             <h2 className="line-clamp-2 leading-snug font-medium">
               {/* Stretched over the whole card; the decision buttons sit above it. */}
               <button type="button" aria-label={`Show details for ${title}`} onClick={onOpen} className={STRETCHED_BUTTON}>

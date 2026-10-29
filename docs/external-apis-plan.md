@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X10 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X11 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -89,6 +89,13 @@
 >   unknown emails. Model keys are `model:<emails>|A<items>`. The rule `InsightDetectors.goneItem` needs a gone item with
 >   a record that has email sources (no email, no insight); other "item gone that a record refers to" cases are left to
 >   the model. The source email of an insight proposal stays its first evidence email (none for app-only insights).
+> - X11 (where it differs from the sketch): no icon endpoint and no `icon` column yet: the tinted initial is the app's
+>   picture everywhere (fetching a favicon through `LogoFetcher` once is left for later). *Pause* turns the app off
+>   (`enabled`), *Resume* on; PAUSED stays the state after 10 failures. Endpoints carry their mapping summary
+>   (`EndpointMappingDto`: the active mapping, else the proposed one, else the last switched off) instead of a mappings
+>   endpoint; the proposal card links to `/proposals`, not to the single proposal. `ProposalDto.sourceApp` names the app
+>   and endpoint of a record proposal; findings and the record page do not show app origins yet (they show no email
+>   origin either). The apps are in the command palette ("Apps" group) and in `DATA_NAV`.
 
 ## Goal
 

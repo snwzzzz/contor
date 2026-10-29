@@ -158,6 +158,12 @@ export function statusMark(status: ApiState): { label: string; dot: string } | n
   }
 }
 
+/** The health of an app in words, with a status dot for every state (the apps page lists them all). */
+export function healthOf(api: { status: ApiState; enabled: boolean }): { label: string; dot: string } {
+  if (!api.enabled) return { label: "Off", dot: "bg-muted-foreground/40" };
+  return statusMark(api.status) ?? { label: "Active", dot: "bg-success" };
+}
+
 export function emptyDraft(): AppDraft {
   return {
     name: "",

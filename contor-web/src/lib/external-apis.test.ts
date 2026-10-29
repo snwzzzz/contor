@@ -8,6 +8,7 @@ import {
   draftOf,
   emptyDraft,
   emptyEndpoint,
+  healthOf,
   endpointDraftOf,
   intervalLabel,
   prettyBody,
@@ -391,5 +392,15 @@ describe("discoveredDraft", () => {
       query: {},
       enabled: true,
     });
+  });
+});
+
+describe("healthOf", () => {
+  it("names the state with a dot; an app that is turned off is off whatever its state", () => {
+    expect(healthOf({ status: "ACTIVE", enabled: true })).toEqual({ label: "Active", dot: "bg-success" });
+    expect(healthOf({ status: "FAILING", enabled: true })).toEqual({ label: "Failing", dot: "bg-destructive" });
+    expect(healthOf({ status: "NEEDS_SETUP", enabled: true })).toEqual({ label: "Needs setup", dot: "bg-warning" });
+    expect(healthOf({ status: "PAUSED", enabled: true })).toEqual({ label: "Paused", dot: "bg-muted-foreground" });
+    expect(healthOf({ status: "FAILING", enabled: false })).toEqual({ label: "Off", dot: "bg-muted-foreground/40" });
   });
 });

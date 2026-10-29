@@ -21,11 +21,14 @@ import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.BaseUrl;
 import com.example.contor.domain.CallOutcome;
+import com.example.contor.domain.Collection;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiMapping;
 import com.example.contor.domain.JsonPathExpr;
+import com.example.contor.domain.MappingState;
 import com.example.contor.domain.Slug;
 import com.example.contor.domain.UserRole;
 import com.example.contor.exception.DuplicateResourceException;
@@ -46,6 +49,7 @@ import com.example.contor.externalapi.NoAuthHandler;
 import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
+import com.example.contor.persistence.ExternalApiMappingRepository;
 import com.example.contor.persistence.ExternalApiRepository;
 import com.example.contor.security.AuthenticatedUser;
 import com.example.contor.security.OutboundRequestException;
@@ -99,6 +103,9 @@ class ExternalApiServiceTest {
     private ExternalApiCallRepository externalApiCallRepository;
 
     @Mock
+    private ExternalApiMappingRepository externalApiMappingRepository;
+
+    @Mock
     private ExternalApiClient externalApiClient;
 
     @Mock
@@ -112,7 +119,8 @@ class ExternalApiServiceTest {
         var registry = new ApiAuthRegistry(List.of(new NoAuthHandler(), new ApiKeyHeaderAuthHandler(), new ApiKeyQueryAuthHandler(),
                 new BearerAuthHandler(), new BasicAuthHandler(),
                 new ClientCredentialsAuthHandler(mock(OutboundRequestGuard.class), JsonMapper.builder().build(), Clock.systemUTC())));
-        service = new ExternalApiService(externalApiRepository, externalApiEndpointRepository, externalApiCallRepository, appUserRepository,
+        service = new ExternalApiService(externalApiRepository, externalApiEndpointRepository, externalApiCallRepository, externalApiMappingRepository,
+                appUserRepository,
                 registry, codec, externalApiClient, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(appUserRepository.getReferenceById(OWNER)).thenReturn(AppUser.builder().id(OWNER).build());
         lenient().when(externalApiRepository.saveAndFlush(any(ExternalApi.class))).thenAnswer(inv -> {
@@ -421,6 +429,25 @@ class ExternalApiServiceTest {
 
         assertThatThrownBy(() -> service.callNow(7L)).isInstanceOf(ExternalApiDisabledException.class);
         verify(externalApiRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void findEndpoints_ShowEachEndpointsActiveMappingBeforeAProposedOrSwitchedOffOne() {
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop()));
+        var orders = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(30L)).name("orders").path(new ApiPath("/orders")).build();
+        var people = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(31L)).name("people").path(new ApiPath("/people")).build();
+        when(externalApiEndpointRepository.findByApi_IdOrderByNameAsc(SHOP_ID)).thenReturn(List.of(orders, people));
+        var collection = Collection.builder().id(new Collection.CollectionId(4L)).build();
+        when(externalApiMappingRepository.findByEndpoint_Id(orders.getId())).thenReturn(List.of(
+                ExternalApiMapping.builder().id(new ExternalApiMapping.ExternalApiMappingId(40L)).collection(collection).state(MappingState.OFF).build(),
+                ExternalApiMapping.builder().id(new ExternalApiMapping.ExternalApiMappingId(41L)).collection(collection).state(MappingState.ACTIVE).build(),
+                ExternalApiMapping.builder().id(new ExternalApiMapping.ExternalApiMappingId(42L)).collection(collection).state(MappingState.PROPOSED).build()));
+        when(externalApiMappingRepository.findByEndpoint_Id(people.getId())).thenReturn(List.of());
+
+        var endpoints = service.findEndpoints(7L);
+
+        assertThat(endpoints.get(0).getMapping().getId()).isEqualTo(41L);
+        assertThat(endpoints.get(1).getMapping()).isNull();
     }
 
     @Test

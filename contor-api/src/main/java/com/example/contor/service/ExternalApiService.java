@@ -26,8 +26,10 @@ import com.example.contor.domain.BaseUrl;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiMapping;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
+import com.example.contor.domain.MappingState;
 import com.example.contor.domain.Slug;
 import com.example.contor.exception.DuplicateResourceException;
 import com.example.contor.exception.ExternalApiDisabledException;
@@ -42,6 +44,7 @@ import com.example.contor.mapper.ExternalApiMapper;
 import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
+import com.example.contor.persistence.ExternalApiMappingRepository;
 import com.example.contor.persistence.ExternalApiRepository;
 import com.example.contor.security.CurrentActor;
 import com.example.contor.security.OutboundRequestException;
@@ -53,6 +56,7 @@ import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,6 +77,8 @@ public class ExternalApiService {
 
     static final int TEST_BODY_CHARS = 20_000;
     static final int MAX_ENDPOINTS = 50;
+    /** Which mapping counts for an endpoint, best first. */
+    private static final List<MappingState> MAPPING_ORDER = List.of(MappingState.ACTIVE, MappingState.PROPOSED, MappingState.OFF);
     private static final int MAX_NAME = 80;
     private static final int MAX_QUERY_PARAMS = 30;
     private static final int MIN_INTERVAL = 15;
@@ -82,6 +88,7 @@ public class ExternalApiService {
     private final ExternalApiRepository externalApiRepository;
     private final ExternalApiEndpointRepository externalApiEndpointRepository;
     private final ExternalApiCallRepository externalApiCallRepository;
+    private final ExternalApiMappingRepository externalApiMappingRepository;
     private final AppUserRepository appUserRepository;
     private final ApiAuthRegistry apiAuthRegistry;
     private final ApiSecretCodec apiSecretCodec;
@@ -205,7 +212,16 @@ public class ExternalApiService {
     @Transactional
     public List<ExternalApiEndpointDto> findEndpoints(Long apiId) {
         ExternalApi api = load(apiId);
-        return externalApiEndpointRepository.findByApi_IdOrderByNameAsc(api.getId()).stream().map(ExternalApiMapper::toDto).toList();
+        return externalApiEndpointRepository.findByApi_IdOrderByNameAsc(api.getId()).stream()
+                .map(endpoint -> ExternalApiMapper.toDto(endpoint, mappingOf(endpoint)))
+                .toList();
+    }
+
+    /** The mapping that counts for an endpoint: the active one, else the proposed one, else one switched off. */
+    private ExternalApiMapping mappingOf(ExternalApiEndpoint endpoint) {
+        return externalApiMappingRepository.findByEndpoint_Id(endpoint.getId()).stream()
+                .min(Comparator.comparingInt(mapping -> MAPPING_ORDER.indexOf(mapping.getState())))
+                .orElse(null);
     }
 
     @Transactional

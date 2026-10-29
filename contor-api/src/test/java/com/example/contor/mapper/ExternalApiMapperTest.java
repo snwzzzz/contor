@@ -3,6 +3,7 @@ package com.example.contor.mapper;
 import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiHeaderDto;
+import com.example.contor.api.model.ApiMappingStatus;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMethod;
@@ -10,6 +11,7 @@ import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.domain.ApiAuthConfig;
+import com.example.contor.domain.ApiFieldMapping;
 import com.example.contor.domain.ApiAuthKind;
 import com.example.contor.domain.ApiHeader;
 import com.example.contor.domain.ApiHttpMethod;
@@ -19,13 +21,16 @@ import com.example.contor.domain.ApiStatus;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.BaseUrl;
 import com.example.contor.domain.CallOutcome;
+import com.example.contor.domain.Collection;
 import com.example.contor.domain.DiscoveryStatus;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiMapping;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
+import com.example.contor.domain.MappingState;
 import com.example.contor.domain.Slug;
 import com.example.contor.externalapi.ApiDiscovery;
 import com.example.contor.externalapi.DiscoveredEndpoint;
@@ -220,5 +225,21 @@ public class ExternalApiMapperTest {
 
     private static ExternalApi api() {
         return ExternalApi.builder().name("Shop").slug(new Slug("shop")).baseUrl(new BaseUrl("https://api.shop.example")).build();
+    }
+
+    @Test
+    void maps_an_endpoint_with_the_summary_of_its_mapping() {
+        var endpoint = ExternalApiEndpoint.builder().name("orders").path(new ApiPath("/orders")).build();
+        var mapping = ExternalApiMapping.builder().id(new ExternalApiMapping.ExternalApiMappingId(40L))
+                .collection(Collection.builder().id(new Collection.CollectionId(4L)).build()).state(MappingState.ACTIVE)
+                .fieldMap(new ArrayList<>(List.of(new ApiFieldMapping("total", "$.total"), new ApiFieldMapping("customer", "$.c")))).build();
+
+        var dto = ExternalApiMapper.toDto(endpoint, mapping);
+
+        assertThat(dto.getMapping().getId()).isEqualTo(40L);
+        assertThat(dto.getMapping().getCollectionId()).isEqualTo(4L);
+        assertThat(dto.getMapping().getState()).isEqualTo(ApiMappingStatus.ACTIVE);
+        assertThat(dto.getMapping().getFieldCount()).isEqualTo(2);
+        assertThat(ExternalApiMapper.toDto(endpoint, null).getMapping()).isNull();
     }
 }
