@@ -46,6 +46,7 @@ final class CitationSourceLookup implements ReportMapper.SourceLookup {
             case RELATION -> relations.computeIfAbsent(citation.getRelationId(),
                     id -> relationRepository.existsById(new Relation.RelationId(id))) ? SourceState.CURRENT : SourceState.DELETED;
             case RECORD -> record(citation).isPresent() ? SourceState.CURRENT : SourceState.DELETED;
+            case APP_ITEM -> citation.getApiItem() != null ? SourceState.CURRENT : SourceState.DELETED;
             case FIELD -> record(citation)
                     .map(current -> same(citation.getValueSnapshot() != null ? citation.getValueSnapshot().get("value") : null,
                             current.getValues().get(citation.getFieldSlug())) ? SourceState.CURRENT : SourceState.CHANGED)

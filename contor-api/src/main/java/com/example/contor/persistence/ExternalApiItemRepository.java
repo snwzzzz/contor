@@ -26,4 +26,14 @@ public interface ExternalApiItemRepository extends JpaRepository<ExternalApiItem
     @Query("select i from ExternalApiItem i join fetch i.endpoint e join fetch e.api a where a.owner.id = :owner and a.aiAnalysis = true "
             + "and (i.firstSeenAt >= :since or i.goneAt >= :since) order by coalesce(i.goneAt, i.firstSeenAt) desc, i.id desc")
     List<ExternalApiItem> findDigest(@Param("owner") AppUser.AppUserId owner, @Param("since") Instant since, Pageable page);
+
+    /**
+     * Chat retrieval: the owner's current items without a record (records are found as records) of apps the assistant
+     * may learn from, whose key or data matches {@code pattern} ({@code ILIKE}, already escaped), last seen first.
+     */
+    @Query(value = "select i.* from external_api_item i join external_api_endpoint e on e.id = i.endpoint_id "
+            + "join external_api a on a.id = e.api_id where a.owner_id = :owner and a.ai_analysis and i.record_id is null "
+            + "and i.gone_at is null and (i.item_key ilike :pattern or cast(i.data as text) ilike :pattern) "
+            + "order by i.last_seen_at desc, i.id desc limit :limit", nativeQuery = true)
+    List<ExternalApiItem> searchForChat(@Param("owner") Long owner, @Param("pattern") String pattern, @Param("limit") int limit);
 }

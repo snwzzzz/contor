@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Database, FileText, Mail, Network } from "lucide-react";
+import { ArrowUpRight, Database, FileText, Mail, Network, Plug } from "lucide-react";
 import Link from "next/link";
 import { useGetEmailParagraphs } from "@/lib/api/generated/endpoints/mail/mail";
 import type { CitationKind } from "@/lib/api/generated/model/citationKind";
@@ -10,7 +10,8 @@ import { highlightQuote, sourceHref } from "@/lib/report";
 import { cn } from "@/lib/utils";
 import { LoadingList } from "@/components/app/LoadingSkeletons";
 
-const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail } satisfies Record<CitationKind, unknown>;
+const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail, APP_ITEM: Plug } satisfies Record<CitationKind, unknown>;
+const LINK_LABEL: Partial<Record<CitationKind, string>> = { EMAIL_PARAGRAPH: "Open in inbox", APP_ITEM: "Open app" };
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 interface SourcePanelProps {
@@ -64,7 +65,10 @@ function SourceDetail({ source, quote }: { source: ReportSourceDto; quote: strin
       ) : source.sourceState === "UNAVAILABLE" ? (
         <p className="text-xs text-muted-foreground">This email is in another user&apos;s mailbox.</p>
       ) : null}
-      {source.kind === "EMAIL_PARAGRAPH" ? (
+      {source.kind === "APP_ITEM" ? (
+        // The item's data as it was cited (quoted data from the app, kept when the app is gone).
+        <pre className="max-h-48 overflow-auto rounded-md border px-2 py-1 font-mono text-xs whitespace-pre-wrap break-all">{source.quote}</pre>
+      ) : source.kind === "EMAIL_PARAGRAPH" ? (
         source.sourceState === "UNAVAILABLE" ? null : (
           <>
             <p className="text-xs text-muted-foreground">
@@ -93,7 +97,7 @@ function SourceDetail({ source, quote }: { source: ReportSourceDto; quote: strin
       )}
       {href ? (
         <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline">
-          {source.kind === "EMAIL_PARAGRAPH" ? "Open in inbox" : "Open record"}
+          {LINK_LABEL[source.kind] ?? "Open record"}
           <ArrowUpRight className="size-3" aria-hidden="true" />
         </Link>
       ) : null}

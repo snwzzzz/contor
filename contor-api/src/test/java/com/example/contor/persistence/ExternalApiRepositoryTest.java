@@ -31,6 +31,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -425,6 +426,31 @@ public class ExternalApiRepositoryTest {
         assertThat(digest).extracting(ExternalApiItem::getItemKey).containsExactly("gone", "new");
         assertThat(digest.getFirst().getEndpoint().getApi().getName()).isEqualTo("shop");
         assertThat(List.of(fresh.getId(), gone.getId())).doesNotContainNull();
+    }
+
+    @Test
+    void chat_searches_the_owners_current_items_without_a_record_by_key_and_data() {
+        var shop = externalApiRepository.save(Fixtures.externalApi(owner, "shop"));
+        var orders = externalApiEndpointRepository.save(Fixtures.endpoint(shop, "orders"));
+        var match = item(orders, "SO-155", NOW.minusSeconds(60), null);
+        match.setData(new HashMap<>(Map.of("customer", "Anna Berger", "state", "shipped")));
+        externalApiItemRepository.save(match);
+        item(orders, "SO-156", NOW.minusSeconds(60), null);
+        var gone = item(orders, "SO-157", NOW.minusSeconds(60), NOW.minusSeconds(10));
+        gone.setData(new HashMap<>(Map.of("customer", "Anna Berger")));
+        var mapped = item(orders, "SO-158", NOW.minusSeconds(60), null);
+        mapped.setData(new HashMap<>(Map.of("customer", "Anna Berger")));
+        mapped.setCollection(collectionRepository.save(Fixtures.collection("orders")));
+        mapped.setRecordId(3L);
+        var foreign = item(externalApiEndpointRepository.save(Fixtures.endpoint(externalApiRepository.save(Fixtures.externalApi(other, "shop")), "orders")),
+                "SO-1", NOW.minusSeconds(60), null);
+        foreign.setData(new HashMap<>(Map.of("customer", "Anna Berger")));
+        externalApiItemRepository.saveAllAndFlush(List.of(gone, mapped, foreign));
+
+        assertThat(externalApiItemRepository.searchForChat(owner.getId().id(), "%anna%", 5)).extracting(ExternalApiItem::getItemKey)
+                .containsExactly("SO-155");
+        assertThat(externalApiItemRepository.searchForChat(owner.getId().id(), "%so-156%", 5)).extracting(ExternalApiItem::getItemKey)
+                .containsExactly("SO-156");
     }
 
     private ExternalApiItem item(ExternalApiEndpoint endpoint, String key, Instant firstSeen, Instant goneAt) {

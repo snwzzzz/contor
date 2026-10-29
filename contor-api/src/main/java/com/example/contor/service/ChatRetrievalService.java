@@ -6,18 +6,25 @@ import com.example.contor.api.model.RecordDto;
 import com.example.contor.domain.AiSettings;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
-import com.example.contor.domain.ReportScope;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ReportScope.RecordRef;
+import com.example.contor.domain.ReportScope;
 import com.example.contor.persistence.CollectionRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,7 +32,8 @@ import java.util.stream.Collectors;
  * What a chat answer is written from (H4): the records the plan's searches find in every active collection (the global
  * search of {@code GET /records}, exact titles first), the newest records of the collections it names, and the focus of
  * the conversation; then their facts, connections and mail ({@link ReportScopeService#collectQuestion}). Mail only with
- * the user's mail access, hidden mailboxes only when the AI may read them.
+ * the user's mail access, hidden mailboxes only when the AI may read them. Items of the user's apps that are no records
+ * and match the searches come along as quoted data ({@code D<n>}), also without mail access.
  */
 @RequiredArgsConstructor
 @Service
@@ -37,11 +45,16 @@ public class ChatRetrievalService {
     static final int PER_SEARCH = 3;
     /** Newest records of a collection the plan names. */
     static final int PER_COLLECTION = 15;
+    /** App items per search, and in all. */
+    static final int APP_ITEMS_PER_SEARCH = 3;
+    static final int MAX_APP_ITEMS = 10;
 
     private final CollectionRepository collectionRepository;
     private final RecordService recordService;
     private final ReportScopeService reportScopeService;
     private final AiSettingsService aiSettingsService;
+    private final ExternalApiItemRepository externalApiItemRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public List<String> collectionSlugs() {
@@ -91,7 +104,29 @@ public class ChatRetrievalService {
         AiSettings settings = owner != null ? aiSettingsService.settingsFor(owner) : null;
         boolean mailAccess = settings != null && settings.isMailAccess();
         boolean readHidden = settings != null && settings.isReadHiddenMailboxes();
-        return reportScopeService.collectQuestion(records, question, searches, owner, mailAccess, readHidden);
+        return reportScopeService.collectQuestion(records, question, searches, owner, mailAccess, readHidden, appItems(searches, owner));
+    }
+
+    /** The owner's app items (no records) that match a search, last seen first, each once. */
+    private List<EvidencePack.AppItemInput> appItems(List<String> searches, AppUser.AppUserId owner) {
+        if (owner == null) return List.of();
+        Map<Long, EvidencePack.AppItemInput> found = new LinkedHashMap<>();
+        for (String search : searches) {
+            if (search == null || search.isBlank()) continue;
+            for (ExternalApiItem item : externalApiItemRepository.searchForChat(owner.id(), likePattern(search), APP_ITEMS_PER_SEARCH)) {
+                if (found.size() == MAX_APP_ITEMS) break;
+                found.computeIfAbsent(item.getId(), id -> new EvidencePack.AppItemInput(item.getId(), item.getEndpoint().getApi().getId().id(),
+                        item.getEndpoint().getApi().getName(), item.getEndpoint().getName(), item.getItemKey(),
+                        objectMapper.writeValueAsString(item.getData()), LocalDate.ofInstant(item.getLastSeenAt(), ZoneOffset.UTC)));
+            }
+        }
+        return List.copyOf(found.values());
+    }
+
+    /** {@code %search%} for ILIKE, with {@code %}, {@code _} and the escape character taken literally. */
+    private static String likePattern(String search) {
+        String escaped = search.strip().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return "%" + escaped + "%";
     }
 
     private record Hit(RecordRef ref, int rank) {}

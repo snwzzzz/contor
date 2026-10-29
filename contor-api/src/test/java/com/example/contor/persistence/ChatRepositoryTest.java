@@ -54,6 +54,15 @@ public class ChatRepositoryTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private ExternalApiRepository externalApiRepository;
+
+    @Autowired
+    private ExternalApiEndpointRepository externalApiEndpointRepository;
+
+    @Autowired
+    private ExternalApiItemRepository externalApiItemRepository;
+
     private Collection people;
     private AppUser owner;
     private EmailMessage email;
@@ -275,5 +284,35 @@ public class ChatRepositoryTest {
 
     private long count(String table) {
         return jdbcTemplate.queryForObject("select count(*) from \"" + table + "\"", Long.class);
+    }
+
+    @Test
+    void an_answer_can_cite_an_item_of_the_users_apps_and_keeps_its_data_when_the_app_is_deleted() {
+        var api = externalApiRepository.save(Fixtures.externalApi(owner, "shop"));
+        var item = externalApiItemRepository.save(Fixtures.apiItem(externalApiEndpointRepository.save(Fixtures.endpoint(api, "orders")), "SO-155"));
+        var conversation = conversation(owner, "Where is SO-155?");
+        var answer = message(conversation, 0, ChatRole.ASSISTANT, "It shipped.", ChatMessageState.DONE);
+        answer.getCitations().add(ChatCitation.builder().message(answer).marker(1).type(CitationType.APP_ITEM).apiItem(item)
+                .quote("{\"id\":\"SO-155\",\"state\":\"shipped\"}").build());
+        chatConversationRepository.saveAndFlush(conversation);
+        entityManager.clear();
+
+        jdbcTemplate.update("delete from external_api where id = ?", api.getId().id());
+
+        assertThat(jdbcTemplate.queryForMap("select type, api_item_id, quote from chat_citation where message_id = ?", answer.getId().id()))
+                .containsEntry("type", "APP_ITEM").containsEntry("api_item_id", null)
+                .containsEntry("quote", "{\"id\":\"SO-155\",\"state\":\"shipped\"}");
+    }
+
+    @Test
+    void an_app_item_citation_needs_its_data() {
+        var item = externalApiItemRepository.save(Fixtures.apiItem(externalApiEndpointRepository.save(
+                Fixtures.endpoint(externalApiRepository.save(Fixtures.externalApi(owner, "shop")), "orders")), "SO-155"));
+        var conversation = conversation(owner, "Where is SO-155?");
+        var answer = message(conversation, 0, ChatRole.ASSISTANT, "It shipped.", ChatMessageState.DONE);
+        answer.getCitations().add(ChatCitation.builder().message(answer).marker(1).type(CitationType.APP_ITEM).apiItem(item).build());
+
+        assertThatThrownBy(() -> chatConversationRepository.saveAndFlush(conversation))
+                .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ck_chat_citation_target");
     }
 }

@@ -67,6 +67,11 @@ public class ChatCitation implements Citation {
     @Column(name = "relation_id")
     private Long relationId;
 
+    /** APP_ITEM: the cited item while it exists ({@link #quote} keeps its data as cited). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "api_item_id")
+    private ExternalApiItem apiItem;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "value_snapshot")
     private Map<String, Object> valueSnapshot;

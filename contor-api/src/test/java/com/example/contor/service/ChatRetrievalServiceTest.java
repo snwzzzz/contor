@@ -7,20 +7,26 @@ import com.example.contor.api.model.RecordPageDto;
 import com.example.contor.domain.AiSettings;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
+import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.domain.Slug;
 import com.example.contor.persistence.CollectionRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,12 +55,15 @@ class ChatRetrievalServiceTest {
     private ReportScopeService reportScopeService;
     @Mock
     private AiSettingsService aiSettingsService;
+    @Mock
+    private ExternalApiItemRepository externalApiItemRepository;
 
-    @InjectMocks
     private ChatRetrievalService chatRetrievalService;
 
     @BeforeEach
     void setUp() {
+        chatRetrievalService = new ChatRetrievalService(collectionRepository, recordService, reportScopeService, aiSettingsService,
+                externalApiItemRepository, JsonMapper.builder().build());
         Collection people = collection(3L, "people", "People");
         Collection customers = collection(4L, "customers", "Customers");
         Collection archived = collection(5L, "old", "Old");
@@ -115,7 +124,8 @@ class ChatRetrievalServiceTest {
     void collect_UsesTheMailOnlyWithMailAccessAndHiddenMailboxesOnlyWhenAllowed() {
         var records = List.of(new RecordRef(3L, 10L));
         EvidencePack pack = mock(EvidencePack.class);
-        when(reportScopeService.collectQuestion(eq(records), eq("Who is Anna?"), eq(List.of("Anna")), eq(OWNER), eq(true), eq(true))).thenReturn(pack);
+        when(reportScopeService.collectQuestion(eq(records), eq("Who is Anna?"), eq(List.of("Anna")), eq(OWNER), eq(true), eq(true), eq(List.of())))
+                .thenReturn(pack);
         AiSettings settings = new AiSettings();
         settings.setMailAccess(true);
         settings.setReadHiddenMailboxes(true);
@@ -126,7 +136,7 @@ class ChatRetrievalServiceTest {
         settings.setMailAccess(false);
         settings.setReadHiddenMailboxes(false);
         chatRetrievalService.collect(records, List.of("Anna"), "Who is Anna?", OWNER);
-        verify(reportScopeService).collectQuestion(records, "Who is Anna?", List.of("Anna"), OWNER, false, false);
+        verify(reportScopeService).collectQuestion(records, "Who is Anna?", List.of("Anna"), OWNER, false, false, List.of());
     }
 
     @Test
@@ -150,5 +160,22 @@ class ChatRetrievalServiceTest {
 
     private static RecordPageDto page(RecordDto... records) {
         return new RecordPageDto(Arrays.asList(records), 0, records.length, (long) records.length, 1);
+    }
+
+    @Test
+    void collect_AddsTheItemsOfTheUsersAppsThatMatchTheSearches() {
+        AiSettings settings = new AiSettings();
+        when(aiSettingsService.settingsFor(OWNER)).thenReturn(settings);
+        var api = ExternalApi.builder().id(new ExternalApi.ExternalApiId(7L)).name("Shop").build();
+        var endpoint = ExternalApiEndpoint.builder().api(api).name("Orders").build();
+        var order = ExternalApiItem.builder().id(9L).endpoint(endpoint).itemKey("SO-155").data(new HashMap<>(Map.of("state", "shipped")))
+                .lastSeenAt(Instant.parse("2026-10-28T12:00:00Z")).build();
+        when(externalApiItemRepository.searchForChat(1L, "%so-155%", ChatRetrievalService.APP_ITEMS_PER_SEARCH)).thenReturn(List.of(order));
+        when(externalApiItemRepository.searchForChat(1L, "%100\\%\\_off%", ChatRetrievalService.APP_ITEMS_PER_SEARCH)).thenReturn(List.of(order));
+
+        chatRetrievalService.collect(List.of(), List.of("SO-155", "100%_off"), "Where is SO-155?", OWNER);
+
+        verify(reportScopeService).collectQuestion(List.of(), "Where is SO-155?", List.of("SO-155", "100%_off"), OWNER, false, true,
+                List.of(new EvidencePack.AppItemInput(9L, 7L, "Shop", "Orders", "SO-155", "{\"state\":\"shipped\"}", LocalDate.of(2026, 10, 28))));
     }
 }

@@ -46,6 +46,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -244,6 +245,15 @@ class ReportScopeServiceTest {
         var pack = reportScopeService.collectQuestion(List.of(), "Hello", List.of(), owner, false, true);
 
         assertThat(pack.sources()).isEmpty();
+    }
+
+    @Test
+    void collectQuestion_CarriesTheAppItemsFoundEvenWithoutMailAccess() {
+        var item = new EvidencePack.AppItemInput(9L, 7L, "Shop", "Orders", "SO-155", "{\"state\":\"shipped\"}", LocalDate.of(2026, 10, 28));
+
+        var pack = reportScopeService.collectQuestion(List.of(), "Where is SO-155?", List.of("SO-155"), owner, false, true, List.of(item));
+
+        assertThat(pack.source("D1")).hasValueSatisfying(source -> assertThat(source.apiItemId()).isEqualTo(9L));
     }
 
     @Test

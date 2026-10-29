@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X11 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X12 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -96,6 +96,13 @@
 >   endpoint; the proposal card links to `/proposals`, not to the single proposal. `ProposalDto.sourceApp` names the app
 >   and endpoint of a record proposal; findings and the record page do not show app origins yet (they show no email
 >   origin either). The apps are in the command palette ("Apps" group) and in `DATA_NAV`.
+> - X12: app items are a chat source next to records and mail: `ChatRetrievalService` searches the plan's searches in
+>   the owner's current items without a record (`ILIKE` on key and JSON, `%`/`_` escaped), 3 per search, 10 in all,
+>   independent of mail access; `ReportScopeService.collectQuestion` takes them and `EvidencePack` renders them as
+>   `D<n>` (A and X were taken by analysis rows and hidden rows). Citations get `CitationType.APP_ITEM` (reports never
+>   produce one: their evidence has no app data) with `chat_citation.api_item_id` (set null when the app goes) and the
+>   cited data in `quote`. The answer prompt is unchanged (`chat-answer-v2`): it already asks for any code in brackets,
+>   and there is no chat eval to measure a prompt change against; the tests cover that `D` codes are read and cited.
 
 ## Goal
 

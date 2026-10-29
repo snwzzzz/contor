@@ -20,6 +20,7 @@ import com.example.contor.domain.Citation;
 import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Report;
 import com.example.contor.domain.ReportBlock;
 import com.example.contor.domain.ReportBlockKind;
@@ -208,6 +209,17 @@ public final class ReportMapper {
             }
             case RECORD -> dto.label(citation.getCollection() != null ? citation.getCollection().getName() : "Record");
             case RELATION -> dto.label("Connection");
+            case APP_ITEM -> {
+                ExternalApiItem item = citation.getApiItem();
+                dto.quote(citation.getQuote());
+                if (item != null && item.getEndpoint() != null && item.getEndpoint().getApi() != null) {
+                    dto.apiId(item.getEndpoint().getApi().getId() != null ? item.getEndpoint().getApi().getId().id() : null)
+                            .apiItemId(item.getId())
+                            .label(item.getEndpoint().getApi().getName() + " · " + item.getEndpoint().getName() + " · " + item.getItemKey());
+                } else {
+                    dto.label("Removed app item");
+                }
+            }
             case EMAIL_PARAGRAPH -> {
                 EmailMessage email = citation.getEmail();
                 if (state == SourceState.UNAVAILABLE) {

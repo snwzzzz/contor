@@ -24,4 +24,9 @@ public interface Citation {
     Long getRelationId();
 
     Map<String, Object> getValueSnapshot();
+
+    /** APP_ITEM: the cited item of the user's apps while it exists (chat answers only). */
+    default ExternalApiItem getApiItem() {
+        return null;
+    }
 }

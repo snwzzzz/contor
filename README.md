@@ -420,8 +420,13 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   status, items new/changed/gone, error), with **Call now**, **Pause**/**Resume** (turns the app off or on) and **Edit**.
   Record proposals from an app say *From Shop · Orders* with a link to the app (`ProposalDto.sourceApp`), and the
   command palette lists the apps.
-- Not yet: chat over app data (X12). Fetched app icons (the initial stands in), app origins on findings and on the
-  record page. Known gap: mapped values go to the record as
+- **Chat over app data** (done): for each search of the chat plan, the answer's sources also get up to 3 items of your
+  apps that are no records yet (records from apps are found as records) and whose key or data matches, of apps the
+  assistant may learn from, at most 10, also without mail access (`ExternalApiItemRepository.searchForChat`). They are
+  quoted data in the evidence (`[D1] Shop · Orders · SO-155: {…}`, 300 characters each) and cited like other sources
+  (`CitationKind` `APP_ITEM`, chat only): the sources panel shows the data as cited with *Open app*, and keeps it when
+  the item or its app is deleted (`V1_0_37`, `chat_citation.api_item_id`).
+- Not yet: fetched app icons (the initial stands in), app origins on findings and on the record page. Known gap: mapped values go to the record as
   they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
   rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
 

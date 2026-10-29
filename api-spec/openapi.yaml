@@ -4004,7 +4004,8 @@ components:
       enum: [SUPPORTED, PARTIAL, REPAIRED, REMOVED, CONFLICT]
     CitationKind:
       type: string
-      enum: [RECORD, FIELD, EMAIL_PARAGRAPH, RELATION]
+      description: APP_ITEM (chat answers only) - an item of one of your apps (external APIs) that is no record
+      enum: [RECORD, FIELD, EMAIL_PARAGRAPH, RELATION, APP_ITEM]
     SourceState:
       type: string
       description: |
@@ -4054,10 +4055,18 @@ components:
           description: EMAIL_PARAGRAPH - index into `GET /api/emails/{emailId}/paragraphs`
         quote:
           type: string
-          description: EMAIL_PARAGRAPH - the cited text (verbatim)
+          description: EMAIL_PARAGRAPH - the cited text (verbatim); APP_ITEM - the item's data as cited
         relationId:
           type: integer
           format: int64
+        apiId:
+          type: integer
+          format: int64
+          description: APP_ITEM - the app, while the item still exists (link `/apps/{apiId}`)
+        apiItemId:
+          type: integer
+          format: int64
+          description: APP_ITEM - the item, while it still exists; `quote` keeps its data as cited
         sourceState:
           $ref: '#/components/schemas/SourceState'
     ReportQuoteDto:
