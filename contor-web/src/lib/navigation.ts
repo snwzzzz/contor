@@ -94,6 +94,14 @@ export function aiSetupHref(pathname: string): string {
   return `${pathname}?${AI_SETUP_PARAM}=1`;
 }
 
+/** The add/edit app modal (external APIs) opens over the current page, addressed by `?app=new` or `?app=<id>`. */
+export const APP_PARAM = "app";
+
+/** The current page with the app modal opened: a new app, or the saved one with `apiId`. */
+export function appHref(pathname: string, apiId: number | "new"): string {
+  return `${pathname}?${APP_PARAM}=${apiId}`;
+}
+
 export const SETTINGS_ROOT: NavItem = { title: "Settings", href: "/settings", icon: Settings };
 
 export function isSettingsSection(value: string | null | undefined): value is SettingsSection {

@@ -18,10 +18,11 @@ describe("TopBar", () => {
     resetNavigation("/calendar");
     mockApi({
       "GET /api/auth/me": { body: { id: 1, username: "owner", email: "owner@example.com", role: "OWNER", totpEnabled: false } },
+      "GET /api/external-apis": { body: [] },
     });
   });
 
-  it("opens the (still empty) app launcher", async () => {
+  it("opens the app launcher, empty until an app is added", async () => {
     renderTopBar();
 
     await userEvent.click(screen.getByRole("button", { name: "Apps" }));

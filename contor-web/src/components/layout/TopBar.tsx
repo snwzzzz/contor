@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { AppsMenu } from "@/components/app/apps/AppsMenu";
 import { Separator } from "@/components/ui/separator";
 import { HOME_HREF } from "@/lib/navigation";
 import { CommandPalette } from "./CommandPalette";
 import { LoadingBar } from "./LoadingBar";
 import { ProcessingIndicator } from "./ProcessingIndicator";
 import { NavDrawer } from "./NavDrawer";
-import { AppLauncher, ChatLink } from "./TopBarButtons";
+import { ChatLink } from "./TopBarButtons";
 import { UserMenu } from "./UserMenu";
 
 /** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, the search bar (command palette), chat and account (settings open from the search bar or the account menu). */
@@ -13,7 +14,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-20 flex h-(--header-height) w-full shrink-0 items-center gap-1 border-b bg-background px-2 sm:px-3">
       <NavDrawer />
-      <AppLauncher />
+      <AppsMenu />
       <Link href={HOME_HREF} aria-label="contor home" className="ml-1 flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <span
           className="flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground text-xs font-semibold text-background"

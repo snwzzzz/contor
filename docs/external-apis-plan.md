@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X5 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X6 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -32,6 +32,15 @@
 >   failure count 0, next call now). The test call runs inside the service's read transaction (house rule: every
 >   public service method is `@Transactional`), so it holds a connection for up to the 10 s timeout. The `/apps` pages
 >   and the icon endpoint are X11, the call history endpoint is X7.
+> - X6 (where it differs from the frontend sketch below): `AppsMenu` replaced the launcher in `TopBarButtons` and is
+>   mounted by `TopBar`; rows are Radix menu items (arrows, Enter) that `router.push` the modal address, not links. The
+>   icon is the tinted initial only (fetched icons come with X11). The footer has *Add app…* only; *Manage apps*
+>   follows with `/apps` (X11). The modal is `AppDialog` in `AppShell`. Step 3 has manual endpoints and the test call;
+>   "Read the docs" comes with X8. A new app keeps its endpoints in the browser until *Add app*, then creates them
+>   one by one. Editing saves the app fields with one PATCH of only the changed values and endpoints right away.
+>   Because `secretHeaders` replaces all secret headers and their values are never returned, changing one asks for
+>   the values of the others again. The Playwright flow (`e2e/apps.spec.ts`) adds, lists, edits and deletes an app
+>   without a test call: the stub server needs the guard's loopback seam, which comes with X7's `@SpringBootTest`.
 
 ## Goal
 

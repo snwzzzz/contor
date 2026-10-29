@@ -346,7 +346,21 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
     20 000 characters.
   - Audit actions: `EXTERNAL_API_CREATED`, `_UPDATED`, `_SECRET_CHANGED` and `_DELETED`. They record name, base URL
     and auth kind, never a credential.
-- Not yet: the Apps menu and modal, polling, docs discovery, mappings and insights (X6–X12).
+- **Apps menu and modal** (frontend, done): the top bar's Apps button (the waffle) lists your apps IntelliJ-style:
+  tinted initial, name, host and when it was last called, with a status dot only for *Failing*, *Needs setup* and
+  *Paused*. Arrow keys move and Enter opens; a search field appears from 9 apps on. *Add app…* opens the modal over
+  the current page (`?app=new`, an app is `?app=<id>`, `APP_PARAM` in `lib/navigation.ts`). Adding walks through
+  *Basics* (name, HTTPS base URL, docs link, description), *Auth & headers* (auth kind with its settings and secret;
+  headers, each optionally secret), *Endpoints* (method, path, query parameters, a JSON body for POST read queries,
+  where the items are) and *Schedule* (every 15 min, hour, 6 h or day; on schedule; let the assistant learn).
+  **Test call** runs an endpoint with the unsaved settings, shows status, time and the answer, and suggests the
+  items path and key (*Use*). Nothing is stored before *Add app*; then the endpoints are added one by one (if one
+  fails, the saved app opens so it can be fixed). Editing shows the same steps as tabs: Basics, auth and schedule save
+  together and send only what changed, endpoints save one by one, and *Delete app* asks first. Stored secrets show
+  as "•••• stored" with *Replace*, never their value; secret headers are replaced together, so changing one asks for
+  the others again. Code: `components/app/apps/` (`AppsMenu`, `AppDialog`, `AppFormFields`, `EndpointEditor`) and
+  `lib/external-apis.ts` (form state, commands, items detection).
+- Not yet: polling, docs discovery, mappings, insights and the `/apps` pages (X7–X12).
 
 ## Local AI (Ollama)
 
