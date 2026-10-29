@@ -70,6 +70,13 @@ public class JsonItems {
         return Optional.of(List.copyOf(items.values()));
     }
 
+    /** The first value {@code path} selects in an item's {@code data}; empty for nothing, a list or an object. */
+    public Optional<Object> value(Map<String, Object> data, JsonPathExpr path) {
+        List<JsonNode> found = select(objectMapper.valueToTree(data), path);
+        if (found.isEmpty() || !found.getFirst().isValueNode() || found.getFirst().isNull()) return Optional.empty();
+        return Optional.ofNullable(objectMapper.convertValue(found.getFirst(), Object.class));
+    }
+
     /** SHA-256 of {@code text} (UTF-8) as lower-case hex. */
     public static String hash(String text) {
         try {

@@ -428,4 +428,37 @@ describe("ProposalList", () => {
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
   });
+  it("shows where an app's items would go and which data fills which field", async () => {
+    const people = { ...collection(5, "people", "People"), system: false };
+    mockApi({
+      "GET /api/proposals": actionsPage([
+        {
+          id: 21,
+          kind: "MAP_API_ENDPOINT",
+          status: "PENDING",
+          payload: {
+            mappingId: 40,
+            endpointId: 30,
+            collectionId: 5,
+            title: "CRM · Contacts",
+            titlePath: "$.name",
+            fields: [{ fieldSlug: "full_name", path: "$.name" }, { fieldSlug: "email", path: "$.mail" }],
+          },
+          reasoning: "CRM contacts are people",
+          createdAt: "2026-10-29T12:00:00Z",
+        },
+      ]),
+      "GET /api/collections": { body: [...collections, people] },
+    });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "CRM · Contacts" });
+    expect(within(card).getByText("Connect app data")).toBeInTheDocument();
+    expect(within(card).getByText("Into")).toBeInTheDocument();
+    expect(within(card).getByText("People")).toBeInTheDocument();
+    expect(within(card).getByText("Full name")).toBeInTheDocument();
+    expect(within(card).getByText("← $.mail")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Categories/ })).toBeInTheDocument();
+  });
 });

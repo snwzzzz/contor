@@ -1,0 +1,111 @@
+{
+  "id": "shop-orders",
+  "api": "Shop",
+  "endpoint": "Open orders",
+  "description": "Orders not shipped yet",
+  "samples": [
+    {
+      "id": "SO-155",
+      "state": "open",
+      "grand_total": {
+        "amount": 49.9,
+        "currency": "EUR"
+      },
+      "created": "2026-10-28",
+      "buyer": {
+        "name": "Anna Berger"
+      }
+    },
+    {
+      "id": "SO-156",
+      "state": "open",
+      "grand_total": {
+        "amount": 12,
+        "currency": "EUR"
+      },
+      "created": "2026-10-29",
+      "buyer": {
+        "name": "Max Muster"
+      }
+    }
+  ],
+  "expectedCollection": "orders",
+  "expectedFields": {
+    "order_number": "$.id",
+    "status": "$.state"
+  },
+  "catalog": [
+    {
+      "slug": "people",
+      "name": "People",
+      "fields": [
+        [
+          "full_name",
+          "TEXT"
+        ],
+        [
+          "email",
+          "EMAIL"
+        ],
+        [
+          "phone",
+          "PHONE"
+        ],
+        [
+          "company",
+          "TEXT"
+        ]
+      ]
+    },
+    {
+      "slug": "organizations",
+      "name": "Organizations",
+      "fields": [
+        [
+          "name",
+          "TEXT"
+        ],
+        [
+          "website",
+          "URL"
+        ]
+      ]
+    },
+    {
+      "slug": "orders",
+      "name": "Orders",
+      "fields": [
+        [
+          "order_number",
+          "TEXT"
+        ],
+        [
+          "total",
+          "MONEY"
+        ],
+        [
+          "status",
+          "TEXT"
+        ],
+        [
+          "ordered_at",
+          "DATE"
+        ]
+      ]
+    },
+    {
+      "slug": "tasks",
+      "name": "To-dos",
+      "fields": [
+        [
+          "due_date",
+          "DATE"
+        ],
+        [
+          "done",
+          "BOOLEAN"
+        ]
+      ]
+    }
+  ]
+}

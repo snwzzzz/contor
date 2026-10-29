@@ -371,7 +371,8 @@ public class ReportScopeService {
         for (RecordRef ref : records) {
             recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(ref.collectionId()), ref.recordId()).stream()
                     .map(source -> source.getEmail())
-                    .filter(email -> email.getAccount().getOwner().getId().equals(owner))
+                    // Sources from an app's items have no email.
+                    .filter(email -> email != null && email.getAccount().getOwner().getId().equals(owner))
                     .forEach(email -> emails.putIfAbsent(email.getId().id(), email));
         }
         Set<String> conversations = new LinkedHashSet<>();

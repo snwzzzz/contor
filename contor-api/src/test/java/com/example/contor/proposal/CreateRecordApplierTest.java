@@ -4,11 +4,13 @@ import com.example.contor.api.model.RecordDto;
 import com.example.contor.domain.ActorType;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.RecordSource;
 import com.example.contor.domain.RecordSourceRole;
 import com.example.contor.persistence.CollectionRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.service.RecordService;
 import org.junit.jupiter.api.DisplayNameGeneration;
@@ -41,6 +43,9 @@ class CreateRecordApplierTest {
 
     @Mock
     private CollectionRepository collectionRepository;
+
+    @Mock
+    private ExternalApiItemRepository externalApiItemRepository;
 
     @InjectMocks
     private CreateRecordApplier applier;
@@ -99,5 +104,22 @@ class CreateRecordApplierTest {
         var result = applier.apply(proposal(Map.of("collectionId", 1, "values", Map.of()), null));
 
         assertThat(result).containsEntry("collectionId", 1L).containsEntry("recordId", 5L);
+    }
+
+    @Test
+    void a_record_from_an_api_item_links_the_item_and_the_item_remembers_its_record() {
+        var collection = Collection.builder().id(new Collection.CollectionId(1L)).build();
+        var item = ExternalApiItem.builder().id(9L).itemKey("SO-1").build();
+        when(recordService.createRecord(eq(1L), any(), eq(ActorType.AI))).thenReturn(new RecordDto().id(5L).collectionId(1L));
+        when(collectionRepository.getReferenceById(new Collection.CollectionId(1L))).thenReturn(collection);
+        Map<String, Object> payload = Map.of("collectionId", 1, "title", "SO-1", "values", Map.of());
+
+        applier.apply(Proposal.builder().kind(ProposalKind.CREATE_RECORD).payload(payload).finalPayload(payload).sourceApiItem(item).build());
+
+        verify(recordSourceRepository).saveAndFlush(argThat((RecordSource source) -> source.getApiItem() == item && source.getEmail() == null
+                && source.getRecordId() == 5L && source.getRole() == RecordSourceRole.CREATED_FROM));
+        assertThat(item.getCollection()).isSameAs(collection);
+        assertThat(item.getRecordId()).isEqualTo(5L);
+        verify(externalApiItemRepository).saveAndFlush(item);
     }
 }

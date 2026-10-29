@@ -35,10 +35,13 @@ class ExternalApiPollSchedulerTest {
     @Mock
     private ExternalApiPoller poller;
 
+    @Mock
+    private ExternalApiIngestService ingestService;
+
     private ExternalApiPollScheduler scheduler(boolean enabled, int maxConcurrent) {
         var properties = new ExternalApiProperties(enabled, Duration.ofMinutes(1), Duration.ofSeconds(10), DataSize.ofMegabytes(1),
                 maxConcurrent, 30, 5);
-        return new ExternalApiPollScheduler(poller, properties, Clock.fixed(NOW, ZoneOffset.UTC));
+        return new ExternalApiPollScheduler(poller, ingestService, properties, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -105,5 +108,16 @@ class ExternalApiPollSchedulerTest {
         verify(poller, times(12)).poll(anyLong());
         assertThat(hostOverlap).hasValue(0);
         assertThat(mostAtOnce.get()).isBetween(1, 2);
+    }
+
+    @Test
+    void pollDue_HandsTheNewAndChangedItemsToTheIngestEvenWhenOneFails() {
+        when(poller.findDue()).thenReturn(List.of(new ExternalApiPoller.DueApi(1L, "a.example")));
+        when(poller.poll(1L)).thenReturn(List.of(new ExternalApiPoller.ItemChanges(30L, List.of(9L)), new ExternalApiPoller.ItemChanges(31L, List.of(10L))));
+        doThrow(new IllegalStateException("broken")).when(ingestService).afterPoll(30L, List.of(9L));
+
+        scheduler(true, 4).pollDue();
+
+        verify(ingestService).afterPoll(31L, List.of(10L));
     }
 }

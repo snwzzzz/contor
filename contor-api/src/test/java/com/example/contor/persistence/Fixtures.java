@@ -3,6 +3,7 @@ package com.example.contor.persistence;
 import com.example.contor.domain.*;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +68,17 @@ final class Fixtures {
                 .api(api)
                 .name(name)
                 .path(new ApiPath("/" + name))
+                .build();
+    }
+
+    static ExternalApiItem apiItem(ExternalApiEndpoint endpoint, String key) {
+        return ExternalApiItem.builder()
+                .endpoint(endpoint)
+                .itemKey(key)
+                .itemHash("h-" + key)
+                .data(new HashMap<>(Map.of("id", key)))
+                .firstSeenAt(Instant.parse("2026-10-29T12:00:00Z"))
+                .lastSeenAt(Instant.parse("2026-10-29T12:00:00Z"))
                 .build();
     }
 

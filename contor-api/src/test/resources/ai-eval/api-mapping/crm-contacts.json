@@ -1,0 +1,99 @@
+{
+  "id": "crm-contacts",
+  "api": "CRM",
+  "endpoint": "Contacts",
+  "description": null,
+  "samples": [
+    {
+      "contactId": 7,
+      "displayName": "Jane Doe",
+      "mail": "jane@acme.example",
+      "org": "Acme"
+    },
+    {
+      "contactId": 8,
+      "displayName": "Ben Ito",
+      "mail": "ben@ito.example",
+      "org": "Ito KG"
+    }
+  ],
+  "expectedCollection": "people",
+  "expectedFields": {
+    "full_name": "$.displayName",
+    "email": "$.mail"
+  },
+  "catalog": [
+    {
+      "slug": "people",
+      "name": "People",
+      "fields": [
+        [
+          "full_name",
+          "TEXT"
+        ],
+        [
+          "email",
+          "EMAIL"
+        ],
+        [
+          "phone",
+          "PHONE"
+        ],
+        [
+          "company",
+          "TEXT"
+        ]
+      ]
+    },
+    {
+      "slug": "organizations",
+      "name": "Organizations",
+      "fields": [
+        [
+          "name",
+          "TEXT"
+        ],
+        [
+          "website",
+          "URL"
+        ]
+      ]
+    },
+    {
+      "slug": "orders",
+      "name": "Orders",
+      "fields": [
+        [
+          "order_number",
+          "TEXT"
+        ],
+        [
+          "total",
+          "MONEY"
+        ],
+        [
+          "status",
+          "TEXT"
+        ],
+        [
+          "ordered_at",
+          "DATE"
+        ]
+      ]
+    },
+    {
+      "slug": "tasks",
+      "name": "To-dos",
+      "fields": [
+        [
+          "due_date",
+          "DATE"
+        ],
+        [
+          "done",
+          "BOOLEAN"
+        ]
+      ]
+    }
+  ]
+}

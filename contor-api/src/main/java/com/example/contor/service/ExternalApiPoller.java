@@ -64,12 +64,24 @@ public class ExternalApiPoller {
     public record DueApi(long id, String host) {
     }
 
+    /** The items of an endpoint that were new or changed in a poll, for the ingest. */
+    public record ItemChanges(long endpointId, List<Long> itemIds) {
+    }
+
     /** What one endpoint's call means for the app, mildest first: the worst of a run decides. */
     private enum Effect { OK, RATE_LIMITED, FAILURE, NEEDS_SETUP }
 
-    private record Result(Effect effect, String error, Duration retryAfter) {
+    private record Result(Effect effect, String error, Duration retryAfter, List<Long> changedItems) {
+        Result(Effect effect, String error, Duration retryAfter) {
+            this(effect, error, retryAfter, List.of());
+        }
+
         static Result ok() {
-            return new Result(Effect.OK, null, null);
+            return ok(List.of());
+        }
+
+        static Result ok(List<Long> changedItems) {
+            return new Result(Effect.OK, null, null, changedItems);
         }
     }
 
@@ -80,14 +92,16 @@ public class ExternalApiPoller {
                 .toList();
     }
 
+    /** Polls the app; returns the new and changed items per endpoint (none for unchanged or failed calls). */
     @Transactional
-    public void poll(Long apiId) {
+    public List<ItemChanges> poll(Long apiId) {
         Optional<ExternalApi> found = externalApiRepository.findById(new ExternalApi.ExternalApiId(apiId));
-        if (found.isEmpty()) return;
+        if (found.isEmpty()) return List.of();
         ExternalApi api = found.get();
         Instant now = clock.instant();
         // Changed since it was picked (paused, turned off, credentials rejected by a parallel run): leave it.
-        if (!api.isEnabled() || !ApiStatus.POLLED.contains(api.getStatus())) return;
+        if (!api.isEnabled() || !ApiStatus.POLLED.contains(api.getStatus())) return List.of();
+        List<ItemChanges> changes = new ArrayList<>();
 
         List<ExternalApiEndpoint> endpoints = externalApiEndpointRepository.findByApi_IdAndEnabledTrue(api.getId());
         long used = externalApiCallRepository.countByEndpoint_Api_IdAndStartedAtGreaterThanEqual(api.getId(), now.minus(Duration.ofDays(1)));
@@ -98,12 +112,14 @@ public class ExternalApiPoller {
             used++;
             called = true;
             Result result = call(api, endpoint, now);
+            if (!result.changedItems().isEmpty()) changes.add(new ItemChanges(endpoint.getId().id(), result.changedItems()));
             if (result.effect().compareTo(outcome.effect()) > 0) outcome = result;
             if (result.effect() == Effect.NEEDS_SETUP) break;
         }
         if (called) api.setLastCalledAt(now);
         schedule(api, outcome, now);
         externalApiRepository.saveAndFlush(api);
+        return changes;
     }
 
     /** Removes calls older than the history; returns how many. */
@@ -163,14 +179,15 @@ public class ExternalApiPoller {
             call.setError("The answer is no JSON, so no items were read");
             return Result.ok();
         }
-        diff(endpoint, items.get(), call, now);
-        return Result.ok();
+        return Result.ok(diff(endpoint, items.get(), call, now));
     }
 
-    private void diff(ExternalApiEndpoint endpoint, List<JsonItems.Item> items, ExternalApiCall call, Instant now) {
+    /** Returns the ids of the new and changed items. */
+    private List<Long> diff(ExternalApiEndpoint endpoint, List<JsonItems.Item> items, ExternalApiCall call, Instant now) {
         Map<String, ExternalApiItem> present = externalApiItemRepository.findByEndpoint_IdAndGoneAtIsNull(endpoint.getId()).stream()
                 .collect(Collectors.toMap(ExternalApiItem::getItemKey, Function.identity(), (first, second) -> first));
         List<ExternalApiItem> changed = new ArrayList<>();
+        List<ExternalApiItem> newOrChanged = new ArrayList<>();
         for (JsonItems.Item item : items) {
             ExternalApiItem stored = present.remove(item.key());
             if (stored == null) {
@@ -185,10 +202,12 @@ public class ExternalApiPoller {
                             .data(new HashMap<>(item.data())).firstSeenAt(now).build();
                 }
                 call.setItemsNew(call.getItemsNew() + 1);
+                newOrChanged.add(stored);
             } else if (!stored.getItemHash().equals(item.hash())) {
                 stored.setItemHash(item.hash());
                 stored.setData(new HashMap<>(item.data()));
                 call.setItemsChanged(call.getItemsChanged() + 1);
+                newOrChanged.add(stored);
             }
             stored.setLastSeenAt(now);
             changed.add(stored);
@@ -199,6 +218,8 @@ public class ExternalApiPoller {
         }
         call.setItemsGone(present.size());
         if (!changed.isEmpty()) externalApiItemRepository.saveAllAndFlush(changed);
+        // Saved: new items have their ids now.
+        return newOrChanged.stream().map(ExternalApiItem::getId).toList();
     }
 
     private void pruneSnapshots(ExternalApiEndpoint endpoint) {

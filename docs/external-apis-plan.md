@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X8 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X9 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -68,6 +68,18 @@
 >   limit (no "billion laughs"). First eval run (qwen3.5:9b): 5 of 5 expected paths, 8 suggestions, 0 forbidden; the
 >   model left every item key empty and once gave `$.results` without `[*]`, worth a prompt change (`api-docs-v2`,
 >   measured against two runs of v1) later.
+> - X9 (where it differs from the sketch): `record_source.api_item_id` deletes with its item (the app), so provenance
+>   goes with a deleted app instead of staying as "deleted app"; `proposal.source_api_item_id` is set null. Mapping
+>   proposals are made by `ExternalApiMappingService` (model `ApiMappingModelService`) only for endpoints without any
+>   mapping, at most once a day when nothing fits, and only into existing collections (a new-collection proposal is
+>   left for later). The payload carries a display `title` ("App · Endpoint") the applier ignores. Ingest
+>   (`ExternalApiIngestService`) runs after the poll's transaction (the poller returns the new and changed item ids per
+>   endpoint) and submits each proposal in its own transaction, so a failing AUTO falls back to a suggestion without
+>   undoing the poll; after an approval it is started by `ExternalApiMappingActivated` (after commit, on a virtual
+>   thread). `ProposalService.submitDraftFromApiItem` takes the item. Apps with *Let the assistant learn from it* off
+>   get neither mappings nor record proposals. Values are copied as they are; converting them by field type (money,
+>   dates) is open. First eval run (qwen3.5:9b): 3 of 3 collections, 4 of 4 expected fields; it mapped a plain number
+>   to a MONEY field, which the record validation will reject.
 
 ## Goal
 

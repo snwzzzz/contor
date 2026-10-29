@@ -47,6 +47,7 @@ public class AiSettingsService {
         if (command.getRecords() != null) settings.setRecords(AiMapper.toLevel(command.getRecords()));
         if (command.getCalendar() != null) settings.setCalendar(AiMapper.toLevel(command.getCalendar()));
         if (command.getTasks() != null) settings.setTasks(AiMapper.toLevel(command.getTasks()));
+        if (command.getExternalApis() != null) settings.setExternalApis(AiMapper.toLevel(command.getExternalApis()));
         if (command.getReplies() != null) {
             AiPermissionLevel replies = AiMapper.toLevel(command.getReplies());
             if (replies == AiPermissionLevel.AUTO) {
@@ -93,6 +94,7 @@ public class AiSettingsService {
         snapshot.put("calendar", settings.getCalendar().name());
         snapshot.put("tasks", settings.getTasks().name());
         snapshot.put("replies", settings.getReplies().name());
+        snapshot.put("externalApis", settings.getExternalApis().name());
         snapshot.put("courtesyReplies", settings.isCourtesyReplies());
         snapshot.put("readHiddenMailboxes", settings.isReadHiddenMailboxes());
         snapshot.put("ownerProfile", settings.getOwnerProfile() != null);

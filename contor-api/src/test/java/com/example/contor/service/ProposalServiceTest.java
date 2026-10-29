@@ -16,6 +16,7 @@ import com.example.contor.domain.AppUser;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.Slug;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalImportance;
@@ -358,6 +359,28 @@ class ProposalServiceTest {
     private static ProposalDraft draft() {
         return new ProposalDraft(ProposalKind.CREATE_RECORD, Map.of("collectionId", 3, "title", "Dentist"),
                 new BigDecimal("0.9"), "Appointment confirmation");
+    }
+
+    @Test
+    void submitDraftFromApiItem_StoresTheItemAsTheSource() {
+        var item = ExternalApiItem.builder().id(9L).itemKey("SO-1").build();
+
+        var outcome = proposalService.submitDraftFromApiItem(draft(), item, AiPermissionLevel.SUGGEST);
+
+        assertEquals(ProposalService.Outcome.SUGGESTED, outcome);
+        verify(proposalRepository).saveAndFlush(argThat(p -> p.getStatus() == ProposalStatus.PENDING && p.getSourceApiItem() == item
+                && p.getSourceEmail() == null && p.getPromptVersion() == null));
+        verify(createRecordApplier, never()).apply(any());
+    }
+
+    @Test
+    void submitDraftFromApiItem_AutoAppliesWithTheItemAsTheSource() {
+        var item = ExternalApiItem.builder().id(9L).itemKey("SO-1").build();
+        when(createRecordApplier.apply(argThat(p -> p.getSourceApiItem() == item))).thenReturn(Map.of("collectionId", 1L, "recordId", 5L));
+
+        var outcome = proposalService.submitDraftFromApiItem(draft(), item, AiPermissionLevel.AUTO);
+
+        assertEquals(ProposalService.Outcome.AUTO_APPLIED, outcome);
     }
 
     @Test

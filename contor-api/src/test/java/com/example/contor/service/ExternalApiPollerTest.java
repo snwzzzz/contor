@@ -94,7 +94,12 @@ class ExternalApiPollerTest {
         when(externalApiItemRepository.findByEndpoint_IdAndItemKey(any(), any())).thenReturn(Optional.empty());
         when(externalApiCallRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(externalApiSnapshotRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(externalApiItemRepository.saveAllAndFlush(anyList())).thenAnswer(inv -> inv.getArgument(0));
+        when(externalApiItemRepository.saveAllAndFlush(anyList())).thenAnswer(inv -> {
+            List<ExternalApiItem> items = inv.getArgument(0);
+            long next = 100;
+            for (ExternalApiItem item : items) if (item.getId() == null) item.setId(next++);
+            return items;
+        });
         when(externalApiRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -149,6 +154,30 @@ class ExternalApiPollerTest {
         assertThat(shop.getLastCalledAt()).isEqualTo(NOW);
         assertThat(shop.getLastError()).isNull();
         assertThat(shop.getNextCallAt()).isBetween(NOW.plus(Duration.ofMinutes(54)), NOW.plus(Duration.ofMinutes(66)));
+    }
+
+    @Test
+    void poll_ReportsTheNewAndChangedItemsOfEachEndpoint() {
+        var one = item("1", "{\"id\":1,\"total\":1}");
+        one.setId(11L);
+        var two = item("2", "{\"id\":2,\"total\":4}");
+        two.setId(12L);
+        when(externalApiItemRepository.findByEndpoint_IdAndGoneAtIsNull(ORDERS_ID)).thenReturn(List.of(one, two));
+        answer(200, "{\"data\":[{\"id\":1,\"total\":3},{\"id\":2,\"total\":4},{\"id\":4}]}");
+
+        var changes = poller.poll(7L);
+
+        assertThat(changes).singleElement().satisfies(change -> {
+            assertThat(change.endpointId()).isEqualTo(30L);
+            assertThat(change.itemIds()).containsExactly(11L, 100L);
+        });
+    }
+
+    @Test
+    void poll_UnchangedOrFailedCallsReportNoItems() {
+        answer(500, "oops");
+
+        assertThat(poller.poll(7L)).isEmpty();
     }
 
     @Test

@@ -271,7 +271,7 @@ public class InsightService {
                 Instant ends = values.get("ends_at") instanceof String end ? OffsetDateTime.parse(end).toInstant() : starts.plus(Duration.ofHours(1));
                 List<Long> emails = transactions.execute(status -> recordSourceRepository
                         .findByCollection_IdAndRecordId(new Collection.CollectionId(eventsId), event.getId()).stream()
-                        .map(source -> source.getEmail().getId().id()).distinct().toList());
+                        .filter(source -> source.getEmail() != null).map(source -> source.getEmail().getId().id()).distinct().toList());
                 appointments.add(new InsightDetectors.Appointment(event.getId(), event.getTitle(), starts, ends, emails != null ? emails : List.of()));
             } catch (DateTimeParseException e) {
                 log.debug("Appointment {} has an unreadable date", event.getId());

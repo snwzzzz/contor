@@ -13,6 +13,7 @@ import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.CreatedBy;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.FieldType;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.RecordSource;
@@ -152,7 +153,9 @@ class ReportScopeServiceTest {
         var foreign = email(22L, otherAccount, null, "inbox", "Someone else's mail", "Private.");
         when(recordSourceRepository.findByCollection_IdAndRecordId(orders.getId(), 4711L)).thenReturn(List.of(
                 RecordSource.builder().collection(orders).recordId(4711L).email(delay).role(RecordSourceRole.MENTIONED_IN).build(),
-                RecordSource.builder().collection(orders).recordId(4711L).email(foreign).role(RecordSourceRole.MENTIONED_IN).build()));
+                RecordSource.builder().collection(orders).recordId(4711L).email(foreign).role(RecordSourceRole.MENTIONED_IN).build(),
+                RecordSource.builder().collection(orders).recordId(4711L).apiItem(ExternalApiItem.builder().id(9L).build())
+                        .role(RecordSourceRole.CREATED_FROM).build()));
         when(emailMessageRepository.findThread(account.getId(), "conv-1")).thenReturn(List.of(delay, reply));
         var scope = new ReportScope(List.of(new RecordRef(1L, 4711L), new RecordRef(2L, 88L)), 1, null);
 

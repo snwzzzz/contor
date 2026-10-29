@@ -54,6 +54,11 @@ public class Proposal extends AuditableEntity {
     @JoinColumn(name = "source_email_id")
     private EmailMessage sourceEmail;
 
+    /** The external API item the proposal was made from (instead of an email). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_api_item_id")
+    private ExternalApiItem sourceApiItem;
+
     @Column(precision = 5, scale = 4)
     private BigDecimal confidence;
 

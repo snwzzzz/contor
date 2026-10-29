@@ -162,6 +162,7 @@ export function ProposalList() {
               key={proposal.id}
               proposal={proposal}
               description={description}
+              collectionName={collections?.find((collection) => collection.id === (proposal.payload as ProposalPayload).collectionId)?.name}
               onOpen={() => setSelectedId(proposal.id)}
               busy={decide.isPending && decide.variables?.proposalId === proposal.id}
               onDecide={(decision) => decide.mutate({ proposalId: proposal.id, data: { decision } })}
@@ -220,7 +221,16 @@ function LookForInsights({ search }: { search: InsightSearch }) {
 }
 
 /** What the proposal would store: its values ("Location: Acme HQ"), or the fields of a new category. */
-function previewOf(payload: ProposalPayload): [string, string][] {
+function previewOf(payload: ProposalPayload, collectionName: string | undefined): [string, string][] {
+  const mapped = (payload.fields ?? []).filter((field) => field.fieldSlug && field.path);
+  if (mapped.length > 0 || payload.titlePath) {
+    // An app's items: the collection, then which part of an item fills which field.
+    return [
+      ["Into", collectionName ?? "–"] as [string, string],
+      ...(payload.titlePath ? [["Title", `← ${payload.titlePath}`] as [string, string]] : []),
+      ...mapped.map((field): [string, string] => [humanize(field.fieldSlug ?? ""), `← ${field.path}`]),
+    ].slice(0, PREVIEW_VALUES);
+  }
   const values = Object.entries(payload.values ?? {})
     .filter(([, value]) => value !== null && value !== "")
     .map(([key, value]): [string, string] => [humanize(key), formatValue(value)]);
@@ -231,16 +241,18 @@ function previewOf(payload: ProposalPayload): [string, string][] {
 interface ActionCardProps {
   proposal: ProposalDto;
   description: Description;
+  /** The name of the collection the payload names, when known. */
+  collectionName?: string;
   busy: boolean;
   onOpen: () => void;
   onDecide: (decision: "APPROVE" | "REJECT") => void;
 }
 
-function ActionCard({ proposal, description, busy, onOpen, onDecide }: ActionCardProps) {
+function ActionCard({ proposal, description, collectionName, busy, onOpen, onDecide }: ActionCardProps) {
   const payload = proposal.payload as ProposalPayload;
   const title = proposalTitle(payload);
   const { label, icon: Icon, tint } = description;
-  const preview = previewOf(payload);
+  const preview = previewOf(payload, collectionName);
   const confidence = proposal.confidence != null ? Math.round(proposal.confidence * 100) : null;
 
   return (

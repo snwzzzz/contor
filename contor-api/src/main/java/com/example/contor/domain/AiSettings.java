@@ -56,6 +56,12 @@ public class AiSettings extends AuditableEntity {
     @Column(nullable = false)
     private AiPermissionLevel tasks = AiPermissionLevel.SUGGEST;
 
+    /** Records from the items of the user's external APIs (apps): suggestions first, like mail. */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "external_apis", nullable = false)
+    private AiPermissionLevel externalApis = AiPermissionLevel.SUGGEST;
+
     /** Reply drafts (DRAFT_REPLY): OFF or SUGGEST, never AUTO (a draft is never sent). */
     @Builder.Default
     @Enumerated(EnumType.STRING)

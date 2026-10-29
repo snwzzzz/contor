@@ -27,9 +27,15 @@ public class RecordSource {
     @Column(name = "record_id", nullable = false)
     private Long recordId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "email_id", nullable = false)
+    /** Set unless the record came from {@link #apiItem}; exactly one of them is set ({@code ck_record_source_origin}). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "email_id")
     private EmailMessage email;
+
+    /** The external API item the record came from, instead of an email. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "api_item_id")
+    private ExternalApiItem apiItem;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

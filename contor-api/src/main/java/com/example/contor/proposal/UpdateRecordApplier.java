@@ -52,6 +52,16 @@ public class UpdateRecordApplier implements ProposalApplier {
                     .role(RecordSourceRole.UPDATED_FROM)
                     .build());
         }
+        // An app's item updates its record again with every change: linked once.
+        if (proposal.getSourceApiItem() != null && !recordSourceRepository.existsByCollection_IdAndRecordIdAndApiItem_IdAndRole(
+                new Collection.CollectionId(collectionId), recordId, proposal.getSourceApiItem().getId(), RecordSourceRole.UPDATED_FROM)) {
+            recordSourceRepository.saveAndFlush(RecordSource.builder()
+                    .collection(collectionRepository.getReferenceById(new Collection.CollectionId(collectionId)))
+                    .recordId(recordId)
+                    .apiItem(proposal.getSourceApiItem())
+                    .role(RecordSourceRole.UPDATED_FROM)
+                    .build());
+        }
         return Map.of("collectionId", collectionId, "recordId", recordId);
     }
 }

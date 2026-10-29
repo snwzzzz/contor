@@ -110,4 +110,17 @@ class JsonItemsTest {
         assertThat(first.hash()).isEqualTo(same.hash()).isNotEqualTo(changed.hash()).hasSize(64);
         assertThat(JsonItems.hash("abc")).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
+
+    @Test
+    void reads_one_value_of_an_item() {
+        Map<String, Object> order = Map.of("id", 1, "customer", Map.of("name", "Anna"), "lines", List.of(Map.of("sku", "A-1")), "note", "");
+
+        assertThat(items.value(order, path("$.customer.name"))).hasValue("Anna");
+        assertThat(items.value(order, path("$.id"))).hasValue(1);
+        assertThat(items.value(order, path("$.lines[0].sku"))).hasValue("A-1");
+        assertThat(items.value(order, path("$.lines"))).as("a list is no value").isEmpty();
+        assertThat(items.value(order, path("$.customer"))).as("an object is no value").isEmpty();
+        assertThat(items.value(order, path("$.missing"))).isEmpty();
+        assertThat(items.value(Map.of("value", "x"), path("$.value"))).hasValue("x");
+    }
 }

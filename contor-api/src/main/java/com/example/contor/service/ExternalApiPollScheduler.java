@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * Calls the due apps every poll tick ({@code app.external-apis.poll-tick}, off with {@code app.external-apis.enabled=false}):
  * on virtual threads, at most {@code max-concurrent} at once and one app per host at a time, each in its own
  * {@link ExternalApiPoller#poll} transaction. The tick waits for all of them (fixed delay: ticks never overlap) and
- * prunes the call history once an hour.
+ * prunes the call history once an hour. New and changed items then go to {@link ExternalApiIngestService#afterPoll}.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -31,6 +31,7 @@ public class ExternalApiPollScheduler {
     private static final Duration PRUNE_EVERY = Duration.ofHours(1);
 
     private final ExternalApiPoller poller;
+    private final ExternalApiIngestService ingestService;
     private final ExternalApiProperties properties;
     private final Clock clock;
     private Instant lastPruned;
@@ -69,13 +70,23 @@ public class ExternalApiPollScheduler {
                 Thread.currentThread().interrupt();
                 return;
             }
+            List<ExternalApiPoller.ItemChanges> changes;
             try {
-                poller.poll(id);
+                changes = poller.poll(id);
             } catch (RuntimeException e) {
                 // Logged by id only: messages of other layers may name hosts, never credentials, but stay out of here.
                 log.error("Polling external API {} failed", id, e);
+                continue;
             } finally {
                 slots.release();
+            }
+            // After the poll's transaction: the ingest submits each proposal in its own.
+            for (ExternalApiPoller.ItemChanges change : changes != null ? changes : List.<ExternalApiPoller.ItemChanges>of()) {
+                try {
+                    ingestService.afterPoll(change.endpointId(), change.itemIds());
+                } catch (RuntimeException e) {
+                    log.error("Ingesting the items of external API endpoint {} failed", change.endpointId(), e);
+                }
             }
         }
     }

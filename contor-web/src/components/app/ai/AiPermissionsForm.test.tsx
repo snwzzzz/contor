@@ -12,6 +12,7 @@ const initial: AiPermissions = {
   calendar: "SUGGEST",
   tasks: "SUGGEST",
   replies: "OFF",
+  externalApis: "SUGGEST",
   courtesyReplies: false,
 };
 
@@ -51,7 +52,7 @@ describe("AiPermissionsForm", () => {
   it("asks for every area with off, ask-me and automatic choices", () => {
     render(<AiPermissionsForm value={initial} onChange={() => {}} />);
 
-    for (const area of ["New categories", "Contacts & records", "Calendar", "To-dos"]) {
+    for (const area of ["New categories", "Contacts & records", "Calendar", "To-dos", "Apps"]) {
       const group = screen.getByRole("radiogroup", { name: area });
       expect(within(group).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["OFF", "SUGGEST", "AUTO"]);
       expect(within(group).getByRole("radio", { name: "Ask me" })).toBeChecked();
@@ -159,13 +160,13 @@ describe("AiPermissionsForm", () => {
 
     // Reply drafts are never sent, so they stay at "Ask me".
     expect(onChange).toHaveBeenLastCalledWith({
-      ...initial, mailAccess: true, categories: "AUTO", records: "AUTO", calendar: "AUTO", tasks: "AUTO", replies: "SUGGEST",
+      ...initial, mailAccess: true, categories: "AUTO", records: "AUTO", calendar: "AUTO", tasks: "AUTO", replies: "SUGGEST", externalApis: "AUTO",
     });
     expect(within(all).getByRole("radio", { name: "Automatic" })).toBeChecked();
 
     await userEvent.click(within(all).getByRole("radio", { name: "Off" }));
     expect(onChange).toHaveBeenLastCalledWith({
-      ...initial, mailAccess: true, categories: "OFF", records: "OFF", calendar: "OFF", tasks: "OFF", replies: "OFF",
+      ...initial, mailAccess: true, categories: "OFF", records: "OFF", calendar: "OFF", tasks: "OFF", replies: "OFF", externalApis: "OFF",
     });
     expect(within(screen.getByRole("radiogroup", { name: "Calendar" })).getByRole("radio", { name: "Off" })).toBeChecked();
   });

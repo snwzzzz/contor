@@ -389,7 +389,24 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   out, and nothing is saved until you add them. API: `POST /api/external-apis/discovery` (202; DONE at once for an
   OpenAPI document, otherwise RUNNING) and `GET /api/external-apis/discovery/{discoveryId}` (polled every 2 s while
   RUNNING). Runs are kept in memory for an hour, 10 per user. Without a ready model only OpenAPI documents can be read.
-- Not yet: mappings, insights and the `/apps` pages (X9–X12).
+- **Mappings: from items to records** (done; learn once, then map in code). When a poll finds new items of an
+  endpoint that has no mapping, the assistant looks at up to 5 of them and your collections (`ApiMappingModelService`,
+  prompt `api-mapping-v1`, on the AI thread, one run per endpoint; when nothing fits it asks again after a day) and
+  proposes which collection they belong in, where the title is and which JSON path fills which field. Every path must
+  find a value in the sample items and every field must be a field of that collection. The answer is stored as a
+  PROPOSED `external_api_mapping` with a **Connect app data** proposal (`MAP_API_ENDPOINT`, grouped under Categories:
+  the card shows the app and endpoint, the collection and *field ← path*). Approving it (edits allowed) makes the
+  mapping ACTIVE (a previous one of the endpoint goes OFF), and the endpoint's current items are proposed right after the
+  decision commits. From then on, with no model: a new item (or one without a record) becomes a *New record* proposal, a
+  changed item with a record an *Update record*; a gone item changes nothing. A pending proposal follows its item's
+  latest values instead of a second one. The record is linked to its item (`record_source.api_item_id`, *created from* /
+  *updated from*; the item remembers its record). Proposals follow the new **Apps** area under Settings › Autonomy
+  (`ai_settings.external_apis`: Off / Ask me (default) / Automatic, which falls back to a suggestion when a value does
+  not fit the collection) and only for apps with *Let the assistant learn from it*. `V1_0_36` adds the item as a source
+  of records and proposals (`ck_record_source_origin`: an email or an item, never both).
+- Not yet: insights from app data, the `/apps` pages and chat (X10–X12). Known gap: mapped values go to the record as
+  they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
+  rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
 
 ## Local AI (Ollama)
 
@@ -530,6 +547,8 @@ cd contor-api && ./mvnw verify -Pai-eval
 ```
 
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiApiMappingEvalTest` (`ai-eval/api-mapping`) proposes mappings for shop orders, CRM contacts and weather readings
+(nothing fits) against a small catalog and reports the right collections and expected fields (report only, about 15 s).
 `AiApiDocsEvalTest` (`ai-eval/api-docs`) reads three documentation texts with the model (*Read the docs*): a
 Markdown shop API with write endpoints, a jobs guide with absolute URLs and another host, and docs with a prompt
 injection. It reports the expected paths found and fails only when a forbidden one (a write endpoint, another host) is

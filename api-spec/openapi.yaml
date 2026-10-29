@@ -3458,8 +3458,14 @@ components:
         "source": "rule:unanswered-question" | "rule:clash" | "model"}`: something that only shows across several emails.
         Approving creates the follow-ups left in the (edited) payload as records linked to the evidence emails (result
         `{"records": [{"collectionId", "recordId"}]}`); an insight is proposed once per key, also after it was dismissed.
+        MAP_API_ENDPOINT `{"mappingId": 40, "endpointId": 30, "collectionId": 4, "title": "Shop · Orders", "titlePath": "$.number", "fields":
+        [{"fieldSlug": "total", "path": "$.total"}]}`: how the items of one of your apps' endpoints become records of a
+        collection (paths in the external API JSON path subset, relative to an item). Approving (edits allowed: another
+        collection, other fields) makes the mapping active and switches the endpoint's previous one off; then each item
+        without a record becomes a CREATE_RECORD proposal, and later changes of an item an UPDATE_RECORD, following the
+        `externalApis` setting (result `{"mappingId", "endpointId"}`). Record proposals from an app carry no source email.
         Other kinds are stored but cannot be applied yet.
-      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT]
+      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT, MAP_API_ENDPOINT]
     ProposalState:
       type: string
       enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
@@ -4446,7 +4452,7 @@ components:
       enum: ['OFF', SUGGEST, AUTO]
     AiSettingsDto:
       type: object
-      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, readHiddenMailboxes]
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, externalApis, courtesyReplies, readHiddenMailboxes]
       properties:
         mailAccess:
           type: boolean
@@ -4464,6 +4470,8 @@ components:
         tasks:
           $ref: '#/components/schemas/AiAccess'
         replies:
+          $ref: '#/components/schemas/AiAccess'
+        externalApis:
           $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
           type: boolean
@@ -4500,6 +4508,8 @@ components:
         tasks:
           $ref: '#/components/schemas/AiAccess'
         replies:
+          $ref: '#/components/schemas/AiAccess'
+        externalApis:
           $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
           type: boolean
