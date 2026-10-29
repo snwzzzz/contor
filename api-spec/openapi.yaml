@@ -2364,6 +2364,61 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/external-apis/discovery:
+    post:
+      tags: [ExternalApis]
+      operationId: startApiDiscovery
+      summary: Read an app's documentation and suggest endpoints ("Read the docs")
+      description: |
+        Fetches `docsUrl` (public HTTPS only). An OpenAPI 3 or Swagger 2 document (JSON or YAML) is read in code and the
+        answer is done at once; other documentation is read by the AI model in the background (state RUNNING, poll
+        `GET …/discovery/{discoveryId}`). Suggestions are GET endpoints below `baseUrl`, at most 30; nothing is saved.
+        With `apiId`, endpoints that app already has are left out. A refused or failed fetch, or a model that is not
+        ready, is a FAILED discovery with `error`, not an error response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewApiDiscoveryCommand'
+      responses:
+        '202':
+          description: Started (or already done for an OpenAPI document)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDiscoveryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/discovery/{discoveryId}:
+    parameters:
+      - name: discoveryId
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 64
+    get:
+      tags: [ExternalApis]
+      operationId: getApiDiscovery
+      summary: A discovery you started, while it runs and for an hour after
+      responses:
+        '200':
+          description: The discovery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDiscoveryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/external-apis/{apiId}:
     parameters:
       - $ref: '#/components/parameters/ExternalApiId'
@@ -4795,6 +4850,69 @@ components:
           type: integer
         itemsGone:
           type: integer
+    DiscoveryState:
+      type: string
+      description: "RUNNING: the AI model is reading the docs. DONE: `endpoints` are the suggestions. FAILED: see `error`."
+      enum: [RUNNING, DONE, FAILED]
+    NewApiDiscoveryCommand:
+      type: object
+      required: [docsUrl, baseUrl]
+      properties:
+        docsUrl:
+          type: string
+          maxLength: 2000
+        baseUrl:
+          type: string
+          maxLength: 2000
+          description: Suggested paths are relative to it
+        apiId:
+          type: integer
+          format: int64
+          nullable: true
+          description: An app of yours; its existing endpoints are not suggested again
+    ApiDiscoveryDto:
+      type: object
+      required: [id, state, endpoints, startedAt]
+      properties:
+        id:
+          type: string
+        state:
+          $ref: '#/components/schemas/DiscoveryState'
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredEndpointDto'
+        error:
+          type: string
+          description: Why nothing was found; never a credential
+        startedAt:
+          type: string
+          format: date-time
+    DiscoveredEndpointDto:
+      type: object
+      description: A suggested endpoint; add it with `POST /api/external-apis/{apiId}/endpoints` once confirmed
+      required: [name, method, path, query, source]
+      properties:
+        name:
+          type: string
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+        query:
+          type: object
+          additionalProperties:
+            type: string
+        itemsPath:
+          type: string
+        itemKeyPath:
+          type: string
+        description:
+          type: string
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
     ApiAuthConfigDto:
       type: object
       description: The non-secret auth settings; which ones are needed depends on the auth kind (`ApiAuthType`)

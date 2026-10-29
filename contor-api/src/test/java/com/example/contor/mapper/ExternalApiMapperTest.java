@@ -4,6 +4,7 @@ import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.ApiState;
+import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiDto;
@@ -15,8 +16,10 @@ import com.example.contor.domain.ApiHttpMethod;
 import com.example.contor.domain.ApiPath;
 import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ApiStatus;
+import com.example.contor.domain.AppUser;
 import com.example.contor.domain.BaseUrl;
 import com.example.contor.domain.CallOutcome;
+import com.example.contor.domain.DiscoveryStatus;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
@@ -24,6 +27,8 @@ import com.example.contor.domain.ExternalApiEndpoint;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
 import com.example.contor.domain.Slug;
+import com.example.contor.externalapi.ApiDiscovery;
+import com.example.contor.externalapi.DiscoveredEndpoint;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
@@ -175,6 +180,42 @@ public class ExternalApiMapperTest {
         assertThat(dto.getHttpStatus()).isNull();
         assertThat(dto.getOutcome()).isEqualTo(ApiCallResult.FAILED);
         assertThat(ExternalApiMapper.toDto((ExternalApiCall) null)).isNull();
+    }
+
+    @Test
+    void maps_a_discovery_with_its_suggestions() {
+        var discovery = new ApiDiscovery("d-1", new AppUser.AppUserId(1L), DiscoveryStatus.DONE, EndpointSource.DOCS,
+                List.of(new DiscoveredEndpoint("Orders", new ApiPath("/orders"), Map.of("status", "open"), new JsonPathExpr("$.data[*]"),
+                        new JsonPathExpr("$.id"), "Open orders", EndpointSource.DOCS)), null, Instant.parse("2026-10-29T12:00:00Z"));
+
+        var dto = ExternalApiMapper.toDto(discovery);
+
+        assertThat(dto.getId()).isEqualTo("d-1");
+        assertThat(dto.getState()).isEqualTo(DiscoveryState.DONE);
+        assertThat(dto.getSource()).isEqualTo(EndpointOrigin.DOCS);
+        assertThat(dto.getStartedAt()).isEqualTo(OffsetDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(dto.getEndpoints()).singleElement().satisfies(endpoint -> {
+            assertThat(endpoint.getName()).isEqualTo("Orders");
+            assertThat(endpoint.getMethod()).isEqualTo(EndpointMethod.GET);
+            assertThat(endpoint.getPath()).isEqualTo("/orders");
+            assertThat(endpoint.getQuery()).containsEntry("status", "open");
+            assertThat(endpoint.getItemsPath()).isEqualTo("$.data[*]");
+            assertThat(endpoint.getItemKeyPath()).isEqualTo("$.id");
+            assertThat(endpoint.getDescription()).isEqualTo("Open orders");
+            assertThat(endpoint.getSource()).isEqualTo(EndpointOrigin.DOCS);
+        });
+    }
+
+    @Test
+    void maps_a_running_or_failed_discovery_and_null_input() {
+        var dto = ExternalApiMapper.toDto(new ApiDiscovery("d-2", new AppUser.AppUserId(1L), DiscoveryStatus.FAILED, null, List.of(),
+                "The documentation answered with HTTP 404", Instant.parse("2026-10-29T12:00:00Z")));
+
+        assertThat(dto.getState()).isEqualTo(DiscoveryState.FAILED);
+        assertThat(dto.getSource()).isNull();
+        assertThat(dto.getEndpoints()).isEmpty();
+        assertThat(dto.getError()).isEqualTo("The documentation answered with HTTP 404");
+        assertThat(ExternalApiMapper.toDto((ApiDiscovery) null)).isNull();
     }
 
     private static ExternalApi api() {

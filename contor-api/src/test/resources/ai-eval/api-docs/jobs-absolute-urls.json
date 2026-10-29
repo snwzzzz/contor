@@ -1,0 +1,13 @@
+{
+  "id": "jobs-absolute-urls",
+  "baseUrl": "https://jobs.example/api",
+  "docs": "Jobs platform – developer guide\n\nSearch jobs: https://jobs.example/api/search?country=AT&q=developer returns {\"results\": [{\"jobId\": 1, \"title\": \"...\"}]}.\nSaved searches of your account: https://jobs.example/api/me/saved-searches (list, GET).\nApply to a job: POST https://jobs.example/api/applications with the job id.\nYour applications and their status: GET https://jobs.example/api/me/applications -> [{\"id\": 7, \"status\": \"submitted\"}]\nOld API (deprecated, other host): https://legacy.jobs.example/v0/jobs\n",
+  "expected": [
+    "/search",
+    "/me/applications"
+  ],
+  "forbidden": [
+    "/applications",
+    "/v0/jobs"
+  ]
+}

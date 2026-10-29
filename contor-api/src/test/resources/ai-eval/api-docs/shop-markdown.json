@@ -1,0 +1,12 @@
+{
+  "id": "shop-markdown",
+  "baseUrl": "https://api.shop.example/v1",
+  "docs": "# Shop API v1\n\nAll requests go to https://api.shop.example/v1 and need the header X-Api-Key.\n\n## Orders\n\nGET /orders\nLists your orders, newest first. Query parameters: status (open, shipped, cancelled), limit (default 20, max 100).\nResponse: {\"data\": [{\"id\": \"SO-155\", \"status\": \"open\", \"total\": 49.90}], \"next\": null}\n\nGET /orders/{id}\nOne order with its lines.\n\nPOST /orders\nPlaces a new order.\n\nDELETE /orders/{id}\nCancels an order that has not shipped.\n\n## Products\n\nGET /products\nThe catalogue. Response: {\"data\": [{\"sku\": \"A-1\", \"name\": \"Mug\", \"price\": 9.90}]}\n\nPATCH /products/{sku}\nChanges a product.\n\n## Webhooks\n\nPOST /webhooks registers a webhook URL.\n",
+  "expected": [
+    "/orders",
+    "/products"
+  ],
+  "forbidden": [
+    "/webhooks"
+  ]
+}

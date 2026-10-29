@@ -4,6 +4,7 @@ import type { ExternalApiEndpointDto } from "@/lib/api/generated/model/externalA
 import {
   apiHost,
   detectItems,
+  discoveredDraft,
   draftOf,
   emptyDraft,
   emptyEndpoint,
@@ -354,5 +355,41 @@ describe("prettyBody", () => {
     expect(prettyBody('{"a":1}')).toBe('{\n  "a": 1\n}');
     expect(prettyBody('{"a":')).toBe('{"a":');
     expect(prettyBody("plain")).toBe("plain");
+  });
+});
+
+describe("discoveredDraft", () => {
+  it("turns a suggestion into an endpoint draft", () => {
+    const draft = discoveredDraft({
+      name: "Open orders",
+      method: "GET",
+      path: "/orders",
+      query: { status: "open" },
+      itemsPath: "$.data[*]",
+      itemKeyPath: "$.id",
+      description: "Orders not shipped yet",
+      source: "MODEL",
+    });
+
+    expect(toNewEndpointCommand(draft)).toEqual({
+      name: "Open orders",
+      method: "GET",
+      path: "/orders",
+      query: { status: "open" },
+      itemsPath: "$.data[*]",
+      itemKeyPath: "$.id",
+      description: "Orders not shipped yet",
+      enabled: true,
+    });
+  });
+
+  it("leaves out what the suggestion does not know", () => {
+    expect(toNewEndpointCommand(discoveredDraft({ name: "Status", method: "GET", path: "/status", query: {}, source: "DOCS" }))).toEqual({
+      name: "Status",
+      method: "GET",
+      path: "/status",
+      query: {},
+      enabled: true,
+    });
   });
 });

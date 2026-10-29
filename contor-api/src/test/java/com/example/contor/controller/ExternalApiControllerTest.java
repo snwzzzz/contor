@@ -5,17 +5,22 @@ import com.example.contor.TestAuth;
 import com.example.contor.api.model.ApiAuthConfigDto;
 import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiCallResult;
+import com.example.contor.api.model.ApiDiscoveryDto;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.ApiTestResultDto;
+import com.example.contor.api.model.DiscoveredEndpointDto;
+import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
+import com.example.contor.exception.ApiDiscoveryNotFoundException;
 import com.example.contor.exception.DuplicateResourceException;
 import com.example.contor.exception.ExternalApiDisabledException;
 import com.example.contor.exception.ExternalApiEndpointNotFoundException;
 import com.example.contor.exception.ExternalApiNotFoundException;
+import com.example.contor.service.ExternalApiDiscoveryService;
 import com.example.contor.service.ExternalApiService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +60,9 @@ public class ExternalApiControllerTest {
 
     @MockitoBean
     private ExternalApiService externalApiService;
+
+    @MockitoBean
+    private ExternalApiDiscoveryService externalApiDiscoveryService;
 
     @Test
     void list_apps_returns_200() throws Exception {
@@ -274,6 +282,41 @@ public class ExternalApiControllerTest {
         mockMvc.perform(post("/api/external-apis/7/calls").with(csrf())).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/external-apis/7/calls").with(TestAuth.user())).andExpect(status().isForbidden());
         verify(externalApiService, never()).callNow(any());
+    }
+
+    @Test
+    void start_discovery_returns_202() throws Exception {
+        when(externalApiDiscoveryService.start(any())).thenReturn(new ApiDiscoveryDto("d-1", DiscoveryState.RUNNING, List.of(), NOW));
+
+        mockMvc.perform(post("/api/external-apis/discovery").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"docsUrl\": \"https://docs.shop.example\", \"baseUrl\": \"https://api.shop.example/v1\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.id").value("d-1"))
+                .andExpect(jsonPath("$.state").value("RUNNING"));
+        verify(externalApiDiscoveryService).start(argThat(command -> command.getDocsUrl().equals("https://docs.shop.example")));
+    }
+
+    @Test
+    void start_discovery_without_docs_url_returns_400() throws Exception {
+        mockMvc.perform(post("/api/external-apis/discovery").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"baseUrl\": \"https://api.shop.example/v1\"}"))
+                .andExpect(status().isBadRequest());
+        verify(externalApiDiscoveryService, never()).start(any());
+    }
+
+    @Test
+    void get_discovery_returns_the_suggestions_and_404_for_unknown_ones() throws Exception {
+        when(externalApiDiscoveryService.find("d-1")).thenReturn(new ApiDiscoveryDto("d-1", DiscoveryState.DONE,
+                List.of(new DiscoveredEndpointDto("Orders", EndpointMethod.GET, "/orders", Map.of(), EndpointOrigin.MODEL)), NOW)
+                .source(EndpointOrigin.MODEL));
+        when(externalApiDiscoveryService.find("d-2")).thenThrow(new ApiDiscoveryNotFoundException("d-2"));
+
+        mockMvc.perform(get("/api/external-apis/discovery/d-1").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("MODEL"))
+                .andExpect(jsonPath("$.endpoints[0].path").value("/orders"));
+        mockMvc.perform(get("/api/external-apis/discovery/d-2").with(TestAuth.user())).andExpect(status().isNotFound());
     }
 
     private static ExternalApiDto shop() {

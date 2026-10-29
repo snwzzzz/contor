@@ -43,6 +43,7 @@ import {
 } from "@/lib/external-apis";
 import { APP_PARAM, appHref } from "@/lib/navigation";
 import { AuthFields, BasicsFields, ScheduleFields } from "./AppFormFields";
+import { DocsDiscovery } from "./DocsDiscovery";
 import { EndpointEditor, EndpointRows } from "./EndpointEditor";
 
 const STEPS = ["Basics", "Auth & headers", "Endpoints", "Schedule"] as const;
@@ -178,11 +179,16 @@ function NewApp({ onDone, onPartlySaved }: { onDone: () => void; onPartlySaved: 
         {step === 1 ? <AuthFields draft={draft} onChange={setDraft} errors={errors} /> : null}
         {step === 2 ? (
           <div className="grid gap-4">
-            <p className="text-sm text-muted-foreground">What contor calls. Try each one with a test call; nothing is saved before the last step.</p>
+            <p className="text-sm text-muted-foreground">What contor calls: read them from the docs or add them by hand, and try each one with a test call. Nothing is saved before the last step.</p>
             {editingDraft ? (
               <EndpointEditor initial={editingDraft} app={draft} saveLabel="Keep endpoint" onSave={keepEndpoint} onCancel={() => setEditing(null)} />
             ) : (
               <>
+                <DocsDiscovery
+                  docsUrl={draft.docsUrl}
+                  baseUrl={draft.baseUrl}
+                  onAdd={(found) => setEndpoints((current) => [...current, ...found.map((endpoint) => ({ key: newRowId(), draft: endpoint }))])}
+                />
                 <EndpointRows
                   rows={endpoints.map(({ key, draft: endpoint }) => ({ key, ...endpoint }))}
                   onEdit={(key) => setEditing(String(key))}
@@ -371,6 +377,17 @@ function SavedEndpoints({ apiId, app }: { apiId: number; app: AppDraft }) {
     }
   }
 
+  async function addFound(found: EndpointDraft[]) {
+    for (const endpoint of found) {
+      try {
+        await createEndpoint.mutateAsync({ apiId, data: toNewEndpointCommand(endpoint) });
+      } catch {
+        // Shown as a toast by the query client (e.g. a name taken); the others are still added.
+      }
+    }
+    await refresh();
+  }
+
   async function removeEndpoint(endpointId: number) {
     try {
       await deleteEndpoint.mutateAsync({ apiId, endpointId });
@@ -399,6 +416,7 @@ function SavedEndpoints({ apiId, app }: { apiId: number; app: AppDraft }) {
   }
   return (
     <div className="grid gap-4">
+      <DocsDiscovery docsUrl={app.docsUrl} baseUrl={app.baseUrl} apiId={apiId} onAdd={addFound} />
       <EndpointRows rows={endpoints.map((endpoint) => ({ ...endpoint, key: endpoint.id }))} onEdit={(key) => setEditing(Number(key))} onRemove={(key) => removeEndpoint(Number(key))} />
       <AppButton variant="outline" size="sm" className="w-fit" onClick={() => setEditing("new")}>
         <Plus aria-hidden="true" data-icon="inline-start" />

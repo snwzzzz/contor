@@ -377,7 +377,19 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
 - **Call history and Call now**: `GET /api/external-apis/{apiId}/calls` lists the last 50 calls (`ExternalApiCallDto`);
   `POST …/calls` (202) makes the next call due now, picked up within a minute through the same guard and limit. A
   paused app or one that needs setup becomes ACTIVE again; a turned-off app answers 409.
-- Not yet: docs discovery, mappings, insights and the `/apps` pages (X8–X12).
+- **Read the docs** (done): in the modal's *Endpoints* step (and tab), *Read the docs* fetches the documentation link
+  through the guard (public HTTPS, up to 4 MB) and suggests endpoints to tick and add. An OpenAPI 3 or Swagger 2
+  document (JSON or YAML) is read in code at once (`OpenApiReader`): every GET without path parameters that is not
+  deprecated and whose required query parameters have an example, default or enum value; the items path and key come
+  from the 200 response schema, and paths are made relative to the base URL through the document's server URL or base
+  path. Other docs (HTML or text) are read by the model in the background (`ApiDocsModelService`, prompt
+  `api-docs-v1`, at most 30 000 characters, the docs are quoted as data). Its answer is validated: only GET, only paths
+  below the base URL (an absolute URL under it becomes relative; other hosts, `..` and `{id}`/`:id` templates are
+  dropped), JSON paths only in the supported subset. At most 30 suggestions, endpoints the app already has are left
+  out, and nothing is saved until you add them. API: `POST /api/external-apis/discovery` (202; DONE at once for an
+  OpenAPI document, otherwise RUNNING) and `GET /api/external-apis/discovery/{discoveryId}` (polled every 2 s while
+  RUNNING). Runs are kept in memory for an hour, 10 per user. Without a ready model only OpenAPI documents can be read.
+- Not yet: mappings, insights and the `/apps` pages (X9–X12).
 
 ## Local AI (Ollama)
 
@@ -518,6 +530,11 @@ cd contor-api && ./mvnw verify -Pai-eval
 ```
 
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiApiDocsEvalTest` (`ai-eval/api-docs`) reads three documentation texts with the model (*Read the docs*): a
+Markdown shop API with write endpoints, a jobs guide with absolute URLs and another host, and docs with a prompt
+injection. It reports the expected paths found and fails only when a forbidden one (a write endpoint, another host) is
+suggested (`./mvnw verify -Pai-eval -Dtest=AiApiDocsEvalTest`, about 30 s).
+
 `AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
 `reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
 name an offered day, and runs the `ai-eval/courtesy` cases (rejection by a person, thanks, good news must get a polite
@@ -642,7 +659,7 @@ Evaluations on it (all `-Pai-eval`, report only unless noted):
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/providers`, `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Outlook (Microsoft Graph) and Gmail sync behind one provider interface (see *Mail setup*): `GET /api/mail/providers` lists the providers and whether each is configured, connect takes `provider` (default `MICROSOFT_GRAPH`), one callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status, `PATCH /api/mail/accounts/{id}` (`aiEnabled`, `hidden`; OWNER only); disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) but sits in the page flow: the page scrolls with the list, and on large screens the reading pane stays in view beside it (sticky) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; `?read=false` lists only unread mail (its `totalElements` is the unread count on the home page); the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
-| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `/api/external-apis/{apiId}/calls`, `POST /api/external-apis/test` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
+| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `/api/external-apis/{apiId}/calls`, `POST /api/external-apis/test`, `/api/external-apis/discovery[/{discoveryId}]` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 

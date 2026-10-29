@@ -157,6 +157,30 @@ describe("AppDialog", () => {
       });
     });
 
+    it("adds the endpoints the docs suggest to the new app", async () => {
+      const recorded = mockApi({
+        "POST /api/external-apis/discovery": {
+          status: 202,
+          body: { id: "d-1", state: "DONE", source: "DOCS", startedAt: "2026-10-29T12:00:00Z",
+            endpoints: [{ name: "Orders", method: "GET", path: "/orders", query: {}, itemsPath: "$.data[*]", source: "DOCS" }] },
+        },
+      });
+      openAt("app=new");
+      await fillBasics();
+      await userEvent.type(screen.getByLabelText("Documentation link"), "https://docs.shop.example");
+      await userEvent.click(screen.getByRole("button", { name: "Next step" }));
+      await userEvent.click(screen.getByRole("button", { name: "Next step" }));
+
+      await userEvent.click(screen.getByRole("button", { name: "Read the docs" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Add 1 endpoint" }));
+
+      expect(screen.getByRole("listitem", { name: "Orders" })).toHaveTextContent("GET/orders");
+      expect(calls(recorded, "POST", "/api/external-apis/discovery")[0].body).toEqual({
+        docsUrl: "https://docs.shop.example",
+        baseUrl: "https://api.shop.example/v1",
+      });
+    });
+
     it("shows why a test call failed", async () => {
       mockApi({
         "POST /api/external-apis/test": { body: { ok: false, bodyTruncated: false, durationMs: 3, error: "api.shop.example is not a public address" } },
@@ -261,6 +285,34 @@ describe("AppDialog", () => {
       await userEvent.click(within(screen.getByRole("listitem", { name: /Orders/ })).getByRole("button", { name: "Remove Orders" }));
 
       await waitFor(() => expect(calls(recorded, "DELETE", "/api/external-apis/7/endpoints/3")).toHaveLength(1));
+    });
+
+    it("adds suggested endpoints to the saved app right away", async () => {
+      const recorded = mockApi({
+        "GET /api/external-apis/7": { body: { ...saved, docsUrl: "https://docs.shop.example" } },
+        "GET /api/external-apis/7/endpoints": { body: [ordersEndpoint] },
+        "POST /api/external-apis/discovery": {
+          status: 202,
+          body: { id: "d-1", state: "DONE", source: "MODEL", startedAt: "2026-10-29T12:00:00Z",
+            endpoints: [{ name: "Products", method: "GET", path: "/products", query: { limit: "50" }, source: "MODEL" }] },
+        },
+        "POST /api/external-apis/7/endpoints": { status: 201, body: { ...ordersEndpoint, id: 4, name: "Products", path: "/products" } },
+      });
+      openAt("app=7");
+      await userEvent.click(await screen.findByRole("tab", { name: "Endpoints" }));
+
+      await userEvent.click(await screen.findByRole("button", { name: "Read the docs" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Add 1 endpoint" }));
+
+      await waitFor(() => expect(calls(recorded, "POST", "/api/external-apis/7/endpoints")).toHaveLength(1));
+      expect(calls(recorded, "POST", "/api/external-apis/discovery")[0].body).toMatchObject({ apiId: 7 });
+      expect(calls(recorded, "POST", "/api/external-apis/7/endpoints")[0].body).toEqual({
+        name: "Products",
+        method: "GET",
+        path: "/products",
+        query: { limit: "50" },
+        enabled: true,
+      });
     });
 
     it("deletes the app after a confirmation", async () => {

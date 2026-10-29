@@ -3,8 +3,11 @@ package com.example.contor.mapper;
 import com.example.contor.api.model.ApiAuthConfigDto;
 import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiCallResult;
+import com.example.contor.api.model.ApiDiscoveryDto;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.ApiState;
+import com.example.contor.api.model.DiscoveredEndpointDto;
+import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiCallDto;
@@ -16,6 +19,8 @@ import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.externalapi.ApiDiscovery;
+import com.example.contor.externalapi.DiscoveredEndpoint;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,6 +103,30 @@ public class ExternalApiMapper {
                 .itemsNew(call.getItemsNew())
                 .itemsChanged(call.getItemsChanged())
                 .itemsGone(call.getItemsGone());
+    }
+
+    public static ApiDiscoveryDto toDto(ApiDiscovery discovery) {
+        if (discovery == null) return null;
+
+        return new ApiDiscoveryDto()
+                .id(discovery.id())
+                .state(DiscoveryState.valueOf(discovery.status().name()))
+                .source(discovery.source() != null ? EndpointOrigin.valueOf(discovery.source().name()) : null)
+                .endpoints(new ArrayList<>(discovery.endpoints().stream().map(ExternalApiMapper::toDto).toList()))
+                .error(discovery.error())
+                .startedAt(MapperSupport.toOffset(discovery.startedAt()));
+    }
+
+    private static DiscoveredEndpointDto toDto(DiscoveredEndpoint endpoint) {
+        return new DiscoveredEndpointDto()
+                .name(endpoint.name())
+                .method(EndpointMethod.GET)
+                .path(endpoint.path().value())
+                .query(new LinkedHashMap<>(endpoint.query()))
+                .itemsPath(endpoint.itemsPath() != null ? endpoint.itemsPath().value() : null)
+                .itemKeyPath(endpoint.itemKeyPath() != null ? endpoint.itemKeyPath().value() : null)
+                .description(endpoint.description())
+                .source(EndpointOrigin.valueOf(endpoint.source().name()));
     }
 
     private static ApiHeaderDto toDto(ApiHeader header) {

@@ -1,15 +1,18 @@
 package com.example.contor.controller;
 
 import com.example.contor.api.ExternalApisApi;
+import com.example.contor.api.model.ApiDiscoveryDto;
 import com.example.contor.api.model.ApiTestResultDto;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
+import com.example.contor.api.model.NewApiDiscoveryCommand;
 import com.example.contor.api.model.NewExternalApiCommand;
 import com.example.contor.api.model.NewExternalApiEndpointCommand;
 import com.example.contor.api.model.TestExternalApiCommand;
 import com.example.contor.api.model.UpdateExternalApiCommand;
 import com.example.contor.api.model.UpdateExternalApiEndpointCommand;
+import com.example.contor.service.ExternalApiDiscoveryService;
 import com.example.contor.service.ExternalApiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +26,7 @@ import java.util.List;
 public class ExternalApiController implements ExternalApisApi {
 
     private final ExternalApiService externalApiService;
+    private final ExternalApiDiscoveryService externalApiDiscoveryService;
 
     @Override
     public ResponseEntity<List<ExternalApiDto>> listExternalApis() {
@@ -37,6 +41,16 @@ public class ExternalApiController implements ExternalApisApi {
     @Override
     public ResponseEntity<ApiTestResultDto> testExternalApi(TestExternalApiCommand testExternalApiCommand) {
         return ResponseEntity.ok(externalApiService.testCall(testExternalApiCommand));
+    }
+
+    @Override
+    public ResponseEntity<ApiDiscoveryDto> startApiDiscovery(NewApiDiscoveryCommand newApiDiscoveryCommand) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(externalApiDiscoveryService.start(newApiDiscoveryCommand));
+    }
+
+    @Override
+    public ResponseEntity<ApiDiscoveryDto> getApiDiscovery(String discoveryId) {
+        return ResponseEntity.ok(externalApiDiscoveryService.find(discoveryId));
     }
 
     @Override

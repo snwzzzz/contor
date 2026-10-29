@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X7 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X8 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -56,6 +56,18 @@
 >   SSRF hole the guard exists to close, so `ExternalApiPollIntegrationTest` replaces the guard bean with a mock
 >   (client, auth, storage and scheduler real) instead of running a stub server, and the Playwright flow stays
 >   without a test call.
+> - X8 (where it differs from the sketch): `ApiDocsReader` became `externalapi/OpenApiReader` (code, no model) and
+>   `service/ApiDocsModelService` (`api-docs-v1`), sharing `externalapi/DiscoveredEndpoint` (path relative to the base
+>   URL, `distinct`, at most 30). Discovery is not per saved app: `POST /api/external-apis/discovery` takes the docs
+>   link and base URL (plus an optional `apiId` whose endpoints are left out), so the add modal can read the docs
+>   before anything is saved; `GET /api/external-apis/discovery/{discoveryId}` polls. Runs live in memory
+>   (`ApiDiscoveryStore`, 1 h, 10 per user), so there is no discovery table and no
+>   `ExternalApiBusyException`. Suggestions are GET only, also from the model (POST read queries stay something the
+>   user adds by hand). Required query parameters come from examples, defaults or the first enum value; an operation
+>   whose required parameters have none is skipped. YAML is parsed with SnakeYAML's safe constructor with an alias
+>   limit (no "billion laughs"). First eval run (qwen3.5:9b): 5 of 5 expected paths, 8 suggestions, 0 forbidden; the
+>   model left every item key empty and once gave `$.results` without `[*]`, worth a prompt change (`api-docs-v2`,
+>   measured against two runs of v1) later.
 
 ## Goal
 

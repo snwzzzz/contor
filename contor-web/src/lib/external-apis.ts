@@ -2,6 +2,7 @@ import type { ApiAuthConfigDto } from "@/lib/api/generated/model/apiAuthConfigDt
 import type { ApiAuthType } from "@/lib/api/generated/model/apiAuthType";
 import type { ApiHeaderDto } from "@/lib/api/generated/model/apiHeaderDto";
 import type { ApiState } from "@/lib/api/generated/model/apiState";
+import type { DiscoveredEndpointDto } from "@/lib/api/generated/model/discoveredEndpointDto";
 import type { EndpointMethod } from "@/lib/api/generated/model/endpointMethod";
 import type { ExternalApiDto } from "@/lib/api/generated/model/externalApiDto";
 import type { ExternalApiEndpointDto } from "@/lib/api/generated/model/externalApiEndpointDto";
@@ -417,6 +418,20 @@ export function endpointDraftOf(endpoint: ExternalApiEndpointDto): EndpointDraft
     itemKeyPath: endpoint.itemKeyPath ?? "",
     description: endpoint.description ?? "",
     enabled: endpoint.enabled,
+  };
+}
+
+/** A suggestion of "Read the docs" as an endpoint draft (to keep or add). */
+export function discoveredDraft(endpoint: DiscoveredEndpointDto): EndpointDraft {
+  return {
+    ...emptyEndpoint(),
+    name: endpoint.name,
+    method: endpoint.method,
+    path: endpoint.path,
+    query: Object.entries(endpoint.query).map(([name, value]) => ({ id: newRowId(), name, value, secret: false, stored: false })),
+    itemsPath: endpoint.itemsPath ?? "",
+    itemKeyPath: endpoint.itemKeyPath ?? "",
+    description: endpoint.description ?? "",
   };
 }
 
