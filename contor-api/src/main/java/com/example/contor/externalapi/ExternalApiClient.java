@@ -1,5 +1,6 @@
 package com.example.contor.externalapi;
 
+import com.example.contor.config.ExternalApiProperties;
 import com.example.contor.domain.ApiHeader;
 import com.example.contor.domain.ApiHttpMethod;
 import com.example.contor.domain.ApiSecret;
@@ -25,15 +26,13 @@ import java.util.Map;
  * Calls one confirmed endpoint of an external API (read-only, ADR 0012): the endpoint's path below the base URL with
  * its fixed query, plain headers, then secret headers, then the credentials of the app's {@link ApiAuthHandler} (a
  * later header of the same name wins). A POST read query sends the endpoint's body as JSON. Everything goes through the
- * {@link OutboundRequestGuard}; its exceptions, and the handler's {@link ApiAuthException}, reach the caller.
+ * {@link OutboundRequestGuard} with the timeout and size cap of {@link ExternalApiProperties}; its exceptions, and the handler's {@link ApiAuthException}, reach the caller.
  * Entities may be unsaved (a test call from the modal).
  */
 @RequiredArgsConstructor
 @Component
 public class ExternalApiClient {
 
-    static final Duration TIMEOUT = Duration.ofSeconds(10);
-    static final int MAX_BYTES = 1024 * 1024;
     private static final String ACCEPT = "application/json, text/plain;q=0.5, */*;q=0.1";
     private static final String USER_AGENT = "contor/1.0 (external API)";
 
@@ -41,6 +40,7 @@ public class ExternalApiClient {
     private final ApiAuthRegistry authRegistry;
     private final ApiSecretCodec secretCodec;
     private final ObjectMapper objectMapper;
+    private final ExternalApiProperties properties;
     private final Clock clock;
 
     /**
@@ -68,7 +68,8 @@ public class ExternalApiClient {
         boolean post = endpoint.getMethod() == ApiHttpMethod.POST;
         byte[] body = post ? objectMapper.writeValueAsBytes(endpoint.getBody() != null ? endpoint.getBody() : Map.of()) : null;
         OutboundRequestGuard.Response response = guard.send(new OutboundRequestGuard.Request(endpoint.getMethod().name(), uri,
-                request.headers(), body, post ? "application/json" : null, TIMEOUT, MAX_BYTES));
+                request.headers(), body, post ? "application/json" : null, properties.timeout(),
+                (int) properties.maxResponseSize().toBytes()));
         return new ApiResponse(response.status(), response.contentType(),
                 new String(response.body(), charset(response.contentType())), response.truncated(),
                 response.header("Retry-After").map(this::retryAfter).orElse(null));

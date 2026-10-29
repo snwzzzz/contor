@@ -4,13 +4,16 @@ import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
 import com.example.contor.api.model.ApiAuthConfigDto;
 import com.example.contor.api.model.ApiAuthType;
+import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.ApiTestResultDto;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
+import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.exception.DuplicateResourceException;
+import com.example.contor.exception.ExternalApiDisabledException;
 import com.example.contor.exception.ExternalApiEndpointNotFoundException;
 import com.example.contor.exception.ExternalApiNotFoundException;
 import com.example.contor.service.ExternalApiService;
@@ -225,6 +228,52 @@ public class ExternalApiControllerTest {
         mockMvc.perform(delete("/api/external-apis/7/endpoints/30").with(TestAuth.user()).with(csrf()))
                 .andExpect(status().isNoContent());
         verify(externalApiService).deleteEndpoint(7L, 30L);
+    }
+
+    @Test
+    void list_calls_returns_200() throws Exception {
+        when(externalApiService.findCalls(7L)).thenReturn(List.of(new ExternalApiCallDto(5L, 30L, "Orders", NOW, 120, ApiCallResult.FAILED, 0, 0, 0)
+                .httpStatus(500).error("The app answered with HTTP 500")));
+
+        mockMvc.perform(get("/api/external-apis/7/calls").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].endpointName").value("Orders"))
+                .andExpect(jsonPath("$[0].outcome").value("FAILED"))
+                .andExpect(jsonPath("$[0].httpStatus").value(500))
+                .andExpect(jsonPath("$[0].error").value("The app answered with HTTP 500"));
+    }
+
+    @Test
+    void list_calls_of_another_users_app_returns_404() throws Exception {
+        when(externalApiService.findCalls(8L)).thenThrow(new ExternalApiNotFoundException(8L));
+
+        mockMvc.perform(get("/api/external-apis/8/calls").with(TestAuth.user())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void call_now_returns_202_with_the_app() throws Exception {
+        when(externalApiService.callNow(7L)).thenReturn(shop().nextCallAt(NOW));
+
+        mockMvc.perform(post("/api/external-apis/7/calls").with(TestAuth.user()).with(csrf()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.id").value(7))
+                .andExpect(jsonPath("$.nextCallAt").exists());
+    }
+
+    @Test
+    void call_now_for_a_turned_off_app_returns_409() throws Exception {
+        when(externalApiService.callNow(7L)).thenThrow(new ExternalApiDisabledException("Shop"));
+
+        mockMvc.perform(post("/api/external-apis/7/calls").with(TestAuth.user()).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Shop is turned off; turn it on to call it"));
+    }
+
+    @Test
+    void call_now_needs_login_and_csrf() throws Exception {
+        mockMvc.perform(post("/api/external-apis/7/calls").with(csrf())).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/external-apis/7/calls").with(TestAuth.user())).andExpect(status().isForbidden());
+        verify(externalApiService, never()).callNow(any());
     }
 
     private static ExternalApiDto shop() {

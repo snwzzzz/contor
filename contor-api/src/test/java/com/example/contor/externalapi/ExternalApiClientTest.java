@@ -1,5 +1,6 @@
 package com.example.contor.externalapi;
 
+import com.example.contor.config.ExternalApiProperties;
 import com.example.contor.domain.ApiAuthConfig;
 import com.example.contor.domain.ApiAuthKind;
 import com.example.contor.domain.ApiHeader;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.util.unit.DataSize;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
@@ -38,9 +40,12 @@ class ExternalApiClientTest {
 
     private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
 
+    private static final ExternalApiProperties PROPERTIES = new ExternalApiProperties(true, Duration.ofMinutes(1), Duration.ofSeconds(7),
+            DataSize.ofKilobytes(512), 4, 30, 5);
+
     private final OutboundRequestGuard guard = mock(OutboundRequestGuard.class);
     private final ExternalApiClient client = new ExternalApiClient(guard, ExternalApiFixtures.authRegistry(),
-            new ApiSecretCodec(JsonMapper.builder().build()), JsonMapper.builder().build(), Clock.fixed(NOW, ZoneOffset.UTC));
+            new ApiSecretCodec(JsonMapper.builder().build()), JsonMapper.builder().build(), PROPERTIES, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void calls_the_endpoint_below_the_base_url_with_its_query() {
@@ -54,8 +59,8 @@ class ExternalApiClientTest {
         assertThat(request.method()).isEqualTo("GET");
         assertThat(request.uri()).isEqualTo(URI.create("https://api.shop.example/v1/orders?status=open"));
         assertThat(request.body()).isNull();
-        assertThat(request.timeout()).isEqualTo(ExternalApiClient.TIMEOUT);
-        assertThat(request.maxBytes()).isEqualTo(ExternalApiClient.MAX_BYTES);
+        assertThat(request.timeout()).isEqualTo(Duration.ofSeconds(7));
+        assertThat(request.maxBytes()).isEqualTo(512 * 1024);
         assertThat(request.headers()).containsEntry("User-Agent", "contor/1.0 (external API)")
                 .containsKey("Accept");
     }

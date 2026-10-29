@@ -2,16 +2,19 @@ package com.example.contor.mapper;
 
 import com.example.contor.api.model.ApiAuthConfigDto;
 import com.example.contor.api.model.ApiAuthType;
+import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
+import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.domain.ApiAuthConfig;
 import com.example.contor.domain.ApiHeader;
 import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
 
 import java.util.ArrayList;
@@ -77,6 +80,24 @@ public class ExternalApiMapper {
                 .enabled(endpoint.isEnabled())
                 .createdAt(MapperSupport.toOffset(endpoint.getCreatedAt()))
                 .lastModified(MapperSupport.toOffset(endpoint.getLastModified()));
+    }
+
+    public static ExternalApiCallDto toDto(ExternalApiCall call) {
+        if (call == null) return null;
+        ExternalApiEndpoint endpoint = call.getEndpoint();
+
+        return new ExternalApiCallDto()
+                .id(call.getId())
+                .endpointId(endpoint != null && endpoint.getId() != null ? endpoint.getId().id() : null)
+                .endpointName(endpoint != null ? endpoint.getName() : null)
+                .startedAt(MapperSupport.toOffset(call.getStartedAt()))
+                .durationMs(call.getDurationMs())
+                .httpStatus(call.getHttpStatus())
+                .outcome(ApiCallResult.valueOf(call.getOutcome().name()))
+                .error(call.getError())
+                .itemsNew(call.getItemsNew())
+                .itemsChanged(call.getItemsChanged())
+                .itemsGone(call.getItemsGone());
     }
 
     private static ApiHeaderDto toDto(ApiHeader header) {

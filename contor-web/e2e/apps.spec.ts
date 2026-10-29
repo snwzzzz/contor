@@ -5,7 +5,8 @@ test.use({ storageState: STORAGE_STATE });
 
 /**
  * Adding an app (external API) in the modal and finding it in the top bar's Apps menu. No test call here: the backend
- * only calls public HTTPS hosts, so a local stub needs the guard's test seam (planned with the polling step).
+ * only calls public HTTPS hosts and has no switch for local ones on purpose (SSRF); the call path is covered by
+ * ExternalApiPollIntegrationTest and the Vitest preview tests.
  */
 test.describe("apps", () => {
   test("adds an app with an endpoint, lists it in the Apps menu, edits and deletes it", async ({ page }) => {

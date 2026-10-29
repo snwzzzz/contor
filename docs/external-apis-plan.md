@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X6 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X7 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -40,7 +40,22 @@
 >   one by one. Editing saves the app fields with one PATCH of only the changed values and endpoints right away.
 >   Because `secretHeaders` replaces all secret headers and their values are never returned, changing one asks for
 >   the values of the others again. The Playwright flow (`e2e/apps.spec.ts`) adds, lists, edits and deletes an app
->   without a test call: the stub server needs the guard's loopback seam, which comes with X7's `@SpringBootTest`.
+>   without a test call: the stub server needs the guard's loopback seam (see X7).
+> - X7 (where it differs from the scheduling rules below): the poll is split into `ExternalApiPollScheduler` (the
+>   `@Scheduled` tick, virtual threads, a semaphore for `max-concurrent`, one host's apps in turn) and
+>   `ExternalApiPoller` (one app per transaction: `findDue`, `poll`, `pruneHistory`), so the HTTP calls run inside the
+>   app's transaction, at most `max-concurrent` connections. The jitter is derived from app id and time (no random
+>   source to stub). Missing settings or unreadable credentials (`IllegalArgumentException`/`IllegalStateException`
+>   from the client) count like 401/403: NEEDS_SETUP. A run stops at the first NEEDS_SETUP; the worst endpoint
+>   outcome decides (NEEDS_SETUP > failure > 429 > OK). `JsonItems` reads at most 1000 items; keyless items are keyed
+>   by their content hash. `ExternalApiProperties` has no `min-interval` (the migration's check enforces 15 min) and
+>   adds `history-days` and `snapshots-kept`; `max-response-bytes` is `max-response-size` (a `DataSize`). "Call now"
+>   (`POST …/calls`, 202 with the app) only makes the app due; the next tick calls it, so it never runs beside a
+>   poll. A turned-off app answers 409 (`ExternalApiDisabledException`). Mapping/insight work (the model queue) comes
+>   with X9/X10. **No loopback seam in the guard:** a production switch that lets calls reach local addresses is the
+>   SSRF hole the guard exists to close, so `ExternalApiPollIntegrationTest` replaces the guard bean with a mock
+>   (client, auth, storage and scheduler real) instead of running a stub server, and the Playwright flow stays
+>   without a test call.
 
 ## Goal
 

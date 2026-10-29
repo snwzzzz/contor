@@ -5,6 +5,7 @@ import com.example.contor.api.model.ApiAuthType;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.ApiTestResultDto;
 import com.example.contor.api.model.EndpointMethod;
+import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.api.model.NewExternalApiCommand;
@@ -29,6 +30,7 @@ import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
 import com.example.contor.domain.Slug;
 import com.example.contor.exception.DuplicateResourceException;
+import com.example.contor.exception.ExternalApiDisabledException;
 import com.example.contor.exception.ExternalApiEndpointNotFoundException;
 import com.example.contor.exception.ExternalApiNotFoundException;
 import com.example.contor.externalapi.ApiAuthException;
@@ -38,6 +40,7 @@ import com.example.contor.externalapi.ApiSecretCodec;
 import com.example.contor.externalapi.ExternalApiClient;
 import com.example.contor.mapper.ExternalApiMapper;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
 import com.example.contor.persistence.ExternalApiRepository;
 import com.example.contor.security.CurrentActor;
@@ -78,6 +81,7 @@ public class ExternalApiService {
 
     private final ExternalApiRepository externalApiRepository;
     private final ExternalApiEndpointRepository externalApiEndpointRepository;
+    private final ExternalApiCallRepository externalApiCallRepository;
     private final AppUserRepository appUserRepository;
     private final ApiAuthRegistry apiAuthRegistry;
     private final ApiSecretCodec apiSecretCodec;
@@ -172,6 +176,30 @@ public class ExternalApiService {
         ExternalApi api = load(apiId);
         externalApiRepository.delete(api);
         auditService.record(AuditEvent.currentActor(AuditAction.EXTERNAL_API_DELETED).entity("external_api", apiId).before(summary(api)));
+    }
+
+    /** The app's last 50 calls, newest first. */
+    @Transactional
+    public List<ExternalApiCallDto> findCalls(Long apiId) {
+        ExternalApi api = load(apiId);
+        return externalApiCallRepository.findTop50ByEndpoint_Api_IdOrderByStartedAtDesc(api.getId()).stream()
+                .map(ExternalApiMapper::toDto).toList();
+    }
+
+    /**
+     * Makes the next call due now, for the next poll tick (same guard, same daily limit). A paused app or one that needs
+     * setup becomes ACTIVE again with a fresh failure count.
+     */
+    @Transactional
+    public ExternalApiDto callNow(Long apiId) {
+        ExternalApi api = load(apiId);
+        if (!api.isEnabled()) throw new ExternalApiDisabledException(api.getName());
+        if (!ApiStatus.POLLED.contains(api.getStatus())) {
+            api.setStatus(ApiStatus.ACTIVE);
+            api.setFailureCount(0);
+        }
+        api.setNextCallAt(clock.instant());
+        return toDto(externalApiRepository.saveAndFlush(api));
     }
 
     @Transactional

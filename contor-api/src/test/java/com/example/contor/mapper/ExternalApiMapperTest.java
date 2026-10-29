@@ -1,6 +1,7 @@
 package com.example.contor.mapper;
 
 import com.example.contor.api.model.ApiAuthType;
+import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.ApiState;
 import com.example.contor.api.model.EndpointMethod;
@@ -15,8 +16,10 @@ import com.example.contor.domain.ApiPath;
 import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ApiStatus;
 import com.example.contor.domain.BaseUrl;
+import com.example.contor.domain.CallOutcome;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
@@ -139,6 +142,39 @@ public class ExternalApiMapperTest {
         assertThat(dto.getItemsPath()).isNull();
         assertThat(dto.getItemKeyPath()).isNull();
         assertThat(dto.getSource()).isEqualTo(EndpointOrigin.USER);
+    }
+
+    @Test
+    void maps_a_call_with_its_endpoint() {
+        var endpoint = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(30L)).name("Orders")
+                .path(new ApiPath("/orders")).build();
+        var call = ExternalApiCall.builder().id(5L).endpoint(endpoint).startedAt(Instant.parse("2026-10-29T12:00:00Z")).durationMs(120)
+                .httpStatus(200).outcome(CallOutcome.OK).error("The answer is no JSON, so no items were read")
+                .itemsNew(2).itemsChanged(1).itemsGone(3).build();
+
+        var dto = ExternalApiMapper.toDto(call);
+
+        assertThat(dto.getId()).isEqualTo(5L);
+        assertThat(dto.getEndpointId()).isEqualTo(30L);
+        assertThat(dto.getEndpointName()).isEqualTo("Orders");
+        assertThat(dto.getStartedAt()).isEqualTo(OffsetDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(dto.getDurationMs()).isEqualTo(120);
+        assertThat(dto.getHttpStatus()).isEqualTo(200);
+        assertThat(dto.getOutcome()).isEqualTo(ApiCallResult.OK);
+        assertThat(dto.getError()).isEqualTo("The answer is no JSON, so no items were read");
+        assertThat(List.of(dto.getItemsNew(), dto.getItemsChanged(), dto.getItemsGone())).containsExactly(2, 1, 3);
+    }
+
+    @Test
+    void maps_a_failed_call_without_answer_and_null_input() {
+        var dto = ExternalApiMapper.toDto(ExternalApiCall.builder().startedAt(Instant.parse("2026-10-29T12:00:00Z"))
+                .outcome(CallOutcome.FAILED).build());
+
+        assertThat(dto.getId()).isNull();
+        assertThat(dto.getEndpointId()).isNull();
+        assertThat(dto.getHttpStatus()).isNull();
+        assertThat(dto.getOutcome()).isEqualTo(ApiCallResult.FAILED);
+        assertThat(ExternalApiMapper.toDto((ExternalApiCall) null)).isNull();
     }
 
     private static ExternalApi api() {

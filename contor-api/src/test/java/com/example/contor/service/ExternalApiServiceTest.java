@@ -2,6 +2,7 @@ package com.example.contor.service;
 
 import com.example.contor.api.model.ApiAuthConfigDto;
 import com.example.contor.api.model.ApiAuthType;
+import com.example.contor.api.model.ApiCallResult;
 import com.example.contor.api.model.ApiHeaderDto;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.NewExternalApiCommand;
@@ -19,13 +20,16 @@ import com.example.contor.domain.ApiStatus;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.BaseUrl;
+import com.example.contor.domain.CallOutcome;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
 import com.example.contor.domain.JsonPathExpr;
 import com.example.contor.domain.Slug;
 import com.example.contor.domain.UserRole;
 import com.example.contor.exception.DuplicateResourceException;
+import com.example.contor.exception.ExternalApiDisabledException;
 import com.example.contor.exception.ExternalApiEndpointNotFoundException;
 import com.example.contor.exception.ExternalApiNotFoundException;
 import com.example.contor.externalapi.ApiAuthException;
@@ -40,6 +44,7 @@ import com.example.contor.externalapi.ClientCredentialsAuthHandler;
 import com.example.contor.externalapi.ExternalApiClient;
 import com.example.contor.externalapi.NoAuthHandler;
 import com.example.contor.persistence.AppUserRepository;
+import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
 import com.example.contor.persistence.ExternalApiRepository;
 import com.example.contor.security.AuthenticatedUser;
@@ -91,6 +96,9 @@ class ExternalApiServiceTest {
     private AppUserRepository appUserRepository;
 
     @Mock
+    private ExternalApiCallRepository externalApiCallRepository;
+
+    @Mock
     private ExternalApiClient externalApiClient;
 
     @Mock
@@ -104,8 +112,8 @@ class ExternalApiServiceTest {
         var registry = new ApiAuthRegistry(List.of(new NoAuthHandler(), new ApiKeyHeaderAuthHandler(), new ApiKeyQueryAuthHandler(),
                 new BearerAuthHandler(), new BasicAuthHandler(),
                 new ClientCredentialsAuthHandler(mock(OutboundRequestGuard.class), JsonMapper.builder().build(), Clock.systemUTC())));
-        service = new ExternalApiService(externalApiRepository, externalApiEndpointRepository, appUserRepository, registry, codec,
-                externalApiClient, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new ExternalApiService(externalApiRepository, externalApiEndpointRepository, externalApiCallRepository, appUserRepository,
+                registry, codec, externalApiClient, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(appUserRepository.getReferenceById(OWNER)).thenReturn(AppUser.builder().id(OWNER).build());
         lenient().when(externalApiRepository.saveAndFlush(any(ExternalApi.class))).thenAnswer(inv -> {
             ExternalApi api = inv.getArgument(0);
@@ -348,6 +356,71 @@ class ExternalApiServiceTest {
 
         assertThatThrownBy(() -> service.deleteApi(7L)).isInstanceOf(ExternalApiNotFoundException.class);
         verify(externalApiRepository, never()).delete(any());
+    }
+
+    @Test
+    void findCalls_ListsTheAppsLatestCalls() {
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop()));
+        var orders = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(30L)).name("Orders")
+                .path(new ApiPath("/orders")).build();
+        when(externalApiCallRepository.findTop50ByEndpoint_Api_IdOrderByStartedAtDesc(SHOP_ID)).thenReturn(List.of(
+                ExternalApiCall.builder().id(5L).endpoint(orders).startedAt(NOW).outcome(CallOutcome.UNCHANGED).build()));
+
+        assertThat(service.findCalls(7L)).singleElement().satisfies(dto -> {
+            assertThat(dto.getEndpointName()).isEqualTo("Orders");
+            assertThat(dto.getOutcome()).isEqualTo(ApiCallResult.UNCHANGED);
+        });
+    }
+
+    @Test
+    void findCalls_NotFoundForAnotherUsersApp() {
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findCalls(7L)).isInstanceOf(ExternalApiNotFoundException.class);
+        verify(externalApiCallRepository, never()).findTop50ByEndpoint_Api_IdOrderByStartedAtDesc(any());
+    }
+
+    @Test
+    void callNow_MakesTheNextCallDueNow() {
+        var shop = shop();
+        shop.setNextCallAt(NOW.plusSeconds(3600));
+        shop.setStatus(ApiStatus.FAILING);
+        shop.setFailureCount(4);
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+
+        var dto = service.callNow(7L);
+
+        assertThat(shop.getNextCallAt()).isEqualTo(NOW);
+        assertThat(shop.getStatus()).isEqualTo(ApiStatus.FAILING);
+        assertThat(shop.getFailureCount()).isEqualTo(4);
+        assertThat(dto.getNextCallAt()).isNotNull();
+        verify(externalApiRepository).saveAndFlush(shop);
+    }
+
+    @Test
+    void callNow_ResumesAPausedAppOrOneThatNeedsSetup() {
+        for (ApiStatus status : List.of(ApiStatus.PAUSED, ApiStatus.NEEDS_SETUP)) {
+            var shop = shop();
+            shop.setStatus(status);
+            shop.setFailureCount(10);
+            when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+
+            service.callNow(7L);
+
+            assertThat(shop.getStatus()).isEqualTo(ApiStatus.ACTIVE);
+            assertThat(shop.getFailureCount()).isZero();
+            assertThat(shop.getNextCallAt()).isEqualTo(NOW);
+        }
+    }
+
+    @Test
+    void callNow_TurnedOffAppRejected() {
+        var shop = shop();
+        shop.setEnabled(false);
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+
+        assertThatThrownBy(() -> service.callNow(7L)).isInstanceOf(ExternalApiDisabledException.class);
+        verify(externalApiRepository, never()).saveAndFlush(any());
     }
 
     @Test

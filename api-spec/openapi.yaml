@@ -2523,6 +2523,49 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/external-apis/{apiId}/calls:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApiCalls
+      summary: The app's last 50 calls across its endpoints, newest first (kept for 30 days)
+      responses:
+        '200':
+          description: The calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiCallDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ExternalApis]
+      operationId: callExternalApiNow
+      summary: Call the app with the next poll, without waiting for its interval
+      description: |
+        The app is called within the next minute, through the same checks and the same daily request limit. A paused
+        app or one that needs setup is set to ACTIVE first. 409 when the app is turned off.
+      responses:
+        '202':
+          description: Queued; the app with its next call due now
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /api/ai/eval/export:
     get:
       tags: [AI]
@@ -4716,6 +4759,42 @@ components:
       type: string
       description: Who added the endpoint, you or the documentation (parsed or read by the model)
       enum: [USER, DOCS, MODEL]
+    ApiCallResult:
+      type: string
+      description: "OK: a new answer. UNCHANGED: the same answer as last time. FAILED: no usable answer (see `error`)."
+      enum: [OK, UNCHANGED, FAILED]
+    ExternalApiCallDto:
+      type: object
+      description: One call of an endpoint
+      required: [id, endpointId, endpointName, startedAt, durationMs, outcome, itemsNew, itemsChanged, itemsGone]
+      properties:
+        id:
+          type: integer
+          format: int64
+        endpointId:
+          type: integer
+          format: int64
+        endpointName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+        httpStatus:
+          type: integer
+          description: Missing when no answer came (refused, timeout, network)
+        outcome:
+          $ref: '#/components/schemas/ApiCallResult'
+        error:
+          type: string
+          description: What went wrong or why no items were read; never a URL or credential
+        itemsNew:
+          type: integer
+        itemsChanged:
+          type: integer
+        itemsGone:
+          type: integer
     ApiAuthConfigDto:
       type: object
       description: The non-secret auth settings; which ones are needed depends on the auth kind (`ApiAuthType`)

@@ -360,7 +360,24 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   as "•••• stored" with *Replace*, never their value; secret headers are replaced together, so changing one asks for
   the others again. Code: `components/app/apps/` (`AppsMenu`, `AppDialog`, `AppFormFields`, `EndpointEditor`) and
   `lib/external-apis.ts` (form state, commands, items detection).
-- Not yet: polling, docs discovery, mappings, insights and the `/apps` pages (X7–X12).
+- **Polling** (backend, done): every `EXTERNAL_APIS_POLL_TICK` (1 min) `ExternalApiPollScheduler` looks for enabled apps
+  that are ACTIVE or FAILING and due, and calls them on virtual threads: at most `EXTERNAL_APIS_MAX_CONCURRENT` (4) at
+  once and one per host at a time, each app in its own transaction (`ExternalApiPoller`). Each enabled endpoint is
+  called once and the call is recorded (`external_api_call`: status, time, outcome OK / UNCHANGED / FAILED, a masked
+  error, items new / changed / gone). An answer with the same SHA-256 as the last one is only recorded as UNCHANGED.
+  A new one is kept as a snapshot (the last 5 per endpoint), and its items are read with the endpoint's items path and
+  key (`JsonItems`, at most 1000 per answer; without a key path an item is identified by its content, without an items
+  path the whole answer is one item) and compared with the stored ones: new, changed (other hash) and gone (`gone_at`;
+  an item that comes back counts as new). Answers cut at the size cap or that are no JSON keep the items as they are.
+  Next call: the interval ± 10 % after success; after a failure the interval × 2^failures (at most 24 h), *Failing*
+  after 3 and *Paused* after 10 failures; on 429 the server's `Retry-After` (else one interval); on 401/403, rejected
+  client credentials or missing settings *Needs setup* with no further calls. The daily request limit counts the
+  calls of the last 24 hours. The history is pruned to 30 days once an hour. Off with `EXTERNAL_APIS_ENABLED=false`
+  (and in tests).
+- **Call history and Call now**: `GET /api/external-apis/{apiId}/calls` lists the last 50 calls (`ExternalApiCallDto`);
+  `POST …/calls` (202) makes the next call due now, picked up within a minute through the same guard and limit. A
+  paused app or one that needs setup becomes ACTIVE again; a turned-off app answers 409.
+- Not yet: docs discovery, mappings, insights and the `/apps` pages (X8–X12).
 
 ## Local AI (Ollama)
 
@@ -625,7 +642,7 @@ Evaluations on it (all `-Pai-eval`, report only unless noted):
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/providers`, `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Outlook (Microsoft Graph) and Gmail sync behind one provider interface (see *Mail setup*): `GET /api/mail/providers` lists the providers and whether each is configured, connect takes `provider` (default `MICROSOFT_GRAPH`), one callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status, `PATCH /api/mail/accounts/{id}` (`aiEnabled`, `hidden`; OWNER only); disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) but sits in the page flow: the page scrolls with the list, and on large screens the reading pane stays in view beside it (sticky) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; `?read=false` lists only unread mail (its `totalElements` is the unread count on the home page); the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
-| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `POST /api/external-apis/test` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
+| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `/api/external-apis/{apiId}/calls`, `POST /api/external-apis/test` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -739,6 +756,11 @@ All variables are listed in `.env.example`.
 | `GMAIL_SCOPES` | backend | `openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/contacts.readonly` | Google scopes, comma- or space-separated; `gmail.readonly` is required, `contacts.readonly` gives sender photos from your Google contacts |
 | `GMAIL_INITIAL_SYNC_DAYS` | backend | `365` | how far back the first sync of a Gmail mailbox reads (later syncs follow the Gmail history) |
 | `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
+| `EXTERNAL_APIS_ENABLED` | backend | `true` | call the connected apps (external APIs) on their schedule |
+| `EXTERNAL_APIS_POLL_TICK` | backend | `1m` | how often due apps are looked for |
+| `EXTERNAL_APIS_TIMEOUT` | backend | `10s` | timeout of one call |
+| `EXTERNAL_APIS_MAX_RESPONSE_SIZE` | backend | `1MB` | answers are cut here (then no items are read) |
+| `EXTERNAL_APIS_MAX_CONCURRENT` | backend | `4` | apps called at the same time (one per host) |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |
 

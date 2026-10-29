@@ -2,6 +2,7 @@ package com.example.contor.controller;
 
 import com.example.contor.api.ExternalApisApi;
 import com.example.contor.api.model.ApiTestResultDto;
+import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.api.model.NewExternalApiCommand;
@@ -52,6 +53,16 @@ public class ExternalApiController implements ExternalApisApi {
     public ResponseEntity<Void> deleteExternalApi(Long apiId) {
         externalApiService.deleteApi(apiId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<List<ExternalApiCallDto>> listExternalApiCalls(Long apiId) {
+        return ResponseEntity.ok(externalApiService.findCalls(apiId));
+    }
+
+    @Override
+    public ResponseEntity<ExternalApiDto> callExternalApiNow(Long apiId) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(externalApiService.callNow(apiId));
     }
 
     @Override
