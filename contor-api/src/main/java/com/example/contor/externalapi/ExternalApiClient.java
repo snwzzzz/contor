@@ -8,7 +8,6 @@ import com.example.contor.domain.ExternalApiEndpoint;
 import com.example.contor.security.OutboundRequestGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
@@ -40,6 +39,7 @@ public class ExternalApiClient {
 
     private final OutboundRequestGuard guard;
     private final ApiAuthRegistry authRegistry;
+    private final ApiSecretCodec secretCodec;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -48,7 +48,7 @@ public class ExternalApiClient {
      * @throws IllegalStateException    when the stored credentials cannot be read (nothing is sent)
      */
     public ApiResponse call(ExternalApi api, ExternalApiEndpoint endpoint) {
-        ApiSecret secret = secret(api);
+        ApiSecret secret = secretCodec.read(api);
         ApiAuthHandler auth = authRegistry.handler(api.getAuthKind());
         auth.validate(api.getAuthConfig(), secret);
 
@@ -72,17 +72,6 @@ public class ExternalApiClient {
         return new ApiResponse(response.status(), response.contentType(),
                 new String(response.body(), charset(response.contentType())), response.truncated(),
                 response.header("Retry-After").map(this::retryAfter).orElse(null));
-    }
-
-    private ApiSecret secret(ExternalApi api) {
-        if (api.getSecret() == null || api.getSecret().isBlank()) {
-            return ApiSecret.EMPTY;
-        }
-        try {
-            return objectMapper.readValue(api.getSecret(), ApiSecret.class);
-        } catch (JacksonException | IllegalArgumentException e) {
-            throw new IllegalStateException("The stored credentials of " + api.getName() + " cannot be read");
-        }
     }
 
     private static Charset charset(String contentType) {

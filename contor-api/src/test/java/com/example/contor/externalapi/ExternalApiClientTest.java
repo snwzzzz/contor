@@ -40,7 +40,7 @@ class ExternalApiClientTest {
 
     private final OutboundRequestGuard guard = mock(OutboundRequestGuard.class);
     private final ExternalApiClient client = new ExternalApiClient(guard, ExternalApiFixtures.authRegistry(),
-            JsonMapper.builder().build(), Clock.fixed(NOW, ZoneOffset.UTC));
+            new ApiSecretCodec(JsonMapper.builder().build()), JsonMapper.builder().build(), Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void calls_the_endpoint_below_the_base_url_with_its_query() {

@@ -52,6 +52,8 @@ tags:
     description: AI reports on a record and the connections picked for it, or over a whole collection with figures the app computes; sentences cite their sources
   - name: Chat
     description: Conversations with the local model about everything in contor; answers link to the records, people and emails they are about and cite their sources
+  - name: ExternalApis
+    description: Apps you connect (any HTTP API, read-only) so the assistant can learn from them; private to you, credentials are write-only
 paths:
   /api/system/version:
     get:
@@ -2288,6 +2290,239 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /api/external-apis:
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApis
+      summary: Your connected apps (external APIs) by name
+      responses:
+        '200':
+          description: The apps; credentials are never returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ExternalApis]
+      operationId: createExternalApi
+      summary: Connect an app
+      description: |
+        The app is private to you. Its slug is derived from the name (unique among your apps). The first call is due
+        right away when the app is enabled and has endpoints. 400 when the URLs, headers or auth settings are invalid or
+        the auth kind's settings or secret are missing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewExternalApiCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/external-apis/test:
+    post:
+      tags: [ExternalApis]
+      operationId: testExternalApi
+      summary: Call an endpoint once with settings that are not saved yet
+      description: |
+        Sends one request with the given settings and returns the start of the answer; nothing is stored. With
+        `apiId`, a missing `secret` or `secretHeaders` falls back to that app's stored ones (editing without retyping
+        them). The call goes through the same guard as polls: HTTPS on port 443, public hosts only. A refused or failed
+        call is a 200 with `ok: false` and `error`; invalid settings are a 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestExternalApiCommand'
+      responses:
+        '200':
+          description: What the endpoint answered, or why the call failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTestResultDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/{apiId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: getExternalApi
+      summary: One of your apps
+      responses:
+        '200':
+          description: The app
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ExternalApis]
+      operationId: updateExternalApi
+      summary: Change an app
+      description: |
+        `null` fields stay unchanged. `secret: ""` removes the stored secret; `secretHeaders` replaces all secret
+        headers (`[]` removes them). Any change clears the failure state (status ACTIVE, failure count 0) and, when the
+        app is enabled, makes the next call due right away.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExternalApiCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ExternalApis]
+      operationId: deleteExternalApi
+      summary: Disconnect an app
+      description: Removes the app, its endpoints, call history, answers and items. Records made from them stay.
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/{apiId}/endpoints:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApiEndpoints
+      summary: The confirmed endpoints of one of your apps, by name
+      responses:
+        '200':
+          description: The endpoints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ExternalApis]
+      operationId: createExternalApiEndpoint
+      summary: Add an endpoint contor may call
+      description: |
+        Only GET, and POST for read queries (search, GraphQL). The path is relative to the app's base URL. 409 when the
+        app already has an endpoint of that name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewExternalApiEndpointCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/external-apis/{apiId}/endpoints/{endpointId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+      - $ref: '#/components/parameters/ExternalApiEndpointId'
+    patch:
+      tags: [ExternalApis]
+      operationId: updateExternalApiEndpoint
+      summary: Change an endpoint
+      description: |
+        `null` fields stay unchanged; `""` removes `itemsPath`, `itemKeyPath` or `description`. 409 when another
+        endpoint of the app has the new name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExternalApiEndpointCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ExternalApis]
+      operationId: deleteExternalApiEndpoint
+      summary: Remove an endpoint with its call history, answers and items
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/ai/eval/export:
     get:
       tags: [AI]
@@ -2326,6 +2561,20 @@ paths:
           $ref: '#/components/responses/Forbidden'
 components:
   parameters:
+    ExternalApiId:
+      name: apiId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ExternalApiEndpointId:
+      name: endpointId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     ChatConversationId:
       name: conversationId
       in: path
@@ -4445,3 +4694,435 @@ components:
           nullable: true
           maxLength: 120
           description: The new title; `null` = unchanged
+    ApiAuthType:
+      type: string
+      description: |
+        How contor authenticates to an app, and which settings (`ApiAuthConfigDto`) and secret it needs. NONE: nothing.
+        API_KEY_HEADER: `headerName` + the key as secret. API_KEY_QUERY: `queryParam` + the key. BEARER: the token.
+        BASIC: `username` + the password. OAUTH2_CLIENT_CREDENTIALS: `tokenUrl`, `clientId`, optional `scope` + the
+        client secret (the token is fetched and renewed by contor).
+      enum: [NONE, API_KEY_HEADER, API_KEY_QUERY, BEARER, BASIC, OAUTH2_CLIENT_CREDENTIALS]
+    ApiState:
+      type: string
+      description: |
+        ACTIVE: called on its interval. FAILING: the last calls failed; still called, with growing pauses. PAUSED:
+        too many failures; not called until you change the app. NEEDS_SETUP: the credentials were rejected (401/403).
+      enum: [ACTIVE, FAILING, PAUSED, NEEDS_SETUP]
+    EndpointMethod:
+      type: string
+      description: GET, or POST for read queries only (search, GraphQL)
+      enum: [GET, POST]
+    EndpointOrigin:
+      type: string
+      description: Who added the endpoint, you or the documentation (parsed or read by the model)
+      enum: [USER, DOCS, MODEL]
+    ApiAuthConfigDto:
+      type: object
+      description: The non-secret auth settings; which ones are needed depends on the auth kind (`ApiAuthType`)
+      properties:
+        headerName:
+          type: string
+          nullable: true
+          maxLength: 100
+        queryParam:
+          type: string
+          nullable: true
+          maxLength: 100
+        tokenUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+        scope:
+          type: string
+          nullable: true
+          maxLength: 500
+        username:
+          type: string
+          nullable: true
+          maxLength: 500
+        clientId:
+          type: string
+          nullable: true
+          maxLength: 500
+    ApiHeaderDto:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        value:
+          type: string
+          maxLength: 4000
+    ExternalApiDto:
+      type: object
+      required: [id, name, slug, baseUrl, authKind, authConfig, hasSecret, headers, secretHeaderNames, pollIntervalMinutes,
+                 enabled, aiAnalysis, status, failureCount, dailyRequestLimit, endpointCount, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        baseUrl:
+          type: string
+        docsUrl:
+          type: string
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        hasSecret:
+          type: boolean
+          description: A secret (key, token, password, client secret) is stored; its value is never returned
+        headers:
+          type: array
+          description: Plain headers sent with every call
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaderNames:
+          type: array
+          description: Names of the secret headers; their values are never returned
+          items:
+            type: string
+        pollIntervalMinutes:
+          type: integer
+        enabled:
+          type: boolean
+        aiAnalysis:
+          type: boolean
+          description: The assistant may learn from the answers
+        status:
+          $ref: '#/components/schemas/ApiState'
+        lastCalledAt:
+          type: string
+          format: date-time
+        nextCallAt:
+          type: string
+          format: date-time
+        failureCount:
+          type: integer
+        lastError:
+          type: string
+          description: The last failure in words; never a URL or credential
+        dailyRequestLimit:
+          type: integer
+        endpointCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewExternalApiCommand:
+      type: object
+      required: [name, baseUrl]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 1000
+        baseUrl:
+          type: string
+          maxLength: 2000
+          description: HTTPS, no query; endpoint paths are relative to it
+        docsUrl:
+          type: string
+          maxLength: 2000
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 8000
+          description: The key, token, password or client secret; stored encrypted
+        headers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          writeOnly: true
+          maxItems: 20
+          description: Headers whose values are stored encrypted and never returned
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        pollIntervalMinutes:
+          type: integer
+          minimum: 15
+          maximum: 10080
+          description: Default 360 (6 hours)
+        enabled:
+          type: boolean
+          description: Default true
+        aiAnalysis:
+          type: boolean
+          description: Default true
+        dailyRequestLimit:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Default 200
+    UpdateExternalApiCommand:
+      type: object
+      description: '`null` = unchanged'
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: '`""` removes it'
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+        docsUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: '`""` removes it'
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          nullable: true
+          writeOnly: true
+          maxLength: 8000
+          description: '`""` removes the stored secret'
+        headers:
+          type: array
+          nullable: true
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          nullable: true
+          writeOnly: true
+          maxItems: 20
+          description: Replaces all secret headers; `[]` removes them
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        pollIntervalMinutes:
+          type: integer
+          nullable: true
+          minimum: 15
+          maximum: 10080
+        enabled:
+          type: boolean
+          nullable: true
+        aiAnalysis:
+          type: boolean
+          nullable: true
+        dailyRequestLimit:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10000
+    ExternalApiEndpointDto:
+      type: object
+      required: [id, apiId, name, method, path, query, source, enabled, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        apiId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+        query:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+          description: The JSON body of a POST read query
+        itemsPath:
+          type: string
+          description: Where the items are in the answer (`$`, `.name`, `[0]`, `[*]`), e.g. `$.data.orders[*]`
+        itemKeyPath:
+          type: string
+          description: The key that identifies an item across calls, relative to the item, e.g. `$.id`
+        description:
+          type: string
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewExternalApiEndpointCommand:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          maxLength: 1000
+          description: Relative to the base URL, starting with `/`; no query
+        query:
+          type: object
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+          description: POST only
+        itemsPath:
+          type: string
+          maxLength: 200
+        itemKeyPath:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+          description: Default true
+    UpdateExternalApiEndpointCommand:
+      type: object
+      description: '`null` = unchanged'
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 80
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          nullable: true
+          maxLength: 1000
+        query:
+          type: object
+          nullable: true
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          nullable: true
+          additionalProperties: {}
+          description: POST only; `{}` sends an empty object
+        itemsPath:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: '`""` removes it'
+        itemKeyPath:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: '`""` removes it'
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: '`""` removes it'
+        enabled:
+          type: boolean
+          nullable: true
+    TestExternalApiCommand:
+      type: object
+      required: [baseUrl, path]
+      properties:
+        apiId:
+          type: integer
+          format: int64
+          nullable: true
+          description: An app of yours whose stored secret and secret headers fill in the missing ones
+        baseUrl:
+          type: string
+          maxLength: 2000
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 8000
+        headers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          writeOnly: true
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          maxLength: 1000
+        query:
+          type: object
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+    ApiTestResultDto:
+      type: object
+      required: [ok, bodyTruncated, durationMs]
+      properties:
+        ok:
+          type: boolean
+          description: The endpoint answered with a 2xx status
+        status:
+          type: integer
+          description: The HTTP status; missing when no answer came
+        contentType:
+          type: string
+        body:
+          type: string
+          description: The start of the answer (at most 20 000 characters)
+        bodyTruncated:
+          type: boolean
+          description: The answer is longer than `body`
+        durationMs:
+          type: integer
+        error:
+          type: string
+          description: Why the call failed (refused host, network, credentials); never a URL or credential

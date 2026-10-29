@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X4 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X5 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -24,6 +24,14 @@
 >   to map to call outcomes. Timeout (10 s) and size cap (1 MB) are constants until X7 adds `ExternalApiProperties`.
 >   There is no WireMock: the client is tested against a mocked guard, the guard against a fake transport, and the
 >   transport against a local socket.
+> - X5 (where it differs from the API sketch below): the list returns full `ExternalApiDto`s (no separate summary DTO),
+>   with `endpointCount`. Endpoints have no GET by id. `POST /api/external-apis/test` takes the whole unsaved setup
+>   (`TestExternalApiCommand`) plus an optional `apiId` for its stored secret, and answers 200 with `ok`/`error` for
+>   refused or failed calls. API enum names: `ApiAuthType`, `ApiState`, `EndpointMethod`, `EndpointOrigin`. The secret
+>   JSON goes through `externalapi/ApiSecretCodec`, also used by the client. Every update resets the health (ACTIVE,
+>   failure count 0, next call now). The test call runs inside the service's read transaction (house rule: every
+>   public service method is `@Transactional`), so it holds a connection for up to the 10 s timeout. The `/apps` pages
+>   and the icon endpoint are X11, the call history endpoint is X7.
 
 ## Goal
 

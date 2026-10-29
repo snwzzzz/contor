@@ -33,5 +33,11 @@ public enum AuditAction {
     REPORT_GENERATED,
     REPORT_DELETED,
     /** Logged with the conversation id only, never its questions or answers. */
-    CHAT_CONVERSATION_DELETED
+    CHAT_CONVERSATION_DELETED,
+    /** External APIs ("Apps"): logged with name, base URL and auth kind, never a credential. */
+    EXTERNAL_API_CREATED,
+    EXTERNAL_API_UPDATED,
+    /** The stored secret or the secret headers changed (logged without values). */
+    EXTERNAL_API_SECRET_CHANGED,
+    EXTERNAL_API_DELETED
 }

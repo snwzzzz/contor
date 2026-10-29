@@ -1,0 +1,147 @@
+package com.example.contor.mapper;
+
+import com.example.contor.api.model.ApiAuthType;
+import com.example.contor.api.model.ApiHeaderDto;
+import com.example.contor.api.model.ApiState;
+import com.example.contor.api.model.EndpointMethod;
+import com.example.contor.api.model.EndpointOrigin;
+import com.example.contor.api.model.ExternalApiDto;
+import com.example.contor.api.model.ExternalApiEndpointDto;
+import com.example.contor.domain.ApiAuthConfig;
+import com.example.contor.domain.ApiAuthKind;
+import com.example.contor.domain.ApiHeader;
+import com.example.contor.domain.ApiHttpMethod;
+import com.example.contor.domain.ApiPath;
+import com.example.contor.domain.ApiSecret;
+import com.example.contor.domain.ApiStatus;
+import com.example.contor.domain.BaseUrl;
+import com.example.contor.domain.EndpointSource;
+import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.HttpsUrl;
+import com.example.contor.domain.JsonPathExpr;
+import com.example.contor.domain.Slug;
+import org.junit.jupiter.api.DisplayNameGeneration;
+import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.Test;
+
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
+public class ExternalApiMapperTest {
+
+    private static final Instant CREATED = Instant.parse("2026-10-29T09:00:00Z");
+
+    @Test
+    void maps_an_app_without_secret_values() {
+        var api = ExternalApi.builder().id(new ExternalApi.ExternalApiId(7L)).name("Shop").slug(new Slug("shop"))
+                .description("Orders").baseUrl(new BaseUrl("https://api.shop.example/v1"))
+                .docsUrl(new HttpsUrl("https://docs.shop.example")).authKind(ApiAuthKind.API_KEY_HEADER)
+                .authConfig(new ApiAuthConfig("X-Api-Key", null, null, null, null, null))
+                .secret("{\"value\":\"key-123\"}")
+                .headers(List.of(new ApiHeader("Accept", "application/json"))).pollIntervalMinutes(60).enabled(false)
+                .aiAnalysis(false).status(ApiStatus.FAILING).lastCalledAt(CREATED).nextCallAt(CREATED.plusSeconds(3600))
+                .failureCount(2).lastError("Service unavailable (503)").dailyRequestLimit(50)
+                .endpoints(new ArrayList<>(List.of(ExternalApiEndpoint.builder().name("orders").path(new ApiPath("/orders")).build())))
+                .build();
+        api.setCreatedAt(CREATED);
+        api.setLastModified(CREATED);
+
+        ExternalApiDto dto = ExternalApiMapper.toDto(api, new ApiSecret("key-123", List.of(new ApiHeader("X-Shop-Token", "t-1"))));
+
+        assertThat(dto.getId()).isEqualTo(7L);
+        assertThat(dto.getName()).isEqualTo("Shop");
+        assertThat(dto.getSlug()).isEqualTo("shop");
+        assertThat(dto.getDescription()).isEqualTo("Orders");
+        assertThat(dto.getBaseUrl()).isEqualTo("https://api.shop.example/v1");
+        assertThat(dto.getDocsUrl()).isEqualTo("https://docs.shop.example");
+        assertThat(dto.getAuthKind()).isEqualTo(ApiAuthType.API_KEY_HEADER);
+        assertThat(dto.getAuthConfig().getHeaderName()).isEqualTo("X-Api-Key");
+        assertThat(dto.getHasSecret()).isTrue();
+        assertThat(dto.getHeaders()).containsExactly(new ApiHeaderDto("Accept", "application/json"));
+        assertThat(dto.getSecretHeaderNames()).containsExactly("X-Shop-Token");
+        assertThat(dto.getPollIntervalMinutes()).isEqualTo(60);
+        assertThat(dto.getEnabled()).isFalse();
+        assertThat(dto.getAiAnalysis()).isFalse();
+        assertThat(dto.getStatus()).isEqualTo(ApiState.FAILING);
+        assertThat(dto.getLastCalledAt()).isEqualTo(OffsetDateTime.of(2026, 10, 29, 9, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(dto.getNextCallAt()).isEqualTo(OffsetDateTime.of(2026, 10, 29, 10, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(dto.getFailureCount()).isEqualTo(2);
+        assertThat(dto.getLastError()).isEqualTo("Service unavailable (503)");
+        assertThat(dto.getDailyRequestLimit()).isEqualTo(50);
+        assertThat(dto.getEndpointCount()).isEqualTo(1);
+        assertThat(dto.getCreatedAt()).isNotNull();
+        assertThat(dto.toString()).doesNotContain("key-123").doesNotContain("t-1");
+    }
+
+    @Test
+    void an_app_without_secret_has_no_secret_and_no_secret_headers() {
+        var dto = ExternalApiMapper.toDto(api(), ApiSecret.EMPTY);
+
+        assertThat(dto.getHasSecret()).isFalse();
+        assertThat(dto.getSecretHeaderNames()).isEmpty();
+        assertThat(dto.getAuthKind()).isEqualTo(ApiAuthType.NONE);
+        assertThat(dto.getAuthConfig().getHeaderName()).isNull();
+    }
+
+    @Test
+    void handles_null_input_and_null_id() {
+        assertThat(ExternalApiMapper.toDto(null, ApiSecret.EMPTY)).isNull();
+        assertThat(ExternalApiMapper.toDto(api(), ApiSecret.EMPTY).getId()).isNull();
+        assertThat(ExternalApiMapper.toDto(api(), ApiSecret.EMPTY).getDocsUrl()).isNull();
+        assertThat(ExternalApiMapper.toDto((ExternalApiEndpoint) null)).isNull();
+    }
+
+    @Test
+    void maps_an_endpoint() {
+        var api = api();
+        api.setId(new ExternalApi.ExternalApiId(7L));
+        var endpoint = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(3L)).api(api).name("search")
+                .method(ApiHttpMethod.POST).path(new ApiPath("/search")).query(Map.of("limit", "50"))
+                .body(Map.of("query", "{ orders { id } }")).itemsPath(new JsonPathExpr("$.data[*]"))
+                .itemKeyPath(new JsonPathExpr("$.id")).description("Search orders").source(EndpointSource.DOCS).enabled(false)
+                .build();
+        endpoint.setCreatedAt(CREATED);
+
+        ExternalApiEndpointDto dto = ExternalApiMapper.toDto(endpoint);
+
+        assertThat(dto.getId()).isEqualTo(3L);
+        assertThat(dto.getApiId()).isEqualTo(7L);
+        assertThat(dto.getName()).isEqualTo("search");
+        assertThat(dto.getMethod()).isEqualTo(EndpointMethod.POST);
+        assertThat(dto.getPath()).isEqualTo("/search");
+        assertThat(dto.getQuery()).containsEntry("limit", "50");
+        assertThat(dto.getBody()).containsEntry("query", "{ orders { id } }");
+        assertThat(dto.getItemsPath()).isEqualTo("$.data[*]");
+        assertThat(dto.getItemKeyPath()).isEqualTo("$.id");
+        assertThat(dto.getDescription()).isEqualTo("Search orders");
+        assertThat(dto.getSource()).isEqualTo(EndpointOrigin.DOCS);
+        assertThat(dto.getEnabled()).isFalse();
+        assertThat(dto.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    void maps_an_endpoint_without_optional_parts() {
+        var dto = ExternalApiMapper.toDto(ExternalApiEndpoint.builder().name("orders").path(new ApiPath("/orders")).build());
+
+        assertThat(dto.getId()).isNull();
+        assertThat(dto.getApiId()).isNull();
+        assertThat(dto.getMethod()).isEqualTo(EndpointMethod.GET);
+        assertThat(dto.getQuery()).isEmpty();
+        assertThat(dto.getBody()).isNull();
+        assertThat(dto.getItemsPath()).isNull();
+        assertThat(dto.getItemKeyPath()).isNull();
+        assertThat(dto.getSource()).isEqualTo(EndpointOrigin.USER);
+    }
+
+    private static ExternalApi api() {
+        return ExternalApi.builder().name("Shop").slug(new Slug("shop")).baseUrl(new BaseUrl("https://api.shop.example")).build();
+    }
+}
