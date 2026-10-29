@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
@@ -403,5 +404,34 @@ public class ExternalApiRepositoryTest {
     private static ExternalApiItem item(ExternalApiEndpoint endpoint, String key) {
         return ExternalApiItem.builder().endpoint(endpoint).itemKey(key).itemHash("hash-" + key)
                 .data(Map.of("number", key)).firstSeenAt(NOW).lastSeenAt(NOW).build();
+    }
+
+    @Test
+    void the_digest_has_the_owners_recently_new_or_gone_items_of_apps_the_assistant_may_learn_from_newest_first() {
+        var shop = externalApiRepository.save(Fixtures.externalApi(owner, "shop"));
+        var orders = externalApiEndpointRepository.save(Fixtures.endpoint(shop, "orders"));
+        var quiet = Fixtures.externalApi(owner, "quiet");
+        quiet.setAiAnalysis(false);
+        var quietOrders = externalApiEndpointRepository.save(Fixtures.endpoint(externalApiRepository.save(quiet), "orders"));
+        var foreign = externalApiEndpointRepository.save(Fixtures.endpoint(externalApiRepository.save(Fixtures.externalApi(other, "shop")), "orders"));
+        var fresh = item(orders, "new", NOW.minusSeconds(3600), null);
+        var gone = item(orders, "gone", NOW.minusSeconds(86_400 * 30L), NOW.minusSeconds(60));
+        item(orders, "old", NOW.minusSeconds(86_400 * 30L), null);
+        item(quietOrders, "quiet", NOW.minusSeconds(60), null);
+        item(foreign, "foreign", NOW.minusSeconds(60), null);
+
+        var digest = externalApiItemRepository.findDigest(owner.getId(), NOW.minusSeconds(86_400 * 14L), PageRequest.of(0, 10));
+
+        assertThat(digest).extracting(ExternalApiItem::getItemKey).containsExactly("gone", "new");
+        assertThat(digest.getFirst().getEndpoint().getApi().getName()).isEqualTo("shop");
+        assertThat(List.of(fresh.getId(), gone.getId())).doesNotContainNull();
+    }
+
+    private ExternalApiItem item(ExternalApiEndpoint endpoint, String key, Instant firstSeen, Instant goneAt) {
+        var item = Fixtures.apiItem(endpoint, key);
+        item.setFirstSeenAt(firstSeen);
+        item.setLastSeenAt(goneAt != null ? goneAt : firstSeen);
+        item.setGoneAt(goneAt);
+        return externalApiItemRepository.save(item);
     }
 }

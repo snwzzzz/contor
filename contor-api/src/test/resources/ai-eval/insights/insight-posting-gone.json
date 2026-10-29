@@ -1,0 +1,74 @@
+{
+  "id": "insight-posting-gone",
+  "today": "2026-10-12T08:00:00Z",
+  "emails": [
+    {
+      "id": 44,
+      "fromName": "Tech Weekly",
+      "fromAddress": "newsletter@techweekly.com",
+      "subject": "This week in tech",
+      "snippet": "Ten stories you missed.",
+      "receivedAt": "2026-10-11T07:00:00Z",
+      "folder": "inbox"
+    },
+    {
+      "id": 43,
+      "fromName": "Paketdienst",
+      "fromAddress": "noreply@paket.example",
+      "subject": "Ihre Sendung ist unterwegs",
+      "snippet": "Sendung 1Z999 wird morgen zugestellt.",
+      "receivedAt": "2026-10-10T12:00:00Z",
+      "folder": "inbox"
+    },
+    {
+      "id": 41,
+      "fromName": "Kessler Logistik Recruiting",
+      "fromAddress": "jobs@kessler-logistik.de",
+      "subject": "Eingangsbestätigung: Ihre Bewerbung als Backend-Entwickler",
+      "snippet": "Vielen Dank für Ihre Bewerbung. Wir melden uns innerhalb von zwei Wochen bei Ihnen.",
+      "receivedAt": "2026-10-02T09:00:00Z",
+      "folder": "inbox"
+    },
+    {
+      "id": 40,
+      "fromName": "Me",
+      "fromAddress": "me@example.com",
+      "subject": "Bewerbung als Backend-Entwickler (Ref. KL-118)",
+      "snippet": "Sehr geehrte Damen und Herren, anbei meine Unterlagen für die ausgeschriebene Stelle KL-118.",
+      "receivedAt": "2026-10-01T18:00:00Z",
+      "folder": "sent"
+    }
+  ],
+  "apiItems": [
+    {
+      "id": 5,
+      "app": "Jobbörse",
+      "endpoint": "Gespeicherte Stellen",
+      "label": "Backend-Entwickler bei Kessler Logistik (KL-118)",
+      "data": "{\"ref\":\"KL-118\",\"title\":\"Backend-Entwickler\",\"company\":\"Kessler Logistik\",\"city\":\"Hamburg\"}",
+      "at": "2026-10-11T06:00:00Z",
+      "gone": true
+    },
+    {
+      "id": 6,
+      "app": "Jobbörse",
+      "endpoint": "Gespeicherte Stellen",
+      "label": "Data Engineer bei Nordwind (NW-7)",
+      "data": "{\"ref\":\"NW-7\",\"title\":\"Data Engineer\",\"company\":\"Nordwind\",\"city\":\"Bremen\"}",
+      "at": "2026-10-09T06:00:00Z",
+      "gone": false
+    }
+  ],
+  "openTasks": [],
+  "appointments": [],
+  "expected": [
+    [
+      40
+    ]
+  ],
+  "expectedApiItems": [
+    [
+      5
+    ]
+  ]
+}

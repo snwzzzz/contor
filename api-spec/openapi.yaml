@@ -3454,8 +3454,10 @@ components:
         CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
         a proposal the system rejected carries `{"reason"}`.
         INSIGHT `{"insightKey": "unanswered:42", "title": "..", "observation": "..", "whyItMatters": "..",
-        "evidenceEmailIds": [42], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
-        "source": "rule:unanswered-question" | "rule:clash" | "model"}`: something that only shows across several emails.
+        "evidenceEmailIds": [42], "evidenceApiItemIds": [9], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
+        "source": "rule:unanswered-question" | "rule:clash" | "rule:gone-item" | "model"}`: something that only shows across several emails
+        or between your mail and your apps' data (`evidenceApiItemIds`: items of your apps, e.g. a job posting that disappeared;
+        missing in insights before insight-v2).
         Approving creates the follow-ups left in the (edited) payload as records linked to the evidence emails (result
         `{"records": [{"collectionId", "recordId"}]}`); an insight is proposed once per key, also after it was dismissed.
         MAP_API_ENDPOINT `{"mappingId": 40, "endpointId": 30, "collectionId": 4, "title": "Shop · Orders", "titlePath": "$.number", "fields":

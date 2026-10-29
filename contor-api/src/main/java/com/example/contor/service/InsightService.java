@@ -1,6 +1,7 @@
 package com.example.contor.service;
 
 import com.example.contor.ai.AiExecutors;
+import com.example.contor.ai.DigestApiItem;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.EmailTextCleaner;
 import com.example.contor.ai.ImportanceSignals;
@@ -18,8 +19,10 @@ import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.EmailRecipient;
 import com.example.contor.domain.ProposalKind;
+import com.example.contor.exception.ResourceNotFoundException;
 import com.example.contor.persistence.AiAnalysisRunRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.ProposalRepository;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.security.CurrentActor;
@@ -29,6 +32,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -62,6 +66,8 @@ public class InsightService {
     private static final Duration QUESTION_WINDOW = Duration.ofDays(21);
     private static final Duration UPCOMING = Duration.ofDays(30);
     private static final int DIGEST_EMAILS = 200;
+    /** App items in the digest at most (their lines are cut to a budget too). */
+    private static final int DIGEST_APP_ITEMS = 40;
     private static final int RECORD_LINES = 20;
     private static final int BODY_CHARS = 2000;
     private static final String TASKS = "tasks";
@@ -76,6 +82,8 @@ public class InsightService {
     private final AiSettingsService aiSettingsService;
     private final AiAnalysisRunRepository aiAnalysisRunRepository;
     private final InsightModelService insightModelService;
+    private final ExternalApiItemRepository externalApiItemRepository;
+    private final ObjectMapper objectMapper;
     private final AiProperties properties;
     private final AiExecutors aiExecutors;
     private final TransactionTemplate transactions;
@@ -87,7 +95,8 @@ public class InsightService {
     public InsightService(EmailMessageRepository emailMessageRepository, ProposalRepository proposalRepository, ProposalService proposalService,
                           CollectionSchemaService collectionSchemaService, RecordService recordService,
                           RecordSourceRepository recordSourceRepository, AiSettingsService aiSettingsService,
-                          AiAnalysisRunRepository aiAnalysisRunRepository, InsightModelService insightModelService, AiProperties properties,
+                          AiAnalysisRunRepository aiAnalysisRunRepository, InsightModelService insightModelService,
+                          ExternalApiItemRepository externalApiItemRepository, ObjectMapper objectMapper, AiProperties properties,
                           AiExecutors aiExecutors, PlatformTransactionManager transactionManager, Clock clock) {
         this.emailMessageRepository = emailMessageRepository;
         this.proposalRepository = proposalRepository;
@@ -98,6 +107,8 @@ public class InsightService {
         this.aiSettingsService = aiSettingsService;
         this.aiAnalysisRunRepository = aiAnalysisRunRepository;
         this.insightModelService = insightModelService;
+        this.externalApiItemRepository = externalApiItemRepository;
+        this.objectMapper = objectMapper;
         this.properties = properties;
         this.aiExecutors = aiExecutors;
         this.transactions = new TransactionTemplate(transactionManager);
@@ -187,10 +198,12 @@ public class InsightService {
 
         List<Insight> candidates = new ArrayList<>(unansweredQuestions(owner, now));
         candidates.addAll(clashes(collections.get(EVENTS), now));
+        List<AppItem> appItems = appItems(owner, now);
+        candidates.addAll(goneItems(appItems, now));
         try {
             List<DigestEmail> digest = transactions.execute(status ->
                     emailMessageRepository.findDigest(owner, now.minus(DIGEST_WINDOW), PageRequest.of(0, DIGEST_EMAILS)));
-            candidates.addAll(insightModelService.findInsights(digest != null ? digest : List.of(),
+            candidates.addAll(insightModelService.findInsights(digest != null ? digest : List.of(), appItems.stream().map(AppItem::digest).toList(),
                     openTasks(collections.get(TASKS)), upcoming(collections.get(EVENTS), now)));
         } catch (RuntimeException e) {
             log.warn("The insight model pass failed, keeping the rule insights: {}", e.getMessage());
@@ -211,6 +224,51 @@ public class InsightService {
             proposed++;
         }
         return proposed;
+    }
+
+    /** An item of the user's apps in the digest, with the record it became (if any). */
+    private record AppItem(DigestApiItem digest, Long collectionId, Long recordId) {
+    }
+
+    /** The owner's app items that appeared or disappeared in the digest window, labelled by their record's title. */
+    private List<AppItem> appItems(AppUser.AppUserId owner, Instant now) {
+        List<AppItem> raw = transactions.execute(status -> externalApiItemRepository.findDigest(owner, now.minus(DIGEST_WINDOW),
+                PageRequest.of(0, DIGEST_APP_ITEMS)).stream().map(item -> new AppItem(new DigestApiItem(item.getId(),
+                        item.getEndpoint().getApi().getName(), item.getEndpoint().getName(), item.getItemKey(),
+                        objectMapper.writeValueAsString(item.getData()), item.getGoneAt() != null ? item.getGoneAt() : item.getFirstSeenAt(),
+                        item.getGoneAt() != null),
+                item.getCollection() != null ? item.getCollection().getId().id() : null, item.getRecordId())).toList());
+        List<AppItem> items = new ArrayList<>();
+        for (AppItem item : raw != null ? raw : List.<AppItem>of()) {
+            String label = item.digest().label();
+            if (item.recordId() != null) {
+                try {
+                    String title = recordService.getRecord(item.collectionId(), item.recordId()).getTitle();
+                    if (title != null && !title.isBlank()) label = title;
+                } catch (ResourceNotFoundException e) {
+                    // The record was deleted since: the item keeps its key.
+                }
+            }
+            DigestApiItem digest = item.digest();
+            items.add(new AppItem(new DigestApiItem(digest.id(), digest.app(), digest.endpoint(), label, digest.data(), digest.at(), digest.gone()),
+                    item.collectionId(), item.recordId()));
+        }
+        return items;
+    }
+
+    /** Gone items whose record the user has emails about ({@link InsightDetectors#goneItem}). */
+    private List<Insight> goneItems(List<AppItem> items, Instant now) {
+        List<Insight> insights = new ArrayList<>();
+        for (AppItem item : items) {
+            if (!item.digest().gone() || item.recordId() == null) continue;
+            List<Long> emails = transactions.execute(status -> recordSourceRepository
+                    .findByCollection_IdAndRecordId(new Collection.CollectionId(item.collectionId()), item.recordId()).stream()
+                    .filter(source -> source.getEmail() != null).map(source -> source.getEmail().getId().id()).distinct().toList());
+            DigestApiItem digest = item.digest();
+            InsightDetectors.goneItem(new InsightDetectors.GoneItem(digest.id(), digest.app(), digest.endpoint(), digest.label(), digest.at(),
+                    emails != null ? emails : List.of()), now, properties.timezone()).ifPresent(insights::add);
+        }
+        return insights;
     }
 
     /** The proposal; follow-ups into a collection that is missing or the assistant may not fill are left out. */
@@ -234,6 +292,7 @@ public class InsightService {
         payload.put("observation", insight.observation());
         payload.put("whyItMatters", insight.whyItMatters());
         payload.put("evidenceEmailIds", insight.evidenceEmailIds());
+        payload.put("evidenceApiItemIds", insight.evidenceApiItemIds());
         payload.put("followUps", followUps);
         payload.put("source", insight.source());
         return new ProposalDraft(ProposalKind.INSIGHT, payload, insight.confidence(), insight.observation()).withSignals(ImportanceSignals.NONE);

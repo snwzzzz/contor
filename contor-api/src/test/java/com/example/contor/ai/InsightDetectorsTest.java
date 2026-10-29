@@ -62,4 +62,28 @@ class InsightDetectorsTest {
                     "Resolve the clash: Interview at Acme / Dentist", Map.of("due_date", "2026-10-14")));
         });
     }
+
+    private static InsightDetectors.GoneItem gone(List<Long> emails) {
+        return new InsightDetectors.GoneItem(9L, "Jobs", "Saved postings", "Backend developer at Acme", Instant.parse("2026-10-11T18:00:00Z"),
+                emails);
+    }
+
+    @Test
+    void an_app_item_you_have_emails_about_that_disappeared_becomes_a_check() {
+        Insight insight = InsightDetectors.goneItem(gone(List.of(40L, 41L)), NOW, ZONE).orElseThrow();
+
+        assertThat(insight.key()).isEqualTo("gone:9");
+        assertThat(insight.title()).isEqualTo("Backend developer at Acme is no longer in Jobs");
+        assertThat(insight.observation()).contains("Saved postings").contains("Sunday, 11 October").contains("2 emails");
+        assertThat(insight.evidenceEmailIds()).containsExactly(40L, 41L);
+        assertThat(insight.evidenceApiItemIds()).containsExactly(9L);
+        assertThat(insight.followUps()).containsExactly(new Insight.FollowUp("tasks", "Check what happened to Backend developer at Acme",
+                Map.of("due_date", "2026-10-13")));
+        assertThat(insight.source()).isEqualTo("rule:gone-item");
+    }
+
+    @Test
+    void a_disappeared_item_without_emails_about_it_is_no_insight() {
+        assertThat(InsightDetectors.goneItem(gone(List.of()), NOW, ZONE)).isEmpty();
+    }
 }

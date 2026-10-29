@@ -5,12 +5,14 @@ import com.example.contor.api.model.RecordDto;
 import com.example.contor.domain.ActorType;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.RecordSource;
 import com.example.contor.domain.RecordSourceRole;
 import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.service.RecordService;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * INSIGHT: {@code {"insightKey", "title", "observation", "whyItMatters", "evidenceEmailIds": [..], "followUps":
- * [{"collectionId", "title", "values"}], "source"}}. Approving creates the follow-ups that are left in the (possibly
- * edited) payload as AI records, each linked to every evidence email; an insight without follow-ups is just
+ * INSIGHT: {@code {"insightKey", "title", "observation", "whyItMatters", "evidenceEmailIds": [..], "evidenceApiItemIds": [..],
+ * "followUps": [{"collectionId", "title", "values"}], "source"}}. Approving creates the follow-ups that are left in the
+ * (possibly edited) payload as AI records, each linked to every evidence email and app item; an insight without follow-ups is just
  * acknowledged. Result: {@code {"records": [{"collectionId", "recordId"}]}}.
  */
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class InsightApplier implements ProposalApplier {
     private final RecordSourceRepository recordSourceRepository;
     private final CollectionRepository collectionRepository;
     private final EmailMessageRepository emailMessageRepository;
+    private final ExternalApiItemRepository externalApiItemRepository;
 
     @Override
     public ProposalKind kind() {
@@ -52,6 +55,7 @@ public class InsightApplier implements ProposalApplier {
             ProposalPayload.requiredId(followUp, "collectionId");
         }
         List<EmailMessage> evidence = emailMessageRepository.findAllById(ids(payload.get("evidenceEmailIds")));
+        List<ExternalApiItem> appEvidence = externalApiItemRepository.findAllById(numbers(payload.get("evidenceApiItemIds")));
 
         List<Map<String, Object>> created = new ArrayList<>();
         for (Map<String, Object> followUp : followUps) {
@@ -63,6 +67,10 @@ public class InsightApplier implements ProposalApplier {
             for (EmailMessage email : evidence) {
                 recordSourceRepository.saveAndFlush(RecordSource.builder().collection(collection).recordId(record.getId())
                         .email(email).role(RecordSourceRole.CREATED_FROM).build());
+            }
+            for (ExternalApiItem item : appEvidence) {
+                recordSourceRepository.saveAndFlush(RecordSource.builder().collection(collection).recordId(record.getId())
+                        .apiItem(item).role(RecordSourceRole.CREATED_FROM).build());
             }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("collectionId", collectionId);
@@ -84,9 +92,13 @@ public class InsightApplier implements ProposalApplier {
     }
 
     private static List<EmailMessage.EmailMessageId> ids(Object value) {
+        return numbers(value).stream().map(EmailMessage.EmailMessageId::new).toList();
+    }
+
+    private static List<Long> numbers(Object value) {
         if (!(value instanceof List<?> list)) {
             return List.of();
         }
-        return list.stream().filter(Number.class::isInstance).map(id -> new EmailMessage.EmailMessageId(((Number) id).longValue())).toList();
+        return list.stream().filter(Number.class::isInstance).map(id -> ((Number) id).longValue()).toList();
     }
 }

@@ -404,7 +404,15 @@ the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/
   (`ai_settings.external_apis`: Off / Ask me (default) / Automatic, which falls back to a suggestion when a value does
   not fit the collection) and only for apps with *Let the assistant learn from it*. `V1_0_36` adds the item as a source
   of records and proposals (`ck_record_source_origin`: an email or an item, never both).
-- Not yet: insights from app data, the `/apps` pages and chat (X10–X12). Known gap: mapped values go to the record as
+- **Insights from app data** (done): the daily insight pass also reads the items of your apps that appeared or
+  disappeared in the last 14 days (at most 40, of apps the assistant may learn from; labelled by their record's title).
+  They go into the model's digest as `A<n>` lines next to the `#<n>` emails (prompt `insight-v2`; the app-data rules and
+  the `evidenceApiItems` answer field are added only when there is app data, so the mail-only prompt is unchanged), and an
+  insight may rest on emails, app items or both; anything cited that was not in the prompt drops the insight. A new rule
+  (`rule:gone-item`) proposes *"… is no longer in <app>"* with a to-do to check it tomorrow when an item disappears whose
+  record you have emails about (a job posting you applied to). INSIGHT payloads carry `evidenceApiItemIds`, follow-ups
+  are linked to those items too, and the insight card says how many app items it is based on.
+- Not yet: the `/apps` pages and chat (X11–X12). Known gap: mapped values go to the record as
   they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
   rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
 
@@ -547,6 +555,8 @@ cd contor-api && ./mvnw verify -Pai-eval
 ```
 
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiInsightEvalTest` also has `insight-posting-gone` (an application by mail and the job posting gone from a jobs app,
+cases take optional `apiItems` and `expectedApiItems`).
 `AiApiMappingEvalTest` (`ai-eval/api-mapping`) proposes mappings for shop orders, CRM contacts and weather readings
 (nothing fits) against a small catalog and reports the right collections and expected fields (report only, about 15 s).
 `AiApiDocsEvalTest` (`ai-eval/api-docs`) reads three documentation texts with the model (*Read the docs*): a

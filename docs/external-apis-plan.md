@@ -1,7 +1,7 @@
 # External APIs implementation plan (connect any HTTP API, the assistant learns from it)
 
 > Living plan. Each step is done test-first (CLAUDE.md §0), goes through the spec first (§0.3) and updates the README
-> in the same change. **Status:** X1–X9 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
+> in the same change. **Status:** X1–X10 implemented (2026-10-29). The decisions below were confirmed on 2026-10-28.
 >
 > Implementation notes:
 > - X1: ADR 0012 (`docs/decisions/0012-external-apis.md`).
@@ -80,6 +80,15 @@
 >   get neither mappings nor record proposals. Values are copied as they are; converting them by field type (money,
 >   dates) is open. First eval run (qwen3.5:9b): 3 of 3 collections, 4 of 4 expected fields; it mapped a plain number
 >   to a MONEY field, which the record validation will reject.
+> - X10: `ExternalApiItemRepository.findDigest` (new or gone in the 14-day window, apps with `aiAnalysis`, at most 40) feeds
+>   `DigestApiItem` lines (`A<n> day · app · endpoint · new|gone: label json`, 6 000 characters) into
+>   `InsightModelService` (`insight-v2`). Measured against two runs of `insight-v1` (3 of 3 expected, 6 insights each):
+>   a first v2 with the app rules always in the prompt lost the price-change case in both runs (2 of 4), so the app
+>   rules and the `evidenceApiItems` schema field are now added only when the digest has app data; then 4 of 4 in both
+>   runs, 8 insights in total (one of them noise: a new posting restated). Unknown `A` ids drop the insight, like
+>   unknown emails. Model keys are `model:<emails>|A<items>`. The rule `InsightDetectors.goneItem` needs a gone item with
+>   a record that has email sources (no email, no insight); other "item gone that a record refers to" cases are left to
+>   the model. The source email of an insight proposal stays its first evidence email (none for app-only insights).
 
 ## Goal
 
