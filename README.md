@@ -133,8 +133,10 @@ Flyway migrates it on start. The containers restart with Docker.
   of a small relay container: the backend listens on its loopback only (the web server is its trusted proxy there), and
   the relay forwards that loopback's port 11434 to Ollama on the host (`host.docker.internal`), so Ollama stays bound to
   the host's localhost and the backend's localhost-only rule holds. The database is only reachable inside the project.
-- **Mail**: register `http://127.0.0.1:3001/api/mail/accounts/callback` as a redirect URI with Microsoft / Google; the
-  callback goes through the web app's `/api` proxy.
+- **Mail**: register `http://localhost:3001/api/mail/accounts/callback` as a redirect URI with Microsoft / Google (Azure
+  takes `http` only for `localhost`) and fill the client IDs and secrets in `.env.prod`. The callback goes through the
+  web app's `/api` proxy and needs no session cookie (the signed OAuth state carries the user), so `localhost` works
+  there; it then forwards to `APP_WEB_URL`, the `127.0.0.1` address with your session.
 - **Ollama is shared** with dev: while you use the production instance, `AI_PROCESSING_ENABLED=false` in the dev `.env`
   keeps dev's background analysis off the GPU.
 - Restore a backup into the running instance (replaces its data):
