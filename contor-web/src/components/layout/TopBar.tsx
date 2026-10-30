@@ -1,21 +1,43 @@
+import Link from "next/link";
+import { AppsMenu } from "@/components/app/apps/AppsMenu";
 import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { HOME_HREF } from "@/lib/navigation";
 import { CommandPalette } from "./CommandPalette";
-import { GlobalSearch } from "./GlobalSearch";
+import { LoadingBar } from "./LoadingBar";
 import { ProcessingIndicator } from "./ProcessingIndicator";
+import { NavDrawer } from "./NavDrawer";
+import { ChatLink } from "./TopBarButtons";
 import { UserMenu } from "./UserMenu";
 
+/** Compact full-width bar (3rem, white, hairline below) on every signed-in page: menu, launcher, logo, the search bar (command palette), chat and account (settings open from the search bar or the account menu). */
 export function TopBar() {
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur">
-      <SidebarTrigger aria-label="Toggle sidebar" />
-      <Separator orientation="vertical" className="h-5" />
-      <GlobalSearch />
-      <div className="ml-auto flex items-center gap-3">
+    <header className="sticky top-0 z-20 flex h-(--header-height) w-full shrink-0 items-center gap-1 border-b bg-background px-2 sm:px-3">
+      <NavDrawer />
+      <AppsMenu />
+      <Link href={HOME_HREF} aria-label="contor home" className="ml-1 flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span
+          className="flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground text-xs font-semibold text-background"
+          aria-hidden="true"
+        >
+          c
+        </span>
+        <span className="hidden text-sm font-medium tracking-tight sm:inline">contor</span>
+      </Link>
+      {/* The one search: the command palette's bar (pages, collections, actions, mail). */}
+      <div className="flex flex-1 justify-center px-3">
         <CommandPalette />
-        <ProcessingIndicator />
+      </div>
+      <div className="flex items-center gap-1">
+        {/* Hidden on phones to make room. */}
+        <div className="hidden items-center gap-1 md:flex">
+          <ProcessingIndicator />
+          <Separator orientation="vertical" className="mx-1 h-4" />
+        </div>
+        <ChatLink />
         <UserMenu />
       </div>
+      <LoadingBar />
     </header>
   );
 }

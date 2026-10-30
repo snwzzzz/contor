@@ -1,9 +1,12 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/api-mock";
+import { navigationState, resetNavigation } from "@/test/next-navigation";
 import { renderWithProviders } from "@/test/render";
 import { RecordDetail } from "./RecordDetail";
+
+vi.mock("next/navigation", () => import("@/test/next-navigation"));
 
 function field(id: number, slug: string, name: string, type: string) {
   return { id, slug, name, type, options: {}, required: false, uniqueValue: false, position: id };
@@ -42,23 +45,178 @@ function api(contactPhotos: unknown[], logos: string[]) {
 }
 
 describe("RecordDetail", () => {
-  it("shows the record with a banner, its picture and every field", async () => {
+  beforeEach(() => resetNavigation("/collections/1/records/5"));
+
+  it("shows the record as a profile without a banner: breadcrumbs, the picture next to title | collection, and every field", async () => {
     api([{ id: 9, emailAddress: "anna.berger@acme.com" }], ["acme.com"]);
 
     renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Anna Berger" })).toBeInTheDocument();
-    expect(screen.getByTestId("record-banner")).toBeInTheDocument();
+    expect(screen.queryByTestId("record-banner")).not.toBeInTheDocument();
     const picture = await screen.findByRole("img", { name: "Anna Berger" });
+    expect(picture).toHaveAttribute("width", "64");
+    const header = screen.getByRole("heading", { level: 1, name: "Anna Berger" }).closest("header") as HTMLElement;
+    expect(within(header).getByText("People")).toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "Table view" })).toHaveAttribute("href", "/collections/1");
+    // A rounded square, not a circle.
+    expect(picture).toHaveClass("rounded-lg");
     expect(picture.getAttribute("src")).toContain("/api/senders/contact-photos/9");
-    expect(screen.getByRole("link", { name: /People/ })).toHaveAttribute("href", "/collections/1");
+    const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "People" })).toHaveAttribute("href", "/collections/1");
+    expect(within(trail).getByText("Anna Berger")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/collections/1");
 
-    const details = screen.getByRole("list", { name: "Fields" });
-    expect(within(details).getByText("Phone")).toBeInTheDocument();
-    expect(within(details).getByRole("link", { name: "Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
-    expect(within(details).getByRole("link", { name: "+49 89 1234567" })).toHaveAttribute("href", "tel:+49891234567");
-    expect(within(details).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
-    expect(within(details).getByText("Notes").nextElementSibling).toHaveTextContent("–");
+    // Every field is an input with its current value, in a row of label and value.
+    const details = screen.getByRole("form", { name: "Details" });
+    expect(within(details).getByText(/^by the assistant on/)).toBeInTheDocument();
+    expect(within(details).getByRole("textbox", { name: "Title" })).toHaveValue("Anna Berger");
+    expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
+    expect(within(details).getByRole("textbox", { name: "Phone" })).toHaveValue("+49 89 1234567");
+    expect(within(details).getByRole("textbox", { name: "Notes" })).toHaveValue("");
+    expect(within(details).getByRole("link", { name: "Send email to Anna.Berger@acme.com" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
+    // Nothing to save until something changes.
+    expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("shows the profile: the website or email under the title, and quick actions for what the record has", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const profile = (await screen.findByTestId("record-profile")) as HTMLElement;
+    expect(within(profile).getByText("Anna Berger")).toHaveClass("text-lg", "font-semibold");
+    expect(within(profile).getByRole("link", { name: "acme.com" })).toHaveAttribute("href", "https://acme.com");
+    const actions = within(profile).getByRole("group", { name: "Quick actions" });
+    expect(within(actions).getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:Anna.Berger@acme.com");
+    expect(within(actions).getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+49891234567");
+    expect(within(actions).getByRole("button", { name: "Ask" })).toBeInTheDocument();
+    expect(screen.getByTestId("record-initial")).toHaveClass("rounded-lg");
+  });
+
+  it("asks about the record from the quick actions: the Reports tab", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": { body: [] },
+    });
+    const onTabChange = vi.fn();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" onTabChange={onTabChange} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ask" }));
+
+    expect(onTabChange).toHaveBeenCalledWith("reports");
+    expect(screen.getByRole("tab", { name: /Reports/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("lists the details as rows: an icon and the name on the left, the value to edit on the right", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const details = await screen.findByRole("form", { name: "Details" });
+    const rows = details.querySelectorAll("[data-slot=property-row]");
+    // Title, the five fields and who added it.
+    expect(rows).toHaveLength(7);
+    // The list takes the whole width of the sidebar or page.
+    expect(rows[0].parentElement?.className).not.toMatch(/max-w-/);
+    const email = within(details).getByRole("textbox", { name: "Email" });
+    const row = email.closest("[data-slot=property-row]") as HTMLElement;
+    // Room for names like "Customer number".
+    expect(row).toHaveClass("grid-cols-[10rem_minmax(0,1fr)]");
+    expect(within(row).getByText("Email").parentElement?.querySelector("svg")).not.toBeNull();
+    // The value looks like text until it is hovered or focused.
+    expect(email).toHaveAttribute("data-variant", "ghost");
+    expect(email).toHaveClass("border-transparent");
+    // An empty value says so (and is still clickable); long text grows instead of having a resize handle.
+    const notes = within(details).getByRole("textbox", { name: "Notes" });
+    expect(notes).toHaveAttribute("placeholder", "Empty");
+    expect(notes).toHaveClass("resize-none");
+  });
+
+  it("has a sidebar version: the same summary and tabs, without breadcrumbs, page title or page commands", async () => {
+    api([], []);
+
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" />);
+
+    const details = await screen.findByRole("form", { name: "Details" });
+    expect(within(details).getByRole("textbox", { name: "Email" })).toHaveValue("Anna.Berger@acme.com");
+    expect(screen.getByRole("tablist", { name: "Record sections" })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Emails", "Reports", "Connections"]);
+    // The sidebar's own bar names the collection.
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+    expect(screen.getByTestId("record-initial")).toHaveStyle({ width: "48px" });
+    // The tabs carry their icons here too.
+    for (const tab of screen.getAllByRole("tab")) expect(tab.querySelector("svg")).not.toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Table view" })).not.toBeInTheDocument();
+  });
+
+  it("leads through the calendar for an event, not through the collection table", async () => {
+    const events = { ...people, id: 3, slug: "events", name: "Calendar", matchKeys: [], fields: [field(1, "starts_at", "Starts", "DATETIME")] };
+    mockApi({
+      "GET /api/collections/3": { body: events },
+      "GET /api/collections/3/records/12": { body: { ...anna, id: 12, collectionId: 3, title: "Leitungsrunde", values: {} } },
+      "GET /api/senders/contact-photos": { body: [] },
+    });
+
+    renderWithProviders(<RecordDetail collectionId={3} recordId={12} />);
+
+    const trail = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getAllByRole("link").map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["Home", "/"],
+      ["Calendar", "/calendar"],
+    ]);
+    expect(screen.getByRole("link", { name: "Close" })).toHaveAttribute("href", "/calendar");
+  });
+
+  it("saves only the changed fields of the details and can discard edits", async () => {
+    const calls = mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "PUT /api/collections/1/records/5": { body: { ...anna, values: { ...anna.values, phone: "+49 30 999" } } },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+    const details = await screen.findByRole("form", { name: "Details" });
+
+    await user.clear(within(details).getByRole("textbox", { name: "Notes" }));
+    await user.type(within(details).getByRole("textbox", { name: "Notes" }), "Call back");
+    await user.click(within(details).getByRole("button", { name: "Discard" }));
+    expect(within(details).getByRole("textbox", { name: "Notes" })).toHaveValue("");
+
+    const phone = within(details).getByRole("textbox", { name: "Phone" });
+    await user.clear(phone);
+    await user.type(phone, "+49 30 999");
+    expect(within(details).getByText("1 change")).toBeInTheDocument();
+    await user.click(within(details).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ values: { phone: "+49 30 999" } }));
+    await waitFor(() => expect(within(details).queryByRole("button", { name: "Save" })).not.toBeInTheDocument());
+  });
+
+  it("shows why saving failed", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "PUT /api/collections/1/records/5": { status: 400, body: { message: "email: not a valid email address", status: 400 } },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+    const details = await screen.findByRole("form", { name: "Details" });
+
+    await user.type(within(details).getByRole("textbox", { name: "Email" }), "x");
+    await user.click(within(details).getByRole("button", { name: "Save" }));
+
+    expect(await within(details).findByRole("alert")).toHaveTextContent("email: not a valid email address");
   });
 
   it("falls back to the logo of the email domain", async () => {
@@ -83,6 +241,54 @@ describe("RecordDetail", () => {
     await screen.findByRole("heading", { level: 1, name: "Anna Berger" });
     expect(screen.queryByRole("img", { name: "Anna Berger" })).not.toBeInTheDocument();
     expect(screen.getByTestId("record-initial")).toHaveTextContent("A");
+  });
+
+  it("has a Reports tab with its count: the question with the input and the report list; the details tab only shows the fields", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": {
+        body: [{ id: 5, title: "Overview", state: "READY", claimsTotal: 1, claimsVerified: 1, followUpCount: 0, createdAt: "2026-10-14T10:00:00Z" }],
+      },
+    });
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const tabs = await screen.findByRole("tablist", { name: "Record sections" });
+    const reportsTab = within(tabs).getByRole("tab", { name: /Reports/ });
+    await waitFor(() => expect(reportsTab).toHaveTextContent("1"));
+    expect(screen.queryByRole("textbox", { name: "Ask about this record" })).not.toBeInTheDocument();
+
+    await userEvent.click(reportsTab);
+
+    const panel = screen.getByRole("tabpanel", { name: /Reports/ });
+    expect(within(panel).getByRole("heading", { name: "What do you want to know about Anna Berger?" })).toBeInTheDocument();
+    // On the Reports tab the record page is exactly as high as the screen: a column whose panel takes the rest.
+    expect(panel.closest("article")).toHaveClass("lg:flex", "lg:flex-1", "lg:min-h-0", "lg:flex-col");
+    expect(panel).toHaveClass("lg:min-h-0", "lg:flex-1");
+    // The list's divider starts right at the tabs' hairline: no gap above it (the columns pad themselves).
+    expect(panel).toHaveClass("lg:pt-0");
+    const list = within(panel).getByRole("complementary", { name: "Report list" });
+    expect(await within(list).findByRole("button", { name: /Overview/ })).toBeInTheDocument();
+  });
+
+  it("fills the sidebar's height on the Reports tab, so the list's divider runs to the bottom", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/ai/status": { body: { reachable: true, ready: true, models: [] } },
+      "GET /api/collections/1/records/5/reports": { body: [] },
+    });
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} variant="sheet" tab="reports" />);
+
+    const panel = await screen.findByRole("tabpanel", { name: /Reports/ });
+    expect(panel.closest("article")).toHaveClass("flex", "min-h-full", "flex-col");
+    expect(panel).toHaveClass("flex", "flex-1", "flex-col", "pb-0");
+    expect(within(panel).getByRole("region", { name: "Reports" })).toHaveClass("flex-1");
   });
 
   it("opens on the details tab and switches to the emails the record comes up in", async () => {
@@ -117,6 +323,53 @@ describe("RecordDetail", () => {
     const panel = screen.getByRole("tabpanel", { name: /Emails/ });
     await userEvent.click(await within(panel).findByRole("button", { name: /Interview invitation/ }));
     expect(await within(panel).findByText("We would like to invite you to an interview.")).toBeInTheDocument();
+  });
+
+  it("never scrolls the tab bar vertically: the active underline stays inside it", async () => {
+    api([], []);
+    renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    const tabs = await screen.findByRole("tablist", { name: "Record sections" });
+    expect(tabs).toHaveClass("overflow-y-hidden");
+    for (const tab of within(tabs).getAllByRole("tab")) expect(tab).not.toHaveClass("-mb-px");
+    // A click leaves no box around the tab; keyboard focus still shows a ring.
+    for (const tab of within(tabs).getAllByRole("tab")) expect(tab).toHaveClass("outline-none", "focus-visible:ring-2");
+  });
+
+  it("keeps the emails in the page: the page scrolls, the reading pane stays in view and rows never clip", async () => {
+    mockApi({
+      "GET /api/collections/1": { body: people },
+      "GET /api/collections/1/records/5": { body: anna },
+      "GET /api/senders/contact-photos": { body: [] },
+      "GET /api/senders/logos": { body: [] },
+      "GET /api/collections/1/records/5/emails": {
+        body: {
+          items: [{ id: 31, accountId: 1, fromAddress: "anna.berger@acme.com", fromName: "Anna Berger",
+            subject: "RE: STATUS CMR-BL-260718 / UNLOADING SLOT FOR THE TRUCK AT THE BORDER", snippet: "Dear sir",
+            receivedAt: "2026-10-06T08:00:00Z", read: false, hasAttachments: false, processingState: "DONE", labels: [], threadSize: 3, answered: true }],
+          page: 0, size: 50, totalElements: 1, totalPages: 1,
+        },
+      },
+    });
+    const { container } = renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
+
+    await userEvent.click(await screen.findByRole("tab", { name: /Emails/ }));
+
+    const panel = screen.getByRole("tabpanel", { name: /Emails/ });
+    const row = await within(panel).findByRole("button", { name: /UNLOADING SLOT/ });
+    // No fixed-height panes: the list grows with the page, which scrolls.
+    expect(container.querySelector("article")).not.toHaveClass("lg:flex-1");
+    expect(within(panel).getByTestId("email-list")).not.toHaveClass("overflow-y-auto");
+    expect(within(panel).getByRole("region", { name: "Email details" })).toHaveClass("lg:sticky");
+    // A long subject truncates instead of pushing the date and marks out of the row.
+    expect(row.querySelector(".grid")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+    expect(within(panel).getByText("1 email")).toBeInTheDocument();
+
+    // An open email takes only the height it needs (no empty pane), long conversations stop at the screen height.
+    await userEvent.click(row);
+    const pane = within(panel).getByRole("region", { name: "Email details" });
+    expect(pane.className).toMatch(/lg:max-h-\[/);
+    expect(pane.className).not.toMatch(/lg:h-\[/);
   });
 
   it("filters the record's emails", async () => {
@@ -198,7 +451,7 @@ describe("RecordDetail", () => {
 
     const pager = within(panel).getByRole("navigation", { name: "Pages" });
     expect(pager).toHaveTextContent("Page 1 of 2 · 60 emails");
-    expect(within(panel).getByTestId("email-list-scroll")).toContainElement(pager);
+    expect(within(panel).getByTestId("email-list")).toContainElement(pager);
     expect(mail.compareDocumentPosition(pager) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     await userEvent.click(within(pager).getByRole("button", { name: /Next/ }));
@@ -258,11 +511,17 @@ describe("RecordDetail", () => {
       "GET /api/collections/2/records/8": { body: { ...anna, id: 8, collectionId: 2, title: "Acme GmbH", values: {} } },
     });
 
+    navigationState.pathname = "/collections/1/records/5";
+    navigationState.search = "tab=connections";
     renderWithProviders(<RecordDetail collectionId={1} recordId={5} />);
 
     await userEvent.click(await screen.findByRole("tab", { name: /Connections/ }));
     const panel = screen.getByRole("tabpanel", { name: /Connections/ });
-    expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute("href", "/collections/2/records/8");
+    // Opens in the detail sidebar over the current page, which keeps its own tab.
+    expect(await within(panel).findByRole("link", { name: /Acme GmbH/ })).toHaveAttribute(
+      "href",
+      "/collections/1/records/5?tab=connections&record=2-8",
+    );
     expect(within(panel).getByText("works at")).toBeInTheDocument();
     expect(within(panel).getByText("Organizations")).toBeInTheDocument();
     expect(within(panel).getByLabelText("Added by the assistant")).toBeInTheDocument();

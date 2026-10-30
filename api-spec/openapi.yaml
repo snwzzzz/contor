@@ -48,6 +48,12 @@ tags:
     description: Local Ollama assistant - model status, permissions (setup wizard) and inbox analysis runs
   - name: ReplyDrafts
     description: Reply drafts the assistant wrote for inbox emails. Nothing is ever sent or written to the mailbox.
+  - name: Reports
+    description: AI reports on a record and the connections picked for it, or over a whole collection with figures the app computes; sentences cite their sources
+  - name: Chat
+    description: Conversations with the local model about everything in contor; answers link to the records, people and emails they are about and cite their sources
+  - name: ExternalApis
+    description: Apps you connect (any HTTP API, read-only) so the assistant can learn from them; private to you, credentials are write-only
 paths:
   /api/system/version:
     get:
@@ -564,6 +570,206 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/collections/{collectionId}/records/{recordId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Reports]
+      operationId: listRecordReports
+      summary: The reports started on this record, newest first (follow-up questions are inside each report)
+      responses:
+        '200':
+          description: Report summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReportSummaryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Reports]
+      operationId: createReport
+      summary: Ask the assistant for a report on this record (in the background, on the AI thread)
+      description: |
+        The report covers the record and the connected records in `connectedRecords` (each must be reachable through
+        relations within `depth` steps; at most 25 records in all) and, with mail access, the emails linked to them.
+        The local model answers the request first and gives each sentence the sources it comes from, where there are
+        any (opinions and advice may have none); related emails from the rest of the mailbox and their records are
+        included for questions about other cases. Nothing is verified or removed. Poll
+        `GET /api/reports/{reportId}` until `state` is READY or FAILED. 400 for a scope that is not connected, 409 when
+        the AI model is not ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReportCommand'
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/collections/{collectionId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/CollectionId'
+    get:
+      tags: [Reports]
+      operationId: listCollectionReports
+      summary: The reports asked about this whole collection, newest first (follow-up questions are inside each report)
+      responses:
+        '200':
+          description: Report summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReportSummaryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Reports]
+      operationId: createCollectionReport
+      summary: Ask the assistant for a report over the records of this collection (in the background, on the AI thread)
+      description: |
+        For questions about many records ("top 5 customers by sales", "which suppliers caused the most complaints").
+        The local model first picks up to three analyses (group the records of any collection by a field or a relation
+        type, count them or add up a number or money field); the app computes them over all matching records and the
+        model writes the document from these figures, an overview of this collection and as many of its records as fit.
+        Figure tables in the report are inserted by the app, and every row cites the records it was computed from.
+        `filters` and `search` narrow this collection's records like `GET /records` (the table's current view). Poll
+        `GET /api/reports/{reportId}` until `state` is READY or FAILED. 400 for an invalid filter, 409 when the AI model
+        is not ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCollectionReportCommand'
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reports/{reportId}:
+    parameters:
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      tags: [Reports]
+      operationId: getReport
+      summary: One report with its sections, sources, removed sentences and follow-up answers
+      responses:
+        '200':
+          description: The report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Reports]
+      operationId: deleteReport
+      summary: Delete a report with its follow-up answers
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/reports/{reportId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/ReportId'
+    post:
+      tags: [Reports]
+      operationId: askReportQuestion
+      summary: Ask a follow-up question about a report (answered like a report, with the same scope and fact check)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReportQuestionCommand'
+      responses:
+        '202':
+          description: Queued; the answer is a report with `parentReportId` set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/reports/{reportId}/regenerate:
+    parameters:
+      - $ref: '#/components/parameters/ReportId'
+    post:
+      tags: [Reports]
+      operationId: regenerateReport
+      summary: Generate the report again with the same request and scope (a new report; the old one stays)
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/labels:
     get:
       tags: [Labels]
@@ -1211,11 +1417,30 @@ paths:
                   $ref: '#/components/schemas/MailAccountDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/mail/providers:
+    get:
+      tags: [Mail]
+      operationId: listMailProviders
+      summary: The mail providers a mailbox can be connected from, and whether this server is configured for each
+      responses:
+        '200':
+          description: Connectable mail providers (never the demo mailbox)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MailProviderDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/mail/accounts/connect:
     post:
       tags: [Mail]
       operationId: connectMailAccount
-      summary: Initiate OAuth2 connection for Microsoft Graph. Returns the authorization URL. OWNER only.
+      summary: Initiate the OAuth2 sign-in (with PKCE) of a mail provider. Returns the authorization URL. OWNER only.
+      description: |
+        `provider` picks the mail provider (default MICROSOFT_GRAPH). 400 when the provider is DEMO or not configured
+        on this server (see GET /api/mail/providers).
       requestBody:
         required: false
         content:
@@ -1229,6 +1454,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MailAuthorizeUrlDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1237,10 +1464,11 @@ paths:
     get:
       tags: [Mail]
       operationId: mailAccountCallback
-      summary: OAuth2 callback from Microsoft Entra ID. Exchanges authorization code for tokens and forwards to the web app.
+      summary: OAuth2 callback of every mail provider (Microsoft Entra ID, Google). Exchanges the authorization code for tokens and forwards to the web app.
       description: |
+        One redirect URI for all providers: the encrypted `state` names the provider and carries the PKCE verifier.
         Always answers with a small HTML page that forwards the browser (meta refresh) to `APP_WEB_URL/settings/accounts?connected=true`.
-        Not a 302: the browser arrives from Microsoft, so a redirect chain stays cross-site and the SameSite=Strict
+        Not a 302: the browser arrives from the provider, so a redirect chain stays cross-site and the SameSite=Strict
         session cookie would not be sent; a forward started by this localhost page is same-site.
         Failures (sign-in cancelled, expired state, token exchange) forward to `/settings/accounts?mailError=<message>`.
       security: []
@@ -1272,6 +1500,36 @@ paths:
             text/html:
               schema:
                 type: string
+  /api/mail/accounts/{accountId}:
+    parameters:
+      - $ref: '#/components/parameters/MailAccountId'
+    patch:
+      tags: [Mail]
+      operationId: updateMailAccount
+      summary: >-
+        Change how contor uses one of your mailboxes (partial update): whether the AI reads it and whether its mail is
+        shown in the app. OWNER only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMailAccountCommand'
+      responses:
+        '200':
+          description: Updated mailbox
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailAccountDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/mail/accounts/{accountId}/photo:
     parameters:
       - $ref: '#/components/parameters/MailAccountId'
@@ -1487,6 +1745,12 @@ paths:
             false: only emails not answered yet; omitted: all. Ignored for the SENT folder.
           schema:
             type: boolean
+        - name: read
+          in: query
+          required: false
+          description: "true: only emails the user has read; false: only unread ones (totalElements is the unread count); omitted: all"
+          schema:
+            type: boolean
         - name: folder
           in: query
           required: false
@@ -1560,6 +1824,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmailThreadDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/emails/{emailId}/paragraphs:
+    parameters:
+      - name: emailId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [Mail]
+      operationId: getEmailParagraphs
+      summary: The paragraphs of an email that report citations point at
+      description: |
+        The text body (or the HTML body as text) without quoted history, reply headers and signature, split into
+        paragraphs: blank lines separate them, list items are paragraphs of their own, a short greeting joins the next
+        paragraph, very long ones are split at a sentence end. A citation addresses a paragraph by `index` and keeps its
+        `hash`, so it is still found when the splitting rules change.
+      responses:
+        '200':
+          description: The paragraphs in order (empty when the email has no text)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmailParagraphDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1838,6 +2132,517 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/chat/conversations:
+    get:
+      tags: [Chat]
+      operationId: listChatConversations
+      summary: Your chat conversations, most recently active first
+      responses:
+        '200':
+          description: The conversations (without messages)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatConversationSummaryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Chat]
+      operationId: createChatConversation
+      summary: Start a conversation with a first question; the answer is written in the background
+      description: |
+        Creates the conversation (titled after the question), the question and a PENDING answer. Poll
+        `GET /api/chat/conversations/{conversationId}` until the answer is DONE or FAILED. 409 when the AI model is not
+        ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatMessageCommand'
+      responses:
+        '201':
+          description: Created, with the pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/chat/conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+    get:
+      tags: [Chat]
+      operationId: getChatConversation
+      summary: One of your conversations with its questions and answers
+      responses:
+        '200':
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Chat]
+      operationId: updateChatConversation
+      summary: Rename a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChatConversationCommand'
+      responses:
+        '200':
+          description: The conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Chat]
+      operationId: deleteChatConversation
+      summary: Delete a conversation with its messages
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/chat/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+    post:
+      tags: [Chat]
+      operationId: askChatQuestion
+      summary: Ask the next question of a conversation; the answer is written in the background
+      description: 409 while the conversation's last answer is still being written, or when the AI model is not ready.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatMessageCommand'
+      responses:
+        '202':
+          description: Queued; the conversation with the question and its pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/chat/conversations/{conversationId}/messages/{messageId}/retry:
+    parameters:
+      - $ref: '#/components/parameters/ChatConversationId'
+      - $ref: '#/components/parameters/ChatMessageId'
+    post:
+      tags: [Chat]
+      operationId: retryChatMessage
+      summary: Write a FAILED answer again (only the conversation's last message)
+      responses:
+        '202':
+          description: Queued; the conversation with the pending answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatConversationDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/external-apis:
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApis
+      summary: Your connected apps (external APIs) by name
+      responses:
+        '200':
+          description: The apps; credentials are never returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ExternalApis]
+      operationId: createExternalApi
+      summary: Connect an app
+      description: |
+        The app is private to you. Its slug is derived from the name (unique among your apps). The first call is due
+        right away when the app is enabled and has endpoints. 400 when the URLs, headers or auth settings are invalid or
+        the auth kind's settings or secret are missing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewExternalApiCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/external-apis/test:
+    post:
+      tags: [ExternalApis]
+      operationId: testExternalApi
+      summary: Call an endpoint once with settings that are not saved yet
+      description: |
+        Sends one request with the given settings and returns the start of the answer; nothing is stored. With
+        `apiId`, a missing `secret` or `secretHeaders` falls back to that app's stored ones (editing without retyping
+        them). The call goes through the same guard as polls: HTTPS on port 443, public hosts only. A refused or failed
+        call is a 200 with `ok: false` and `error`; invalid settings are a 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestExternalApiCommand'
+      responses:
+        '200':
+          description: What the endpoint answered, or why the call failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTestResultDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/discovery:
+    post:
+      tags: [ExternalApis]
+      operationId: startApiDiscovery
+      summary: Read an app's documentation and suggest endpoints ("Read the docs")
+      description: |
+        Fetches `docsUrl` (public HTTPS only). An OpenAPI 3 or Swagger 2 document (JSON or YAML) is read in code and the
+        answer is done at once; other documentation is read by the AI model in the background (state RUNNING, poll
+        `GET …/discovery/{discoveryId}`). Suggestions are GET endpoints below `baseUrl`, at most 30; nothing is saved.
+        With `apiId`, endpoints that app already has are left out. A refused or failed fetch, or a model that is not
+        ready, is a FAILED discovery with `error`, not an error response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewApiDiscoveryCommand'
+      responses:
+        '202':
+          description: Started (or already done for an OpenAPI document)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDiscoveryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/discovery/{discoveryId}:
+    parameters:
+      - name: discoveryId
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 64
+    get:
+      tags: [ExternalApis]
+      operationId: getApiDiscovery
+      summary: A discovery you started, while it runs and for an hour after
+      responses:
+        '200':
+          description: The discovery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDiscoveryDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/{apiId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: getExternalApi
+      summary: One of your apps
+      responses:
+        '200':
+          description: The app
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ExternalApis]
+      operationId: updateExternalApi
+      summary: Change an app
+      description: |
+        `null` fields stay unchanged. `secret: ""` removes the stored secret; `secretHeaders` replaces all secret
+        headers (`[]` removes them). Any change clears the failure state (status ACTIVE, failure count 0) and, when the
+        app is enabled, makes the next call due right away.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExternalApiCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ExternalApis]
+      operationId: deleteExternalApi
+      summary: Disconnect an app
+      description: Removes the app, its endpoints, call history, answers and items. Records made from them stay.
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/{apiId}/endpoints:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApiEndpoints
+      summary: The confirmed endpoints of one of your apps, by name
+      responses:
+        '200':
+          description: The endpoints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ExternalApis]
+      operationId: createExternalApiEndpoint
+      summary: Add an endpoint contor may call
+      description: |
+        Only GET, and POST for read queries (search, GraphQL). The path is relative to the app's base URL. 409 when the
+        app already has an endpoint of that name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewExternalApiEndpointCommand'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/external-apis/{apiId}/endpoints/{endpointId}/data:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+      - $ref: '#/components/parameters/ExternalApiEndpointId'
+    get:
+      tags: [ExternalApis]
+      operationId: getExternalApiEndpointData
+      summary: What the endpoint answered last and the items read from its answers
+      description: |
+        The last stored answer (cut at 20 000 characters) and the items that are in it now, newest first (at most 100),
+        with how many there are and how many disappeared. Items are read with the endpoint's items path and key.
+      responses:
+        '200':
+          description: The endpoint's data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDataDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/external-apis/{apiId}/endpoints/{endpointId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+      - $ref: '#/components/parameters/ExternalApiEndpointId'
+    patch:
+      tags: [ExternalApis]
+      operationId: updateExternalApiEndpoint
+      summary: Change an endpoint
+      description: |
+        `null` fields stay unchanged; `""` removes `itemsPath`, `itemKeyPath` or `description`. 409 when another
+        endpoint of the app has the new name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExternalApiEndpointCommand'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ExternalApis]
+      operationId: deleteExternalApiEndpoint
+      summary: Remove an endpoint with its call history, answers and items
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/external-apis/{apiId}/calls:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+    get:
+      tags: [ExternalApis]
+      operationId: listExternalApiCalls
+      summary: The app's last 50 calls across its endpoints, newest first (kept for 30 days)
+      responses:
+        '200':
+          description: The calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalApiCallDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ExternalApis]
+      operationId: callExternalApiNow
+      summary: Call the app with the next poll, without waiting for its interval
+      description: |
+        The app is called within the next minute, through the same checks and the same daily request limit. A paused
+        app or one that needs setup is set to ACTIVE first. 409 when the app is turned off.
+      responses:
+        '202':
+          description: Queued; the app with its next call due now
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /api/ai/eval/export:
     get:
       tags: [AI]
@@ -1876,6 +2681,41 @@ paths:
           $ref: '#/components/responses/Forbidden'
 components:
   parameters:
+    ExternalApiId:
+      name: apiId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ExternalApiEndpointId:
+      name: endpointId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ChatConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ChatMessageId:
+      name: messageId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     AnalysisRunId:
       name: runId
       in: path
@@ -2636,12 +3476,20 @@ components:
         CREATE_COLLECTION: `{"collectionId"}`, CREATE_RELATION: `{"relationId", "created"}`, DRAFT_REPLY: `{"replyDraftId"}`);
         a proposal the system rejected carries `{"reason"}`.
         INSIGHT `{"insightKey": "unanswered:42", "title": "..", "observation": "..", "whyItMatters": "..",
-        "evidenceEmailIds": [42], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
-        "source": "rule:unanswered-question" | "rule:clash" | "model"}`: something that only shows across several emails.
+        "evidenceEmailIds": [42], "evidenceApiItemIds": [9], "followUps": [{"collectionId": 4, "title": "..", "values": {"due_date": "2026-10-13"}}],
+        "source": "rule:unanswered-question" | "rule:clash" | "rule:gone-item" | "model"}`: something that only shows across several emails
+        or between your mail and your apps' data (`evidenceApiItemIds`: items of your apps, e.g. a job posting that disappeared;
+        missing in insights before insight-v2).
         Approving creates the follow-ups left in the (edited) payload as records linked to the evidence emails (result
         `{"records": [{"collectionId", "recordId"}]}`); an insight is proposed once per key, also after it was dismissed.
+        MAP_API_ENDPOINT `{"mappingId": 40, "endpointId": 30, "collectionId": 4, "title": "Shop · Orders", "titlePath": "$.number", "fields":
+        [{"fieldSlug": "total", "path": "$.total"}]}`: how the items of one of your apps' endpoints become records of a
+        collection (paths in the external API JSON path subset, relative to an item). Approving (edits allowed: another
+        collection, other fields) makes the mapping active and switches the endpoint's previous one off; then each item
+        without a record becomes a CREATE_RECORD proposal, and later changes of an item an UPDATE_RECORD, following the
+        `externalApis` setting (result `{"mappingId", "endpointId"}`). Record proposals from an app carry no source email.
         Other kinds are stored but cannot be applied yet.
-      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT]
+      enum: [CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL, INSIGHT, MAP_API_ENDPOINT]
     ProposalState:
       type: string
       enum: [PENDING, APPROVED, EDITED_AND_APPROVED, REJECTED, AUTO_APPLIED, UNDONE, FAILED]
@@ -2689,6 +3537,8 @@ components:
         sourceEmailId:
           type: integer
           format: int64
+        sourceApp:
+          $ref: '#/components/schemas/ProposalAppSourceDto'
         confidence:
           type: number
         reasoning:
@@ -2806,8 +3656,22 @@ components:
           type: boolean
     MailProviderKind:
       type: string
-      description: MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; DEMO = the dev-only fictional demo mailbox (never synced).
-      enum: [MICROSOFT_GRAPH, DEMO]
+      description: >
+        MICROSOFT_GRAPH = an Outlook mailbox synced via Microsoft Graph; GMAIL = a Gmail mailbox synced via the Gmail API;
+        DEMO = the dev-only fictional demo mailbox (never synced).
+      enum: [MICROSOFT_GRAPH, GMAIL, DEMO]
+    MailProviderDto:
+      type: object
+      required: [kind, displayName, configured]
+      properties:
+        kind:
+          $ref: '#/components/schemas/MailProviderKind'
+        displayName:
+          type: string
+          description: Short product name for the connect button ("Outlook", "Gmail").
+        configured:
+          type: boolean
+          description: The server has the provider's OAuth client id and secret; false = connecting is not possible.
     MailAccountState:
       type: string
       enum: [ACTIVE, NEEDS_REAUTH, DISABLED]
@@ -2847,7 +3711,7 @@ components:
           format: int64
     MailAccountDto:
       type: object
-      required: [id, provider, emailAddress, status]
+      required: [id, provider, emailAddress, status, aiEnabled, hidden]
       properties:
         id:
           type: integer
@@ -2867,6 +3731,24 @@ components:
           type: boolean
           default: false
           description: The mailbox has a profile photo, served by GET /api/mail/accounts/{accountId}/photo.
+        aiEnabled:
+          type: boolean
+          default: true
+          description: The AI reads this mailbox (the analysis and new mail). Off = its mail is never given to the model.
+        hidden:
+          type: boolean
+          default: false
+          description: >-
+            Its mail is not shown anywhere in the app (inbox, home, record emails). Whether the AI still reads it is the
+            user's choice (AiSettingsDto.readHiddenMailboxes).
+    UpdateMailAccountCommand:
+      type: object
+      description: Partial update; null = unchanged.
+      properties:
+        aiEnabled:
+          type: boolean
+        hidden:
+          type: boolean
     DevLoginDto:
       type: object
       required: [username]
@@ -2886,6 +3768,8 @@ components:
     ConnectMailAccountCommand:
       type: object
       properties:
+        provider:
+          $ref: '#/components/schemas/MailProviderKind'
         emailHint:
           type: string
     MailAuthorizeUrlDto:
@@ -3017,6 +3901,386 @@ components:
           $ref: '#/components/schemas/ProposalDto'
         replySuggestion:
           $ref: '#/components/schemas/ReplySuggestionState'
+    EmailParagraphDto:
+      type: object
+      required: [index, text, hash]
+      properties:
+        index:
+          type: integer
+          format: int32
+          description: Position in the email, from 0
+        text:
+          type: string
+        hash:
+          type: string
+          description: 16 hex characters of the paragraph's normalized text (case, whitespace, typographic quotes ignored)
+    RecordRefDto:
+      type: object
+      description: A record of any collection (record ids are unique per collection only)
+      required: [collectionId, recordId]
+      properties:
+        collectionId:
+          type: integer
+          format: int64
+        recordId:
+          type: integer
+          format: int64
+    NewReportCommand:
+      type: object
+      properties:
+        prompt:
+          type: string
+          maxLength: 500
+          description: What the report should answer; empty = a summary of what happened, went well, went wrong and is open
+        connectedRecords:
+          type: array
+          description: Connected records to include besides this one (see `depth`)
+          items:
+            $ref: '#/components/schemas/RecordRefDto'
+        depth:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2
+          description: How many relation steps away the connected records may be (default 1)
+    NewCollectionReportCommand:
+      type: object
+      properties:
+        prompt:
+          type: string
+          maxLength: 500
+          description: What the report should answer; empty = an overview of the collection
+        filters:
+          type: array
+          maxItems: 20
+          description: '`field:op:value` filters on this collection, as in `GET /records` (the table''s current filters)'
+          items:
+            type: string
+        search:
+          type: string
+          maxLength: 200
+          description: Search in the title and text fields, as `q` in `GET /records`
+    NewReportQuestionCommand:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ReportState:
+      type: string
+      description: |
+        QUEUED, then COLLECTING (sources; for a collection report also picking and computing the figures), DRAFTING
+        (model), and READY or FAILED. FACT_CHECKING is no longer used.
+      enum: [QUEUED, COLLECTING, DRAFTING, FACT_CHECKING, READY, FAILED]
+    ReportSectionType:
+      type: string
+      description: |
+        SUMMARY the answer before the first heading (titled Answer, or Summary without a request) - CUSTOM a section
+        under a heading the assistant chose - TIMELINE the record's dated sources. FINDINGS, OPEN_QUESTIONS and
+        NEXT_STEPS only appear in reports made before reports were written as documents.
+      enum: [SUMMARY, FINDINGS, TIMELINE, OPEN_QUESTIONS, NEXT_STEPS, CUSTOM]
+    ReportBlockType:
+      type: string
+      description: |
+        PARAGRAPH (items are its sentences) - BULLETS - NUMBERED (items are the list items) - QUOTE (one item, the
+        quoted text) - TABLE (`columns` and `rows`)
+      enum: [PARAGRAPH, BULLETS, NUMBERED, QUOTE, TABLE]
+    ReportBlockDto:
+      type: object
+      description: A paragraph, list, quote or table of a section, in reading order
+      required: [id, type, columns, items, rows]
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: '#/components/schemas/ReportBlockType'
+        columns:
+          type: array
+          description: TABLE - the header; empty when the table has none
+          items:
+            type: string
+        items:
+          type: array
+          description: Sentences or list items with their markers (not TABLE)
+          items:
+            $ref: '#/components/schemas/ReportClaimDto'
+        rows:
+          type: array
+          description: TABLE - the rows, each a list of cells with their markers
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/ReportClaimDto'
+    FindingLevel:
+      type: string
+      description: POSITIVE went well - NEUTRAL - PROBLEM went wrong - RISK may still go wrong - CONFLICT the sources disagree
+      enum: [POSITIVE, NEUTRAL, PROBLEM, RISK, CONFLICT]
+    ClaimCheck:
+      type: string
+      description: |
+        SUPPORTED for every sentence of a current report (its sources, if any, are its markers). PARTIAL, REPAIRED,
+        REMOVED and CONFLICT only appear in reports made before references replaced the fact check.
+      enum: [SUPPORTED, PARTIAL, REPAIRED, REMOVED, CONFLICT]
+    CitationKind:
+      type: string
+      description: APP_ITEM (chat answers only) - an item of one of your apps (external APIs) that is no record
+      enum: [RECORD, FIELD, EMAIL_PARAGRAPH, RELATION, APP_ITEM]
+    SourceState:
+      type: string
+      description: |
+        CURRENT - CHANGED (the field's value differs from when the report was made) - DELETED (the record or email is
+        gone) - UNAVAILABLE (an email of another user's mailbox; its text is not shown)
+      enum: [CURRENT, CHANGED, DELETED, UNAVAILABLE]
+    ReportSourceDto:
+      type: object
+      description: A cited source; `marker` is the [n] shown in the text
+      required: [marker, kind, label, sourceState]
+      properties:
+        marker:
+          type: integer
+          format: int32
+        kind:
+          $ref: '#/components/schemas/CitationKind'
+        label:
+          type: string
+          description: Short name for the source list (field name, email subject, relation...)
+        collectionId:
+          type: integer
+          format: int64
+        recordId:
+          type: integer
+          format: int64
+        recordTitle:
+          type: string
+        fieldSlug:
+          type: string
+        fieldName:
+          type: string
+        value:
+          description: FIELD - the value when the report was made
+        emailId:
+          type: integer
+          format: int64
+        emailSubject:
+          type: string
+        emailFrom:
+          type: string
+        emailDate:
+          type: string
+          format: date-time
+        paragraphIndex:
+          type: integer
+          format: int32
+          description: EMAIL_PARAGRAPH - index into `GET /api/emails/{emailId}/paragraphs`
+        quote:
+          type: string
+          description: EMAIL_PARAGRAPH - the cited text (verbatim); APP_ITEM - the item's data as cited
+        relationId:
+          type: integer
+          format: int64
+        apiId:
+          type: integer
+          format: int64
+          description: APP_ITEM - the app, while the item still exists (link `/apps/{apiId}`)
+        apiItemId:
+          type: integer
+          format: int64
+          description: APP_ITEM - the item, while it still exists; `quote` keeps its data as cited
+        sourceState:
+          $ref: '#/components/schemas/SourceState'
+    ReportQuoteDto:
+      type: object
+      required: [marker, text]
+      properties:
+        marker:
+          type: integer
+          format: int32
+        text:
+          type: string
+    ReportClaimDto:
+      type: object
+      required: [id, text, check, markers]
+      properties:
+        id:
+          type: integer
+          format: int64
+        text:
+          type: string
+        check:
+          $ref: '#/components/schemas/ClaimCheck'
+        note:
+          type: string
+          description: Why the fact check judged it so (repaired and removed sentences)
+        markers:
+          type: array
+          description: The sources it cites, as markers into `sources`
+          items:
+            type: integer
+            format: int32
+    ReportFindingDto:
+      type: object
+      required: [id, title, level, claims, quotes]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/FindingLevel'
+        eventDate:
+          type: string
+          format: date-time
+          description: Timeline entries
+        claims:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportClaimDto'
+        quotes:
+          type: array
+          description: Supporting quotes from emails
+          items:
+            $ref: '#/components/schemas/ReportQuoteDto'
+    ReportSectionDto:
+      type: object
+      required: [id, type, title, claims, findings, blocks]
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          $ref: '#/components/schemas/ReportSectionType'
+        title:
+          type: string
+        claims:
+          type: array
+          description: Sentences outside findings and blocks (reports made before reports were written as documents)
+          items:
+            $ref: '#/components/schemas/ReportClaimDto'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportFindingDto'
+        blocks:
+          type: array
+          description: The section's paragraphs, lists, quotes and tables (empty in reports made before)
+          items:
+            $ref: '#/components/schemas/ReportBlockDto'
+    ReportDto:
+      type: object
+      required: [id, collectionId, state, records, filters, sections, sources, removedClaims, followUps, claimsTotal,
+                 claimsVerified, claimsRemoved, emailCount, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        collectionId:
+          type: integer
+          format: int64
+        recordId:
+          type: integer
+          format: int64
+          description: The record the report is about; missing for a report over the whole collection
+        parentReportId:
+          type: integer
+          format: int64
+        prompt:
+          type: string
+        title:
+          type: string
+        state:
+          $ref: '#/components/schemas/ReportState'
+        failureReason:
+          type: string
+        records:
+          type: array
+          description: The records the report covers, the anchor first
+          items:
+            $ref: '#/components/schemas/RecordRefDto'
+        filters:
+          type: array
+          description: Collection reports - the filters on the collection's records when the report was asked
+          items:
+            type: string
+        search:
+          type: string
+          description: Collection reports - the search when the report was asked
+        emailCount:
+          type: integer
+          format: int32
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSectionDto'
+        sources:
+          type: array
+          description: Every cited source once, by marker
+          items:
+            $ref: '#/components/schemas/ReportSourceDto'
+        removedClaims:
+          type: array
+          description: Sentences the fact check removed, with the reason
+          items:
+            $ref: '#/components/schemas/ReportClaimDto'
+        followUps:
+          type: array
+          description: Answers to follow-up questions, oldest first
+          items:
+            $ref: '#/components/schemas/ReportDto'
+        claimsTotal:
+          type: integer
+          format: int32
+        claimsVerified:
+          type: integer
+          format: int32
+          description: Sentences, list items and table rows with at least one source
+        claimsRemoved:
+          type: integer
+          format: int32
+        model:
+          type: string
+        promptVersion:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    ReportSummaryDto:
+      type: object
+      required: [id, state, claimsTotal, claimsVerified, followUpCount, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        prompt:
+          type: string
+        state:
+          $ref: '#/components/schemas/ReportState'
+        summary:
+          type: string
+          description: The first sentence of the executive summary
+        claimsTotal:
+          type: integer
+          format: int32
+        claimsVerified:
+          type: integer
+          format: int32
+        followUpCount:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        generatedAt:
+          type: string
+          format: date-time
     ReplyDraftState:
       type: string
       description: READY = kept and shown in the thread (never sent) · DISCARDED = thrown away.
@@ -3223,7 +4487,7 @@ components:
       enum: ['OFF', SUGGEST, AUTO]
     AiSettingsDto:
       type: object
-      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies]
+      required: [mailAccess, historyDays, categories, records, calendar, tasks, replies, externalApis, courtesyReplies, readHiddenMailboxes]
       properties:
         mailAccess:
           type: boolean
@@ -3242,6 +4506,8 @@ components:
           $ref: '#/components/schemas/AiAccess'
         replies:
           $ref: '#/components/schemas/AiAccess'
+        externalApis:
+          $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
           type: boolean
           description: Also suggest optional polite replies to emails that need no answer (a job rejection, a thank-you); only with replies = SUGGEST
@@ -3249,6 +4515,10 @@ components:
           type: string
           nullable: true
           description: Who the user is in their own words (role, company, what it buys and sells); tells the AI whose side an email is on
+        readHiddenMailboxes:
+          type: boolean
+          default: true
+          description: The AI also reads mailboxes whose mail is hidden in the app (MailAccountDto.hidden), as long as their aiEnabled is on
         onboardedAt:
           type: string
           format: date-time
@@ -3274,7 +4544,11 @@ components:
           $ref: '#/components/schemas/AiAccess'
         replies:
           $ref: '#/components/schemas/AiAccess'
+        externalApis:
+          $ref: '#/components/schemas/AiAccess'
         courtesyReplies:
+          type: boolean
+        readHiddenMailboxes:
           type: boolean
         ownerProfile:
           type: string
@@ -3428,3 +4702,765 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChatMessageRole:
+      type: string
+      description: USER = your question · ASSISTANT = the answer
+      enum: [USER, ASSISTANT]
+    ChatMessageStatus:
+      type: string
+      description: |
+        PENDING (queued) - RETRIEVING (looking up records and emails) - WRITING (the model writes the answer) - DONE -
+        FAILED (`error` says why; retry with `POST .../messages/{messageId}/retry`). Questions are always DONE.
+      enum: [PENDING, RETRIEVING, WRITING, DONE, FAILED]
+    ChatMentionType:
+      type: string
+      description: RECORD = a record of any collection (people and organizations included) · EMAIL = an email
+      enum: [RECORD, EMAIL]
+    ChatMentionDto:
+      type: object
+      description: A record or email an answer is about, shown as a link (`/collections/{collectionId}/records/{recordId}`, `/inbox?email={emailId}`)
+      required: [type, label]
+      properties:
+        type:
+          $ref: '#/components/schemas/ChatMentionType'
+        collectionId:
+          type: integer
+          format: int64
+          description: RECORD only
+        recordId:
+          type: integer
+          format: int64
+          description: RECORD only
+        emailId:
+          type: integer
+          format: int64
+          description: EMAIL only
+        label:
+          type: string
+          description: The record's title or the email's subject
+        collectionName:
+          type: string
+          description: RECORD only
+    ChatMessageDto:
+      type: object
+      required: [id, role, status, blocks, sources, mentions, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        role:
+          $ref: '#/components/schemas/ChatMessageRole'
+        status:
+          $ref: '#/components/schemas/ChatMessageStatus'
+        text:
+          type: string
+          description: The question, or the answer as plain text (empty while the answer is written)
+        blocks:
+          type: array
+          description: ASSISTANT - the answer's paragraphs, lists, quotes and tables; block and item ids are positions within the message
+          items:
+            $ref: '#/components/schemas/ReportBlockDto'
+        sources:
+          type: array
+          description: ASSISTANT - the cited sources, once per marker
+          items:
+            $ref: '#/components/schemas/ReportSourceDto'
+        mentions:
+          type: array
+          description: ASSISTANT - the records and emails the answer is about
+          items:
+            $ref: '#/components/schemas/ChatMentionDto'
+        error:
+          type: string
+          description: FAILED - why, in words for the user
+        createdAt:
+          type: string
+          format: date-time
+    ChatConversationDto:
+      type: object
+      required: [id, title, messages, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        messages:
+          type: array
+          description: Questions and answers in order
+          items:
+            $ref: '#/components/schemas/ChatMessageDto'
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    ChatConversationSummaryDto:
+      type: object
+      required: [id, title, answering, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        answering:
+          type: boolean
+          description: An answer is still being written
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewChatMessageCommand:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: The question
+        recordRefs:
+          type: array
+          maxItems: 10
+          description: Records the question is about (picked with @); the answer uses them besides what it looks up
+          items:
+            $ref: '#/components/schemas/RecordRefDto'
+    UpdateChatConversationCommand:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: The new title; `null` = unchanged
+    ApiAuthType:
+      type: string
+      description: |
+        How contor authenticates to an app, and which settings (`ApiAuthConfigDto`) and secret it needs. NONE: nothing.
+        API_KEY_HEADER: `headerName` + the key as secret. API_KEY_QUERY: `queryParam` + the key. BEARER: the token.
+        BASIC: `username` + the password. OAUTH2_CLIENT_CREDENTIALS: `tokenUrl`, `clientId`, optional `scope` + the
+        client secret (the token is fetched and renewed by contor).
+      enum: [NONE, API_KEY_HEADER, API_KEY_QUERY, BEARER, BASIC, OAUTH2_CLIENT_CREDENTIALS]
+    ApiState:
+      type: string
+      description: |
+        ACTIVE: called on its interval. FAILING: the last calls failed; still called, with growing pauses. PAUSED:
+        too many failures; not called until you change the app. NEEDS_SETUP: the credentials were rejected (401/403).
+      enum: [ACTIVE, FAILING, PAUSED, NEEDS_SETUP]
+    EndpointMethod:
+      type: string
+      description: GET, or POST for read queries only (search, GraphQL)
+      enum: [GET, POST]
+    ApiMappingStatus:
+      type: string
+      description: "PROPOSED: waiting for your approval (a Connect app data proposal). ACTIVE: items become records. OFF: replaced or switched off."
+      enum: [PROPOSED, ACTIVE, OFF]
+    EndpointMappingDto:
+      type: object
+      description: How the endpoint's items become records; the active mapping, else the proposed one, else the last one switched off
+      required: [id, collectionId, state, fieldCount]
+      properties:
+        id:
+          type: integer
+          format: int64
+        collectionId:
+          type: integer
+          format: int64
+        state:
+          $ref: '#/components/schemas/ApiMappingStatus'
+        fieldCount:
+          type: integer
+          description: Fields filled from the items (the title not counted)
+    ProposalAppSourceDto:
+      type: object
+      description: The app (external API) item a proposal was made from, instead of an email
+      required: [apiId, apiName, endpointName]
+      properties:
+        apiId:
+          type: integer
+          format: int64
+        apiName:
+          type: string
+        endpointName:
+          type: string
+    EndpointOrigin:
+      type: string
+      description: Who added the endpoint, you or the documentation (parsed or read by the model)
+      enum: [USER, DOCS, MODEL]
+    ApiCallResult:
+      type: string
+      description: "OK: a new answer. UNCHANGED: the same answer as last time. FAILED: no usable answer (see `error`)."
+      enum: [OK, UNCHANGED, FAILED]
+    ExternalApiCallDto:
+      type: object
+      description: One call of an endpoint
+      required: [id, endpointId, endpointName, startedAt, durationMs, outcome, itemsNew, itemsChanged, itemsGone]
+      properties:
+        id:
+          type: integer
+          format: int64
+        endpointId:
+          type: integer
+          format: int64
+        endpointName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+        httpStatus:
+          type: integer
+          description: Missing when no answer came (refused, timeout, network)
+        outcome:
+          $ref: '#/components/schemas/ApiCallResult'
+        error:
+          type: string
+          description: What went wrong or why no items were read; never a URL or credential
+        itemsNew:
+          type: integer
+        itemsChanged:
+          type: integer
+        itemsGone:
+          type: integer
+    DiscoveryState:
+      type: string
+      description: "RUNNING: the AI model is reading the docs. DONE: `endpoints` are the suggestions. FAILED: see `error`."
+      enum: [RUNNING, DONE, FAILED]
+    NewApiDiscoveryCommand:
+      type: object
+      required: [docsUrl, baseUrl]
+      properties:
+        docsUrl:
+          type: string
+          maxLength: 2000
+        baseUrl:
+          type: string
+          maxLength: 2000
+          description: Suggested paths are relative to it
+        apiId:
+          type: integer
+          format: int64
+          nullable: true
+          description: An app of yours; its existing endpoints are not suggested again
+    ApiDiscoveryDto:
+      type: object
+      required: [id, state, endpoints, startedAt]
+      properties:
+        id:
+          type: string
+        state:
+          $ref: '#/components/schemas/DiscoveryState'
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredEndpointDto'
+        error:
+          type: string
+          description: Why nothing was found; never a credential
+        startedAt:
+          type: string
+          format: date-time
+    DiscoveredEndpointDto:
+      type: object
+      description: A suggested endpoint; add it with `POST /api/external-apis/{apiId}/endpoints` once confirmed
+      required: [name, method, path, query, source]
+      properties:
+        name:
+          type: string
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+        query:
+          type: object
+          additionalProperties:
+            type: string
+        itemsPath:
+          type: string
+        itemKeyPath:
+          type: string
+        description:
+          type: string
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
+    ExternalApiAnswerDto:
+      type: object
+      description: An endpoint's answer as stored
+      required: [fetchedAt, body, truncated]
+      properties:
+        fetchedAt:
+          type: string
+          format: date-time
+        contentType:
+          type: string
+        body:
+          type: string
+          description: At most 20 000 characters
+        truncated:
+          type: boolean
+          description: The answer is longer than `body` (cut at the size cap or here)
+    ExternalApiItemDto:
+      type: object
+      description: An item read from an endpoint's answers
+      required: [id, key, data, firstSeenAt, lastSeenAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        key:
+          type: string
+        data:
+          type: object
+          additionalProperties: {}
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        goneAt:
+          type: string
+          format: date-time
+        collectionId:
+          type: integer
+          format: int64
+          description: With `recordId`, the record the item became
+        recordId:
+          type: integer
+          format: int64
+    ExternalApiEndpointDataDto:
+      type: object
+      required: [items, itemCount, goneCount]
+      properties:
+        answer:
+          $ref: '#/components/schemas/ExternalApiAnswerDto'
+        items:
+          type: array
+          description: The items in the answer now, newest first, at most 100
+          items:
+            $ref: '#/components/schemas/ExternalApiItemDto'
+        itemCount:
+          type: integer
+          description: Items in the answer now
+        goneCount:
+          type: integer
+          description: Items that were in earlier answers and disappeared
+    ApiAuthConfigDto:
+      type: object
+      description: The non-secret auth settings; which ones are needed depends on the auth kind (`ApiAuthType`)
+      properties:
+        headerName:
+          type: string
+          nullable: true
+          maxLength: 100
+        queryParam:
+          type: string
+          nullable: true
+          maxLength: 100
+        tokenUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+        scope:
+          type: string
+          nullable: true
+          maxLength: 500
+        username:
+          type: string
+          nullable: true
+          maxLength: 500
+        clientId:
+          type: string
+          nullable: true
+          maxLength: 500
+    ApiHeaderDto:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        value:
+          type: string
+          maxLength: 4000
+    ExternalApiDto:
+      type: object
+      required: [id, name, slug, baseUrl, authKind, authConfig, hasSecret, headers, secretHeaderNames, pollIntervalMinutes,
+                 enabled, aiAnalysis, status, failureCount, dailyRequestLimit, endpointCount, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        baseUrl:
+          type: string
+        docsUrl:
+          type: string
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        hasSecret:
+          type: boolean
+          description: A secret (key, token, password, client secret) is stored; its value is never returned
+        headers:
+          type: array
+          description: Plain headers sent with every call
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaderNames:
+          type: array
+          description: Names of the secret headers; their values are never returned
+          items:
+            type: string
+        pollIntervalMinutes:
+          type: integer
+        enabled:
+          type: boolean
+        aiAnalysis:
+          type: boolean
+          description: The assistant may learn from the answers
+        status:
+          $ref: '#/components/schemas/ApiState'
+        lastCalledAt:
+          type: string
+          format: date-time
+        nextCallAt:
+          type: string
+          format: date-time
+        failureCount:
+          type: integer
+        lastError:
+          type: string
+          description: The last failure in words; never a URL or credential
+        dailyRequestLimit:
+          type: integer
+        endpointCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewExternalApiCommand:
+      type: object
+      required: [name, baseUrl]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 1000
+        baseUrl:
+          type: string
+          maxLength: 2000
+          description: HTTPS, no query; endpoint paths are relative to it
+        docsUrl:
+          type: string
+          maxLength: 2000
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 8000
+          description: The key, token, password or client secret; stored encrypted
+        headers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          writeOnly: true
+          maxItems: 20
+          description: Headers whose values are stored encrypted and never returned
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        pollIntervalMinutes:
+          type: integer
+          minimum: 15
+          maximum: 10080
+          description: Default 360 (6 hours)
+        enabled:
+          type: boolean
+          description: Default true
+        aiAnalysis:
+          type: boolean
+          description: Default true
+        dailyRequestLimit:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Default 200
+    UpdateExternalApiCommand:
+      type: object
+      description: '`null` = unchanged'
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: '`""` removes it'
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+        docsUrl:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: '`""` removes it'
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          nullable: true
+          writeOnly: true
+          maxLength: 8000
+          description: '`""` removes the stored secret'
+        headers:
+          type: array
+          nullable: true
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          nullable: true
+          writeOnly: true
+          maxItems: 20
+          description: Replaces all secret headers; `[]` removes them
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        pollIntervalMinutes:
+          type: integer
+          nullable: true
+          minimum: 15
+          maximum: 10080
+        enabled:
+          type: boolean
+          nullable: true
+        aiAnalysis:
+          type: boolean
+          nullable: true
+        dailyRequestLimit:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10000
+    ExternalApiEndpointDto:
+      type: object
+      required: [id, apiId, name, method, path, query, source, enabled, createdAt]
+      properties:
+        mapping:
+          $ref: '#/components/schemas/EndpointMappingDto'
+        id:
+          type: integer
+          format: int64
+        apiId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+        query:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+          description: The JSON body of a POST read query
+        itemsPath:
+          type: string
+          description: Where the items are in the answer (`$`, `.name`, `[0]`, `[*]`), e.g. `$.data.orders[*]`
+        itemKeyPath:
+          type: string
+          description: The key that identifies an item across calls, relative to the item, e.g. `$.id`
+        description:
+          type: string
+        source:
+          $ref: '#/components/schemas/EndpointOrigin'
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+    NewExternalApiEndpointCommand:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          maxLength: 1000
+          description: Relative to the base URL, starting with `/`; no query
+        query:
+          type: object
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+          description: POST only
+        itemsPath:
+          type: string
+          maxLength: 200
+        itemKeyPath:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        enabled:
+          type: boolean
+          description: Default true
+    UpdateExternalApiEndpointCommand:
+      type: object
+      description: '`null` = unchanged'
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 80
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          nullable: true
+          maxLength: 1000
+        query:
+          type: object
+          nullable: true
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          nullable: true
+          additionalProperties: {}
+          description: POST only; `{}` sends an empty object
+        itemsPath:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: '`""` removes it'
+        itemKeyPath:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: '`""` removes it'
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: '`""` removes it'
+        enabled:
+          type: boolean
+          nullable: true
+    TestExternalApiCommand:
+      type: object
+      required: [baseUrl, path]
+      properties:
+        apiId:
+          type: integer
+          format: int64
+          nullable: true
+          description: An app of yours whose stored secret and secret headers fill in the missing ones
+        baseUrl:
+          type: string
+          maxLength: 2000
+        authKind:
+          $ref: '#/components/schemas/ApiAuthType'
+        authConfig:
+          $ref: '#/components/schemas/ApiAuthConfigDto'
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 8000
+        headers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        secretHeaders:
+          type: array
+          writeOnly: true
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ApiHeaderDto'
+        method:
+          $ref: '#/components/schemas/EndpointMethod'
+        path:
+          type: string
+          maxLength: 1000
+        query:
+          type: object
+          maxProperties: 30
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties: {}
+    ApiTestResultDto:
+      type: object
+      required: [ok, bodyTruncated, durationMs]
+      properties:
+        ok:
+          type: boolean
+          description: The endpoint answered with a 2xx status
+        status:
+          type: integer
+          description: The HTTP status; missing when no answer came
+        contentType:
+          type: string
+        body:
+          type: string
+          description: The start of the answer (at most 20 000 characters)
+        bodyTruncated:
+          type: boolean
+          description: The answer is longer than `body`
+        durationMs:
+          type: integer
+        error:
+          type: string
+          description: Why the call failed (refused host, network, credentials); never a URL or credential

@@ -22,7 +22,9 @@ public class AiMapper {
                 .calendar(toAccess(settings.getCalendar()))
                 .tasks(toAccess(settings.getTasks()))
                 .replies(toAccess(settings.getReplies()))
+                .externalApis(toAccess(settings.getExternalApis()))
                 .courtesyReplies(settings.isCourtesyReplies())
+                .readHiddenMailboxes(settings.isReadHiddenMailboxes())
                 .ownerProfile(settings.getOwnerProfile())
                 .onboardedAt(MapperSupport.toOffset(settings.getOnboardedAt()));
     }

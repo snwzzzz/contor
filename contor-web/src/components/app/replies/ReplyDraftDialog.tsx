@@ -4,9 +4,10 @@ import { X } from "lucide-react";
 import { useId, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { FIELD, FIELD_FOCUS_WITHIN, Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { placeholdersIn, recipientLabel, type ReplyRecipient, type ReplyText } from "@/lib/reply-draft";
+import { cn } from "@/lib/utils";
 
 interface ReplyDraftDialogProps {
   open: boolean;
@@ -134,7 +135,7 @@ function RecipientField({ label, recipients, onChange }: RecipientFieldProps) {
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border px-2 py-1.5">
+      <div className={cn("flex flex-wrap items-center gap-1.5 px-2 py-1", FIELD, FIELD_FOCUS_WITHIN)}>
         {recipients.map((recipient) => (
           <span key={recipient.address} className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
             {recipientLabel(recipient)}
@@ -148,9 +149,10 @@ function RecipientField({ label, recipients, onChange }: RecipientFieldProps) {
             </button>
           </span>
         ))}
-        <input
+        <Input
           id={id}
-          className="min-w-40 flex-1 bg-transparent text-sm outline-none"
+          // Borderless inside the chip box, which carries the field look.
+          className="h-6 w-auto min-w-40 flex-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
           placeholder="Add address"
           value={text}
           onChange={(event) => setText(event.target.value)}

@@ -81,4 +81,13 @@ class AiSettingsRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("uq_ai_settings_user_id");
     }
+
+    @Test
+    void external_apis_are_suggestions_by_default() {
+        AppUser owner = appUserRepository.save(Fixtures.user("owner"));
+
+        var saved = aiSettingsRepository.saveAndFlush(AiSettings.builder().user(owner).build());
+
+        assertThat(saved.getExternalApis()).isEqualTo(AiPermissionLevel.SUGGEST);
+    }
 }

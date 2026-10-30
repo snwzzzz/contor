@@ -1,9 +1,12 @@
 package com.example.contor.mapper;
 
 import com.example.contor.api.model.ProposalAction;
+import com.example.contor.api.model.ProposalAppSourceDto;
 import com.example.contor.api.model.ProposalDto;
 import com.example.contor.api.model.ProposalPriority;
 import com.example.contor.api.model.ProposalState;
+import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 
 import java.util.LinkedHashMap;
@@ -21,6 +24,7 @@ public class ProposalMapper {
                 .finalPayload(proposal.getFinalPayload() != null ? new LinkedHashMap<>(proposal.getFinalPayload()) : null)
                 .sourceEmailId(proposal.getSourceEmail() != null && proposal.getSourceEmail().getId() != null
                         ? proposal.getSourceEmail().getId().id() : null)
+                .sourceApp(appSource(proposal.getSourceApiItem()))
                 .confidence(MapperSupport.normalize(proposal.getConfidence()))
                 .reasoning(proposal.getReasoning())
                 .importance(proposal.getImportance() != null ? ProposalPriority.valueOf(proposal.getImportance().name()) : null)
@@ -33,5 +37,14 @@ public class ProposalMapper {
                 .decidedById(proposal.getDecidedBy() != null && proposal.getDecidedBy().getId() != null
                         ? proposal.getDecidedBy().getId().id() : null)
                 .createdAt(MapperSupport.toOffset(proposal.getCreatedAt()));
+    }
+
+    private static ProposalAppSourceDto appSource(ExternalApiItem item) {
+        if (item == null || item.getEndpoint() == null || item.getEndpoint().getApi() == null) return null;
+        ExternalApi api = item.getEndpoint().getApi();
+        return new ProposalAppSourceDto()
+                .apiId(api.getId() != null ? api.getId().id() : null)
+                .apiName(api.getName())
+                .endpointName(item.getEndpoint().getName());
     }
 }

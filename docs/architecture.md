@@ -30,15 +30,16 @@ Fixed tables: JPA + Flyway. Generated collection tables: jOOQ only (`persistence
 |---|---|---|
 | Users & security | `app_user`, `recovery_code`, `spring_session*` | TOTP secret encrypted; recovery codes hashed |
 | Audit | `audit_log` | append-only (trigger), records referenced as (collection_id, entity_id) |
-| Mail | `mail_account`, `email_message`, `email_embedding` | tokens encrypted; embeddings per (email, model), `vector(768)` + HNSW; trigram index on subject |
+| Mail | `mail_account`, `email_message`, `email_embedding` | provider `MICROSOFT_GRAPH`/`GMAIL`/`DEMO`, opaque per-folder sync cursors (ADR 0011); tokens encrypted; embeddings per (email, model), `vector(768)` + HNSW; trigram index on subject |
 | Labels & rules | `label`, `email_label`, `rule` | `email_label` composite key |
 | Collections | `collection`, `collection_field`, `collection_schema_change` | metadata for generated `c_<slug>` tables; schema history append-only |
 | Record links | `record_source` | (collection_id, record_id) ↔ email |
 | Graph | `relation_type`, `relation` | edges between (collection_id, record_id) pairs |
 | AI | `proposal`, `autonomy_setting`, `ai_settings`, `ai_analysis_run` | permissions per user (no row = no mail access); one analysis run per start, progress counters |
 | Queries | `saved_query` | storage only in phase 1 |
+| External APIs | `external_api`, `external_api_endpoint`, `external_api_mapping`, `external_api_call`, `external_api_snapshot`, `external_api_item` | private per user (ADR 0012); credentials encrypted (`secret_enc`); items keyed per endpoint and linked to (collection_id, record_id) |
 
-ID strategy: aggregates use `bigint` + `<table>_seq` (increment 50) mapped as nested `@EmbeddedId` records; detail tables (`recovery_code`, `collection_schema_change`, `record_source`) use identity columns; `email_label` and `email_embedding` use composite keys. Timestamps are `timestamptz`, the JVM runs in UTC.
+ID strategy: aggregates use `bigint` + `<table>_seq` (increment 50) mapped as nested `@EmbeddedId` records; detail tables (`recovery_code`, `collection_schema_change`, `record_source`, `external_api_call`, `external_api_snapshot`, `external_api_item`) use identity columns; `email_label` and `email_embedding` use composite keys. Timestamps are `timestamptz`, the JVM runs in UTC.
 
 ## Collection engine
 
@@ -128,7 +129,7 @@ First run: `SetupTokenInitializer` prints a one-time token while `app_user` is e
 ```
 src/proxy.ts            CSP nonce + optimistic auth redirect (every page request)
 src/app/(auth)/…        /login, /setup  (server components check setup status against the backend, then render forms)
-src/app/(app)/…         AppShell (sidebar, top bar, command palette) + pages; pages only compose components
+src/app/(app)/…         AppShell (top bar, navigation drawer, command palette) + pages; pages only compose components
 src/components/app      owned composites (AppButton, FormField, PageHeader, EmptyState, ErrorMessage, auth forms)
 src/components/layout   shell pieces
 src/components/ui       shadcn primitives (owned)

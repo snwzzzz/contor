@@ -2,7 +2,6 @@
 
 import { useQueries } from "@tanstack/react-query";
 import { Bot, Database, Mail, Network } from "lucide-react";
-import Link from "next/link";
 import { EmptyState } from "@/components/app/EmptyState";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { getGetRecordQueryOptions } from "@/lib/api/generated/endpoints/records/records";
@@ -11,7 +10,8 @@ import type { RelationDto } from "@/lib/api/generated/model/relationDto";
 import { collectionTint } from "@/lib/collection-tint";
 import { formatValue, humanize } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
-import { recordHref } from "./CollectionTable";
+import { RecordLink } from "./RecordLink";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" });
 
@@ -65,7 +65,7 @@ export function RecordConnectionsTab({ collectionId, recordId, recordTitle, rela
   });
 
   if (!relations) {
-    return <p className="text-sm text-muted-foreground">Loading connections…</p>;
+    return <LoadingList label="Loading connections" rows={4} avatar />;
   }
   if (connections.length === 0) {
     return <EmptyState icon={Network} title="No connections yet" description="People, organizations and other records linked to this one show up here." />;
@@ -86,8 +86,9 @@ export function RecordConnectionsTab({ collectionId, recordId, recordTitle, rela
         const details = [...attributeLines(connection.relation), period(connection.relation)].filter((line): line is string => line !== null);
         return (
           <li key={connection.relation.id}>
-            <Link
-              href={recordHref(connection.collectionId, connection.recordId)}
+            <RecordLink
+              collectionId={connection.collectionId}
+              recordId={connection.recordId}
               className="flex h-full flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
             >
               <span className="flex items-center gap-3">
@@ -123,7 +124,7 @@ export function RecordConnectionsTab({ collectionId, recordId, recordTitle, rela
                   ) : null}
                 </span>
               ) : null}
-            </Link>
+            </RecordLink>
           </li>
         );
       })}

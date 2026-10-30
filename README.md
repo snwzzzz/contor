@@ -1,6 +1,6 @@
 # contor
 
-Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
+Personal, self-hosted management platform: dynamic collections (Deliveries, Orders, People, …) with relations between records, an Outlook and Gmail inbox sync, and a local AI assistant (Ollama) that analyzes the inbox, creates matching categories and keeps its own calendar and to-do list.
 
 > **Status: Phase 2 (local AI).** Backend: security, collection engine, labels, rules, relations, proposals, saved queries, Outlook mail sync, and the AI pipeline (Ollama client, permissions, inbox analysis runs, reply drafts that are never sent). Frontend: setup/login, app shell, inbox with conversation threads and reply drafts, AI setup wizard, proposals review, calendar and to-dos. The collection UI and TOTP 2FA follow. Plans: `docs/ai-plan.md`, `docs/replies-plan.md` (threads and AI reply drafts, never sent), `docs/ai-v2-plan.md` (smarter replies, multi-mail context, proposal importance, insights, speed).
 
@@ -86,6 +86,28 @@ On first start open http://localhost:3000: without a user you are sent to **/set
 
 Swagger UI for the contract (dev profile only, requires login): log in through the web app, then open http://localhost:8080/swagger-ui/index.html. Use the same host name (`localhost`) for both, since the session cookie is bound to the host name.
 
+## Mail setup
+
+Mailboxes are connected in **Settings › Accounts › Add account**: a menu with each provider and its logo; providers the backend has no OAuth client for are listed as *Not set up* (`GET /api/mail/providers`). Both providers use the same callback, `http://localhost:8080/api/mail/accounts/callback`: the encrypted OAuth `state` names the provider and carries the PKCE verifier. Tokens are stored encrypted (`*_enc`). The backend syncs the inbox and sent mail every `MAIL_SYNC_INTERVAL`, read-only. contor never sends mail.
+
+**Outlook (Microsoft Graph).** Register an app in Microsoft Entra ID with the redirect URI above (platform *Web*), delegated permissions `Mail.Read`, `User.Read`, `Contacts.Read` and `offline_access`, then set `MSGRAPH_CLIENT_ID` and `MSGRAPH_CLIENT_SECRET`.
+
+**Gmail.**
+1. In the [Google Cloud console](https://console.cloud.google.com/) create a project (e.g. *contor*).
+2. *APIs & Services › Library*: enable the **Gmail API** and the **People API** (the People API is only needed for contact photos).
+3. *Google Auth Platform › Branding*: set the app name, your support email and the developer contact.
+4. *Audience*: user type **External** (a personal @gmail.com account; *Internal* only exists for Workspace organizations). While the publishing status is *Testing*, add your Gmail address under **Test users**.
+5. *Data access*: add the scopes `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`, `https://www.googleapis.com/auth/gmail.readonly` and `https://www.googleapis.com/auth/contacts.readonly`.
+6. *Clients › Create client*: type **Web application**, *Authorized redirect URIs*: `http://localhost:8080/api/mail/accounts/callback` (exactly that; Google allows plain http only for localhost). You don't need *Authorized JavaScript origins*.
+7. Copy the client ID and secret into `.env` as `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`, then restart the backend. Never commit the downloaded client JSON.
+8. In contor: **Settings › Accounts › Add account › Gmail**. Google warns *"Google hasn't verified this app"*: this is your own client, so choose *Continue*.
+
+The first Gmail sync reads the last `GMAIL_INITIAL_SYNC_DAYS` (365) days of the inbox and sent mail; after that only the Gmail history (new mail, read/unread changes). A big mailbox takes a few minutes the first time.
+
+Google expires refresh tokens after **7 days** while the app's publishing status is *Testing* (the account then shows *Needs sign-in*, and *Reconnect* fixes it). To avoid that, set *Audience › Publish app* (*In production*) without submitting it for verification. `gmail.readonly` is a restricted scope, so Google keeps showing the unverified-app warning, and an unverified app is meant for a small number of users. That is fine for a personal instance. Full verification (with a security assessment) only matters if you distribute contor to other people.
+
+**Adding another provider** (IMAP, Fastmail, …): add a `MailProvider` constant (plus `ck_mail_account_provider` in a migration and `MailProviderKind` in the spec), a `@ConfigurationProperties` record, and one `@Component` each for `MailOAuthClient` and `MailboxClient` in `mailprovider/`. `MailProviderRegistry` picks them up. `MailService`, `MailSyncService` and the web app stay unchanged (see ADR 0011).
+
 ## First-run setup
 
 There are no default credentials. On the first start with an empty database the backend prints a one-time **setup token** to its log:
@@ -117,6 +139,23 @@ shipments, complaints, invoices). Then run the AI setup as usual and the backgro
   all dates by whole weeks so the newest mail is recent (dates written inside the mails keep their July values).
 - To start over, disconnect the two demo accounts and delete them in the database, or reset the database; the import
   runs again for a dev login without demo accounts. `DEMO_MAILBOX_PATH` points to another generated mailbox folder.
+
+### Dev AI cache
+
+Re-analyzing mail during development (after a database reset, or to try a backend change on real mail) normally waits
+for the GPU again. With the `dev` profile and `AI_CACHE=on` in `.env`, every model call goes through `CachingLlmClient`:
+an answer is stored in `.ai-cache/` under the hash of model, context size, prompts and JSON schema, and the same call
+later is answered from disk in milliseconds. Only calls whose prompt changed reach Ollama. The backend logs
+`AI answer cache ON in …` at start.
+
+- A cached answer is replayed only for the identical prompt. Extraction, reply drafts and insights put today's date into
+  their prompt, so their answers are reused on the same day only; routing and reply triage are reused across days. The
+  context (earlier mail, records already created) is part of the prompt too: different data means a new call.
+- Prompt or model changes miss automatically. `AI_CACHE=refresh` asks the model again and overwrites; delete `.ai-cache/`
+  to start over.
+- Embeddings are not cached. Outside the `dev` profile the setting is ignored and no cache exists; the folder holds
+  plain-text answers about your mail, so keep it local.
+
 ## Security overview
 
 - Session cookie `CONTOR_SESSION` (HttpOnly, SameSite=Strict, `Secure` with `APP_SECURE_COOKIES=true`), stored in Postgres. 30 min idle timeout, 12 h absolute lifetime, at most 3 sessions per user (the oldest is ended), session id rotated on login.
@@ -124,6 +163,7 @@ shipments, complaints, invoices). Then run the AI setup as usual and the backgro
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
+- Outbound requests to hosts from user input or the web (sender logos, external APIs) go through `security/OutboundRequestGuard` on Apache HttpClient 5. It allows GET and POST over HTTPS on port 443 only, and only hosts whose addresses are all public. The connection goes to exactly the addresses that were checked (`PublicAddressResolver`), so DNS rebinding cannot reach the machine or the local network. GET redirects are checked again (at most 3). Each request has a timeout and a size cap. Errors name the host, never the path or query. See ADR 0012.
 - Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
@@ -146,9 +186,267 @@ A collection (e.g. *Deliveries*) is metadata in `collection`/`collection_field` 
 - Creating a collection, adding and archiving fields is OWNER-only. Each change runs the generated DDL, bumps the collection's `schema_version`, and writes `collection_schema_change` and the audit log in one transaction.
 - Archived fields are hidden and read-only; their column and data stay.
 - Records: `GET/POST /api/collections/{id}/records`, `GET/PUT/DELETE .../records/{recordId}`. Filters: `?filter=eta:lt:2026-03-01&filter=carrier:eq:DHL&sort=-eta&page=0&size=25` (operators `eq ne lt lte gt gte contains empty notempty`); `?q=` searches the title and every text-like field case-insensitively.
-- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: a full-width banner in the dominant color of its picture, the picture itself (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details**, **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
+- In the app, `/collections` lists every collection (`CollectionsOverview`): a search over name and description, filter chips *All / Built-in / Yours / By the assistant* with counts, and one row per collection with its description, number of records, active fields and origin; the row opens the collection. With no collection yet it offers *New collection*.
+- In the app, `/collections/{id}` shows the records as a table: global search, filters per column (text contains, choice, yes/no, number/date ranges), sorting by clicking a header, paging. Rows are compact and plain (choice values as text, no colors). The table has rows per page, column visibility (remembered per collection in this browser) and numbered paging with *Go to page*. Double-click a row, press Enter or use its open button to get the record page: breadcrumbs with Close like every page (calendar and to-do records lead back through *Calendar* / *To-dos*, others through *Collections* › the collection; `collectionTrail`), the picture (64px, no banner) next to title | collection, "Added by … on …" and the commands Refresh and Table view; the picture is the (Outlook contact photo of its email address, otherwise the logo of its website/email domain fetched from the web; never a free-mail provider's logo) and tabs for **Details** (the title and every field as an input by type: text, long text, number, money with currency, date, date and time, yes/no, choices, the id of a related record, file name; email addresses, phone numbers and links have a small open button; once something changes a bar with the number of changes, *Discard* and *Save* appears, and Save sends only the changed values with `PUT /api/collections/{id}/records/{recordId}`), **Emails** (where the record comes up: emails it was found in, emails from its addresses or its domain — `GET /api/collections/{id}/records/{recordId}/emails`, scoped to your mailboxes) and **Connections** (related records).
 - On first start contor seeds the system collections **People**, **Organizations**, **Events** (the assistant's calendar) and **Tasks** (its to-do list) and the relation types `works_at` (People → Organizations, inverse `employs`), `knows` (People ↔ People) and `attends` (People → Events).
 - The read-only database role `app_readonly` gets `SELECT` on every generated table (for user-written SQL in a later phase).
+
+## Reports (AI)
+
+Ask the assistant about any record of any collection, or about a whole collection, and get a structured answer with
+references: summaries, lists of
+reasons, next steps, pro and con lists, tables. Each sentence, list item or table cell that comes from the record or its
+emails points at its source, down to a record field or an email paragraph. Plan and status:
+[`docs/reports-plan.md`](docs/reports-plan.md).
+
+- **Asking:** the record page's **Reports** tab (with the number of reports) is a workspace that fills the page: a closable side list of
+  the record's reports (search over title, request and summary; *New report*; open/closed is remembered per browser) and
+  next to it either the question "What do you want to know about …?" with the input and suggestion buttons, or the
+  selected report itself with its sources and follow-up questions (`ReportView` embedded). Sending (or a suggestion)
+  creates the report and shows it there while the assistant writes it; *Open full screen* opens the report's own page.
+  An empty input asks for a summary of what happened, went well, went wrong and is open. Needs the AI model to be ready
+  (409 otherwise).
+- **What it reads:** the record, the connected records you include (`connectedRecords`, reachable through relations
+  within `depth` steps, at most 25 records) and, with mail access in the AI settings, your emails linked to them (record
+  sources) with their conversations (up to 50), plus up to 10 **related emails** from the rest of your mailbox (closest
+  in meaning to the record's emails, embeddings, any date) and up to 8 **other records** linked to those — so "look at
+  other orders" works. The record's own emails come first; about 24 000 characters in all. Each fact is a numbered
+  source: records `[R1]`, fields `[F3]`, connections `[L1]`, email paragraphs `[P2.1]`.
+- **The answer** (prompt `report-v5`, `ReportModelService`): the model writes a **Markdown document**: the direct answer
+  to exactly what was asked first (opinions and advice included), then the sections the request needs, each in the
+  shape that fits — bullet lists, numbered lists (steps, causes, "5 reasons", rankings), tables (comparisons, pro and
+  con, items with several values), quotes. Asked for N items, it gives N; when the sources do not hold what is needed
+  (e.g. the sales of all customers for a "top 5"), it says so instead of inventing. `ai/ReportMarkdown` reads the
+  document into sections and blocks (headings, `-`/`1.` lists, `|` tables, `>` quotes; a bold-only line counts as a
+  heading). Source codes in square brackets follow a sentence, item or cell. **Nothing is fact-checked or removed:**
+  sentences stay as written; each gets a reference where there is one (`ai/References`: unknown codes are dropped, a whole email
+  `E3` stands for its paragraphs, codes written as words — "record R1 shows" — become names, a quote is shown only when
+  it is word for word in its email). Opinions, advice and questions may have no source. A sentence or list item that
+  repeats an earlier one is left out; a follow-up answers only its question and leaves out what the report already said.
+  The timeline is built from the record's dated fields and emails without the model, when the model says it helps or
+  there is no request (not when the model wrote one itself, not in follow-ups).
+- **The report page** (`/collections/{id}/records/{recordId}/reports/{reportId}`) reads like a conversation: each
+  question you asked (the request, then the follow-ups) is your own message bubble, with the assistant's answer below
+  it. The answer comes first, then the document's
+  sections with their paragraphs, lists, tables and quotes (`**bold**`, `*italic*` and `` `code` `` rendered), and the
+  timeline. Reports made before (findings, open questions, recommendations) still show as they were. Markers `[n]` show the source on hover; a click opens it in the
+  **Sources** panel: the field value (marked when it changed since the report) or the email paragraph with the quote
+  highlighted, with a link to the record or the email in the inbox. Follow-up questions are answered below, with the same
+  sources; the follow-up input stays at the bottom of the screen while you scroll. *Regenerate* makes a new report; *Delete* removes it with its follow-ups.
+  Reports still being generated when the backend stops are generated again after the next start; an error during
+  generation marks the report FAILED with a reason.
+- **API:** `GET/POST /api/collections/{id}/records/{recordId}/reports`, `GET/DELETE /api/reports/{id}`,
+  `POST /api/reports/{id}/questions`, `POST /api/reports/{id}/regenerate` (202, generated on the AI thread; poll the
+  report until `state` is READY or FAILED). Reports are visible to everyone who can see the record; quotes from another
+  user's mailbox are never shown (`sourceState` UNAVAILABLE).
+- **Reports over a whole collection** ("top 5 best selling customers", "which customers have the most complaints?", a pro
+  and con list of the order book): *Reports* in the collection table's toolbar (with the number of reports) opens a side sheet with "Ask about
+  <collection>…", ready-made questions and the reports so far; sending opens the new report's page. The report covers the
+  records the table shows (its filters and search go with the request) and needs no emails. It is made in three steps:
+  1. **Plan** (`collection-plan-v1`, `ReportModelService.plan`): the model sees a catalog of all collections (fields,
+     record counts, relation types) and picks up to 3 figures: which collection, grouped by a field, by
+     `link:<relation type>`, all together (`""`) or `each` record, measured as `count` or `sum|avg|min|max:<field>`, order,
+     top N, filters. Unknown collections, fields and invalid filters are dropped (`ai/CollectionPlan`,
+     `service/CollectionAnalysisService`).
+  2. **Figures** (deterministic): `persistence/dynamic/DynamicAggregateRepository` groups and aggregates over **all**
+     matching records with typed jOOQ fields (text grouped ignoring case and spaces, money per currency, never converted);
+     ranking and top N are done in Java (by the amount in the currency most records use, then count, then name). An
+     overview of the collection (counts per choice value, sums) and its newest records (as far as they fit) are added.
+  3. **Document** (`collection-report-v2`): the same Markdown report, written from the figures. Each figure row has a code
+     (`A1.2`) that stands for the records it was computed from; where the model writes `{{A1}}` (or `[A1]`), the app
+     inserts the **exact computed table**, each row citing its records on its figure (at most 20 per row). A table the
+     model neither placed nor cited is added after the answer, so a ranking is never one the model rewrote. No timeline.
+  The page is `/collections/{id}/reports/{reportId}`; follow-ups, Regenerate and Delete work as for records. API:
+  `GET/POST /api/collections/{id}/reports` (`NewCollectionReportCommand {prompt, filters, search}`; `ReportDto.recordId`
+  is empty and `filters`/`search` hold the scope). Known limits: amounts in other currencies are listed but ranked after
+  the main currency; no grouping by month and no two-step joins (complaints → purchase order → supplier) yet.
+- **Storage** (`V1_0_29__reports.sql`, `V1_0_30__report_blocks.sql`, `V1_0_31__collection_reports.sql`: `record_id` is
+  empty for a collection report): `report` (follow-ups have `parent_report_id`),
+  `report_section`, `report_block` (paragraph, list, quote or table with its header), `report_finding` (timeline and
+  older reports), `report_claim` (one sentence, list item or table cell with its row and column) and `report_citation` (record, field with value snapshot, email paragraph
+  with verbatim quote, or relation). Reports are snapshots; reading one marks sources that changed or were deleted.
+- **Email paragraphs:** `GET /api/emails/{id}/paragraphs` (your mailboxes only) splits an email into the paragraphs
+  citations point at (`ai/EmailParagraphs`): text body, or the HTML body as text (`ai/HtmlText`, using **jsoup**); quoted
+  history and signatures removed; blank lines separate paragraphs, list items are their own, a short greeting joins the
+  next paragraph, paragraphs over 1 200 characters are split at a sentence end. Each paragraph carries a hash of its
+  normalized text, so citations survive later changes to the splitting rules.
+- Not yet: picking connections in the Connections tab, opening a cited field or paragraph highlighted on its own page,
+  and the report evaluation (plan steps R9, R11, R7).
+
+## Chat (AI, in progress)
+
+Ask the local model about anything in contor (records, people, connections, mail, calendar, to-dos) on `/chat`;
+answers link to the people, records and emails they are about and cite their sources like reports. Plan:
+[`docs/ai-chat-plan.md`](docs/ai-chat-plan.md).
+
+- **The page** (`/chat`, top bar → Chat): a side list of your conversations (most recent first, "Writing…" while one
+  is answered, *New chat*) and next to it the start (question, input, ready-made questions) or an open conversation at
+  `/chat/{id}`: your questions as messages on the right, each answer below with its source markers (the sources panel
+  shows what was cited, like reports) and links to the records and emails it is about (records open in the sidebar over
+  the chat, emails in the inbox), a progress line while it is written, the reason and *Try again* when it failed, and the
+  follow-up input at the bottom. *Rename* and *Delete* sit next to the title. Enter sends, Shift+Enter starts a new line.
+
+- **Storage** (`V1_0_34__chat.sql`, done): `chat_conversation` (private to its user, deleted with them; `focus` = the
+  records the next question may refer to), `chat_message` (question or answer at a `position`; an answer's `state`
+  PENDING → RETRIEVING → WRITING → DONE/FAILED, its Markdown `blocks`, `mentions` (record/email links) and retrieval
+  `plan` as JSON) and `chat_citation` (same targets as `report_citation`).
+- **API** (tag `Chat`, every logged-in user, only their own conversations — another user's is 404):
+  `GET/POST /api/chat/conversations` (POST 201 with the first question, `NewChatMessageCommand {text ≤ 2000, recordRefs ≤ 10}`),
+  `GET/PATCH/DELETE /api/chat/conversations/{id}` (PATCH renames), `POST /api/chat/conversations/{id}/messages` (202, the
+  next question; 409 while an answer is being written) and `POST …/messages/{messageId}/retry` (202, a failed last
+  answer). Answers are written on the AI thread after commit; poll the conversation until the answer is DONE or
+  FAILED. 409 when the AI model is not ready. Answers use the report shapes (`ReportBlockDto`, `ReportSourceDto`) plus
+  `mentions` (links to records and emails). Answers still being written when the backend stops are FAILED on the next
+  start and can be retried. Deleting a conversation is audited (`CHAT_CONVERSATION_DELETED`, no content).
+- **How an answer is written** (`ChatAnswerer`, on the AI thread; needs the extraction model and, for mail by
+  meaning, the embedding model):
+  1. **Plan** (`chat-plan-v1`, `ChatModelService.plan`): from the question, the last turns and the list of collections,
+     the model names up to 5 search strings (names, numbers, distinctive words) and up to 2 collections whose newest
+     records the question is about ("which complaints are still open?"). Untrusted: unknown collections are dropped.
+  2. **Look up** (`ChatRetrievalService`, `ReportScopeService.collectQuestion`, no model): each search goes through the
+     global records search of every active collection (exact titles first), plus the planned collections' newest
+     records and the records the conversation is about (its focus), at most 25. The first three get their connections;
+     with mail access (Settings → AI) the emails linked to the records, the newest mail from their email addresses, the 5
+     newest emails matching each search (sender, recipients, subject, text; works without records or embeddings) and the
+     10 emails closest in meaning to the question (pgvector), only from mailboxes the AI may read.
+  3. **Answer** (`chat-answer-v2`, `ChatModelService.answer`): a short Markdown answer with source codes, written from
+     those sources, like a report. The app turns the codes into markers and citations and links the cited records and
+     emails (or, when nothing is cited, the records found) under the answer. They become the focus for the next question.
+     With mail access off, the answer says so when the mail might hold the answer.
+  The message keeps the plan (searches, collections, counts), the model, the prompt version and the timings.
+- Not yet: pinning records with `@` and "Ask in chat" from a record or the command palette, figures over whole
+  collections in chat answers (reports have them), the evaluation, e2e tests and the ADR (H7, H10–H12).
+
+## External APIs ("Apps", in progress)
+
+Connect any HTTP API (a shop, a job platform, a parcel tracker) so the assistant can learn from it. contor calls only
+the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/external-apis-plan.md`, decisions: ADR 0012.
+
+- **Storage** (`V1_0_35__external_apis.sql`, done): `external_api` (an app, private to its user, deleted with them; base
+  URL, docs link, auth kind and its non-secret settings, plain headers, the encrypted `secret_enc` for credentials and
+  secret header values, interval of 15 min to 7 days (default 6 h), daily request limit, status ACTIVE / FAILING /
+  PAUSED / NEEDS_SETUP and the next call). Also `external_api_endpoint` (path below the base URL, fixed query, a body
+  only for POST read queries, where the items and their keys are in the answer), `external_api_mapping` (endpoint →
+  collection, field slug ← JSON path, PROPOSED / ACTIVE / OFF), `external_api_call` (history), `external_api_snapshot`
+  (last answers) and `external_api_item` (items by key and the record each became). Deleting an app removes all of it.
+  Paths, URLs and JSON paths are validated value objects (`ApiPath`, `BaseUrl`, `HttpsUrl`, `JsonPathExpr`). JSON paths
+  are a small subset (`$`, `.name`, `[0]`, `[*]`), so a path from a model answer can only select.
+- **Calls** (`externalapi/ExternalApiClient`, done): an endpoint's path below the base URL with its fixed query. The
+  client sends `Accept` and `User-Agent`, then the plain headers, then the secret headers, then the credentials (a later
+  header of the same name wins). A POST read query sends its body as JSON. The timeout is 10 s and answers are cut at
+  1 MB. `Retry-After` is read as seconds or as a date. Auth kinds (`ApiAuthHandler`, one bean each): NONE,
+  API_KEY_HEADER, API_KEY_QUERY, BEARER, BASIC (UTF-8), and OAUTH2_CLIENT_CREDENTIALS (token from the token URL, kept in
+  memory until a minute before it expires; 400/401/403 mean the credentials were rejected). The secret is stored as
+  encrypted JSON `{value, headers}` (`ApiSecret`). Everything goes through `OutboundRequestGuard` (see *Security
+  overview*).
+- **API** (tag `ExternalApis`, every logged-in user, only their own apps; done):
+  - Apps: `GET/POST /api/external-apis` and `GET/PATCH/DELETE /api/external-apis/{apiId}` (POST 201, DELETE 204).
+    Endpoints: `GET/POST /api/external-apis/{apiId}/endpoints` and `PATCH/DELETE …/endpoints/{endpointId}`.
+  - Credentials are write-only. `secret` and `secretHeaders` go in; responses only say `hasSecret` and list
+    `secretHeaderNames`. On PATCH, `null` keeps a field, `secret: ""` removes the secret, and `secretHeaders` replaces
+    all secret headers.
+  - Every change checks that the auth kind's settings and secret are there (400 otherwise). It also clears the failure
+    state, and when the app is enabled the next call is due right away. The slug comes from the name (accents
+    removed, unique among your apps) and stays when you rename the app.
+  - Endpoints: at most 50 per app, names unique per app ignoring case (409). A body only for POST read queries.
+  - `POST /api/external-apis/test` calls once with unsaved settings and stores nothing. With `apiId` it fills a
+    missing secret from that app. A refused or failed call is a 200 with `ok: false` and `error`. The body is cut at
+    20 000 characters.
+  - Audit actions: `EXTERNAL_API_CREATED`, `_UPDATED`, `_SECRET_CHANGED` and `_DELETED`. They record name, base URL
+    and auth kind, never a credential.
+- **External APIs menu and modal** (frontend, done): the top bar's *External APIs* button (the `{ }` braces icon,
+  which also marks the section, its pages and app data everywhere; the plug stays free for connections) lists your apps
+  IntelliJ-style:
+  tinted initial, name, host and when it was last called, with a status dot only for *Failing*, *Needs setup* and
+  *Paused*. Arrow keys move and Enter (or a click) opens the app's page (`/apps/<id>`); a search field appears from 9 apps on. *Add app…* opens the modal over
+  the current page (`?app=new`; *Edit* on the app page opens it as `?app=<id>`, `APP_PARAM` in `lib/navigation.ts`). Adding walks through
+  *Basics* (name, HTTPS base URL, docs link, description), *Auth & headers* (auth kind with its settings and secret;
+  headers, each optionally secret), *Endpoints* (method, path, query parameters, a JSON body for POST read queries,
+  where the items are) and *Schedule* (every 15 min, hour, 6 h or day; on schedule; let the assistant learn).
+  **Test call** runs an endpoint with the unsaved settings, shows status, time and the answer, and suggests the
+  items path and key (*Use*). Nothing is stored before *Add app*; then the endpoints are added one by one (if one
+  fails, the saved app opens so it can be fixed). Editing shows the same steps as tabs: Basics, auth and schedule save
+  together and send only what changed, endpoints save one by one, and *Delete app* asks first. Stored secrets show
+  as "•••• stored" with *Replace*, never their value; secret headers are replaced together, so changing one asks for
+  the others again. Code: `components/app/apps/` (`AppsMenu`, `AppDialog`, `AppFormFields`, `EndpointEditor`) and
+  `lib/external-apis.ts` (form state, commands, items detection).
+- **Polling** (backend, done): every `EXTERNAL_APIS_POLL_TICK` (1 min) `ExternalApiPollScheduler` looks for enabled apps
+  that are ACTIVE or FAILING and due, and calls them on virtual threads: at most `EXTERNAL_APIS_MAX_CONCURRENT` (4) at
+  once and one per host at a time, each app in its own transaction (`ExternalApiPoller`). Each enabled endpoint is
+  called once and the call is recorded (`external_api_call`: status, time, outcome OK / UNCHANGED / FAILED, a masked
+  error, items new / changed / gone). An answer with the same SHA-256 as the last one is only recorded as UNCHANGED.
+  A new one is kept as a snapshot (the last 5 per endpoint), and its items are read with the endpoint's items path and
+  key (`JsonItems`, at most 1000 per answer; without a key path an item is identified by its content, without an items
+  path the whole answer is one item) and compared with the stored ones: new, changed (other hash) and gone (`gone_at`;
+  an item that comes back counts as new). Answers cut at the size cap or that are no JSON keep the items as they are.
+  Next call: the interval ± 10 % after success; after a failure the interval × 2^failures (at most 24 h), *Failing*
+  after 3 and *Paused* after 10 failures; on 429 the server's `Retry-After` (else one interval); on 401/403, rejected
+  client credentials or missing settings *Needs setup* with no further calls. The daily request limit counts the
+  calls of the last 24 hours. The history is pruned to 30 days once an hour. Off with `EXTERNAL_APIS_ENABLED=false`;
+  it runs in the local launcher too (`spring-boot:test-run`), only the two poll integration tests switch it off for
+  themselves.
+- **Call history and Call now**: `GET /api/external-apis/{apiId}/calls` lists the last 50 calls (`ExternalApiCallDto`);
+  `POST …/calls` (202) makes the next call due now, picked up within a minute through the same guard and limit. A
+  paused app or one that needs setup becomes ACTIVE again; a turned-off app answers 409.
+- **Read the docs** (done): in the modal's *Endpoints* step (and tab), *Read the docs* fetches the documentation link
+  through the guard (public HTTPS, up to 4 MB) and suggests endpoints to tick and add. An OpenAPI 3 or Swagger 2
+  document (JSON or YAML) is read in code at once (`OpenApiReader`): every GET without path parameters that is not
+  deprecated and whose required query parameters have an example, default or enum value; the items path and key come
+  from the 200 response schema, and paths are made relative to the base URL through the document's server URL or base
+  path. Other docs (HTML or text) are read by the model in the background (`ApiDocsModelService`, prompt
+  `api-docs-v1`, at most 30 000 characters, the docs are quoted as data). Its answer is validated: only GET, only paths
+  below the base URL (an absolute URL under it becomes relative; other hosts, `..` and `{id}`/`:id` templates are
+  dropped), JSON paths only in the supported subset. At most 30 suggestions, endpoints the app already has are left
+  out, and nothing is saved until you add them. API: `POST /api/external-apis/discovery` (202; DONE at once for an
+  OpenAPI document, otherwise RUNNING) and `GET /api/external-apis/discovery/{discoveryId}` (polled every 2 s while
+  RUNNING). Runs are kept in memory for an hour, 10 per user. Without a ready model only OpenAPI documents can be read.
+- **Mappings: from items to records** (done; learn once, then map in code). When a poll finds new items of an
+  endpoint that has no mapping, the assistant looks at up to 5 of them and your collections (`ApiMappingModelService`,
+  prompt `api-mapping-v1`, on the AI thread, one run per endpoint; when nothing fits it asks again after a day) and
+  proposes which collection they belong in, where the title is and which JSON path fills which field. Every path must
+  find a value in the sample items and every field must be a field of that collection. The answer is stored as a
+  PROPOSED `external_api_mapping` with a **Connect app data** proposal (`MAP_API_ENDPOINT`, grouped under Categories:
+  the card shows the app and endpoint, the collection and *field ← path*). Approving it (edits allowed) makes the
+  mapping ACTIVE (a previous one of the endpoint goes OFF), and the endpoint's current items are proposed right after the
+  decision commits. From then on, with no model: a new item (or one without a record) becomes a *New record* proposal, a
+  changed item with a record an *Update record*; a gone item changes nothing. A pending proposal follows its item's
+  latest values instead of a second one. The record is linked to its item (`record_source.api_item_id`, *created from* /
+  *updated from*; the item remembers its record). Proposals follow the new **External APIs** area under Settings › Autonomy
+  (`ai_settings.external_apis`: Off / Ask me (default) / Automatic, which falls back to a suggestion when a value does
+  not fit the collection) and only for apps with *Let the assistant learn from it*. `V1_0_36` adds the item as a source
+  of records and proposals (`ck_record_source_origin`: an email or an item, never both).
+- **Insights from app data** (done): the daily insight pass also reads the items of your apps that appeared or
+  disappeared in the last 14 days (at most 40, of apps the assistant may learn from; labelled by their record's title).
+  They go into the model's digest as `A<n>` lines next to the `#<n>` emails (prompt `insight-v2`; the app-data rules and
+  the `evidenceApiItems` answer field are added only when there is app data, so the mail-only prompt is unchanged), and an
+  insight may rest on emails, app items or both; anything cited that was not in the prompt drops the insight. A new rule
+  (`rule:gone-item`) proposes *"… is no longer in <app>"* with a to-do to check it tomorrow when an item disappears whose
+  record you have emails about (a job posting you applied to). INSIGHT payloads carry `evidenceApiItemIds`, follow-ups
+  are linked to those items too, and the insight card says how many app items it is based on.
+- **Apps pages** (done): **External APIs** in the navigation (and *Manage apps* in the top bar's External APIs menu) opens `/apps`, a
+  table of your apps with host, status (a dot for every state, *Off* when turned off), how often they are called, the
+  last call and the number of endpoints; *Add app* opens the modal. `/apps/<id>` shows the app's status (failures in a
+  row, last and next call, last error), its endpoints with where their items go (*Into People · 3 fields*, *Waiting for
+  your approval · Review*, or not connected yet; `ExternalApiEndpointDto.mapping`) and the last 50 calls (result, HTTP
+  status, items new/changed/gone, error), with **Call now**, **Pause**/**Resume** (turns the app off or on) and **Edit**.
+  Record proposals from an app say *From Shop · Orders* with a link to the app (`ProposalDto.sourceApp`), and the
+  command palette lists the apps.
+- **Chat over app data** (done): for each search of the chat plan, the answer's sources also get up to 3 items of your
+  apps that are no records yet (records from apps are found as records) and whose key or data matches, of apps the
+  assistant may learn from, at most 10, also without mail access (`ExternalApiItemRepository.searchForChat`). They are
+  quoted data in the evidence (`[D1] Shop · Orders · SO-155: {…}`, 300 characters each) and cited like other sources
+  (`CitationKind` `APP_ITEM`, chat only): the sources panel shows the data as cited with *Open app*, and keeps it when
+  the item or its app is deleted (`V1_0_37`, `chat_citation.api_item_id`).
+- **The data an endpoint brought in**: *View data* on an endpoint of the app page opens the right sidebar with the
+  items read from its answers (title, key, the record each became, its data) and the last answer as it came
+  (`GET /api/external-apis/{apiId}/endpoints/{endpointId}/data`: the answer cut at 20 000 characters, the newest 100
+  current items, counts of current and gone items). When the items path reads nothing from an answer that has a list,
+  it says so and offers the list it found (*Use these paths* saves them and calls the app). A call whose items path
+  finds nothing says so in the history instead of marking every item as gone, and changing how an endpoint is called or
+  read (path, query, body, items path or key) forgets its stored answers, so the next call reads its items fresh.
+- Not yet: fetched app icons (the initial stands in), app origins on findings and on the record page. Known gap: mapped values go to the record as
+  they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
+  rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
 
 ## Local AI (Ollama)
 
@@ -165,7 +463,7 @@ ollama pull nomic-embed-text
 ```
 
 (Or use the *Download missing models* button in the setup wizard.) Then open the app and click **Set up AI** in the top
-bar (or Settings → AI Models). The wizard walks through:
+bar (or Settings → Autonomy → *Open AI setup*). The wizard walks through six numbered steps (a numbered label over a progress bar each, `components/app/Stepper.tsx`; click a finished step to go back to it, until the analysis has started; *Back* ← and *Next step* → move one step):
 
 1. **Welcome** – what the assistant does; nothing leaves the machine.
 2. **Model** – checks that Ollama runs and the models are installed, downloads missing ones.
@@ -177,17 +475,21 @@ bar (or Settings → AI Models). The wizard walks through:
    (`extract-v7`: whose side an email is on — a customer's "PO" is an order you receive —, deliveries belong to orders and
    shipments, deadlines become to-dos, follow-ups update existing records); without one it keeps the personal rules.
    The demo mailbox fills it in.
-4. **Start** – saves the permissions and starts the analysis.
-5. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
+4. **Mailboxes** – which connected mailboxes the AI reads (one checkbox each, saved right away with
+   `PATCH /api/mail/accounts/{id}` `{aiEnabled}`); at least one must be on to continue. The others are never given to
+   the model: the processing queue, category discovery, the insight digest and the unanswered-mail check all skip them
+   (`EmailMessageRepository.AI_READABLE`).
+5. **Start** – lists the mailboxes and permissions, saves them and starts the analysis.
+6. **Analysis** – live progress. With categories on *Ask me* the run pauses after discovery so you can create or skip
    each suggested category (e.g. *Job applications*, *Orders*), then continues email by email.
 
 - *Ask me* stores proposals: extracted people, organizations and category records wait on **`/findings`** (keep/dismiss),
   actions such as calendar entries, to-dos and new categories on **`/proposals`** (approve/reject, filterable by kind and by
   importance — *High and up* / *Urgent*, with *Newest first* / *Most important first*, kept in the URL as
-  `?importance=high&sort=importance`; important cards carry an *Urgent* / *High* badge whose tooltip says why; the cards of a row have the same height; a click opens the **detail sidebar** with every value, a before/after view for updates, the full reasoning, model/prompt version and the email it came from, and approve/reject there; record proposals can be edited there before approving (*Edit*: inputs of the collection's fields, sent as the edited payload → `EDITED_AND_APPROVED`)). Findings open the same sidebar (Keep/Dismiss, editable too). Proposal, finding and to-do cards share one hover (primary border, shadow; `lib/card-hover.ts`). *Automatic* applies
+  `?importance=high&sort=importance`; important cards carry an *Urgent* / *High* badge whose tooltip says why; the cards of a row have the same height; a click opens the **detail sidebar** (a third of the window, the page beside it stays visible; drag its left edge to resize, remembered per browser) with every value, a before/after view for updates, the full reasoning, model/prompt version and the email it came from, and approve/reject there; record proposals can be edited there before approving (*Edit*: inputs of the collection's fields, sent as the edited payload → `EDITED_AND_APPROVED`)). Findings open the same sidebar (Keep/Dismiss, editable too). Proposal, finding and to-do cards share one hover (primary border, shadow; `lib/card-hover.ts`). *Automatic* applies
   them directly (audited; if applying fails the proposal waits for review instead).
 - **Relations**: besides records, the assistant proposes relations between them ("Anna works at Acme", using the existing relation types such as *works at*). They appear as findings nested under the record they start from (relations between records that already exist are listed on their own, grouped by relation type with *Keep all* / *Dismiss all*, and filterable as *Connections*) and can only be kept once the records they connect are decided; dismissing a record dismisses its pending relations. With *Automatic* for records they are created as soon as their records exist. The record's Connections tab describes each one in a sentence with its attributes, period and whether it was found in an email; AI-created relations carry a small bot badge there. Relations follow the *contacts & records* permission.
-- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: click a day for its agenda and to add an event, click an event to open it) and **Tasks**
+- The assistant's own calendar and to-do list are the system collections **Events** (`/calendar`: a week or month view with the period in the address (`/calendar?view=week&date=2026-10-19`, `/calendar?view=month&date=2026-10-01`; without `date` the period around today, plain `/calendar` is this week), that fits the screen (the agenda scrolls on its own); switching keeps the opened day; the month shows six weeks of day cells with their first events; the week view has hours down and days across, events placed by their start and end, all-day events above the hours and a line at the current time; beside it the agenda with overdue to-dos and each day's events and due to-dos, which can be ticked off there; click a day or an hour, or drag over several hours, to add an event (from–until); Ctrl/⌘ + mouse wheel over the week zooms the hours (remembered per browser); click an event to open it in the detail sidebar, the same as its page with the same tabs, and from there full screen at the same tab). Any record opens in that sidebar over the current page (calendar, home *Today*, collection tables with one click on a row, connections; Back closes it); it lives in the address, `?record=<collectionId>-<recordId>&recordTab=<tab>`, so it survives a reload and can be linked, and the record page keeps its tab as `?tab=<tab>` and **Tasks**
   (`/tasks`: a To do / In progress / Done board with fixed-height columns that scroll on their own; drag cards between and within columns (a slot with the whole card opens where it will land, at the pointer; the order is kept per to-do in `extra.boardPosition`, to-dos never moved come first by deadline; the drag logic is the reusable `components/app/board/KanbanBoard`); cards show the deadline relative to today; a click opens the **detail sidebar** where title, deadline, priority and notes are editable (explicit *Save*, only changed fields are sent; the form is built from the collection's fields, so new fields show up without code), with Start / Mark done, the emails it came from and *Delete*; closing with unsaved changes asks first); people and organizations go to **People**/**Organizations**; duplicates are matched by match keys or title.
 - Dates: every extraction call gets today's date, weekday and your time zone (`AI_TIMEZONE`); relative dates in a mail
   ("Friday", "by Thursday") are resolved from the date the mail was sent. To-dos whose deadline already passed are
@@ -230,7 +532,15 @@ bar (or Settings → AI Models). The wizard walks through:
   automatically after a sync when you answered in Outlook or a newer email arrived (audited as `PROPOSAL_SUPERSEDED`).
   A failed draft never fails the email; the thread offers **Suggest a reply** to ask for one on demand. Inbox rows show
   *Reply suggested* / *Draft ready*.
-- Permissions can be changed any time under Settings → Autonomy; *Analyze inbox again* lives under Settings → AI Models.
+- **Settings → AI Models** only manages the models (whether Ollama runs, installed models, downloads). **Settings →
+  Autonomy** holds everything else about the assistant, as sections: *Setup* (opens the setup wizard), *Mailboxes* (the
+  same picker as in the wizard), *Permissions* and *Inbox analysis* (progress, *Analyze inbox again*).
+- **Hidden mailboxes:** Settings → Accounts has *Hide in contor* per mailbox (`hidden`): its mail is left out of every
+  email list (inbox, home, record emails, search suggestions; `EmailSpecifications`). By default the AI still reads a
+  hidden mailbox (the toggle says so); Settings → General → *AI reads hidden mailboxes* (`readHiddenMailboxes` in
+  the AI settings) turns that off. Both flags are `mail_account.ai_enabled` / `hidden` (migration `V1_0_32`) and every
+  change is audited (`MAIL_ACCOUNT_CHANGED`).
+- Permissions can be changed any time under Settings → Autonomy (the mail-access checkbox on top, unframed; while it is off the inputs below are grayed out, their labels stay as they are; under the profile an *All areas* preset sets every area to Off, Ask me or Automatic at once — reply drafts stop at Ask me — and shows which one matches); the inbox analysis with *Analyze inbox again* sits below them.
 
 | Endpoint | Purpose |
 |---|---|
@@ -277,6 +587,15 @@ cd contor-api && ./mvnw verify -Pai-eval
 ```
 
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiInsightEvalTest` also has `insight-posting-gone` (an application by mail and the job posting gone from a jobs app,
+cases take optional `apiItems` and `expectedApiItems`).
+`AiApiMappingEvalTest` (`ai-eval/api-mapping`) proposes mappings for shop orders, CRM contacts and weather readings
+(nothing fits) against a small catalog and reports the right collections and expected fields (report only, about 15 s).
+`AiApiDocsEvalTest` (`ai-eval/api-docs`) reads three documentation texts with the model (*Read the docs*): a
+Markdown shop API with write endpoints, a jobs guide with absolute URLs and another host, and docs with a prompt
+injection. It reports the expected paths found and fails only when a forbidden one (a write endpoint, another host) is
+suggested (`./mvnw verify -Pai-eval -Dtest=AiApiDocsEvalTest`, about 30 s).
+
 `AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
 `reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
 name an offered day, and runs the `ai-eval/courtesy` cases (rejection by a person, thanks, good news must get a polite
@@ -298,6 +617,23 @@ the gate therefore tolerates one record per metric (`ai.eval.tolerance`); for a 
 | `-Dai.eval.tolerance=0` | records per metric given the benefit of the doubt (default 1): a metric only regresses when it is still worse with that many records better — one record moves a small collection by more than the threshold between identical runs |
 | `-Dai.eval.updateBaseline=true` | write this run as the new `ai-eval/baseline.json` (commit it together with the prompt/model change that earned it) |
 | `-Dai.eval.baseline=<file>`, `-Dai.eval.private=<dir>` | other baseline file / private corpus folder |
+| `-Dai.eval.cache=on\|off\|refresh` | replay recorded model answers (all eval tests; default `off` = a real measurement). `on` asks the model only for prompts it has not answered before, `refresh` asks again and overwrites. Answers are keyed by model, `num_ctx`, system prompt, user prompt and JSON schema |
+| `-Dai.eval.cacheDir=<dir>` | where the answers are stored (default `.ai-cache/`, shared with the dev cache below; gitignored: it holds answers about private mail too) |
+| `-Dai.eval.cases=<glob>[,<glob>]` | run only the cases whose id matches (`*`, `?`, case-insensitive), in every eval test; an eval with no matching case is skipped. A subset is report only: no baseline comparison |
+
+**Iterating fast.** Only a prompt or model change needs the GPU; changes to parsing, validation, appliers or scoring do not.
+With `-Dai.eval.cache=on` an unchanged prompt is answered from disk, so such a change re-runs the whole eval in seconds, and a
+prompt change asks the model only for the calls whose prompt actually changed (e.g. the extraction call, while relation calls
+with unchanged input stay cached). For a prompt change, try it on a few cases first, then run the full eval once:
+
+```bash
+cd contor-api && ./mvnw verify -Pai-eval -Dtest=AiExtractionEvalTest -Dai.eval.cache=on -Dai.eval.cases="invoice-*,meeting-en-*"
+```
+
+A replayed answer is the earlier run's sample, not a new one: judge prompt changes with real runs as described above.
+`-Dai.eval.updateBaseline=true` is refused with `ai.eval.cache=on` or `ai.eval.cases`, because a baseline must be a complete, real run.
+Latency and `where the time goes` count only the calls that reached the model. Bump `CachingLlmClient.KEY_VERSION` when
+`OllamaClient` changes the request options (temperature, thinking), since those are not part of the key.
 
 **Cases** are JSON files: `{id, email: {mailbox, fromName, fromAddress, to, subject, receivedAt, body}, expected: {records: {<collection slug>: [{title, values}]}, relations: []}, mustNotProduce: [{collection, title?}]}`;
 `values` lists only the fields worth checking. The 49 synthetic German/English cases live in
@@ -382,8 +718,9 @@ Evaluations on it (all `-Pai-eval`, report only unless noted):
 | Relations | `/api/relation-types`, `/api/relations?collectionId=&recordId=` | types are OWNER-only; relations are validated against the type's collections, both records must exist |
 | Proposals | `/api/proposals`, `/api/proposals/count`, `POST /api/proposals/{id}/decision` | APPROVE (optionally with an edited payload) or REJECT; applying stores a `result` (e.g. the created record) and proposals can depend on others (a relation needs its two records): they can only be approved once their dependencies are applied (else 409), rejecting a dependency rejects its pending dependents (audited as `PROPOSAL_CASCADE_REJECTED`), and an AUTO proposal waiting for its dependencies is applied automatically once they are; CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, CREATE_COLLECTION (OWNER) and DRAFT_REPLY (keeps a reply draft, never sends) can be applied. `?group=FINDINGS` = extracted records (shown on `/findings`), `?group=ACTIONS` = everything the AI proposes to do, incl. calendar entries and to-dos (shown on `/proposals`). Every proposal has an `importance` (LOW/NORMAL/HIGH/URGENT), an `importanceScore` (0–100) and an `importanceReason`, scored by rules when it is created (`ImportanceScorer`: the kind, a deadline or date in the payload, the reply triage's urgency, whether the sender is one of your contacts, someone you wrote to, or a bulk sender); `?minImportance=HIGH` filters (list and count), `?sort=IMPORTANCE` puts the highest score first. Pending proposals from before importance existed are scored once at startup |
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
-| Mail | `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Microsoft Graph sync: connect, callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status; disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
+| Mail | `/api/mail/providers`, `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Outlook (Microsoft Graph) and Gmail sync behind one provider interface (see *Mail setup*): `GET /api/mail/providers` lists the providers and whether each is configured, connect takes `provider` (default `MICROSOFT_GRAPH`), one callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status, `PATCH /api/mail/accounts/{id}` (`aiEnabled`, `hidden`; OWNER only); disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) but sits in the page flow: the page scrolls with the list, and on large screens the reading pane stays in view beside it (sticky) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; `?read=false` lists only unread mail (its `totalElements` is the unread count on the home page); the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
+| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `/api/external-apis/{apiId}/calls`, `POST /api/external-apis/test`, `/api/external-apis/discovery[/{discoveryId}]` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -438,7 +775,7 @@ cd contor-web && npx playwright install chromium && npm run test:e2e
 # so your own build in .next (and its CONTOR_API_URL) is never replaced.
 cd contor-web && npm run test:e2e:prod
 
-# Screenshots of the main screens in light and dark mode -> contor-web/e2e/.tmp/screenshots/ (for design work)
+# Screenshots of the main screens in light and dark mode (home at 1920 and 390 px) -> contor-web/e2e/.tmp/screenshots/ (for design work)
 cd contor-web && npm run screenshots
 ```
 
@@ -483,13 +820,25 @@ All variables are listed in `.env.example`.
 | `MSGRAPH_CLIENT_SECRET` | backend | – | Azure app registration client secret |
 | `MSGRAPH_TENANT_ID` | backend | `common` | Entra ID tenant ID (`common` for work/school + personal) |
 | `DEV_ACCOUNT_USERNAME`, `DEV_ACCOUNT_PASSWORD`, `DEV_ACCOUNT_EMAIL` | backend (dev profile) | empty | Login the dev backend creates/resets on start (see *Dev account*) |
+| `AI_CACHE` | backend (dev profile) | `off` | `on` answers unchanged prompts from disk instead of the model, `refresh` asks again and overwrites (see *Dev AI cache*); ignored outside dev |
+| `AI_CACHE_DIR` | backend (dev profile) | `../.ai-cache` | where those answers are stored (relative to `contor-api`; gitignored, plain text about your mail) |
 | `DEMO_MAILBOX_ENABLED` | backend (dev profile) | `false` | import the fictional business mailbox into the dev login once (see *Demo mailbox*) |
 | `DEMO_MAILBOX_PATH` | backend (dev profile) | `src/test/resources/ai-eval/business/mailbox` | folder of the generated messages, relative to `contor-api` |
 | `DEMO_MAILBOX_SHIFT_TO_TODAY` | backend (dev profile) | `false` | move the demo mail by whole weeks so the newest mail is recent |
-| `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the Microsoft OAuth callback (`/settings/accounts?connected=true`) |
+| `APP_WEB_URL` | backend | `http://localhost:3000` | Web app URL the browser is forwarded to after the mail provider OAuth callback (`/settings/accounts?connected=true`) |
 | `MSGRAPH_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | OAuth2 callback URL matching app registration |
 | `MSGRAPH_SCOPES` | backend | `Mail.Read,User.Read,Contacts.Read,offline_access` | Microsoft Graph API permissions, comma- or space-separated; keep `offline_access` (refresh token); `Contacts.Read` gives sender photos from your Outlook contacts |
+| `GMAIL_CLIENT_ID` | backend | – | Google OAuth client ID (type *Web application*, see *Mail setup*); Gmail is offered once ID and secret are set |
+| `GMAIL_CLIENT_SECRET` | backend | – | Google OAuth client secret |
+| `GMAIL_REDIRECT_URI` | backend | `http://localhost:8080/api/mail/accounts/callback` | must be listed exactly under the client's *Authorized redirect URIs* (the same callback as Microsoft) |
+| `GMAIL_SCOPES` | backend | `openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/contacts.readonly` | Google scopes, comma- or space-separated; `gmail.readonly` is required, `contacts.readonly` gives sender photos from your Google contacts |
+| `GMAIL_INITIAL_SYNC_DAYS` | backend | `365` | how far back the first sync of a Gmail mailbox reads (later syncs follow the Gmail history) |
 | `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
+| `EXTERNAL_APIS_ENABLED` | backend | `true` | call the connected apps (external APIs) on their schedule |
+| `EXTERNAL_APIS_POLL_TICK` | backend | `1m` | how often due apps are looked for |
+| `EXTERNAL_APIS_TIMEOUT` | backend | `10s` | timeout of one call |
+| `EXTERNAL_APIS_MAX_RESPONSE_SIZE` | backend | `1MB` | answers are cut here (then no items are read) |
+| `EXTERNAL_APIS_MAX_CONCURRENT` | backend | `4` | apps called at the same time (one per host) |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |
 
@@ -499,18 +848,27 @@ The UI is built so a visual redesign does not touch pages or data logic:
 
 | Layer | Where | Change it for… |
 |---|---|---|
-| Design tokens (colors, radius, fonts; light + dark) | `contor-web/src/styles/tokens.css` | palette, typography, roundness |
+| Design tokens (colors, radius, fonts, page surface and panel shadow; light + dark) | `contor-web/src/styles/tokens.css` | palette, typography, roundness |
 | Primitives (shadcn/ui, owned) | `src/components/ui/` | how a button/input/dialog looks in general |
 | App components | `src/components/app/` (`AppButton`, `FormField`, `PageHeader`, `EmptyState`, `ErrorMessage`, `AuthCard`, forms) | app-wide patterns |
-| Layout | `src/components/layout/` (`AppShell`, `AppSidebar`, `TopBar`, `CommandPalette`, `UserMenu`) | shell and navigation |
+| Layout | `src/components/layout/` (`AppShell`, `TopBar` + `TopBarButtons`, `NavDrawer`, `CommandPalette`, `UserMenu`) | shell and navigation |
 | Pages | `src/app/` | composition only: no styling decisions, no `components/ui` imports (ESLint enforces) |
 
-Navigation entries live in `src/lib/navigation.ts` (shared by sidebar and command palette). `npm run screenshots` captures before/after images.
+**Page header:** every page except Home starts with breadcrumbs from Home to the page and a Close (✕) that goes one level up (`PageTrail` in `components/app/PageHeader.tsx`; record and report pages use it above their own header), then the bare section icon in its color, the title with an optional light `| subtitle`, the page's command bar (`PageCommands`: Refresh, related pages, settings, table view, mail sync) and Close on the same row, and the description below. **Postponed work** is collected in `docs/todo.md` (e.g. the reports sidebar on the record page). **Design language:** `docs/design-language.md` (based on the home page) describes the quiet black/white look, typography, the sparse use of color, layout grids, the shared building blocks and states; new screens follow it. Navigation entries live in `src/lib/navigation.ts` (shared by the navigation drawer and command palette). `npm run screenshots` captures before/after images.
 
-The sidebar can be resized (drag its right edge, or focus the edge and use the arrow keys; double-click collapses it) and collections can be reordered (drag them, or focus a collection's grip and press Alt+↑/↓). Both are per-browser preferences in `localStorage` (`contor.sidebar.width`, `contor.sidebar.collectionOrder`), never stored on the server. The primary color is blue (buttons, tabs, progress, focus rings, current page); otherwise color comes from `success`/`info`/`warning`, ten tints (`--tint-1..10`: same lightness and chroma, only the hue changes; collections by id, Calendar and To-dos in their section colors, records in their own color so a collection's banners differ) and their vivid variants for the sidebar icons, all in `src/styles/tokens.css`. The command palette hint shows ⌘K on macOS/iOS and Ctrl K elsewhere. Scrollbars are thin everywhere (`globals.css`).
+**Loading:** every page has a skeleton in its own shape (header, toolbar, cards, board, table, detail) at the real heights, so nothing jumps when the data arrives. The page's `loading.tsx` and its component's loading branch share the skeleton (`src/components/app/<area>/*Skeleton.tsx`, shared pieces in `LoadingSkeletons.tsx`). Pages with child routes keep their `page.tsx` and `loading.tsx` in a route group (`(home)`, `collections/(overview)`, `[collectionId]/(table)`, `[recordId]/(record)`) so a parent's skeleton is never shown for a child page.
+
+**Shell:** a compact full-width top bar (3rem, `--header-height`; white with a hairline below, shadcn style) over the plain white page (`--surface-page`; the few framed panels use `SURFACE_CARD`, rows and cells hover with a quiet background, `ROW_HOVER`, both in `src/lib/card-hover.ts`). Left to right: the menu button (opens the navigation drawer), the *External APIs* menu (braces icon; your connected apps, each opening its page), the contor logo (→ `/`), one wide search bar in the middle (the command palette: click it or press Ctrl/⌘ K and its list drops down right underneath, no dialog; pages, collections, actions, and *Search mail for “…”* for anything typed, which opens the inbox with the results; Escape, a click elsewhere or a choice closes it), then the AI status (hidden on phones), **Chat** (`/chat`, ask the assistant about your data) and the account menu. **Settings** have no icon of their own: they open from the search bar (*Settings*) or the account menu, at *General*; the account menu's *My account* opens the first section, *My account* (username, email address and role as plain rows, and *Log out*; editing the account comes later): theme Light / Dark / System via `next-themes`, the time format (*24-hour* by default or *12-hour (AM/PM)*, a per-browser preference in `localStorage` `contor.timeFormat`, `src/lib/time-format.ts`; calendar and the home *Today* list follow it, and time fields are `TimeInput`, which takes either format while typing), and the language, English only for now — see `docs/todo.md`; then Accounts, AI Models, Autonomy, Security); the theme is chosen only there. Pages still link straight to the section they need (e.g. *Mailboxes*, *Autonomy*). The menu button (or Ctrl/⌘ B) opens the **navigation drawer** (`NavDrawer`): a panel over the page that starts below the top bar (`--header-height` in `globals.css`), so the page never moves; no dimmed or blurred background; it closes on a click outside or Escape, and at once (no slide-out) when a page is chosen. A search field on top filters pages and collections; below it Home, Inbox, Calendar, To-dos, **AI insights** (Proposals, Findings, with their pending counts), Collections and Graph & automation, in groups divided by hairlines under small mono captions (*Navigation* first), as inset rounded rows with muted icons; the current page is raised like a card, collections carry a colored dot in their tint, counts are plain mono numbers on the right. **Fields:** every text field shares one look (`FIELD` in `components/ui/input.tsx`; search boxes are `SearchField` with a Clear ✕), guarded by `src/components/fields.test.ts`. Scrollbars are 4px.
+
+**Home page** (`/`, also where login lands when there is no `next`): a quiet, mostly black-and-white page (max. 1360 px wide, centered; color only for small status dots, the unread dot and overdue counts). Top: a greeting by time of day and username ("Good morning, anna"; `useTimeOfDay` reads the client clock via `useSyncExternalStore`, so the server and hydration render say "Welcome back", without the name, and never mismatch), one status line below it (a running analysis with a thin progress bar and *View progress*, proposals waiting with *Review now*, or *All caught up*). Under it, full width, the chat (`HomeChat`): a *What do you want to know?* section with *All chats →*, one line of text, the input and the ready-made questions (`ChatAsk` / `ChatSuggestions`, shared with the chat start); sending opens the new conversation at `/chat/<id>`. Then one strip of four numbers separated by hairlines (unread mail across your mailboxes, pending proposals with the high-priority count, open to-dos with overdue/due today, today's events with the next one; each cell links to its page, skeletons while loading). Below, without boxes, sections with a small heading over a hairline, in two rows on one grid (row 1: *Recent activity* | *Today* and *Connected mailboxes*; row 2: *Pending actions* | *AI status*); lists longer than their space get a small pager (‹ 1 / 3 ›, `Pager` / `usePages`: 6 emails of the latest 24, 3 of the 12 most important proposals, 4 agenda rows, 3 mailboxes per page): *Recent activity* (tabs Recent / Unread / Needs reply: sender picture, subject and snippet, first label, relative time; unread rows with a dot; each row opens `/inbox?email=<id>`; quiet empty states) and *Pending actions* (the most important pending proposals as rows with kind, priority, reasoning, inline *Approve* (not for draft replies and insights, which need the proposals page) and *Review*) on the left; *Today* (today's events and the to-dos due today or overdue; the to-do query shares its cache with the to-do page), *Connected mailboxes* (sync dot and last sync, *Manage*) and *AI status* (model, readiness, the analysis queue or the last run, *AI settings*) on the right. *Navigate* sits right under the numbers (Inbox, Calendar, To-dos, Collections, Proposals, Chat with a one-line description; the rarer pages stay in the sidebar). Sections live in `src/components/app/home/` (`HomeSection`, `SectionLink`, `QuietEmpty`); tabs and progress use the owned shadcn `tabs` and `progress` primitives.
+
+Collections can be reordered in the navigation drawer (drag them, or focus a collection's grip and press Alt+↑/↓; not while searching). The order is a per-browser preference in `localStorage` (`contor.sidebar.collectionOrder`), never stored on the server. The primary color is near-black (white in dark mode), shadcn's neutral theme (buttons, tabs, progress, focus rings, current page); otherwise color comes from `success`/`info`/`warning`, ten tints (`--tint-1..10`: same lightness and chroma, only the hue changes; collections by id, Calendar and To-dos in their section colors, records in their own color so the initials of a collection's records differ) and their vivid variants for the navigation and quick-action icons, all in `src/styles/tokens.css`. The command palette hint shows ⌘K on macOS/iOS and Ctrl K elsewhere. Scrollbars are thin (4px) everywhere (`globals.css`).
 
 ## Notes
 
+- Do not run `./mvnw` (compile, test) in `contor-api` while IntelliJ runs the backend from the same checkout: both write
+  `target/classes`, and a running backend that loads a class compiled by the other compiler can fail with
+  `NoClassDefFoundError` (e.g. `ReportGenerator$1`). Rebuild in IntelliJ and restart, or build in a separate git worktree.
 - Only loopback is trusted as a proxy for `X-Forwarded-For` (the Next.js server). Do not put another proxy in front without adjusting `server.tomcat.remoteip.internal-proxies`.
 
 - The backend JVM always runs in UTC (all timestamps are `timestamptz`). This also avoids PostgreSQL 18 rejecting legacy JVM zone names such as `US/Pacific`.

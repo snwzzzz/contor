@@ -12,7 +12,7 @@ export function isFreeMailDomain(domain: string | undefined): boolean {
 }
 
 /**
- * Pictures for mail addresses and domains: Outlook contact photos (from the mail sync) and domain logos (fetched by
+ * Pictures for mail addresses and domains: contact photos (from the mail sync) and domain logos (fetched by
  * the backend from the web). `domains` are the ones whose logos may be needed; they are resolved in one request.
  */
 export function useSenderPictures(domains: readonly string[]) {

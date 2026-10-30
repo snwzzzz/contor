@@ -6,6 +6,9 @@ import com.example.contor.api.model.ProposalPriority;
 import com.example.contor.api.model.ProposalState;
 import com.example.contor.domain.AppUser;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalImportance;
 import com.example.contor.domain.ProposalKind;
@@ -64,5 +67,18 @@ public class ProposalMapperTest {
         assertNull(dto.getSourceEmailId());
         assertNull(dto.getDecidedById());
         assertNull(dto.getConfidence());
+    }
+
+    @Test
+    void maps_the_app_item_a_proposal_was_made_from() {
+        var api = ExternalApi.builder().id(new ExternalApi.ExternalApiId(7L)).name("Shop").build();
+        var item = ExternalApiItem.builder().id(9L).endpoint(ExternalApiEndpoint.builder().api(api).name("Orders").build()).build();
+
+        ProposalDto dto = ProposalMapper.toDto(Proposal.builder().kind(ProposalKind.CREATE_RECORD).payload(Map.of()).sourceApiItem(item).build());
+
+        assertEquals(7L, dto.getSourceApp().getApiId());
+        assertEquals("Shop", dto.getSourceApp().getApiName());
+        assertEquals("Orders", dto.getSourceApp().getEndpointName());
+        assertNull(ProposalMapper.toDto(Proposal.builder().kind(ProposalKind.SET_LABEL).payload(Map.of()).build()).getSourceApp());
     }
 }

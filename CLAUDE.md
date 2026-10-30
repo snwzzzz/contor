@@ -41,7 +41,9 @@ API enum schemas must not share a name with a domain enum, or mappers would need
 `UserRole`→`Role`, `CreatedBy`→`Creator`, `FieldType`→`CollectionFieldType`, `ProposalKind`→`ProposalAction`,
 `ProposalStatus`→`ProposalState`, `LabelSource`→`LabelOrigin`, `RelationCreatedBy`→`RelationOrigin`,
 `ProcessingState`→`EmailProcessingState`, `MailAccountStatus`→`MailAccountState`, `MailProvider`→`MailProviderKind`,
-`ReplyDraftStatus`→`ReplyDraftState`, `ProposalImportance` (domain)→`ProposalPriority` (API).
+`ReplyDraftStatus`→`ReplyDraftState`, `ReportStatus`→`ReportState`, `ReportSectionKind`→`ReportSectionType`,
+`FindingSeverity`→`FindingLevel`, `ClaimVerification`→`ClaimCheck`, `CitationType`→`CitationKind`, `ProposalImportance` (domain)→`ProposalPriority` (API),
+`ApiAuthType`→`ApiAuthKind`, `ApiState`→`ApiStatus`, `EndpointOrigin`→`EndpointSource`, `ApiCallResult`→`CallOutcome`, `DiscoveryState`→`DiscoveryStatus`.
 Map with `ApiEnum.valueOf(domain.name())` and back.
 
 ### Packages (by layer, under `com.example.contor`)
@@ -110,7 +112,7 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - New field type = enum constant in `domain/FieldType` + one `@Component FieldTypeHandler` (+ its unit test) + the value shape in the spec's `CollectionFieldType` description. Handlers throw `IllegalArgumentException` with a message that does not name the field.
 - Schema changes go through `CollectionSchemaService` only (metadata + DDL + `schema_version` + `collection_schema_change` + audit in one transaction). Record writes go through `RecordService` (validation collects all violations → `RecordValidationException`).
 - Services persist with `saveAndFlush` (also the audit log), so constraint errors surface inside the operation.
-- New proposal kind = one `@Component ProposalApplier` (+ unit test) and its payload format in the spec's `ProposalAction` description, plus the kind in `ck_proposal_kind` (migration) and a base in `ImportanceScorer`. Appliers read `proposal.getFinalPayload()`, throw `IllegalArgumentException` for malformed payloads, run inside the decision transaction, and set `requiresOwner()` for schema/settings changes. Records created by appliers have `created_by = AI` and a `record_source` link to the source email (INSIGHT: to every evidence email).
+- New proposal kind = one `@Component ProposalApplier` (+ unit test) and its payload format in the spec's `ProposalAction` description, plus the kind in `ck_proposal_kind` (migration) and a base in `ImportanceScorer`. Appliers read `proposal.getFinalPayload()`, throw `IllegalArgumentException` for malformed payloads, run inside the decision transaction, and set `requiresOwner()` for schema/settings changes. Records created by appliers have `created_by = AI` and a `record_source` link to the source email (INSIGHT: to every evidence email; from an app: to the `ExternalApiItem` instead, `ck_record_source_origin`). Code that reads `record_source` for emails skips sources without one.
 - Model output is untrusted: ids, slugs, dates and enum values from a model answer are validated (and dropped when invalid) before anything is stored. A prompt change bumps its `PROMPT_VERSION` and is measured with the matching `-Pai-eval` test against two runs of the old prompt (results vary between identical runs; the extraction gate tolerates one record per metric).
 - Mail is scoped to the current user's mailboxes (`EmailSpecifications.Criteria.ownerId` is mandatory); never map tokens to DTOs.
 - Record IDs are unique per collection table only: any reference from outside is always `(collection_id, record_id)`.
@@ -121,6 +123,7 @@ Naming: snake_case + `@DisplayNameGeneration(DisplayNameGenerator.ReplaceUndersc
 - `app_readonly` (NOLOGIN) gets `SELECT` per generated collection table, granted by the collection engine; never on fixed tables.
 
 ## 4. Frontend rules
+- **Design language:** follow `docs/design-language.md` (quiet shadcn black/white, few boxes, color only for status marks, stable layouts); update it when the look changes.
 - **Redesign-ready layering:** tokens in `src/styles/tokens.css` (the only place with colors/radii/fonts) → owned shadcn primitives `components/ui/` → app composites `components/app/` → shell `components/layout/` → pages `src/app/` (composition only). Pages never import `components/ui` (ESLint `no-restricted-imports` on `src/app/**`). No hard-coded colors anywhere; use token classes (`bg-primary`, `text-muted-foreground`).
 - Edits to owned `components/ui` files are marked with a `// contor:` comment (e.g. deterministic sidebar skeleton width, CommandDialog title inside the content, `use-mobile` via `useSyncExternalStore`) so a later `shadcn add --overwrite` does not silently undo them.
 - API access only through the generated orval hooks (`src/lib/api/generated/endpoints/<tag>/<tag>.ts`, import the concrete module, no barrels) and the `src/lib/api/fetcher.ts` mutator (same-origin, CSRF header, fetches the CSRF cookie when missing, throws `ApiError`). Errors are typed `ApiError` (`ErrorType` export in the mutator).

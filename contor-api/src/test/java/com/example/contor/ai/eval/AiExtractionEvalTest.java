@@ -1,6 +1,7 @@
 package com.example.contor.ai.eval;
 
 import com.example.contor.ai.AiTimings;
+import com.example.contor.ai.CachingLlmClient;
 import com.example.contor.ai.OllamaClient;
 import com.example.contor.ai.ProposalDraft;
 import com.example.contor.api.model.CollectionDto;
@@ -53,7 +54,9 @@ import static org.mockito.Mockito.when;
  * System properties: {@code ai.eval.model} (default: the app default), {@code ai.eval.threshold} (default 0.05), {@code ai.eval.tolerance}
  * (records per metric given the benefit of the doubt against run-to-run noise, default 1),
  * {@code ai.eval.baseline} (default {@code ../ai-eval/baseline.json}), {@code ai.eval.private} (default
- * {@code ../ai-eval/private}), {@code ai.eval.updateBaseline=true} to overwrite the baseline with this run.
+ * {@code ../ai-eval/private}), {@code ai.eval.updateBaseline=true} to overwrite the baseline with this run. For all eval
+ * tests: {@code ai.eval.cache} replays stored model answers ({@link CachingLlmClient}), {@code ai.eval.cases} runs a subset
+ * ({@link CaseFilter}; report only, no baseline comparison).
  */
 @Tag("ai-eval")
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
@@ -76,12 +79,17 @@ class AiExtractionEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
         AiTimings timings = new AiTimings();
-        OllamaClient client = new OllamaClient(properties, mapper, timings);
+        CachingLlmClient client = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper, timings), properties.ollama().numCtx());
+        CaseFilter filter = CaseFilter.fromSystemProperty();
+        boolean updateBaseline = Boolean.getBoolean("ai.eval.updateBaseline");
+        assertThat(updateBaseline && (!filter.isAll() || client.mode() == CachingLlmClient.Mode.ON))
+                .as("a baseline is a full, real run: -Dai.eval.updateBaseline=true needs all cases and no ai.eval.cache=on").isFalse();
         List<AiTimings.Call> extractionCalls = new ArrayList<>();
         List<AiTimings.Call> relationCalls = new ArrayList<>();
 
         List<EvalCase> cases = new ArrayList<>(EvalCaseLoader.loadClasspath("ai-eval/synthetic"));
         cases.addAll(EvalCaseLoader.load(privateDir));
+        cases = filter.selectOrSkip(cases, EvalCase::id);
         List<CollectionDto> collections = EvalCollections.all();
         Set<String> undirected = EvalCollections.relationTypes().stream().filter(type -> !type.getDirected()).map(type -> type.getSlug())
                 .collect(Collectors.toSet());
@@ -121,6 +129,7 @@ class AiExtractionEvalTest {
             }));
         }
         System.out.println("[ai-eval] where the time goes – extraction: " + split(extractionCalls) + "; relations: " + split(relationCalls));
+        System.out.println("[ai-eval] " + client.summary() + " (timings above cover the model calls only)");
 
         EvalReport report = new EvalScorer(collections, undirected).score(model, EmailExtractionService.PROMPT_VERSION, cases, results);
         writeReports(report);
@@ -128,7 +137,11 @@ class AiExtractionEvalTest {
                 .forEach(result -> System.out.println("[ai-eval] " + result.caseId() + " failed: " + result.error()));
         assertThat(report.failedCases()).as("model calls that failed (Ollama running? model pulled?)").isLessThan(cases.size());
 
-        if (Boolean.getBoolean("ai.eval.updateBaseline")) {
+        if (!filter.isAll()) {
+            System.out.println("[ai-eval] " + cases.size() + " of the cases (ai.eval.cases=" + filter.spec() + "): report only, no baseline comparison.");
+            return;
+        }
+        if (updateBaseline) {
             Files.createDirectories(baselineFile.toAbsolutePath().getParent());
             mapper.writeValue(baselineFile, report);
             return;

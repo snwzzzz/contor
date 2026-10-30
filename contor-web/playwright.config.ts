@@ -26,7 +26,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "./e2e/support/start-backend.sh",
+      // Through bash so it also starts from cmd.exe (Windows).
+      command: "bash ./e2e/support/start-backend.sh",
       url: `http://127.0.0.1:${apiPort}/actuator/health`,
       env: { E2E_API_PORT: String(apiPort) },
       reuseExistingServer: false,

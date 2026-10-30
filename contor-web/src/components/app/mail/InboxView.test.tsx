@@ -303,6 +303,8 @@ describe("InboxView", () => {
 
     const list = await screen.findByRole("region", { name: "Email list" });
     expect(await within(list).findByText("Pane mail")).toBeInTheDocument();
+    // Email boxes have their own surface (a little darker than cards in dark mode).
+    expect(within(list).getByText("Pane mail").closest("button")).toHaveClass("bg-surface-email");
     // Search and filter sit compactly on top of the list, not across the page.
     expect(within(list).getByRole("combobox", { name: "Search emails" })).toBeInTheDocument();
     expect(within(list).getByRole("button", { name: /^Filter/ })).toBeInTheDocument();
@@ -327,12 +329,30 @@ describe("InboxView", () => {
     await user.click(screen.getByRole("button", { name: /^Filter/ }));
     expect(await screen.findByRole("menuitemradio", { name: "All accounts" })).toHaveAttribute("aria-checked", "true");
 
-    await user.click(screen.getByRole("menuitemradio", { name: "home@outlook.com" }));
+    const home = screen.getByRole("menuitemradio", { name: /home@outlook\.com/ });
+    expect(home).toHaveTextContent("Outlook");
+    await user.click(home);
 
     await waitFor(() => expect(requested.some((search) => search.includes("accountId=2"))).toBe(true));
     expect(screen.getByRole("button", { name: /^Filter/ })).toHaveTextContent("1");
     await user.click(screen.getByRole("button", { name: /^Filter/ }));
-    expect(await screen.findByRole("menuitemradio", { name: "home@outlook.com" })).toHaveAttribute("aria-checked", "true");
+    expect(await screen.findByRole("menuitemradio", { name: /home@outlook\.com/ })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("names the provider of each mailbox in the filter", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/mail/accounts": {
+        body: [...ACCOUNTS, { id: 3, provider: "GMAIL", emailAddress: "me@gmail.com", status: "ACTIVE", hasPhoto: false }],
+      },
+      "GET /api/emails": { body: page([email(101, 1, "From work")], 1) },
+    });
+
+    renderWithProviders(<InboxView />);
+    await screen.findByText("From work");
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+
+    expect(await screen.findByRole("menuitemradio", { name: /me@gmail\.com/ })).toHaveTextContent("Gmail");
   });
 
   it("shows the profile picture of accounts that have one", async () => {
@@ -344,9 +364,9 @@ describe("InboxView", () => {
     renderWithProviders(<InboxView />);
 
     await userEvent.click(await screen.findByRole("button", { name: /^Filter/ }));
-    const home = await screen.findByRole("menuitemradio", { name: "home@outlook.com" });
+    const home = await screen.findByRole("menuitemradio", { name: /home@outlook\.com/ });
     expect(home.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/mail/accounts/2/photo"));
-    expect(screen.getByRole("menuitemradio", { name: "work@outlook.com" }).querySelector("img")).toBeNull();
+    expect(screen.getByRole("menuitemradio", { name: /work@outlook\.com/ }).querySelector("img")).toBeNull();
   });
 
   it("shows sender pictures: contact photo first, then the company logo, else the initial", async () => {
@@ -454,7 +474,7 @@ describe("InboxView", () => {
     expect(within(pane).getByRole("heading", { name: "Project Update" })).toBeInTheDocument();
     expect(within(pane).getByText("Alice")).toBeInTheDocument();
     expect(within(pane).getByText("Here is the latest status...")).toBeInTheDocument();
-    expect(within(pane).getByText("Loading conversation…")).toBeInTheDocument();
+    expect(within(pane).getByRole("status", { name: "Loading conversation" })).toBeInTheDocument();
   });
 
   it("keeps the current page visible while the next one loads", async () => {
@@ -470,7 +490,14 @@ describe("InboxView", () => {
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     expect(screen.getByText("First page mail")).toBeInTheDocument();
-    expect(screen.queryByText("Loading emails…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading emails" })).not.toBeInTheDocument();
+  });
+
+  it("shows placeholder rows while the first page loads", async () => {
+    mockApi({ "GET /api/mail/accounts": { body: [] }, "GET /api/emails": () => new Promise(() => {}) });
+    renderWithProviders(<InboxView />);
+
+    expect(await screen.findByRole("status", { name: "Loading emails" })).toBeInTheDocument();
   });
 
   it("pages through all emails", async () => {

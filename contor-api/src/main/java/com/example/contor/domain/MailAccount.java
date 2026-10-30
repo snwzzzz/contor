@@ -44,17 +44,18 @@ public class MailAccount extends AuditableEntity {
     @Column(name = "token_expires_at")
     private Instant tokenExpiresAt;
 
-    @Column(name = "delta_link")
-    private String deltaLink;
+    /** Provider sync cursor of the inbox (Graph delta link, Gmail history id); {@code null} = sync from scratch. */
+    @Column(name = "sync_cursor")
+    private String syncCursor;
 
-    /** Graph delta link of the Sent Items folder. */
-    @Column(name = "sent_delta_link")
-    private String sentDeltaLink;
+    /** Provider sync cursor of the sent mail. */
+    @Column(name = "sent_sync_cursor")
+    private String sentSyncCursor;
 
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 
-    /** Profile photo from Microsoft Graph (small, a few KB). */
+    /** Profile photo from the provider (small, a few KB). */
     @Column(name = "photo")
     private byte[] photo;
 
@@ -65,7 +66,7 @@ public class MailAccount extends AuditableEntity {
     @Column(name = "photo_checked_at")
     private Instant photoCheckedAt;
 
-    /** When the Outlook contact photos were last read; refreshed at most daily. */
+    /** When the contact photos were last read from the provider; refreshed at most daily. */
     @Column(name = "contacts_checked_at")
     private Instant contactsCheckedAt;
 
@@ -73,6 +74,16 @@ public class MailAccount extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MailAccountStatus status = MailAccountStatus.ACTIVE;
+
+    /** The AI reads this mailbox (the analysis and new mail); off = its mail is never given to the model. */
+    @Builder.Default
+    @Column(name = "ai_enabled", nullable = false)
+    private boolean aiEnabled = true;
+
+    /** Its mail is not shown in the app; whether the AI still reads it is {@link AiSettings#isReadHiddenMailboxes()}. */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean hidden = false;
 
     @Embeddable
     public record MailAccountId(@GeneratedValue Long id) {}

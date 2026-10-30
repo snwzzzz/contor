@@ -4,6 +4,7 @@ import com.example.contor.ControllerTest;
 import com.example.contor.TestAuth;
 import com.example.contor.api.model.*;
 import com.example.contor.exception.EmailNotFoundException;
+import com.example.contor.exception.MailAccountNotFoundException;
 import com.example.contor.exception.MailAccountPhotoNotFoundException;
 import com.example.contor.exception.MailCallbackException;
 import com.example.contor.service.MailService;
@@ -18,9 +19,12 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -39,12 +43,44 @@ public class MailControllerTest {
     @Test
     void list_mail_accounts_returns_200() throws Exception {
         when(mailService.listMailAccounts()).thenReturn(List.of(
-                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE)));
+                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE, true, false)));
 
         mockMvc.perform(get("/api/mail/accounts").with(TestAuth.user()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].emailAddress").value("me@example.com"))
-                .andExpect(jsonPath("$[0].accessToken").doesNotExist());
+                .andExpect(jsonPath("$[0].accessToken").doesNotExist())
+                .andExpect(jsonPath("$[0].aiEnabled").value(true))
+                .andExpect(jsonPath("$[0].hidden").value(false));
+    }
+
+    @Test
+    void update_mail_account_owner_returns_200() throws Exception {
+        when(mailService.updateMailAccount(eq(2L), any())).thenReturn(
+                new MailAccountDto(2L, MailProviderKind.MICROSOFT_GRAPH, "me@example.com", MailAccountState.ACTIVE, true, true));
+
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"hidden\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hidden").value(true));
+        verify(mailService).updateMailAccount(eq(2L), argThat(command -> Boolean.TRUE.equals(command.getHidden()) && command.getAiEnabled() == null));
+    }
+
+    @Test
+    void update_mail_account_user_forbidden() throws Exception {
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.user()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"hidden\":true}"))
+                .andExpect(status().isForbidden());
+        verify(mailService, never()).updateMailAccount(any(), any());
+    }
+
+    @Test
+    void update_mail_account_of_someone_else_returns_404() throws Exception {
+        when(mailService.updateMailAccount(eq(2L), any())).thenThrow(new MailAccountNotFoundException(2L));
+
+        mockMvc.perform(patch("/api/mail/accounts/2").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aiEnabled\":false}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test
@@ -54,6 +90,45 @@ public class MailControllerTest {
         mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authorizeUrl").value("https://login.microsoft.com/auth"));
+    }
+
+    @Test
+    void connect_mail_account_passes_the_provider() throws Exception {
+        when(mailService.connectAccount(any())).thenReturn(new MailAuthorizeUrlDto("https://accounts.google.com/o/oauth2/v2/auth"));
+
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"provider\":\"GMAIL\"}"))
+                .andExpect(status().isOk());
+        verify(mailService).connectAccount(argThat(command -> command.getProvider() == MailProviderKind.GMAIL));
+    }
+
+    @Test
+    void connect_mail_account_unconfigured_provider_returns_400() throws Exception {
+        when(mailService.connectAccount(any())).thenThrow(new IllegalArgumentException("Gmail is not configured on this server"));
+
+        mockMvc.perform(post("/api/mail/accounts/connect").with(TestAuth.owner()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"provider\":\"GMAIL\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Gmail is not configured on this server"));
+    }
+
+    @Test
+    void list_mail_providers_returns_200() throws Exception {
+        when(mailService.listMailProviders()).thenReturn(List.of(
+                new MailProviderDto(MailProviderKind.MICROSOFT_GRAPH, "Outlook", true),
+                new MailProviderDto(MailProviderKind.GMAIL, "Gmail", false)));
+
+        mockMvc.perform(get("/api/mail/providers").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].kind").value("GMAIL"))
+                .andExpect(jsonPath("$[1].displayName").value("Gmail"))
+                .andExpect(jsonPath("$[1].configured").value(false));
+    }
+
+    @Test
+    void list_mail_providers_unauthenticated_returns_401() throws Exception {
+        mockMvc.perform(get("/api/mail/providers"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -123,11 +198,11 @@ public class MailControllerTest {
 
     @Test
     void list_emails_passes_filters() throws Exception {
-        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, false, EmailFolder.SENT, 1, 10))
+        when(mailService.listEmails(2L, 3L, EmailProcessingState.NEW, "order", EmailSearchField.CONTENT, false, false, EmailFolder.SENT, 1, 10))
                 .thenReturn(new EmailPageDto(List.of(), 1, 10, 0L, 0));
 
         mockMvc.perform(get("/api/emails").with(TestAuth.user()).param("accountId", "2").param("labelId", "3")
-                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("answered", "false").param("folder", "SENT").param("page", "1").param("size", "10"))
+                        .param("processingState", "NEW").param("q", "order").param("field", "CONTENT").param("answered", "false").param("read", "false").param("folder", "SENT").param("page", "1").param("size", "10"))
                 .andExpect(status().isOk());
     }
 
@@ -173,6 +248,34 @@ public class MailControllerTest {
                 .andExpect(jsonPath("$.messages[1].folder").value("sent"))
                 .andExpect(jsonPath("$.replyDrafts[0].status").value("READY"))
                 .andExpect(jsonPath("$.replySuggestion").value("IDLE"));
+    }
+
+    @Test
+    void get_email_paragraphs_returns_200() throws Exception {
+        when(mailService.getEmailParagraphs(9L)).thenReturn(List.of(
+                new EmailParagraphDto(0, "Your order has shipped.", "0123456789abcdef"),
+                new EmailParagraphDto(1, "It is held at customs.", "fedcba9876543210")));
+
+        mockMvc.perform(get("/api/emails/9/paragraphs").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].index").value(1))
+                .andExpect(jsonPath("$[1].text").value("It is held at customs."))
+                .andExpect(jsonPath("$[1].hash").value("fedcba9876543210"));
+    }
+
+    @Test
+    void get_email_paragraphs_returns_404() throws Exception {
+        when(mailService.getEmailParagraphs(9L)).thenThrow(new EmailNotFoundException(9L));
+
+        mockMvc.perform(get("/api/emails/9/paragraphs").with(TestAuth.user()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void get_email_paragraphs_requires_login() throws Exception {
+        mockMvc.perform(get("/api/emails/9/paragraphs"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

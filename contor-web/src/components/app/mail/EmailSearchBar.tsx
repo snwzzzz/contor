@@ -81,7 +81,7 @@ export function EmailSearchBar({ text, field, onChange, suggestions = false, fol
 
   return (
     <div className={cn("relative min-w-0", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
       <Input
         role="combobox"
         aria-label="Search emails"
@@ -100,7 +100,7 @@ export function EmailSearchBar({ text, field, onChange, suggestions = false, fol
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className={cn("h-9 pl-9", text ? "pr-32" : "pr-24")}
+        className={cn("pl-8 [&::-webkit-search-cancel-button]:appearance-none", text ? "pr-32" : "pr-24")}
       />
       <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
         {text ? (

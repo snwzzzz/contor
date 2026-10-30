@@ -86,6 +86,16 @@ public class EmailSpecificationsTest {
     }
 
     @Test
+    void leaves_out_hidden_mailboxes_even_when_asked_for_one() {
+        home.setHidden(true);
+        mailAccountRepository.saveAndFlush(home);
+
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null)))
+                .containsExactly("Your ORDER has shipped", "Meeting tomorrow");
+        assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), home.getId(), null, null, null))).isEmpty();
+    }
+
+    @Test
     void filters_by_account_label_and_state() {
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), home.getId(), null, null, null))).containsExactly("Invoice");
         assertThat(subjects(new EmailSpecifications.Criteria(owner.getId(), null, orders.getId(), null, null))).containsExactly("Your ORDER has shipped");
@@ -152,6 +162,21 @@ public class EmailSpecificationsTest {
         assertThat(answered(true)).containsExactly("Meeting tomorrow");
         assertThat(answered(false)).containsExactly("Your ORDER has shipped", "Invoice");
         assertThat(answered(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
+    }
+
+    private List<String> read(Boolean read) {
+        return subjects(new EmailSpecifications.Criteria(owner.getId(), null, null, null, null, SearchField.ALL, null, false, read));
+    }
+
+    @Test
+    void filters_by_read_state() {
+        var meeting = emailMessageRepository.findAll().stream().filter(e -> e.getSubject().equals("Meeting tomorrow")).findFirst().orElseThrow();
+        meeting.setRead(true);
+        emailMessageRepository.save(meeting);
+
+        assertThat(read(false)).containsExactly("Your ORDER has shipped", "Invoice");
+        assertThat(read(true)).containsExactly("Meeting tomorrow");
+        assertThat(read(null)).containsExactly("Your ORDER has shipped", "Meeting tomorrow", "Invoice");
     }
 
     @Test

@@ -65,6 +65,25 @@ export function tintVividClass(tint: Tint): string {
   return VIVID[tint - 1];
 }
 
+/** Literal classes, so Tailwind sees them: the vivid dot with a faint halo of the same color. */
+const DOT = [
+  "bg-tint-1-vivid ring-3 ring-tint-1-vivid/20",
+  "bg-tint-2-vivid ring-3 ring-tint-2-vivid/20",
+  "bg-tint-3-vivid ring-3 ring-tint-3-vivid/20",
+  "bg-tint-4-vivid ring-3 ring-tint-4-vivid/20",
+  "bg-tint-5-vivid ring-3 ring-tint-5-vivid/20",
+  "bg-tint-6-vivid ring-3 ring-tint-6-vivid/20",
+  "bg-tint-7-vivid ring-3 ring-tint-7-vivid/20",
+  "bg-tint-8-vivid ring-3 ring-tint-8-vivid/20",
+  "bg-tint-9-vivid ring-3 ring-tint-9-vivid/20",
+  "bg-tint-10-vivid ring-3 ring-tint-10-vivid/20",
+] as const;
+
+/** A small status-like dot in the tint (sidebar collections). */
+export function tintDotClass(tint: Tint): string {
+  return DOT[tint - 1];
+}
+
 /** A collection's tint: its section color for the calendar and to-dos, otherwise one of the ten by id. */
 export function collectionTintNumber(collectionId: number, slug?: string): Tint {
   const section = slug ? COLLECTION_SECTION_TINTS[slug] : undefined;

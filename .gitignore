@@ -15,3 +15,6 @@ reference/java-style/*
 
 # Private real-mail eval corpus (never commit, never share)
 ai-eval/private/
+
+# Recorded model answers (AI evaluation and dev AI_CACHE; plain-text answers about your mail)
+.ai-cache/

@@ -4,5 +4,7 @@ package com.example.contor.domain;
 public enum ProposalKind {
     CREATE_RECORD, UPDATE_RECORD, CREATE_RELATION, SET_LABEL, ARCHIVE_EMAIL, DRAFT_REPLY, CREATE_COLLECTION, ADD_FIELD, CREATE_RULE, CREATE_LABEL,
     /** A pattern across several emails with follow-up to-dos or appointments (InsightService). */
-    INSIGHT
+    INSIGHT,
+    /** How the items of an external API endpoint become records of a collection (ExternalApiMappingService). */
+    MAP_API_ENDPOINT
 }

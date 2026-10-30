@@ -1,47 +1,42 @@
 package com.example.contor.service;
 
 import com.example.contor.domain.SenderDomain;
+import com.example.contor.security.OutboundRequestException;
+import com.example.contor.security.OutboundRequestGuard;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
 import java.net.URI;
-import java.net.UnknownHostException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
- * Fetches the icon of a sender domain from the sender's own web server. Guards against SSRF: HTTPS on port 443 only,
- * every host (including each redirect target) must resolve to public addresses, at most {@value #MAX_REDIRECTS}
- * redirects, {@value #MAX_BYTES} bytes and raster images only (no SVG, which could carry script).
+ * Fetches the icon of a sender domain from the sender's own web server, through {@link OutboundRequestGuard} (HTTPS,
+ * public hosts only, redirects checked). At most {@value #MAX_BYTES} bytes and raster images only (no SVG, which could
+ * carry script).
  */
 @Slf4j
+@RequiredArgsConstructor
 @Component
 public class LogoFetcher {
 
     private static final int MAX_BYTES = 256 * 1024;
-    private static final int MAX_REDIRECTS = 3;
     private static final Duration TIMEOUT = Duration.ofSeconds(4);
     private static final List<String> PATHS = List.of("/apple-touch-icon.png", "/favicon.ico");
+    private static final Map<String, String> HEADERS = Map.of(
+            "Accept", "image/png,image/x-icon,image/*;q=0.8",
+            "User-Agent", "contor/1.0 (sender logo)");
 
-    private final HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
+    private final OutboundRequestGuard guard;
 
     public Optional<ImageData> fetch(SenderDomain domain) {
         for (URI uri : candidateUris(domain)) {
-            Optional<ImageData> image = get(uri, MAX_REDIRECTS);
+            Optional<ImageData> image = get(uri);
             if (image.isPresent()) {
                 return image;
             }
@@ -49,38 +44,15 @@ public class LogoFetcher {
         return Optional.empty();
     }
 
-    private Optional<ImageData> get(URI uri, int redirectsLeft) {
-        if (!isAllowedUri(uri) || !resolvesToPublicAddresses(uri.getHost())) {
-            return Optional.empty();
-        }
-        HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(TIMEOUT)
-                .header("Accept", "image/png,image/x-icon,image/*;q=0.8")
-                .header("User-Agent", "contor/1.0 (sender logo)")
-                .GET()
-                .build();
+    private Optional<ImageData> get(URI uri) {
         try {
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
-                int status = response.statusCode();
-                if (status >= 300 && status < 400 && redirectsLeft > 0) {
-                    Optional<String> location = response.headers().firstValue("Location");
-                    return location.isPresent() ? get(uri.resolve(location.get()), redirectsLeft - 1) : Optional.empty();
-                }
-                if (status != 200) {
-                    return Optional.empty();
-                }
-                byte[] bytes = body.readNBytes(MAX_BYTES + 1);
-                if (bytes.length > MAX_BYTES) {
-                    return Optional.empty();
-                }
-                return imageTypeOf(bytes).map(type -> new ImageData(bytes, type));
+            OutboundRequestGuard.Response response = guard.get(uri, HEADERS, TIMEOUT, MAX_BYTES);
+            if (response.status() != 200 || response.truncated()) {
+                return Optional.empty();
             }
-        } catch (IOException | IllegalArgumentException e) {
+            return imageTypeOf(response.body()).map(type -> new ImageData(response.body(), type));
+        } catch (OutboundRequestException e) {
             log.debug("Logo request {} failed: {}", uri.getHost(), e.getMessage());
-            return Optional.empty();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
             return Optional.empty();
         }
     }
@@ -96,46 +68,6 @@ public class LogoFetcher {
             }
         }
         return uris;
-    }
-
-    static boolean isAllowedUri(URI uri) {
-        return "https".equalsIgnoreCase(uri.getScheme())
-                && uri.getHost() != null
-                && uri.getRawUserInfo() == null
-                && (uri.getPort() == -1 || uri.getPort() == 443);
-    }
-
-    private static boolean resolvesToPublicAddresses(String host) {
-        try {
-            InetAddress[] addresses = InetAddress.getAllByName(host);
-            for (InetAddress address : addresses) {
-                if (!isPublicAddress(address)) {
-                    return false;
-                }
-            }
-            return addresses.length > 0;
-        } catch (UnknownHostException e) {
-            return false;
-        }
-    }
-
-    static boolean isPublicAddress(InetAddress address) {
-        if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
-                || address.isSiteLocalAddress() || address.isMulticastAddress()) {
-            return false;
-        }
-        byte[] bytes = address.getAddress();
-        if (address instanceof Inet4Address) {
-            int first = bytes[0] & 0xFF;
-            int second = bytes[1] & 0xFF;
-            boolean sharedAddressSpace = first == 100 && second >= 64 && second <= 127;
-            return first != 0 && !sharedAddressSpace;
-        }
-        if (address instanceof Inet6Address) {
-            boolean uniqueLocal = (bytes[0] & 0xFE) == 0xFC;
-            return !uniqueLocal;
-        }
-        return false;
     }
 
     /** Raster image type from the file signature; empty for anything else (SVG, HTML error pages, …). */

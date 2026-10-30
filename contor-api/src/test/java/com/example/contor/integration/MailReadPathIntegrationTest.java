@@ -121,14 +121,14 @@ class MailReadPathIntegrationTest {
 
     @Test
     void an_inbox_page_needs_a_fixed_number_of_statements() {
-        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, 0, PAGE_SIZE);
+        EmailPageDto page = mailService.listEmails(null, null, null, null, null, null, null, null, 0, PAGE_SIZE);
 
         assertThat(page.getItems()).hasSize(PAGE_SIZE);
         assertThat(SqlCapture.statements()).as("an inbox page must not read mail bodies")
                 .noneMatch(sql -> sql.contains("body_text") || sql.contains("body_html"));
         long statements = statistics.getPrepareStatementCount();
         assertThat(statements).isLessThanOrEqualTo(6);
-        logTimings("inbox page", statements, () -> mailService.listEmails(null, null, null, null, null, null, null, 0, PAGE_SIZE));
+        logTimings("inbox page", statements, () -> mailService.listEmails(null, null, null, null, null, null, null, null, 0, PAGE_SIZE));
     }
 
     @Test

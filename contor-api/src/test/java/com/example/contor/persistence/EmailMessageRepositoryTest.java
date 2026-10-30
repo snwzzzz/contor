@@ -3,6 +3,8 @@ package com.example.contor.persistence;
 import com.example.contor.RepositoryTest;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.DiscoveryEmail;
+import com.example.contor.domain.AiSettings;
+import com.example.contor.domain.AppUser;
 import com.example.contor.domain.EmailMessage;
 import com.example.contor.domain.MailAccount;
 import com.example.contor.domain.EmailHeader;
@@ -34,6 +36,9 @@ public class EmailMessageRepositoryTest {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private AiSettingsRepository aiSettingsRepository;
 
     @Test
     void can_save_and_find_by_provider_message_id_with_json_columns() {
@@ -70,6 +75,24 @@ public class EmailMessageRepositoryTest {
         var senders = emailMessageRepository.findSenders(owner.getId(), "%acme%", PageRequest.of(0, 10));
 
         assertThat(senders).containsExactly(new SenderCount("Anna Acme", "anna@acme.com", 2L), new SenderCount("Bob", "bob@acme.com", 1L));
+    }
+
+    @Test
+    void suggestions_leave_out_hidden_mailboxes() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var shown = mailAccountRepository.save(Fixtures.mailAccount(owner, "shown@example.com"));
+        var hiddenBox = Fixtures.mailAccount(owner, "hidden@example.com");
+        hiddenBox.setHidden(true);
+        var hidden = mailAccountRepository.save(hiddenBox);
+        sender(shown, "1", "anna@acme.com", "Anna");
+        sender(hidden, "2", "bert@acme.com", "Bert");
+        sentTo(shown, "3", new EmailRecipient("Carl", "carl@acme.com"));
+        sentTo(hidden, "4", new EmailRecipient("Dora", "dora@acme.com"));
+
+        assertThat(emailMessageRepository.findSenders(owner.getId(), "%acme%", PageRequest.of(0, 10)))
+                .extracting(SenderCount::address).containsExactly("anna@acme.com");
+        assertThat(emailMessageRepository.findRecipients(owner.getId(), "%acme%", 10))
+                .extracting(SenderCount::address).containsExactly("carl@acme.com");
     }
 
     @Test
@@ -327,6 +350,61 @@ public class EmailMessageRepositoryTest {
         assertThat(ids).containsExactly(older.getId().id(), newer.getId().id());
         assertThat(emailMessageRepository.findIdsForProcessing(owner.getId(), ProcessingState.NEW,
                 Instant.parse("2026-01-01T00:00:00Z"), PageRequest.of(0, 1))).hasSize(1);
+    }
+
+    /** Three mailboxes of one owner: one the AI reads, one it may not read, one hidden in the app. */
+    private record Mailboxes(AppUser owner, MailAccount read, MailAccount off, MailAccount hidden) {}
+
+    private Mailboxes mailboxes() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var read = mailAccountRepository.save(Fixtures.mailAccount(owner, "read@example.com"));
+        var off = Fixtures.mailAccount(owner, "off@example.com");
+        off.setAiEnabled(false);
+        var hidden = Fixtures.mailAccount(owner, "hidden@example.com");
+        hidden.setHidden(true);
+        var boxes = new Mailboxes(owner, read, mailAccountRepository.save(off), mailAccountRepository.save(hidden));
+        for (var box : List.of(boxes.read(), boxes.off(), boxes.hidden())) {
+            var inbox = email(box, box.getEmailAddress().value(), "2026-02-01T00:00:00Z", ProcessingState.NEW);
+            inbox.setSubject(box.getEmailAddress().value());
+            // Sent mail is never processed (the sync marks it SKIPPED), but the digest and the unanswered check read it.
+            message(box, "sent-" + box.getEmailAddress().value(), "conv-" + box.getEmailAddress().value(), "sent", "2026-10-01T10:00:00Z")
+                    .setProcessingState(ProcessingState.SKIPPED);
+        }
+        emailMessageRepository.flush();
+        return boxes;
+    }
+
+    private List<String> aiReadable(AppUser owner) {
+        var since = Instant.parse("2026-01-01T00:00:00Z");
+        var processing = emailMessageRepository.findIdsForProcessing(owner.getId(), ProcessingState.NEW, since, PageRequest.of(0, 10));
+        var discovery = emailMessageRepository.findDiscoveryEmails(owner.getId(), since, PageRequest.of(0, 10));
+        var digest = emailMessageRepository.findDigest(owner.getId(), since, PageRequest.of(0, 10));
+        var unanswered = emailMessageRepository.findUnansweredSent(owner.getId(), Instant.parse("2026-09-01T00:00:00Z"),
+                Instant.parse("2026-10-08T00:00:00Z"), 10);
+        // Every AI query agrees: compare them as the mailboxes their mail comes from.
+        var fromProcessing = emailMessageRepository.findAllById(processing.stream().map(EmailMessage.EmailMessageId::new).toList())
+                .stream().map(email -> email.getAccount().getEmailAddress().value()).sorted().toList();
+        assertThat(discovery.stream().map(DiscoveryEmail::subject).sorted().toList()).isEqualTo(fromProcessing);
+        assertThat(digest).hasSize(fromProcessing.size() * 2);
+        assertThat(unanswered).hasSize(fromProcessing.size());
+        return fromProcessing;
+    }
+
+    @Test
+    void the_ai_never_reads_a_mailbox_it_is_turned_off_for_and_reads_hidden_ones_by_default() {
+        var boxes = mailboxes();
+
+        assertThat(aiReadable(boxes.owner())).containsExactly("hidden@example.com", "read@example.com");
+    }
+
+    @Test
+    void the_ai_skips_hidden_mailboxes_when_the_owner_turned_reading_them_off() {
+        var boxes = mailboxes();
+        var settings = AiSettings.defaults(boxes.owner());
+        settings.setReadHiddenMailboxes(false);
+        aiSettingsRepository.saveAndFlush(settings);
+
+        assertThat(aiReadable(boxes.owner())).containsExactly("read@example.com");
     }
 
     @Test

@@ -5,7 +5,10 @@ export interface ProposalPayload {
   title?: string;
   name?: string;
   values?: Record<string, unknown>;
-  fields?: { name?: string }[];
+  /** CREATE_COLLECTION: `name`; MAP_API_ENDPOINT: `fieldSlug` filled from `path`. */
+  fields?: { name?: string; fieldSlug?: string; path?: string }[];
+  /** MAP_API_ENDPOINT: where an item's title is. */
+  titlePath?: string;
 }
 
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;

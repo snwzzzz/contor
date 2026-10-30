@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Unlink,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
@@ -27,9 +29,17 @@ import {
   useConnectMailAccount,
   useDisconnectMailAccount,
   useListMailAccounts,
+  useListMailProviders,
   useSyncMailAccount,
 } from "@/lib/api/generated/endpoints/mail/mail";
+import type { MailAccountDto } from "@/lib/api/generated/model/mailAccountDto";
+import type { MailProviderKind } from "@/lib/api/generated/model/mailProviderKind";
+import { useGetAiSettings } from "@/lib/api/generated/endpoints/ai/ai";
+import { settingsHref } from "@/lib/navigation";
 import { AccountAvatar } from "./AccountAvatar";
+import { AddAccountMenu } from "./AddAccountMenu";
+import { providerLabel } from "./mail-providers";
+import { useMailboxUpdate } from "./useMailboxUpdate";
 
 const STATUS_LABEL = {
   ACTIVE: "Active",
@@ -38,9 +48,9 @@ const STATUS_LABEL = {
 } as const;
 
 interface AccountsListProps {
-  /** The Microsoft sign-in just completed (`?connected=true` from the OAuth callback). */
+  /** The provider sign-in just completed (`?connected=true` from the OAuth callback). */
   connected?: boolean;
-  /** Why the Microsoft sign-in failed (`?mailError=` from the OAuth callback). */
+  /** Why the provider sign-in failed (`?mailError=` from the OAuth callback). */
   mailError?: string;
 }
 
@@ -49,7 +59,12 @@ export function AccountsList({
   mailError,
 }: AccountsListProps) {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const { data: accounts, isLoading, error } = useListMailAccounts();
+  const { data: providers } = useListMailProviders();
+  const { data: aiSettings } = useGetAiSettings();
+  const readHidden = aiSettings?.readHiddenMailboxes ?? true;
+  const update = useMailboxUpdate();
 
   const connectMutation = useConnectMailAccount({
     mutation: {
@@ -81,13 +96,22 @@ export function AccountsList({
     },
   });
 
-  function handleConnect() {
-    connectMutation.mutate({});
+  function handleConnect(provider: MailProviderKind) {
+    connectMutation.mutate({ data: { provider } });
   }
 
   /** Signs in again with the same mailbox; the callback re-activates the existing account. */
-  function handleReconnect(emailAddress: string) {
-    connectMutation.mutate({ data: { emailHint: emailAddress } });
+  function handleReconnect(account: MailAccountDto) {
+    connectMutation.mutate({ data: { provider: account.provider, emailHint: account.emailAddress } });
+  }
+
+  // a new mailbox, not a reconnect (that one shows its spinner on the card)
+  const adding = connectMutation.isPending && !connectMutation.variables?.data?.emailHint;
+
+  function addAccountMenu(variant: "default" | "outline") {
+    return providers ? (
+      <AddAccountMenu providers={providers} onSelect={handleConnect} loading={adding} variant={variant} />
+    ) : null;
   }
 
   function handleSync(accountId: number) {
@@ -128,15 +152,8 @@ export function AccountsList({
         <EmptyState
           icon={Mail}
           title="No accounts connected"
-          description="Connect your Microsoft 365 or Outlook account to sync emails."
-          action={
-            <AppButton
-              onClick={handleConnect}
-              loading={connectMutation.isPending}
-            >
-              Connect Outlook
-            </AppButton>
-          }
+          description="Connect an Outlook (Microsoft 365) or Gmail mailbox to sync emails."
+          action={addAccountMenu("default")}
         />
       </div>
     );
@@ -149,17 +166,10 @@ export function AccountsList({
         <div>
           <h2 className="text-base font-medium">Mailboxes</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your connected Microsoft Graph accounts and email
-            synchronization.
+            Manage your connected mailboxes and email synchronization.
           </p>
         </div>
-        <AppButton
-          onClick={handleConnect}
-          loading={connectMutation.isPending}
-          variant="outline"
-        >
-          Connect Another Account
-        </AppButton>
+        {addAccountMenu("outline")}
       </div>
 
       <div className="grid gap-4">
@@ -180,7 +190,8 @@ export function AccountsList({
 
           return (
             <Card key={account.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              {/* The badge sits on the address line; the details stack under the address. */}
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <AccountAvatar account={account} size={36} />
                   <div className="min-w-0 space-y-1">
@@ -195,6 +206,17 @@ export function AccountsList({
                         Fictional demo mailbox (dev only), never synced
                       </CardDescription>
                     ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      {isDemo ? null : (
+                        <>
+                          <span>{providerLabel(account.provider)}</span>
+                          {" · "}
+                        </>
+                      )}
+                      {account.lastSyncedAt
+                        ? `Last synced: ${new Date(account.lastSyncedAt).toLocaleString()}`
+                        : "Not synced yet"}
+                    </p>
                   </div>
                 </div>
                 <Badge
@@ -205,7 +227,7 @@ export function AccountsList({
                         ? "default"
                         : "destructive"
                   }
-                  className="gap-1"
+                  className="mt-0.5 shrink-0 gap-1"
                 >
                   {isDemo ? (
                     <FlaskConical className="size-3" />
@@ -217,11 +239,29 @@ export function AccountsList({
                   {isDemo && isActive ? "Demo" : STATUS_LABEL[account.status]}
                 </Badge>
               </CardHeader>
-              <CardContent className="flex items-center justify-between pt-4">
-                <div className="text-xs text-muted-foreground">
-                  {account.lastSyncedAt
-                    ? `Last synced: ${new Date(account.lastSyncedAt).toLocaleString()}`
-                    : "Not synced yet"}
+              <CardContent className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4">
+                {/* One row: the checkbox and the buttons share a center line. */}
+                <div className="grid gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      checked={account.hidden}
+                      disabled={update.isPending && update.variables?.accountId === account.id}
+                      onChange={(event) => update.mutate({ accountId: account.id, data: { hidden: event.target.checked } })}
+                    />
+                    <span className="grid gap-0.5">
+                      <span>Hide in contor</span>
+                      {account.hidden ? (
+                        <span className="text-xs text-muted-foreground">
+                          {readHidden ? "Its mail is not shown anywhere, but the AI still reads it. " : "Its mail is not shown anywhere, and the AI skips it. "}
+                          <Link href={settingsHref(pathname, "general")} replace scroll={false} className="font-medium text-foreground underline-offset-4 hover:underline">
+                            Settings › General
+                          </Link>
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
                 </div>
                 <div className="flex gap-2">
                   {isDemo ? null : isActive ? (
@@ -238,7 +278,7 @@ export function AccountsList({
                     <AppButton
                       size="sm"
                       variant="outline"
-                      onClick={() => handleReconnect(account.emailAddress)}
+                      onClick={() => handleReconnect(account)}
                       loading={isReconnecting}
                     >
                       <RotateCcw className="size-3.5" />

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { AppButton } from "@/components/app/AppButton";
-import { recordHref } from "@/components/app/collections/CollectionTable";
+import { recordHref } from "@/lib/record-sheet";
 import { RecordFieldInput } from "@/components/app/collections/RecordFieldInput";
 import { DetailSheet } from "@/components/app/DetailSheet";
 import { EmailBody } from "@/components/app/mail/EmailReader";
@@ -17,6 +17,7 @@ import type { Description } from "@/lib/proposal-describe";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import type { ReplyDraftPayload } from "@/lib/reply-draft";
 import { Input } from "@/components/ui/input";
+import { LoadingList } from "@/components/app/LoadingSkeletons";
 
 const CREATED = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const RECEIVED = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -228,7 +229,7 @@ function Changes({ proposal, payload, collectionName }: { proposal: ProposalDto;
 function SourceEmail({ emailId }: { emailId: number }) {
   const [open, setOpen] = useState(false);
   const { data: email, isLoading } = useGetEmail(emailId, { query: { retry: false } });
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading the email…</p>;
+  if (isLoading) return <LoadingList label="Loading the email" rows={2} avatar twoLines />;
   if (!email) return null;
 
   return (

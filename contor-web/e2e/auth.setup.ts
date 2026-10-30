@@ -17,7 +17,8 @@ setup("first run: setup creates the owner, then the owner logs in", async ({ pag
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Log in" }).click();
 
-  await expect(page).toHaveURL(/\/inbox$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Inbox" })).toBeVisible();
+  // Without `next`, login lands on the home page, which greets the owner.
+  await expect(page).toHaveURL(/:\d+\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: new RegExp(`, ${OWNER.username}$`) })).toBeVisible();
   await page.context().storageState({ path: STORAGE_STATE });
 });

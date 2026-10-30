@@ -43,7 +43,8 @@ export function PictureAvatar({ label, src, size = 20, className }: PictureAvata
         className,
       )}
     >
-      {initialOf(label)}
+      {/* Trimmed to the cap height: centers the visible letter, not its line box (which has room for descenders). */}
+      <span className="block leading-none [text-box:trim-both_cap_alphabetic]">{initialOf(label)}</span>
     </span>
   );
 }

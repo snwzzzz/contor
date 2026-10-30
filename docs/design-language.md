@@ -1,0 +1,177 @@
+# contor design language
+
+The reference is the home page (`contor-web/src/app/(app)/(home)/page.tsx`, `src/components/app/home/`). New screens should
+look like they belong next to it. If a rule here conflicts with a real need, change the rule here first.
+
+## 1. Principles
+
+1. **Quiet by default.** The UI is a neutral shadcn black and white theme on a plain white page. Content carries the page,
+   chrome stays out of the way.
+2. **Color is a signal.** It never decorates. If removing a color loses no information, remove it.
+3. **Few boxes.** Group with headings, hairlines and whitespace. Use a frame only when several values form one object
+   (the stat strip).
+4. **Weight is a signal too.** Most text is regular. `font-medium` marks titles and unread items; `font-semibold` is only
+   for the page title and big numbers.
+5. **Stable layout.** Loading, paging and empty states keep the shape of the final content. Nothing jumps.
+6. **Everything clickable looks clickable**: links are underlined, rows and cells show a hover background.
+
+## 2. Tokens
+
+All values live in `contor-web/src/styles/tokens.css` (light and dark), the only place with colors, radii, fonts and
+shadows. Components use token classes only (`bg-background`, `text-muted-foreground`, `border`, …), never raw colors.
+
+| Token | Use |
+|---|---|
+| `--background` / `--surface-page` | The page: plain white (near-black in dark mode). |
+| `--surface-raised` | The rare framed panel (same as the page; the border does the work). |
+| `--surface-email` | Email boxes (list rows, thread messages, the kept draft): like cards in light mode, a little darker than cards in dark mode. |
+| `--shadow-card` | Barely visible 1px shadow on framed panels. No other shadows on the page. |
+| `--primary` | Near-black (white in dark mode): primary buttons, active tab, focus. Not a brand color. |
+| `--muted` / `--muted-foreground` | Hover backgrounds, secondary text, icons. |
+| `--border` | Hairlines under section headings, panel borders, dividers. |
+| `--info` / `--success` / `--warning` / `--destructive` | Status only (see §4). |
+| `--tint-1..10`, `--avatar-*` | Collections, records and sender avatars. Not used for page chrome. |
+| `--header-height` (`globals.css`) | 3rem top bar. |
+
+Shared classes in `src/lib/card-hover.ts`:
+
+- `SURFACE_CARD`: `rounded-lg border bg-surface-raised shadow-(--shadow-card)` for framed panels.
+- `ROW_HOVER`: `hover:bg-muted/50` with a short color transition, for clickable rows and cells. No lift, no border change.
+
+## 3. Typography
+
+Font: Geist (`--font-family-sans`). Tailwind's scale, no custom sizes.
+
+| Role | Class |
+|---|---|
+| Page title / greeting (h1) | `text-2xl font-semibold tracking-tight` |
+| Section heading (h2) | `text-sm font-medium` on a `h-8 border-b` header |
+| Row title | `text-sm` (`font-medium` when unread or it is the row's main label) |
+| Body | `text-sm` |
+| Meta, descriptions, links in headers | `text-xs text-muted-foreground` |
+| Big number | `text-2xl font-semibold tracking-tight tabular-nums` |
+| Times, counts | add `tabular-nums` |
+
+Use real English labels ("Recent activity", not "Aktuelles"). Use sentence case. Use relative times ("5 min. ago",
+`lib/relative-time.ts`) in overviews and absolute times ("14:00") in agendas.
+
+## 4. Color, sparingly
+
+Color appears only as small marks. Never as card or section backgrounds.
+
+| Mark | Meaning |
+|---|---|
+| `size-1.5 rounded-full bg-info` dot | Something is going on / unread (status line, unread mail). |
+| `bg-success` dot | Healthy (mailbox synced, model ready, "All caught up"). |
+| `bg-warning` dot | Needs attention soon (mailbox needs sign-in, models missing). |
+| `bg-destructive` dot or `text-destructive` text | Broken or overdue (Ollama unreachable, "1 overdue"). |
+| `ImportanceBadge` | Only "Urgent" / "High"; normal and low show nothing. |
+
+Mail providers (Outlook, Gmail) are named in plain muted text next to a mailbox (`providerLabel`). Their brand logos
+(`ProviderLogo`, colors from the `--brand-*` tokens) appear only in the *Add account* menu, where you pick one.
+
+Icons are lucide, `size-4`, `strokeWidth={1.75}`, `text-muted-foreground`. They sit bare: no tinted tiles and no filled
+squares. The one exception is the page icon in the page header: `size-6`, bare, in its section's vivid tint
+(`tintVividClass`), so pages are recognizable at a glance.
+
+## 5. Layout
+
+- Page container: `mx-auto w-full max-w-[85rem]`. The shell (`AppShell`) adds `px-6 pt-3 pb-6` and `gap-5` between the header and content. The home page adds `sm:px-2`.
+- Vertical rhythm: `gap-8` between blocks, `gap-2` between a section heading and its content, `gap-5` inside the hero.
+- Multi-column areas are **one grid with rows**, so each row starts on the same line:
+  `grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[repeat(3,minmax(0,1fr))] gap-x-10 gap-y-8 items-start`. The main
+  content takes `lg:col-span-2`.
+- List + detail inside a page (record emails): the page scrolls with the list; the detail pane is `lg:sticky lg:top-0` with the viewport height and scrolls its own content. No fixed-height panes sized with `calc(100svh - …)` guesses.
+- Side panels next to long content (report sources) are `lg:sticky lg:top-4 lg:self-start`: only as tall as their content, so they stay in view; never a scroll area of their own, and nothing in them is clamped or truncated (cited text, names and surrounding paragraphs wrap in full).
+- A scroll area that scrolls vertically also gets `overflow-x-hidden`, and the column inside it `grid-cols-[minmax(0,1fr)]`; wide content (tables) scrolls in its own box.
+- Always use `minmax(0, 1fr)` tracks (and `min-w-0` on grid children), also for a single-column grid inside a row (`grid-cols-[minmax(0,1fr)]`), e.g. the text column of an email row. Otherwise long text widens the column instead
+  of truncating.
+- Responsive: 4 → 2 → 1 columns for stat-like grids (`sm:grid-cols-2 xl:grid-cols-4`), 3 → 1 for content. No sideways
+  scrolling at 390px (e2e guards the home page).
+
+Home page order: hero (greeting, status line) → chat (a full-width section *What do you want to know?* with *All chats →*: one line of text, the input, the ready-made questions) → stat strip → *Navigate* → row 1 (*Recent activity* | *Today*,
+*Connected mailboxes*) → row 2 (*Pending actions* | *AI status*).
+
+## 6. Building blocks
+
+| Block | Where | Pattern |
+|---|---|---|
+| `HomeSection` | `home/HomeSection.tsx` | `<section aria-labelledby>` with a `h-8 border-b` header: h2 left, links right. No box. |
+| `SectionLink` | same | `text-xs font-medium`, always underlined (`decoration-muted-foreground/50`, darker on hover); optional trailing `→` when it leaves the page. |
+| `QuietEmpty` | same | Muted icon `size-5`, one `text-sm font-medium` line, one `text-xs` muted line, optional `outline xs` button. |
+| `Pager` / `usePages` | `home/Pager.tsx` | `‹ 2 / 3 ›` under a list, right-aligned, ghost `icon-xs` buttons. Hidden when everything fits. Clamps when the list shrinks. |
+| Stat strip | `home/KpiRow.tsx` | One `SURFACE_CARD` with `gap-px bg-border` for hairlines between cells. Each cell is a whole-cell link: label + small icon, number, one line of context. |
+| Status line | `home/StatusBanner.tsx` | One line, not a banner: dot + text + `outline xs` action, optional thin `Progress` (`w-32`). `role="status"`. |
+| Settings sections | `settings/SettingsSection.tsx` | A settings page with several parts (Autonomy: Setup, Mailboxes, Permissions, Inbox analysis) splits them with a small `font-medium` heading over a hairline (`h-8 border-b`), like the home page's sections; no cards. |
+| Settings rows | `settings/GeneralSettings.tsx` | A setting is a plain row: label (`font-medium`) with a muted hint on the left, the control on the right, rows divided by hairlines (`divide-y`), no cards. Few fixed choices (theme, time format) are a segmented radio group on `bg-muted` (the checked one on `bg-background`); longer lists are a `NativeSelect` (`settings/SettingsRow.tsx`: `SettingsRow`, `SETTINGS_SELECT` = its width). |
+| Loading | `app/LoadingSkeletons.tsx`, `app/<area>/*Skeleton.tsx`, `layout/LoadingBar.tsx`, `app/(app)/**/loading.tsx` | Never a bare "Loading…" text and never one generic placeholder for every page: each page has a skeleton in its own shape, row for row at the real heights and widths (`HomeSkeleton`, `InboxSkeleton`/`EmailListSkeleton`/`ThreadSkeleton`, `CalendarSkeleton`, `TasksSkeleton`/`TaskBoardSkeleton`, `FindingsSkeleton`, `ProposalsSkeleton`, `CollectionsOverviewSkeleton`, `CollectionTableSkeleton`, `RecordSkeleton` (page or sidebar), `ReportSkeleton` (page or embedded)). The component's loading branch and its route's `loading.tsx` use the same skeleton, the route adding `PageHeaderSkeleton` (breadcrumbs, icon, title, the page's number of commands, description) where the page header is static; pages that are still an `EmptyState` use `PlaceholderPageSkeleton`. Small parts keep the shared pieces (`LoadingList` for tab lists and panels, `LoadingForm` for settings). One `role="status"` named "Loading …" per page with fixed (not random) widths; the placeholders inside are decoration (skeleton tables are `aria-hidden`). Pages that own a `loading.tsx` but have child routes sit in a route group (`(home)`, `(overview)`, `(table)`, `(record)`) so a parent's skeleton never shows for a child page. A thin `bg-primary` bar slides along the top bar's bottom edge while a query loads for the first time (after 150 ms, never for background refreshes or polling). Buttons that wait show `AppButton loading`. |
+| Selects | `ui/native-select.tsx` | Every select is a `NativeSelect`: a native `<select>` (keyboard, mobile pickers and tests stay native) in the `FIELD` look with a muted `ChevronDown` instead of the browser arrow. `size="sm"` for table filters (same height, `text-xs`), `variant="ghost"` between toolbar buttons. Where the browser supports `appearance: base-select` (Chromium), `globals.css` styles the opened list like a dropdown menu: popover colors, hairline border, `--shadow-popover`, rows with an accent hover and a check on the chosen one; elsewhere the system list stays. Never a bare `<select>`. |
+| Search bar | `layout/CommandPalette.tsx` | The top bar's one search: an `h-9` field (`FIELD` look) up to `max-w-xl` in the middle, the shortcut as a small `kbd` on the right. It is the command input itself; its list opens directly underneath (same width, `bg-popover`, hairline border, `shadow-md`), never as a centered dialog. |
+| List rows | Recent activity, Today, mailboxes | `rounded-md px-2 py-1.5–2.5` + `ROW_HOVER`; the list is `-mx-2` so the hover background bleeds to the column edge while text stays aligned with the heading. Avatars at 24px. |
+| Tabs | Recent activity | Owned shadcn `Tabs` with `variant="line"`, `text-xs` triggers. Each tab mounts its own query. |
+| Link lists | `home/NavigateLinks.tsx` | Icon + title + one-line description. Hover: `bg-muted`, icon turns `text-foreground`, title underlines (`group-hover:underline`). |
+| Page header | `app/PageHeader.tsx` | Every page except Home. Row 1: `PageTrail` breadcrumbs (`Home › Collections › People › current`, `text-xs` muted links, current page `aria-current`). Row 2 (Azure style): bare page icon, `h1` title, optional light `| Subtitle`, then the page's command bar after a hairline, and a ghost **Close** ✕ at the far right that goes to the last crumb. Row 3: one-line `text-sm` muted description. Pages pass `trail` for levels between Home and themselves (`COLLECTIONS_CRUMB`, …). Optional `media` replaces the icon with a 32px round picture or tinted initial (records). Pages with their own header (reports) render `PageTrail` alone, with Close at its end. |
+| Record profile | `collections/RecordDetail.tsx` | The one page with a picture: `PageTrail` (Close at its end), then the 64px picture or tinted initial next to `PageTitle` (title \| collection), "Added by … on …" and the command bar, tight under the breadcrumbs and above the tabs. No banner. Records of the calendar and to-dos lead back through those pages (`collectionTrail`). |
+| Command bar | `app/PageCommands.tsx` (server-safe: `PageCommands`, `CommandLink`), `app/PageCommandButtons.tsx` (client: `RefreshCommand`, `SyncMailCommand`, `SettingsCommand`, `CollectionTableCommand`) | `role="toolbar"` row of ghost `sm` buttons, muted icon + label (icon only below `md`, label stays the accessible name). 2–4 commands per page, using only what exists: Refresh, related pages, settings sections, the system collection's table view, mail sync. Every page gets one, so the title row is never empty. |
+| Data table | `collections/CollectionsOverview.tsx` | A plain `<table>` without a frame: `text-xs` muted header row over a hairline, `border-b` between rows, `ROW_HOVER`, the name as a link stretched over the row, numbers right-aligned `tabular-nums`, secondary columns `hidden md:table-cell`. Above it a search field, `FilterChip`s with counts and a muted result count on the right. |
+| Record table | `collections/CollectionTable.tsx` | The dense variant for a collection's records: `h-9` sentence-case header, rows `py-3.5` (48px), hairlines between rows and between the data columns, values as plain text (choice values too, no tints), the open button only on hover/focus. The toolbar (search left; Columns, Reports, Filters right) holds everything else, so the table gets the page: it fills the height down to the record count (`flex-1 min-h-0`) and scrolls on its own with a sticky header. |
+| Calendar | `calendar/CalendarView.tsx`, `lib/calendar-week.ts` | *Week* or *Month*, chosen with a segmented radio group next to the arrows (like the theme setting) and kept in the URL together with the period shown (`?view=week&date=2026-10-19`, the week's Monday; `?view=month&date=2026-10-01`; any day inside the period works in a link; no `date` = around today, which *Today* sets, and plain `/calendar` is this week), so every week and month can be linked to and survives a reload; every switch and step is a history entry, so Back and Forward move between the views and periods looked at; switching keeps the opened day (the week or month around it is shown, the day stays selected). From `lg` the calendar is exactly the rest of the screen: the page does not scroll, the week grid or month grid fills its column (the week scrolls its hours inside), and the agenda scrolls in its own column under a sticky heading. The month: six full weeks in one framed grid (every month the same height), hairlines between the cells, weekday names on top, the neighbouring months' days greyed out (`bg-muted/60`, muted text, events at 60%), today as the `bg-primary` pill; every event of the day in its cell, beside the date (under it on phones, where the cells are too narrow): all-day ones as a tinted bar first, timed ones as a tinted dot + the time (only from `xl`) above the full title wrapped between words, no "N more": a cell whose events do not fit scrolls them on its own, with a barely-there 2px scrollbar (`scrollbar-subtle` in `globals.css`, `--scrollbar-subtle`) that only shows while the pointer is over the cell; the cell (and the empty space under its events) opens the day. Neither the week nor the month ever scrolls sideways: the seven columns always share the width (on phones the week header stacks weekday over date). Below, the week: one framed grid (it is one object) with a 3.5rem hour gutter and seven day columns divided by hairlines, 48px per hour until zoomed: Ctrl/⌘ + mouse wheel over the week makes the hours smaller or bigger (16–160px, the time under the pointer stays in place, remembered per browser in `contor.calendar.hourHeight`; zoomed far out only every second or third hour is labelled), scrolling its hours on its own (never sideways) with a sticky day header; it opens at the working day or a little before now. Today's date is a small `bg-primary` pill (`aria-current="date"`); weekends sit on `bg-muted/30`. Events are the only color: `bg-tint-1` blocks with a `border-tint-1-vivid` left edge (the calendar's tint), title + time range, placed by start and end (an hour without an end), overlapping ones side by side, past ones at 60% opacity; all-day events in a row above the hours. The current time is a 2px `bg-primary` line with a dot in today's column. Beside it (20rem, sticky) the *Agenda*: a status dot line (overdue or "All to-dos are on time"), an *Overdue* group, then one group per day with something on it under a small `bg-muted/50` day bar; events with a muted calendar icon and time range, to-dos with a round button that marks them done and their due label. A day header, month cell or hour slot swaps the agenda for that day with the quick-add form; that day stays marked as selected (week: `bg-accent` header with a 2px `--ring` line along its bottom; month: `bg-accent` cell with an inset ring). Pressing an hour and dragging up or down over others plans an event over all of them (a click plans one hour): the hours show as a dashed "New event" block with the range while dragging and while the form is open, and the form gets *Time* and *Until* filled in (saved as `starts_at`/`ends_at`). Text never gets cut mid-line: a week block gives its title as many lines as its height leaves next to the time line; month chips wrap to two lines; agenda titles and places wrap in full. |
+| Kind label | `app/KindLabel.tsx` | What a card or sheet shows (proposal kind, *Insight*, *Reply suggestion*): a 14px bare icon in its vivid tint next to the muted `text-xs` label, importance badge after it. Never an icon on a colored tile; the reasoning under a proposal is plain muted text, not a gray box. |
+| Record sheet | `collections/RecordSheet.tsx`, `RecordDetail variant="sheet"` | A record's detail page as the right sidebar, over any page: mounted once in the shell (`layout/RecordSheetHost.tsx`) and opened by the address, `?record=<collectionId>-<recordId>&recordTab=<tab>` (`lib/record-sheet.ts`), so it survives a reload, can be linked and Back works; the tab is kept in the address (no history entry per tab). Calendar events and to-dos, the home *Today* list, collection table rows (one click; the open record's row stays on `bg-accent`) and connections open in it (`collections/RecordLink.tsx` or `recordSheetHref`). History: opening adds one entry, switching tabs or records replaces it, closing goes Back when it was opened from that page (otherwise replaces), so a page is never in the history twice. After a reload it opens only once React has hydrated the page under it (they share queries). On the Reports tab it fills the sidebar's height and the list's divider runs from the tabs to the bottom: `DetailSheet` with a `trail`: instead of the header a compact 48px bar (`data-slot=sheet-bar`) with the breadcrumb *collection / title* (the collection links to its table, or to the calendar / to-dos for theirs; the title is the last crumb and names the dialog), then the ghost *Open full screen* icon button (Maximize2, links to the record page at the sidebar's tab, `?tab=<tab>`, which the page keeps in its address too) and close, all in one row. Inside, the profile shared with the page: a rounded-square picture or initial (48px here, 64px on the page) next to the title (`text-lg font-semibold`; the page's is its h1) and a muted contact line (the website, else the email address), then the quick actions as small outline buttons (*Email*, *Call* when the record has them, *Ask* opens the Reports tab). The tabs carry their icons and run across the sidebar's full width. *Details* is a property list (`RecordDetailsForm`, `RecordFieldInput layout="row"`): one row per value, `PROPERTY_ROW` (a 10rem name column with the field type's icon and the muted name, then the value), the value a ghost field (`Input`/`Textarea variant="ghost"`, `FIELD_GHOST` in `ui/input.tsx`: no frame until hovered or focused, *Empty* when there is nothing), the title first and *Added* (by whom, when) last, across the full width; Save/Discard as before. Links that open a record in it are real addresses (the current page with `?record=`), so Ctrl/⌘/middle click and *copy link* give the same page with the sidebar. |
+| Detail sheet | `app/DetailSheet.tsx` | The right sidebar for proposals, findings, to-dos, calendar events and collection reports: the header is a small bare icon in its color next to the label (no tinted tile, like the page headers) over the title; opens at a third of the window (at least 24rem; full width, edge to edge on phones) over the page, from `sm` floating 8px inside the window with a slight border all around and `rounded-xl` corners; the page is neither dimmed nor blurred (clear overlay; a click outside closes it). Its left edge is a resize handle (`role=separator`: drag, arrow keys, double click resets; 20rem to 90% of the window), the width a per-browser preference (`contor.detailSheet.width`). |
+| Side work in a sheet | `reports/CollectionReports.tsx` + `DetailSheet` | Secondary work that would push the main content down (asking for a report) lives behind a toolbar button with a muted count and opens in the right sheet; lists inside use plain rows (`reports/ReportRow.tsx`, shared with the record's report list). |
+| Workspace (list + detail) | `reports/RecordReports.tsx` | Takes the whole page: full width and, on large screens, exactly the rest of the screen below the tab bar (the record page becomes a flex column whose tab panel takes the remaining height; no page scroll, no `calc(100dvh…)` guess). A closable side list (16rem, own scroll; it slides in and out: the grid column animates 16rem ↔ 0 over 200ms, content at a fixed width so it does not reflow, `inert` while closed) with a full-height `lg:border-r` divider, a `text-sm font-medium` title, New and Close icon buttons, a `SearchField` and plain rows (current one `bg-accent font-medium`); next to it the detail (an embedded page component with an *Open full screen* `CommandLink`, scrolling on its own and never sideways) or the start state centered in its area (question, input, suggestion buttons). The list closes from its own header (PanelLeftClose, next to New); while it is closed an open button (PanelLeftOpen, fades in) appears in a fixed `h-8` row at the top of the detail. The row is there in both states, so opening or closing never moves the content up or down. Open/closed is a per-browser preference (`useStoredValue`). |
+| Chat | `chat/ChatWorkspace.tsx`, `chat/ChatThread.tsx` | The workspace pattern as a page: the side list (16rem, `lg:border-r`, not closable) of conversations as plain link rows (current one `aria-current=page`, `bg-accent`), the detail scrolling on its own; from lg exactly the rest of the screen under the page header (`lg:flex-1 lg:min-h-0`, main is a flex column). The start is centered (question, input, suggestion buttons). A conversation: title over a hairline with ghost *Rename* (in place) and *Delete* (confirm), questions as `bg-primary` bubbles on the right, answers plain below with markers, then the mentioned records and emails as small outline chips (muted icon, label, muted collection name), a muted progress line with a spinner while writing, a `text-destructive` line with an outline `xs` *Try again* when failed; from lg the messages scroll on their own with the follow-up input below them (never over them, no fade), opening and staying at the end while you are there; on small screens the page scrolls and the input sticks to the bottom on a solid background; the sources panel (20rem) like reports, scrolling on its own. In answer and report lists an item that is only bold text (a flattened nested list) is a label without a bullet. |
+| Edit form | `collections/RecordDetailsForm.tsx`, `RecordFieldInput` | Data is edited in place, no separate view mode: every value is an input in the shared field look (selects too), labelled above, in a 1/2/3-column grid (long text full width). A link-like value (email, phone, URL) gets a small ghost open button beside its input; the wrapper stays the same with or without it, so typing never loses focus. Save appears only after a change, in a sticky bottom bar with a muted change count, *Discard* (ghost) and *Save*; it sends only the changed values; errors show inline (`role="alert"`), success as a toast. |
+| Navigation drawer | `layout/NavDrawer.tsx` | Opened by the first button of the top bar (☰). On the page background (`bg-background`, like the top bar, not `bg-popover`) with a hairline edge and `--shadow-popover`. Quiet like a dark dashboard sidebar: groups (*Navigation*, *AI insights*, *Collections*, *Graph & automation*) divided by hairlines with `py-3`, each under a caption in `font-mono text-[11px] tracking-wide` muted. `h-8` rows inset with `mx-2 rounded-lg px-2` and a transparent border, text `foreground/85`, icons muted; the current page is raised (`border-border bg-card shadow-(--shadow-card)`, `font-medium`, icon in foreground). Color only on the collections, as an 8px dot in their vivid tint with a faint halo of the same color (`tintDotClass`), never a tile or row background. Counts are plain muted `font-mono tabular-nums` numbers on the right; the search is a `SearchField`. Choosing a page removes it at once (`data-closed:animate-none!`), so nothing slides between the click and the page; Escape, a click outside and Ctrl/⌘ B still slide it out. |
+| Fields | `ui/input.tsx` (`FIELD`, `FIELD_FOCUS`, `FIELD_FOCUS_WITHIN`), `ui/textarea.tsx`, `app/SearchField.tsx` | One look for every text field: `h-8 rounded-md border border-input bg-background text-sm`, focus `border-ring ring-2 ring-ring/25`. Search boxes are always `SearchField` (icon at `left-2.5`, `pl-8`, our own Clear ✕, optional trailing controls). Boxes that hold a borderless control (report composer, address chips) use `FIELD` + `FIELD_FOCUS_WITHIN`. No per-use heights or borders; `components/fields.test.ts` fails on any raw text `<input>`/`<textarea>` outside `components/ui`. |
+| Top bar | `layout/TopBar.tsx` | 3rem, `bg-background border-b`: menu (☰) first, then app launcher and logo (a `size-6` black square with a white "c"), the mail `SearchField`, ghost icon buttons. |
+| External APIs menu | `apps/AppsMenu.tsx` | The top bar's dropdown (trigger and section icon: lucide `Braces`; a row opens the app's page) as a dense IntelliJ-style list: a 16px rounded-square initial in the app's tint (`appTint`), the name (`font-medium`) over its muted host, the relative last call right-aligned (`tabular-nums`). A status dot (`size-1.5`) only for *Failing* (destructive), *Needs setup* (warning) and *Paused* (muted), never for healthy apps. Search field from 9 apps on, *Add app…* in the footer; empty: muted icon, one line, outline `xs` *Add app*. |
+| Apps page | `apps/AppsOverview.tsx`, `apps/AppDetail.tsx` | The overview is the data table pattern: tinted 16px initial, name link stretched over the row with the host under it, a status dot with its word for every state (here all states get a dot: the page is about health), interval and last call muted, endpoints right-aligned. The app page: `PageHeader` with the 32px initial as `media`, the host as subtitle and Refresh, Call now, Pause/Resume, Edit; *Status* as a two-column `dl`, *Endpoints* as plain rows (name, mono method and path, a muted line saying where the items go with an underlined link), *Call history* as a frameless table. |
+| App modal | `apps/AppDialog.tsx` | Like the AI setup wizard: `Stepper` over the steps for a new app, line `Tabs` for a saved one, Back/Next at the bottom, one primary button. Header and query rows are two fields, a *Secret* checkbox and a ghost ✕; a stored secret is muted "•••• Token stored" with an outline `xs` *Replace*. An endpoint is edited in a hairline frame (`rounded-lg border`, it is one object); the test call answer is a status line (success or destructive dot, status · time · type), the detected items with an outline `xs` *Use*, and the body in a collapsed `<details>` as mono text. Deleting confirms in the footer row (*Yes, delete …*, destructive). |
+
+Buttons: `default` (black) only for the single primary action of a row ("Approve"). Use `outline` for secondary actions
+and `ghost` for tertiary ones and icon buttons. Inside lists use `size="xs"`, elsewhere `sm`.
+
+## 7. States
+
+- **Loading:** skeletons in the final shape with deterministic widths (`w-3/4`, `w-2/3`, …, never random). Numbers get
+  a `h-7 w-12` block, rows get avatar + line skeletons.
+- **Empty:** `QuietEmpty` with a reason and, if useful, the next step ("Go to inbox"). Never a blank area.
+- **Empty detail pane** (nothing selected yet): a framed placeholder, `rounded-lg border-dashed bg-muted/30`, aligned with the top of the list beside it, never floating text in a tall empty area (`mail/ReadingPanePlaceholder.tsx`). The pane only takes the screen height once something is open.
+- **Errors:** `ErrorMessage` in place of the content.
+- **Paging:** rows have a fixed height when their content varies (e.g. reasoning clamped to two lines with
+  `line-clamp-2 min-h-8 leading-4`). A shorter last page is padded with invisible `aria-hidden` rows, so the section
+  height never changes.
+- **Time-dependent text** (greeting, "now"): read the clock on the client only (`useSyncExternalStore` with a `null`
+  server snapshot, see `useTimeOfDay`), or render it only after data arrived. Never let server and hydration output differ.
+
+## 8. Interaction and accessibility
+
+- Hover = `ROW_HOVER` (rows, cells) or `bg-muted` (link lists). No shadows, lifts or colored borders on hover.
+- Focus = `focus-visible:ring-2 focus-visible:ring-ring` on every custom link/row.
+- Whole-row and whole-cell links have a readable accessible name (title first). Decorative icons, dots and separators
+  are `aria-hidden`.
+- Respect `motion-reduce:transition-none` on transitions.
+- Visually hidden headings (`sr-only`) are fine where a visible one would be noise.
+
+## 9. Do / don't
+
+| Do | Don't |
+|---|---|
+| Hairlines and whitespace to group | Cards around every section |
+| One small status dot | Colored banners, tinted backgrounds, gradients |
+| Muted bare icons at `size-4` | Big icons on colored tiles |
+| `font-medium` for titles | Bold everywhere |
+| Underlined text links | Links that only differ by color |
+| Fixed row heights + placeholder rows when paging | Layout that jumps between pages or states |
+| Token classes | Hex, `oklch()`, `bg-blue-500` in components |
+
+## 10. Checklist for a new screen
+
+1. `PageHeader` with the right `trail` (Close must land one level up) and a `PageCommands` bar, plain page background, `max-w-[85rem]` container, `gap-8` rhythm.
+2. Sections are `HomeSection`-style headings over a hairline. Frame something only if it is one object.
+3. Color only for status marks; weight only for titles and unread.
+4. Lists: `-mx-2` + `ROW_HOVER` rows, `Pager` when they can grow, `QuietEmpty` when empty, shaped skeletons while loading.
+5. Grids with `minmax(0,1fr)` tracks; check 1920px and 390px in light and dark (`npm run screenshots`).
+6. Grep the diff for raw colors before committing.

@@ -36,6 +36,29 @@ public class MailAccountRepositoryTest {
     }
 
     @Test
+    void a_new_mailbox_is_read_by_the_ai_and_shown_in_the_app() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        var saved = mailAccountRepository.saveAndFlush(Fixtures.mailAccount(owner, "me@example.com"));
+
+        assertThat(saved.isAiEnabled()).isTrue();
+        assertThat(saved.isHidden()).isFalse();
+        Map<String, Object> row = jdbcTemplate.queryForMap("select ai_enabled, hidden from \"mail_account\" where id = ?", saved.getId().id());
+        assertThat(row).containsEntry("ai_enabled", true).containsEntry("hidden", false);
+    }
+
+    @Test
+    void existing_rows_get_the_defaults_from_the_migration() {
+        var owner = appUserRepository.save(Fixtures.user("owner"));
+        appUserRepository.flush();
+        jdbcTemplate.update("insert into \"mail_account\" (id, owner_user_id, provider, email_address, status, created_at, last_modified) "
+                + "values (nextval('mail_account_seq'), ?, 'MICROSOFT_GRAPH', 'old@example.com', 'ACTIVE', now(), now())", owner.getId().id());
+
+        Map<String, Object> row = jdbcTemplate.queryForMap("select ai_enabled, hidden from \"mail_account\" where email_address = 'old@example.com'");
+
+        assertThat(row).containsEntry("ai_enabled", true).containsEntry("hidden", false);
+    }
+
+    @Test
     void oauth_tokens_are_encrypted_at_rest() {
         var owner = appUserRepository.save(Fixtures.user("owner"));
         var account = Fixtures.mailAccount(owner, "me@example.com");

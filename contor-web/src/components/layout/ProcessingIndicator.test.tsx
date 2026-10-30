@@ -20,7 +20,7 @@ describe("ProcessingIndicator", () => {
     expect(await screen.findByRole("link", { name: "Set up AI" })).toHaveAttribute("href", "/inbox?ai-setup=1");
   });
 
-  it("shows the progress of a running analysis", async () => {
+  it("shows the progress of a running analysis, linking to Settings → Autonomy", async () => {
     mockApi({
       "GET /api/ai/settings": { body: { ...settings, onboardedAt: "2026-10-08T12:00:00Z" } },
       "GET /api/ai/analysis/latest": {
@@ -31,7 +31,7 @@ describe("ProcessingIndicator", () => {
 
     renderWithProviders(<ProcessingIndicator />);
 
-    expect(await screen.findByRole("link", { name: "AI analyzing 25/100" })).toHaveAttribute("href", "/inbox?ai-setup=1");
+    expect(await screen.findByRole("link", { name: "AI analyzing 25/100" })).toHaveAttribute("href", "/inbox?settings=autonomy");
   });
 
   it("is idle after a finished run", async () => {

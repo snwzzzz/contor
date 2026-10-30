@@ -20,6 +20,7 @@ import { collectionTint } from "@/lib/collection-tint";
 import { useSenderPictures, isFreeMailDomain } from "@/lib/hooks/useSenderPictures";
 import { formatValue, humanize, proposalTitle, type ProposalPayload } from "@/lib/proposal-format";
 import { cn } from "@/lib/utils";
+import { FindingsSkeleton } from "./FindingsSkeleton";
 import { RelationLine, type RelationAnchor, type RelationPayload } from "./RelationLine";
 
 const PENDING_FINDINGS = { status: "PENDING", group: "FINDINGS", size: 60 } as const;
@@ -71,7 +72,7 @@ export function FindingsList() {
   const decide = useDecideProposal({ mutation: { onSuccess: () => queryClient.invalidateQueries() } });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading findings…</p>;
+    return <FindingsSkeleton />;
   }
   if (error) {
     return <ErrorMessage message={error.message} />;

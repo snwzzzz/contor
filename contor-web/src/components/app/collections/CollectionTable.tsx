@@ -1,13 +1,16 @@
 "use client";
 
 import { keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, ListFilter, Search, SearchX, Table2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, Database, FolderPlus, ListFilter, SearchX, Table2, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
 import { ErrorMessage } from "@/components/app/ErrorMessage";
-import { PageHeader } from "@/components/app/PageHeader";
+import { RefreshCommand } from "@/components/app/PageCommandButtons";
+import { CommandLink, PageCommands } from "@/components/app/PageCommands";
+import { COLLECTIONS_CRUMB, PageHeader } from "@/components/app/PageHeader";
+import { CollectionReports } from "@/components/app/reports/CollectionReports";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -17,31 +20,35 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SearchField } from "@/components/app/SearchField";
 import { useGetCollection } from "@/lib/api/generated/endpoints/collections/collections";
 import { useListRecords } from "@/lib/api/generated/endpoints/records/records";
 import type { CollectionFieldDto } from "@/lib/api/generated/model/collectionFieldDto";
 import type { RecordDto } from "@/lib/api/generated/model/recordDto";
-import { collectionTintNumber, tintClass, type Tint } from "@/lib/collection-tint";
+import { collectionTintNumber } from "@/lib/collection-tint";
+import { navItem, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { pageItems } from "@/lib/pagination";
 import { formatValue } from "@/lib/proposal-format";
+import { parseRecordParam, RECORD_PARAM, recordSheetHref } from "@/lib/record-sheet";
 import { buildFilters, countActiveFilters, filterKind, type ColumnFilter, type FilterState } from "@/lib/record-filters";
 import { useStoredValue, writeStoredValue } from "@/lib/stored-value";
 import { cn } from "@/lib/utils";
+import { CollectionTableSkeleton } from "./CollectionSkeletons";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 const DEFAULT_PAGE_SIZE = 25;
 const SEARCH_DELAY_MS = 300;
 const TITLE_COLUMN = "title";
+/** A hairline between the data columns (not before the first one). */
+const COLUMN_SEPARATOR = "border-l first:border-l-0";
 const NO_HIDDEN: readonly string[] = [];
 
 interface Column {
   key: string;
   name: string;
   field?: CollectionFieldDto;
-}
-
-export function recordHref(collectionId: number, recordId: number): string {
-  return `/collections/${collectionId}/records/${recordId}`;
 }
 
 function hiddenColumnsKey(collectionId: number): string {
@@ -52,16 +59,15 @@ function parseHidden(raw: unknown): readonly string[] | undefined {
   return Array.isArray(raw) && raw.every((key) => typeof key === "string") ? raw : undefined;
 }
 
-/** Choice values (ENUM/STATUS) as soft pills; each allowed value keeps its tint. */
-function choiceTint(field: CollectionFieldDto, value: string): string {
-  const options = field.options[field.type === "STATUS" ? "states" : "values"];
-  const index = Array.isArray(options) ? options.indexOf(value) : -1;
-  return index < 0 ? "bg-muted text-foreground" : tintClass(((index % 10) + 1) as Tint);
-}
-
-/** A collection's records as a table: search, column filters and visibility, sorting, numbered paging; double click opens. */
+/**
+ * A collection's records as a table: search, column filters and visibility, sorting, numbered paging; a click, Enter or
+ * the row's open button shows the record in the detail sidebar, and its row stays marked while it is open there.
+ */
 export function CollectionTable({ collectionId }: { collectionId: number }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const shown = parseRecordParam(searchParams.get(RECORD_PARAM));
   const { data: collection, error: collectionError } = useGetCollection(collectionId);
   const hidden = useStoredValue(hiddenColumnsKey(collectionId), NO_HIDDEN, parseHidden);
   const [search, setSearch] = useState("");
@@ -87,7 +93,7 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
     return <ErrorMessage message={collectionError.message} />;
   }
   if (!collection) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <CollectionTableSkeleton />;
   }
 
   const allColumns: Column[] = [{ key: TITLE_COLUMN, name: "Title" }, ...fields.map((field) => ({ key: field.slug, name: field.name, field }))];
@@ -128,46 +134,60 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
   }
 
   function open(record: RecordDto) {
-    router.push(recordHref(collectionId, record.id));
+    const href = recordSheetHref(pathname, searchParams, collectionId, record.id);
+    // From one record to the next the sidebar stays one history entry, so Back closes it instead of stepping through.
+    if (shown) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
   }
 
   return (
     <>
-      <PageHeader icon={Database} tint={collectionTintNumber(collection.id, collection.slug)} title={collection.name} description={collection.description} />
+      <PageHeader
+        trail={[COLLECTIONS_CRUMB]}
+        icon={Database}
+        tint={collectionTintNumber(collection.id, collection.slug)}
+        title={collection.name}
+        subtitle="Collection"
+        description={collection.description}
+        actions={
+          <PageCommands>
+            <RefreshCommand />
+            <CommandLink href="/relations" icon={navItem("/relations").icon} label="Relations" />
+            <CommandLink href="/queries" icon={navItem("/queries").icon} label="Queries" />
+            <CommandLink href={NEW_COLLECTION_HREF} icon={FolderPlus} label="New collection" />
+          </PageCommands>
+        }
+      />
 
-      <section className="grid min-h-0 gap-2">
+      {/* The rest of the page: the table grows down to the record count and scrolls on its own. */}
+      <section className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              type="search"
-              aria-label={`Search ${collection.name}`}
-              placeholder={`Search ${collection.name.toLowerCase()}…`}
-              value={search}
-              onChange={(event) => onSearch(event.target.value)}
-              className="h-9 pl-8"
-            />
-          </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <SearchField
+            wrapperClassName="w-full max-w-xs"
+            aria-label={`Search ${collection.name}`}
+            placeholder={`Search ${collection.name.toLowerCase()}…`}
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            onClear={() => onSearch("")}
+          />
+          <div className="ml-auto flex flex-wrap items-center gap-1">
             {activeFilters > 0 ? (
               <AppButton variant="ghost" size="sm" onClick={() => { setFilters({}); setPage(0); }}>
                 <X aria-hidden="true" data-icon="inline-start" />
                 Clear filters
               </AppButton>
             ) : null}
-            <label className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm hover:bg-accent">
-              <span className="text-muted-foreground">Show</span>
-              <select
-                aria-label="Rows per page"
-                value={pageSize}
-                onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }}
-                className="bg-transparent outline-none"
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>{size} rows</option>
-                ))}
-              </select>
-            </label>
+            <NativeSelect
+              aria-label="Rows per page"
+              variant="ghost"
+              className="w-auto [&>select]:h-9"
+              value={pageSize}
+              onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }}
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size} rows</option>
+              ))}
+            </NativeSelect>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <AppButton variant="ghost" size="sm" className="h-9">
@@ -190,6 +210,8 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <CollectionReports collectionId={collectionId} collectionName={collection.name} filters={apiFilters} search={query}
+              matching={records?.totalElements} />
             <AppButton
               variant={filtersOpen ? "secondary" : "ghost"}
               size="sm"
@@ -206,20 +228,21 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
 
         {error ? <ErrorMessage message={error.message} /> : null}
 
-        <div className="min-h-0 overflow-auto">
-          <table aria-label={collection.name} className="w-full border-collapse text-sm">
+        <div className="min-h-0 flex-1 overflow-auto">
+          {/* Separate borders on the cells: collapsed ones stay behind when the sticky header scrolls. */}
+          <table aria-label={collection.name} className="w-full border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10 bg-background text-left">
               <tr>
                 {columns.map((column) => {
                   const direction = sort === column.key ? "ascending" : sort === `-${column.key}` ? "descending" : "none";
                   const SortIcon = direction === "ascending" ? ArrowUp : direction === "descending" ? ArrowDown : ArrowUpDown;
                   return (
-                    <th key={column.key} scope="col" aria-sort={direction} className="border-b px-4 py-3 whitespace-nowrap">
+                    <th key={column.key} scope="col" aria-sort={direction} className={cn("h-9 border-b px-3 font-normal whitespace-nowrap", COLUMN_SEPARATOR)}>
                       <button
                         type="button"
                         aria-label={`Sort by ${column.name}`}
                         onClick={() => toggleSort(column.key)}
-                        className="flex w-full items-center justify-between gap-3 rounded text-xs font-medium tracking-wide text-muted-foreground uppercase hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="flex w-full items-center justify-between gap-3 rounded text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       >
                         {column.name}
                         <SortIcon className={cn("size-3.5 shrink-0", direction === "none" && "opacity-50")} aria-hidden="true" />
@@ -227,12 +250,12 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                     </th>
                   );
                 })}
-                <th scope="col" aria-label="Actions" className="w-12 border-b px-2 py-3" />
+                <th scope="col" aria-label="Actions" className="w-10 border-b px-1" />
               </tr>
               {filtersOpen ? (
                 <tr>
                   {columns.map((column) => (
-                    <td key={column.key} className="border-b px-3 py-2 align-top">
+                    <td key={column.key} className={cn("border-b px-2 py-1.5 align-top", COLUMN_SEPARATOR)}>
                       {column.field ? (
                         <ColumnFilterInput field={column.field} value={filters[column.key] ?? {}} onChange={(input) => setFilter(column.key, input)} />
                       ) : null}
@@ -242,36 +265,46 @@ export function CollectionTable({ collectionId }: { collectionId: number }) {
                 </tr>
               ) : null}
             </thead>
-            <tbody>
-              {(records?.items ?? []).map((record) => (
-                <tr
-                  key={record.id}
-                  tabIndex={0}
-                  title="Double-click to open"
-                  onDoubleClick={() => open(record)}
-                  onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
-                    if (event.key === "Enter" && event.target === event.currentTarget) open(record);
-                  }}
-                  className="group cursor-pointer border-b last:border-b-0 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
-                >
-                  {columns.map((column) => (
-                    <td key={column.key} className={cn("max-w-72 truncate px-4 py-3.5", column.key === TITLE_COLUMN && "font-medium")}>
-                      <CellValue value={column.field ? record.values[column.key] : record.title} field={column.field} />
+            <tbody aria-busy={isPending || undefined}>
+              {isPending ? <SkeletonRows columns={columns.length} rows={Math.min(pageSize, 12)} /> : null}
+              {(records?.items ?? []).map((record) => {
+                const selected = shown?.collectionId === collectionId && shown.recordId === record.id;
+                return (
+                  <tr
+                    key={record.id}
+                    tabIndex={0}
+                    aria-current={selected ? "true" : undefined}
+                    onClick={(event) => {
+                      // The row's own open button handles its click.
+                      if (!(event.target as HTMLElement).closest("button")) open(record);
+                    }}
+                    onKeyDown={(event: KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" && event.target === event.currentTarget) open(record);
+                    }}
+                    className={cn(
+                      "group cursor-pointer focus-visible:outline-none",
+                      selected ? "bg-accent" : "hover:bg-muted/50 focus-visible:bg-muted/50",
+                    )}
+                  >
+                    {columns.map((column) => (
+                      <td key={column.key} className={cn("max-w-72 truncate border-b px-3 py-3.5", COLUMN_SEPARATOR, column.key === TITLE_COLUMN && "font-medium")}>
+                        <CellValue value={column.field ? record.values[column.key] : record.title} />
+                      </td>
+                    ))}
+                    <td className="border-b px-1 py-0.5 text-right">
+                      <AppButton
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100"
+                        aria-label={`Open ${record.title ?? `record ${record.id}`}`}
+                        onClick={() => open(record)}
+                      >
+                        <ArrowUpRight aria-hidden="true" />
+                      </AppButton>
                     </td>
-                  ))}
-                  <td className="px-2 py-2 text-right">
-                    <AppButton
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground opacity-60 group-hover:opacity-100"
-                      aria-label={`Open ${record.title ?? `record ${record.id}`}`}
-                      onClick={() => open(record)}
-                    >
-                      <ArrowUpRight aria-hidden="true" />
-                    </AppButton>
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {!isPending && records?.items.length === 0 ? (
@@ -342,7 +375,7 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
       {totalPages > 1 ? (
         <label className="flex items-center justify-end gap-2 text-muted-foreground">
           Go to page
-          <input
+          <Input
             type="number"
             min={1}
             max={totalPages}
@@ -354,7 +387,7 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
               if (Number.isInteger(target)) onPage(Math.min(totalPages, Math.max(1, target)) - 1);
               setGoTo("");
             }}
-            className="h-8 w-14 rounded-md border bg-background px-2 text-center text-foreground"
+            className="w-14 text-center text-foreground"
           />
         </label>
       ) : (
@@ -364,44 +397,59 @@ function Pager({ total, page, totalPages, onPage }: { total: number; page: numbe
   );
 }
 
-function CellValue({ value, field }: { value: unknown; field?: CollectionFieldDto }) {
+/** A cell as plain text (choice values too: the table stays black and white). */
+function CellValue({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-muted-foreground">–</span>;
-  }
-  if (field && (field.type === "ENUM" || field.type === "STATUS") && typeof value === "string") {
-    return <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", choiceTint(field, value))}>{value}</span>;
   }
   return <>{formatValue(value)}</>;
 }
 
-const FILTER_INPUT = "h-8 w-full min-w-28 rounded-md border bg-background px-2 text-xs font-normal";
+const SKELETON_WIDTHS = ["w-3/4", "w-1/2", "w-2/3", "w-3/5"] as const;
+
+/** Placeholder rows in the real table (same cells, same height) while the first page of records loads. */
+function SkeletonRows({ columns, rows }: { columns: number; rows: number }) {
+  return Array.from({ length: rows }, (_, row) => (
+    <tr key={row} data-testid="skeleton-row">
+      {Array.from({ length: columns }, (_, column) => (
+        <td key={column} className={cn("border-b px-3 py-3.5", COLUMN_SEPARATOR)}>
+          <Skeleton className={cn("h-5", SKELETON_WIDTHS[(row + column) % SKELETON_WIDTHS.length])} />
+        </td>
+      ))}
+      <td className="border-b" />
+    </tr>
+  ));
+}
+
+const FILTER_INPUT ="min-w-28 px-2 text-xs font-normal";
+const FILTER_SELECT = "min-w-28 font-normal";
 
 function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldDto; value: ColumnFilter; onChange: (input: ColumnFilter) => void }) {
   const kind = filterKind(field);
   const label = `Filter ${field.name}`;
   switch (kind) {
     case "text":
-      return <input aria-label={label} placeholder="contains…" className={FILTER_INPUT} value={value.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} />;
+      return <Input aria-label={label} placeholder="contains…" className={FILTER_INPUT} value={value.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} />;
     case "choice": {
       const options = field.options[field.type === "STATUS" ? "states" : "values"];
       return (
-        <select aria-label={label} className={FILTER_INPUT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
+        <NativeSelect aria-label={label} size="sm" className={FILTER_SELECT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
           <option value="">Any</option>
           {(Array.isArray(options) ? options : []).map((option) => (
             <option key={String(option)} value={String(option)}>
               {String(option)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       );
     }
     case "boolean":
       return (
-        <select aria-label={label} className={FILTER_INPUT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
+        <NativeSelect aria-label={label} size="sm" className={FILTER_SELECT} value={value.equals ?? ""} onChange={(event) => onChange({ equals: event.target.value })}>
           <option value="">Any</option>
           <option value="true">Yes</option>
           <option value="false">No</option>
-        </select>
+        </NativeSelect>
       );
     case "number":
     case "date":
@@ -409,8 +457,8 @@ function ColumnFilterInput({ field, value, onChange }: { field: CollectionFieldD
       const type = kind === "number" ? "number" : "date";
       return (
         <div className="grid gap-1">
-          <input type={type} aria-label={`${field.name} from`} placeholder="from" className={FILTER_INPUT} value={value.min ?? ""} onChange={(event) => onChange({ min: event.target.value })} />
-          <input type={type} aria-label={`${field.name} to`} placeholder="to" className={FILTER_INPUT} value={value.max ?? ""} onChange={(event) => onChange({ max: event.target.value })} />
+          <Input type={type} aria-label={`${field.name} from`} placeholder="from" className={FILTER_INPUT} value={value.min ?? ""} onChange={(event) => onChange({ min: event.target.value })} />
+          <Input type={type} aria-label={`${field.name} to`} placeholder="to" className={FILTER_INPUT} value={value.max ?? ""} onChange={(event) => onChange({ max: event.target.value })} />
         </div>
       );
     }

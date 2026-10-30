@@ -63,6 +63,16 @@ describe("ReplySuggestionCard", () => {
     expect(screen.queryByText("Draft reply")).not.toBeInTheDocument();
   });
 
+  it("shows its kind as a small bare icon with the label, not an icon tile", () => {
+    renderWithProviders(<ReplySuggestionCard proposal={proposal({})} />);
+
+    const card = screen.getByRole("article", { name: "Re: Workshop" });
+    // No icon on a colored tile and no gray box: the kind is a small bare icon next to its label.
+    expect(card.querySelector("[class*='bg-tint']")).toBeNull();
+    expect([...card.querySelectorAll("*")].some((element) => element.classList.contains("bg-muted/50"))).toBe(false);
+    expect(card.querySelector("svg[class*='size-3.5']")).not.toBeNull();
+  });
+
   it("shows neither for a draft without questions or times", () => {
     renderWithProviders(<ReplySuggestionCard proposal={proposal({})} />);
 

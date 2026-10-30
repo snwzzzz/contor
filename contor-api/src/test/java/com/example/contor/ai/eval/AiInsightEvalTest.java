@@ -1,5 +1,7 @@
 package com.example.contor.ai.eval;
 
+import com.example.contor.ai.CachingLlmClient;
+import com.example.contor.ai.DigestApiItem;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.Insight;
 import com.example.contor.ai.LlmClient;
@@ -41,9 +43,17 @@ class AiInsightEvalTest {
     private static final String DEFAULT_MODEL = "qwen3.5:9b";
     private static final ZoneId ZONE = ZoneId.of("Europe/Berlin");
 
-    /** One scenario: what the user's mail and records looked like, and which evidence sets a good insight cites. */
-    record InsightCase(String id, Instant today, List<DigestEmail> emails, List<String> openTasks, List<String> appointments,
-                       List<List<Long>> expected) {
+    /**
+     * One scenario: what the user's mail, records and app data looked like, and which evidence sets a good insight cites
+     * ({@code expectedApiItems}, when given, the app items the insight at the same position must cite too).
+     */
+    record InsightCase(String id, Instant today, List<DigestEmail> emails, List<DigestApiItem> apiItems, List<String> openTasks,
+                       List<String> appointments, List<List<Long>> expected, List<List<Long>> expectedApiItems) {
+
+        InsightCase {
+            apiItems = apiItems != null ? apiItems : List.of();
+            expectedApiItems = expectedApiItems != null ? expectedApiItems : List.of();
+        }
     }
 
     @Test
@@ -54,7 +64,7 @@ class AiInsightEvalTest {
                 new AiProperties.Models(model, model, "nomic-embed-text"),
                 new AiProperties.Processing(false, Duration.ofMinutes(2), 20), ZONE);
         JsonMapper mapper = JsonMapper.builder().build();
-        OllamaClient ollama = new OllamaClient(properties, mapper);
+        CachingLlmClient ollama = CachingLlmClient.fromSystemProperties(new OllamaClient(properties, mapper), properties.ollama().numCtx());
         // -Dai.eval.raw=true prints the model's raw answer, to see what the guardrails dropped
         LlmClient client = (llmModel, system, user, schema) -> {
             String answer = ollama.completeJson(llmModel, system, user, schema);
@@ -67,25 +77,30 @@ class AiInsightEvalTest {
         int expected = 0;
         int found = 0;
         int produced = 0;
-        for (InsightCase evalCase : load(mapper)) {
+        for (InsightCase evalCase : CaseFilter.fromSystemProperty().selectOrSkip(load(mapper), InsightCase::id)) {
             InsightModelService service = new InsightModelService(client, properties, mapper, Clock.fixed(evalCase.today(), ZONE));
-            List<Insight> insights = service.findInsights(evalCase.emails(), evalCase.openTasks(), evalCase.appointments());
+            List<Insight> insights = service.findInsights(evalCase.emails(), evalCase.apiItems(), evalCase.openTasks(), evalCase.appointments());
             produced += insights.size();
             for (Insight insight : insights) {
-                System.out.printf("[ai-eval] %s: %s %s (confidence %s)%n    %s%n    why: %s%n    follow-ups: %s%n", evalCase.id(),
-                        insight.title(), insight.evidenceEmailIds(), insight.confidence(), insight.observation(), insight.whyItMatters(),
-                        insight.followUps());
+                System.out.printf("[ai-eval] %s: %s %s A%s (confidence %s)%n    %s%n    why: %s%n    follow-ups: %s%n", evalCase.id(),
+                        insight.title(), insight.evidenceEmailIds(), insight.evidenceApiItemIds(), insight.confidence(), insight.observation(),
+                        insight.whyItMatters(), insight.followUps());
             }
-            for (List<Long> evidence : evalCase.expected()) {
+            for (int index = 0; index < evalCase.expected().size(); index++) {
+                List<Long> evidence = evalCase.expected().get(index);
+                List<Long> items = index < evalCase.expectedApiItems().size() ? evalCase.expectedApiItems().get(index) : List.of();
                 expected++;
-                boolean hit = insights.stream().anyMatch(insight -> insight.evidenceEmailIds().containsAll(evidence));
+                boolean hit = insights.stream().anyMatch(insight -> insight.evidenceEmailIds().containsAll(evidence)
+                        && insight.evidenceApiItemIds().containsAll(items));
                 if (hit) {
                     found++;
                 }
-                System.out.printf("[ai-eval] %s: expected %s %s%n", evalCase.id(), evidence, hit ? "found" : "MISSED");
+                System.out.printf("[ai-eval] %s: expected %s%s %s%n", evalCase.id(), evidence, items.isEmpty() ? "" : " A" + items, hit ? "found" : "MISSED");
             }
         }
-        System.out.printf("[ai-eval] insights (%s): %d of %d expected found, %d insights in total%n", model, found, expected, produced);
+        System.out.printf("[ai-eval] insights (%s, %s): %d of %d expected found, %d insights in total%n", model, InsightModelService.PROMPT_VERSION,
+                found, expected, produced);
+        System.out.println("[ai-eval] " + ollama.summary());
         assertThat(expected).as("insight cases").isPositive();
     }
 

@@ -172,6 +172,20 @@ class AiSettingsServiceTest {
     }
 
     @Test
+    void updateSettings_ExternalApisRoundTripAndAreAudited() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().externalApis(AiAccess.AUTO));
+
+        assertThat(dto.getExternalApis()).isEqualTo(AiAccess.AUTO);
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("externalApis", "SUGGEST");
+        assertThat(captor.getValue().after()).containsEntry("externalApis", "AUTO");
+    }
+
+    @Test
     void updateSettings_CourtesyRepliesRoundTripAndAreAudited() {
         when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
         when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -194,6 +208,27 @@ class AiSettingsServiceTest {
         assertThat(dto.getOwnerProfile()).isEqualTo("Head of Operations at a wholesaler");
 
         assertThat(service.updateSettings(new UpdateAiSettingsCommand().ownerProfile(" ")).getOwnerProfile()).isNull();
+    }
+
+    @Test
+    void getSettings_ReadsHiddenMailboxesByDefault() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.empty());
+
+        assertThat(service.getSettings().getReadHiddenMailboxes()).isTrue();
+    }
+
+    @Test
+    void updateSettings_ReadHiddenMailboxesRoundTripsAndIsAudited() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().readHiddenMailboxes(false));
+
+        assertThat(dto.getReadHiddenMailboxes()).isFalse();
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("readHiddenMailboxes", true);
+        assertThat(captor.getValue().after()).containsEntry("readHiddenMailboxes", false);
     }
 
     @Test

@@ -103,4 +103,7 @@ public interface ProposalRepository extends JpaRepository<Proposal, Proposal.Pro
     /** Proposals of {@code kind} in {@code status} of a mailbox whose conversation has a newer received message. */
     @Query(NEWER_IN_CONVERSATION + "(e.folder is null or e.folder <> 'sent')) order by p.id")
     List<Proposal> findWithNewerReceived(ProposalKind kind, ProposalStatus status, MailAccount.MailAccountId accountId);
+
+    /** The proposal an external API item is waiting on, if any. */
+    Optional<Proposal> findFirstBySourceApiItem_IdAndStatus(Long apiItemId, ProposalStatus status);
 }

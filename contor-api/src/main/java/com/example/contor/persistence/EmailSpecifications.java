@@ -18,7 +18,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
-/** Email search: always limited to one owner's mailboxes, optional account, label, state and text filters. */
+/** Email search: always limited to one owner's mailboxes that are not hidden, optional account, label, state and text filters. */
 public final class EmailSpecifications {
 
     private static final char ESCAPE = '\\';
@@ -29,10 +29,17 @@ public final class EmailSpecifications {
     /**
      * {@code null} filters are ignored; {@code ownerId} is mandatory; {@code text} is searched in {@code field}
      * (default ALL); {@code answered} true/false keeps only emails with/without a newer sent message in their conversation
-     * (ignored for sent mail); {@code sent} lists the sent mail (Sent Items) instead of the inbox.
+     * (ignored for sent mail); {@code sent} lists the sent mail (Sent Items) instead of the inbox; {@code read}
+     * true/false keeps only read/unread emails.
      */
     public record Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
-                           ProcessingState processingState, String text, SearchField field, Boolean answered, boolean sent) {
+                           ProcessingState processingState, String text, SearchField field, Boolean answered, boolean sent,
+                           Boolean read) {
+
+        public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
+                        ProcessingState processingState, String text, SearchField field, Boolean answered, boolean sent) {
+            this(ownerId, accountId, labelId, processingState, text, field, answered, sent, null);
+        }
 
         public Criteria(AppUser.AppUserId ownerId, MailAccount.MailAccountId accountId, Label.LabelId labelId,
                         ProcessingState processingState, String text, SearchField field, Boolean answered) {
@@ -55,6 +62,8 @@ public final class EmailSpecifications {
             List<Predicate> predicates = new ArrayList<>();
             Join<EmailMessage, MailAccount> account = root.join("account");
             predicates.add(cb.equal(account.get("owner").get("id").get("id"), criteria.ownerId().id()));
+            // Hidden mailboxes are not shown anywhere in the app (the AI may still read them, see EmailMessageRepository).
+            predicates.add(cb.isFalse(account.get("hidden")));
             if (criteria.sent()) {
                 predicates.add(cb.equal(root.get("folder"), EmailMessage.FOLDER_SENT));
             } else {
@@ -73,6 +82,9 @@ public final class EmailSpecifications {
             }
             if (criteria.processingState() != null) {
                 predicates.add(cb.equal(root.get("processingState"), criteria.processingState()));
+            }
+            if (criteria.read() != null) {
+                predicates.add(cb.equal(root.get("read"), criteria.read()));
             }
             if (criteria.answered() != null && !criteria.sent()) {
                 // Answered: a sent message of the same conversation in the same mailbox, newer than this email.

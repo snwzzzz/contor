@@ -80,6 +80,18 @@ describe("ProposalList", () => {
     expect(within(screen.getByRole("article", { name: "Send certificates" })).queryByText(/Urgent|High/)).not.toBeInTheDocument();
   });
 
+  it("shows each card's kind as a small bare icon with the label, and the reasoning as plain text", async () => {
+    mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "Interview at Acme" });
+    // No icon on a colored tile and no gray box: the kind is a small bare icon next to its label.
+    expect(card.querySelector("[class*='bg-tint']")).toBeNull();
+    expect([...card.querySelectorAll("*")].some((element) => element.classList.contains("bg-muted/50"))).toBe(false);
+    expect(card.querySelector("svg[class*='size-3.5']")).not.toBeNull();
+    expect(within(card).getByText("Invitation to an interview on Friday")).toHaveClass("text-muted-foreground");
+  });
+
   it("explains the importance in the detail sidebar", async () => {
     const user = userEvent.setup();
     mockApi({ "GET /api/proposals": actionsPage(actions), "GET /api/collections": { body: collections } });
@@ -415,5 +427,59 @@ describe("ProposalList", () => {
     renderWithProviders(<ProposalList />);
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
+  });
+  it("names the app a record proposal comes from", async () => {
+    mockApi({
+      "GET /api/proposals": actionsPage([
+        {
+          id: 22,
+          kind: "CREATE_RECORD",
+          status: "PENDING",
+          payload: { collectionId: 4, title: "SO-155", values: {} },
+          sourceApp: { apiId: 7, apiName: "Shop", endpointName: "Orders" },
+          createdAt: "2026-10-29T12:00:00Z",
+        },
+      ]),
+      "GET /api/collections": { body: collections },
+    });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "SO-155" });
+    expect(within(card).getByRole("link", { name: "From Shop · Orders" })).toHaveAttribute("href", "/apps/7");
+  });
+
+  it("shows where an app's items would go and which data fills which field", async () => {
+    const people = { ...collection(5, "people", "People"), system: false };
+    mockApi({
+      "GET /api/proposals": actionsPage([
+        {
+          id: 21,
+          kind: "MAP_API_ENDPOINT",
+          status: "PENDING",
+          payload: {
+            mappingId: 40,
+            endpointId: 30,
+            collectionId: 5,
+            title: "CRM · Contacts",
+            titlePath: "$.name",
+            fields: [{ fieldSlug: "full_name", path: "$.name" }, { fieldSlug: "email", path: "$.mail" }],
+          },
+          reasoning: "CRM contacts are people",
+          createdAt: "2026-10-29T12:00:00Z",
+        },
+      ]),
+      "GET /api/collections": { body: [...collections, people] },
+    });
+
+    renderWithProviders(<ProposalList />);
+
+    const card = await screen.findByRole("article", { name: "CRM · Contacts" });
+    expect(within(card).getByText("Connect app data")).toBeInTheDocument();
+    expect(within(card).getByText("Into")).toBeInTheDocument();
+    expect(within(card).getByText("People")).toBeInTheDocument();
+    expect(within(card).getByText("Full name")).toBeInTheDocument();
+    expect(within(card).getByText("← $.mail")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Categories/ })).toBeInTheDocument();
   });
 });

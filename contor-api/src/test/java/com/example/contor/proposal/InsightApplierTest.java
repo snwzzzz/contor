@@ -4,12 +4,14 @@ import com.example.contor.api.model.RecordDto;
 import com.example.contor.domain.ActorType;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalKind;
 import com.example.contor.domain.RecordSource;
 import com.example.contor.domain.RecordSourceRole;
 import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.RecordSourceRepository;
 import com.example.contor.service.RecordService;
 import org.junit.jupiter.api.DisplayNameGeneration;
@@ -48,6 +50,9 @@ class InsightApplierTest {
 
     @Mock
     private EmailMessageRepository emailMessageRepository;
+
+    @Mock
+    private ExternalApiItemRepository externalApiItemRepository;
 
     @InjectMocks
     private InsightApplier applier;
@@ -103,5 +108,19 @@ class InsightApplierTest {
     void follow_ups_must_be_a_list() {
         assertThatThrownBy(() -> applier.apply(insight(Map.of("insightKey", "k", "title", "t", "followUps", "task"))))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void links_the_follow_ups_to_the_app_items_of_the_evidence_too() {
+        var item = ExternalApiItem.builder().id(9L).itemKey("J-7").build();
+        when(externalApiItemRepository.findAllById(List.of(9L))).thenReturn(List.of(item));
+        when(recordService.createRecord(eq(4L), any(), eq(ActorType.AI))).thenReturn(new RecordDto().id(5L).collectionId(4L));
+        when(collectionRepository.getReferenceById(new Collection.CollectionId(4L))).thenReturn(Collection.builder().id(new Collection.CollectionId(4L)).build());
+
+        applier.apply(insight(Map.of("evidenceEmailIds", List.of(), "evidenceApiItemIds", List.of(9),
+                "followUps", List.of(Map.of("collectionId", 4, "title", "Check the posting", "values", Map.of())))));
+
+        verify(recordSourceRepository).saveAndFlush(argThat((RecordSource source) -> source.getApiItem() == item && source.getEmail() == null
+                && source.getRecordId() == 5L && source.getRole() == RecordSourceRole.CREATED_FROM));
     }
 }

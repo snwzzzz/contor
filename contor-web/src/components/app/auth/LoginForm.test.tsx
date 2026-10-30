@@ -34,13 +34,13 @@ describe("LoginForm", () => {
     expect(queryClient.getQueryData(getGetCurrentUserQueryKey())).toEqual(owner);
   });
 
-  it("falls back to the inbox for unsafe targets", async () => {
+  it("falls back to the home page for unsafe targets", async () => {
     mockApi({ "POST /api/auth/login": { body: owner } });
     renderWithProviders(<LoginForm next="https://evil.example" />);
 
     await submit();
 
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/inbox"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
   });
 
   it("shows the server message on bad credentials and stays on the page", async () => {

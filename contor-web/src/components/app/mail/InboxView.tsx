@@ -20,6 +20,7 @@ import { ReadingPanePlaceholder } from "./ReadingPanePlaceholder";
 import { EmailSearchBar } from "./EmailSearchBar";
 import { InboxFilter } from "./InboxFilter";
 import { FolderSwitch } from "./FolderSwitch";
+import { EmailListSkeleton } from "./InboxSkeleton";
 import { counterpartAddress, domainOf } from "./mail-format";
 
 const PAGE_SIZE = 50;
@@ -148,7 +149,7 @@ export function InboxView() {
 
         <div ref={listScroll} data-testid="email-list-scroll" className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-1 [scrollbar-gutter:stable]">
           {isLoading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading emails…</div>
+            <EmailListSkeleton />
           ) : error ? (
             <ErrorMessage message={error.message} />
           ) : emails.length === 0 ? (
