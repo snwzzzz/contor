@@ -86,7 +86,11 @@ case "${1:-up}" in
     init_env
     backup_before_update
     export_ref
-    compose up -d --build --wait
+    compose build
+    # Compose keeps running containers whose image tag was rebuilt, so the app containers are recreated explicitly;
+    # the database (and the relay whose network they share) only when missing.
+    compose up -d --wait postgres net
+    compose up -d --wait --force-recreate --no-deps backend web
     port="$(grep -E '^WEB_PORT=' "$ENV_FILE" | cut -d= -f2)"
     echo "contor runs at http://127.0.0.1:${port:-3001}"
     print_token
