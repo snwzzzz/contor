@@ -1,11 +1,10 @@
 "use client";
 
-import { Database, GripVertical, Menu, Plus } from "lucide-react";
+import { GripVertical, Menu, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { SearchField } from "@/components/app/SearchField";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +12,7 @@ import type { CollectionDto } from "@/lib/api/generated/model/collectionDto";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
 import { useCountProposals } from "@/lib/api/generated/endpoints/proposals/proposals";
 import { moveItem, orderByIds } from "@/lib/collection-order";
-import { collectionTintNumber, tintVividClass } from "@/lib/collection-tint";
+import { collectionTintNumber, tintDotClass } from "@/lib/collection-tint";
 import {
   AI_INSIGHTS_NAV,
   collectionHref,
@@ -30,9 +29,14 @@ import { cn } from "@/lib/utils";
 const PROPOSAL_COUNT_REFRESH_MS = 60_000;
 const COLLECTION_ORDER_KEY = "contor.sidebar.collectionOrder";
 const NO_ORDER: readonly number[] = [];
-/** Compact rows (shadcn sidebar style): inset and rounded; color only on the icon; hover like every other row, the current page gets the accent background. */
-const ROW = "mx-2 flex h-7 items-center gap-2.5 rounded-md px-2 text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:bg-muted/50";
-const ACTIVE_ROW = "bg-accent font-medium text-accent-foreground";
+/**
+ * Inset rounded rows with muted icons; the transparent border keeps every row the size of the current one, which is raised
+ * (card background, hairline border, the cards' shadow). Color only on the collections' dots.
+ */
+const ROW =
+  "mx-2 flex h-8 items-center gap-2.5 rounded-lg border border-transparent px-2 text-sm text-foreground/85 outline-none transition-colors hover:bg-muted/50 focus-visible:bg-muted/50";
+const ACTIVE_ROW = "border-border bg-card font-medium text-foreground shadow-(--shadow-card) hover:bg-card";
+const ICON = "size-4 shrink-0 text-muted-foreground";
 
 function parseOrder(raw: unknown): readonly number[] | undefined {
   return Array.isArray(raw) && raw.every((id) => typeof id === "number") ? raw : undefined;
@@ -54,11 +58,24 @@ function matches(query: string, title: string): boolean {
 /** Hamburger in the top bar; opens the navigation as a panel over the page (closes on outside click, Escape, Ctrl/⌘ B). */
 export function NavDrawer() {
   const [open, setOpen] = useState(false);
+  /** Closed by choosing a page: gone at once, so the page shows without the slide-out in between. */
+  const [leaving, setLeaving] = useState(false);
+
+  function changeOpen(next: boolean) {
+    if (next) setLeaving(false);
+    setOpen(next);
+  }
+
+  function leave() {
+    setLeaving(true);
+    setOpen(false);
+  }
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key.toLowerCase() === "b" && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault();
+        setLeaving(false);
         setOpen((current) => !current);
       }
     }
@@ -67,7 +84,7 @@ export function NavDrawer() {
   }, []);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={changeOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Menu">
           <Menu aria-hidden="true" />
@@ -82,11 +99,15 @@ export function NavDrawer() {
           if (document.activeElement && document.activeElement !== document.body) event.preventDefault();
         }}
         // Starts below the top bar, like a flyout; on the page background with the dropdowns' light shadow, not a raised popover.
-        className="gap-0 bg-background p-0 shadow-(--shadow-popover) data-[side=left]:top-(--header-height) data-[side=left]:h-[calc(100svh-var(--header-height))] data-[side=left]:w-72 data-[side=left]:sm:max-w-72"
+        className={cn(
+          "gap-0 bg-background p-0 shadow-(--shadow-popover) data-[side=left]:top-(--header-height) data-[side=left]:h-[calc(100svh-var(--header-height))] data-[side=left]:w-72 data-[side=left]:sm:max-w-72",
+          // Important: the sheet's own data-closed:animate-out comes later in the stylesheet and would win.
+          leaving && "data-closed:animate-none!",
+        )}
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <SheetDescription className="sr-only">Go to a page or collection</SheetDescription>
-        <NavDrawerContent onNavigate={() => setOpen(false)} />
+        <NavDrawerContent onNavigate={leave} />
       </SheetContent>
     </Sheet>
   );
@@ -121,7 +142,7 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <>
-      <div className="shrink-0 border-b p-2">
+      <div className="shrink-0 border-b p-3">
         <SearchField
           aria-label="Search pages"
           placeholder="Search pages…"
@@ -130,8 +151,8 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
           onClear={() => setQuery("")}
         />
       </div>
-      <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto pb-1.5">
-        {primary.length > 0 ? <NavGroup>{navLinks(primary)}</NavGroup> : null}
+      <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto">
+        {primary.length > 0 ? <NavGroup label="Navigation">{navLinks(primary)}</NavGroup> : null}
         {insights.length > 0 ? <NavGroup label="AI insights">{navLinks(insights)}</NavGroup> : null}
         {foundCollections === null ? (
           <CollectionsGroup collections={collections} isPending={isPending} pathname={pathname} onNavigate={onNavigate} />
@@ -152,16 +173,15 @@ function NavDrawerContent({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-function NavGroup({ label, children }: { label?: string; children: ReactNode }) {
-  const id = label ? `nav-${label.toLowerCase().replaceAll(/[^a-z]+/g, "-")}` : undefined;
+/** A labelled group; groups are divided by a hairline, the label set in mono like a caption. */
+function NavGroup({ label, children }: { label: string; children: ReactNode }) {
+  const id = `nav-${label.toLowerCase().replaceAll(/[^a-z]+/g, "-")}`;
   return (
-    <div className="pt-1.5">
-      {label ? (
-        <h3 id={id} className="px-4 pt-1.5 pb-0.5 text-xs text-muted-foreground">
-          {label}
-        </h3>
-      ) : null}
-      <ul aria-labelledby={id} className="grid gap-px">
+    <div className="border-t py-3 first:border-t-0">
+      <h3 id={id} className="px-4 pb-1.5 font-mono text-[11px] tracking-wide text-muted-foreground">
+        {label}
+      </h3>
+      <ul aria-labelledby={id} className="grid gap-0.5">
         {children}
       </ul>
     </div>
@@ -180,12 +200,12 @@ function NavRow({ item, pathname, badge, onNavigate }: NavRowProps) {
   return (
     <li>
       <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn(ROW, active && ACTIVE_ROW)}>
-        <item.icon aria-hidden="true" className={cn("size-4 shrink-0", item.tint ? tintVividClass(item.tint) : "text-muted-foreground")} />
+        <item.icon aria-hidden="true" className={cn(ICON, active && "text-foreground")} />
         <span className="truncate">{item.title}</span>
         {badge?.count ? (
-          <Badge variant="secondary" className="ml-auto" aria-label={`${badge.count} ${badge.label}`}>
+          <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums" aria-label={`${badge.count} ${badge.label}`}>
             {badge.count}
-          </Badge>
+          </span>
         ) : null}
       </Link>
     </li>
@@ -197,7 +217,9 @@ function CollectionLink({ collection, pathname, onNavigate }: { collection: Coll
   const active = isActive(pathname, href);
   return (
     <Link href={href} onClick={onNavigate} draggable={false} aria-current={active ? "page" : undefined} className={cn(ROW, "pr-8", active && ACTIVE_ROW)}>
-      <Database aria-hidden="true" className={cn("size-4 shrink-0", tintVividClass(collectionTintNumber(collection.id, collection.slug)))} />
+      <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center">
+        <span data-slot="tint-dot" className={cn("size-2 rounded-full", tintDotClass(collectionTintNumber(collection.id, collection.slug)))} />
+      </span>
       <span className="truncate">{collection.name}</span>
     </Link>
   );
@@ -207,7 +229,7 @@ function NewCollectionRow({ onNavigate }: { onNavigate: () => void }) {
   return (
     <li>
       <Link href={NEW_COLLECTION_HREF} onClick={onNavigate} className={cn(ROW, "text-muted-foreground")}>
-        <Plus aria-hidden="true" className="size-4 shrink-0" />
+        <Plus aria-hidden="true" className={ICON} />
         <span>New collection</span>
       </Link>
     </li>
@@ -307,7 +329,7 @@ function CollectionItem({ collection, pathname, onNavigate, preview, onDragStart
         aria-label={`Move ${collection.name}`}
         title="Drag, or Alt+Up/Down to move"
         onKeyDown={onGripKeyDown}
-        className="absolute top-1 right-3 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute top-1.5 right-3 flex size-5 cursor-grab items-center justify-center rounded text-muted-foreground opacity-0 outline-none group-hover/collection:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GripVertical className="size-3.5" aria-hidden="true" />
       </button>

@@ -82,40 +82,52 @@ describe("NavDrawer", () => {
     expect(within(drawer).getByText("No pages found")).toBeInTheDocument();
   });
 
-  it("closes when a page is chosen", async () => {
+  it("closes at once when a page is chosen: no slide-out between the click and the page", async () => {
     const drawer = await openDrawer();
 
     await userEvent.click(within(drawer).getByRole("link", { name: /^Inbox/ }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(drawer).toHaveClass("data-closed:animate-none!");
   });
 
-  it("closes with Escape", async () => {
-    await openDrawer();
+  it("closes with Escape, sliding out", async () => {
+    const drawer = await openDrawer();
 
     await userEvent.keyboard("{Escape}");
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(drawer).not.toHaveClass("data-closed:animate-none!");
   });
 
-  it("is colorful but minimal: compact rows, icons in their section or collection color, no tiles", async () => {
+  it("is quiet like the reference: muted icons, the current page raised, collections as colored dots, no tiles", async () => {
     const drawer = await openDrawer();
 
     const inbox = within(drawer).getByRole("link", { name: /^Inbox/ });
-    expect(inbox).toHaveClass("h-7");
+    expect(inbox).toHaveClass("h-8");
     expect(drawer).toHaveClass("bg-background");
-    expect(inbox.querySelector("svg")).toHaveClass("text-tint-8-vivid");
+    expect(inbox.querySelector("svg")).toHaveClass("text-muted-foreground");
+    expect(within(drawer).getByRole("link", { name: /^Proposals/ })).toHaveClass("bg-card", "shadow-(--shadow-card)");
     const people = within(drawer).getByRole("link", { name: "People" });
-    expect(people.querySelector("svg")).toHaveClass("text-tint-2-vivid");
-    expect(within(drawer).getByRole("link", { name: /^Home/ }).querySelector("svg")).toHaveClass("text-muted-foreground");
-    expect(drawer.querySelector("[class*='bg-tint-']")).toBeNull();
+    expect(people.querySelector("svg")).toBeNull();
+    expect(people.querySelector("[data-slot='tint-dot']")).toHaveClass("bg-tint-2-vivid");
+    expect(drawer.querySelector("[class*='bg-tint-']:not([data-slot='tint-dot'])")).toBeNull();
+  });
+
+  it("labels the groups, the main pages as Navigation", async () => {
+    const drawer = await openDrawer();
+
+    expect(within(drawer).getByRole("list", { name: "Navigation" })).toHaveTextContent("Inbox");
+    expect(within(drawer).getByRole("heading", { name: "AI insights" })).toHaveClass("font-mono");
   });
 
   it("shows the number of pending proposals", async () => {
     const drawer = await openDrawer();
 
     const proposals = within(drawer).getByRole("link", { name: /^Proposals/ });
-    expect(await within(proposals).findByLabelText("3 pending proposals")).toHaveTextContent("3");
+    const count = await within(proposals).findByLabelText("3 pending proposals");
+    expect(count).toHaveTextContent("3");
+    expect(count).toHaveClass("font-mono", "text-muted-foreground");
   });
 
   it("marks the current page, home only on itself", async () => {
