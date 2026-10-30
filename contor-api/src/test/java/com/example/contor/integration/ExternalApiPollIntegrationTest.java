@@ -45,7 +45,8 @@ import static org.mockito.Mockito.when;
  * on the scheduler's own threads and transactions (so nothing here is rolled back; the app goes with its owner). The
  * guard is the one stub: the client, auth handlers and storage are real.
  */
-@SpringBootTest
+// The test runs the poll itself: no scheduled tick may poll its due app at the same time.
+@SpringBootTest(properties = "app.external-apis.enabled=false")
 @Import(PostgresTestcontainersConfiguration.class)
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class ExternalApiPollIntegrationTest {

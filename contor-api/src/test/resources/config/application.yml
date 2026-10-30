@@ -2,6 +2,3 @@
 app:
   encryption:
     key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
-  # No scheduled calls of external APIs in tests; ExternalApiPollIntegrationTest runs the poll itself.
-  external-apis:
-    enabled: false

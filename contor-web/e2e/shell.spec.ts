@@ -37,7 +37,7 @@ test.describe("app shell", () => {
     await page.goto("/");
     const bar = page.getByRole("banner");
 
-    await bar.getByRole("button", { name: "Apps" }).click();
+    await bar.getByRole("button", { name: "External APIs" }).click();
     await expect(page.getByText("No apps yet")).toBeVisible();
     await page.keyboard.press("Escape");
 

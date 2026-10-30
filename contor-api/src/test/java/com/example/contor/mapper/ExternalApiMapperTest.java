@@ -11,8 +11,8 @@ import com.example.contor.api.model.EndpointOrigin;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.domain.ApiAuthConfig;
-import com.example.contor.domain.ApiFieldMapping;
 import com.example.contor.domain.ApiAuthKind;
+import com.example.contor.domain.ApiFieldMapping;
 import com.example.contor.domain.ApiHeader;
 import com.example.contor.domain.ApiHttpMethod;
 import com.example.contor.domain.ApiPath;
@@ -27,7 +27,9 @@ import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ExternalApiMapping;
+import com.example.contor.domain.ExternalApiSnapshot;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
 import com.example.contor.domain.MappingState;
@@ -42,6 +44,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -241,5 +244,28 @@ public class ExternalApiMapperTest {
         assertThat(dto.getMapping().getState()).isEqualTo(ApiMappingStatus.ACTIVE);
         assertThat(dto.getMapping().getFieldCount()).isEqualTo(2);
         assertThat(ExternalApiMapper.toDto(endpoint, null).getMapping()).isNull();
+    }
+
+    @Test
+    void maps_an_answer_and_an_item() {
+        var snapshot = ExternalApiSnapshot.builder().fetchedAt(Instant.parse("2026-10-29T12:00:00Z")).contentType("application/json")
+                .body("x".repeat(25_000)).truncated(false).build();
+        var item = ExternalApiItem.builder().id(9L).itemKey("1058424").data(new HashMap<>(Map.of("title", "Hope")))
+                .firstSeenAt(Instant.parse("2026-10-29T12:00:00Z")).lastSeenAt(Instant.parse("2026-10-29T13:00:00Z"))
+                .collection(Collection.builder().id(new Collection.CollectionId(4L)).build()).recordId(3L).build();
+
+        var answer = ExternalApiMapper.toDto(snapshot);
+        var itemDto = ExternalApiMapper.toDto(item);
+
+        assertThat(answer.getBody()).hasSize(ExternalApiMapper.ANSWER_CHARS);
+        assertThat(answer.getTruncated()).as("cut here").isTrue();
+        assertThat(answer.getContentType()).isEqualTo("application/json");
+        assertThat(itemDto.getKey()).isEqualTo("1058424");
+        assertThat(itemDto.getData()).containsEntry("title", "Hope");
+        assertThat(itemDto.getCollectionId()).isEqualTo(4L);
+        assertThat(itemDto.getRecordId()).isEqualTo(3L);
+        assertThat(itemDto.getGoneAt()).isNull();
+        assertThat(ExternalApiMapper.toDto((ExternalApiSnapshot) null)).isNull();
+        assertThat(ExternalApiMapper.toDto((ExternalApiItem) null)).isNull();
     }
 }

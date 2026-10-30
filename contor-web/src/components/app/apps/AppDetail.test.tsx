@@ -88,6 +88,25 @@ describe("AppDetail", () => {
     expect(rows[2]).toHaveTextContent("+2 ~1 −1");
   });
 
+  it("says a call that is due is due now, not when it was due", async () => {
+    api({ "GET /api/external-apis/7": { body: { ...shop, lastCalledAt: undefined, nextCallAt: "2026-10-29T11:58:00Z" } } });
+    renderWithProviders(<AppDetail apiId={7} />);
+
+    const status = await screen.findByRole("region", { name: "Status" });
+    expect(status).toHaveTextContent("Due now");
+    expect(status).not.toHaveTextContent("ago");
+  });
+
+  it("opens what an endpoint brought in", async () => {
+    api({ "GET /api/external-apis/7/endpoints/30/data": { body: { itemCount: 0, goneCount: 0, items: [] } } });
+    renderWithProviders(<AppDetail apiId={7} />);
+    vi.useRealTimers();
+
+    await userEvent.click(await screen.findByRole("button", { name: "View data of Orders" }));
+
+    expect(await screen.findByRole("dialog", { name: "Orders" })).toBeInTheDocument();
+  });
+
   it("calls the app now", async () => {
     const recorded = api({ "POST /api/external-apis/7/calls": { status: 202, body: { ...shop, nextCallAt: "2026-10-29T12:00:00Z" } } });
     renderWithProviders(<AppDetail apiId={7} />);
@@ -119,6 +138,6 @@ describe("AppDetail", () => {
     renderWithProviders(<AppDetail apiId={7} />);
 
     expect(await screen.findByText("This app does not exist (any more).")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "All apps" })).toHaveAttribute("href", "/apps");
+    expect(screen.getByRole("link", { name: "All external APIs" })).toHaveAttribute("href", "/apps");
   });
 });

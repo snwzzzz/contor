@@ -1,6 +1,6 @@
 "use client";
 
-import { Plug, Plus } from "lucide-react";
+import { Braces, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { EmptyState } from "@/components/app/EmptyState";
@@ -29,7 +29,7 @@ export function AppsOverview() {
   if (apps.length === 0) {
     return (
       <EmptyState
-        icon={Plug}
+        icon={Braces}
         title="No apps yet"
         description="Connect a shop, a job platform or any other HTTPS API: contor calls it now and then, only reads, and the assistant learns from it."
         action={
@@ -47,7 +47,7 @@ export function AppsOverview() {
   // Read only on the client: the list comes from the API after hydration.
   const now = new Date();
   return (
-    <section aria-label="Apps" className="grid gap-3">
+    <section aria-label="External APIs" className="grid gap-3">
       <table className="w-full table-fixed text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">

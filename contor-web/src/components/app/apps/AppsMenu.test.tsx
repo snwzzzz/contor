@@ -34,7 +34,7 @@ function app(id: number, name: string, overrides: Partial<ExternalApiDto> = {}):
 
 async function openMenu() {
   renderWithProviders(<AppsMenu />);
-  await userEvent.click(screen.getByRole("button", { name: "Apps" }));
+  await userEvent.click(screen.getByRole("button", { name: "External APIs" }));
   return screen.findByRole("menu");
 }
 
@@ -77,14 +77,21 @@ describe("AppsMenu", () => {
     expect(within(menu).getByRole("menuitem", { name: /Weather/ })).not.toHaveTextContent(/Failing|Paused|Needs setup/);
   });
 
-  it("opens an app's modal over the current page with the keyboard", async () => {
+  it("names itself External APIs", async () => {
+    mockApi({ "GET /api/external-apis": { body: [app(1, "Shop")] } });
+    const menu = await openMenu();
+
+    expect(within(menu).getByText("External APIs")).toBeInTheDocument();
+  });
+
+  it("opens an app's page with the keyboard", async () => {
     mockApi({ "GET /api/external-apis": { body: [app(1, "Shop"), app(2, "Jobs")] } });
     const menu = await openMenu();
     await within(menu).findByRole("menuitem", { name: /Shop/ });
 
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
-    expect(router.push).toHaveBeenCalledWith("/calendar?app=2", { scroll: false });
+    expect(router.push).toHaveBeenCalledWith("/apps/2");
   });
 
   it("adds an app from the footer", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Database, FileText, Mail, Network, Plug } from "lucide-react";
+import { ArrowUpRight, Braces, Database, FileText, Mail, Network } from "lucide-react";
 import Link from "next/link";
 import { useGetEmailParagraphs } from "@/lib/api/generated/endpoints/mail/mail";
 import type { CitationKind } from "@/lib/api/generated/model/citationKind";
@@ -10,7 +10,7 @@ import { highlightQuote, sourceHref } from "@/lib/report";
 import { cn } from "@/lib/utils";
 import { LoadingList } from "@/components/app/LoadingSkeletons";
 
-const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail, APP_ITEM: Plug } satisfies Record<CitationKind, unknown>;
+const ICON = { FIELD: Database, RECORD: FileText, RELATION: Network, EMAIL_PARAGRAPH: Mail, APP_ITEM: Braces } satisfies Record<CitationKind, unknown>;
 const LINK_LABEL: Partial<Record<CitationKind, string>> = { EMAIL_PARAGRAPH: "Open in inbox", APP_ITEM: "Open app" };
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 

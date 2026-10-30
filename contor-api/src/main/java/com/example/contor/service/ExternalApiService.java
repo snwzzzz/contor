@@ -7,6 +7,7 @@ import com.example.contor.api.model.ApiTestResultDto;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
+import com.example.contor.api.model.ExternalApiEndpointDataDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.api.model.NewExternalApiCommand;
 import com.example.contor.api.model.NewExternalApiEndpointCommand;
@@ -26,6 +27,7 @@ import com.example.contor.domain.BaseUrl;
 import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ExternalApiMapping;
 import com.example.contor.domain.HttpsUrl;
 import com.example.contor.domain.JsonPathExpr;
@@ -44,8 +46,10 @@ import com.example.contor.mapper.ExternalApiMapper;
 import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.ExternalApiMappingRepository;
 import com.example.contor.persistence.ExternalApiRepository;
+import com.example.contor.persistence.ExternalApiSnapshotRepository;
 import com.example.contor.security.CurrentActor;
 import com.example.contor.security.OutboundRequestException;
 import jakarta.transaction.Transactional;
@@ -56,6 +60,7 @@ import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -77,6 +82,8 @@ public class ExternalApiService {
 
     static final int TEST_BODY_CHARS = 20_000;
     static final int MAX_ENDPOINTS = 50;
+    /** Items an endpoint's data shows at most. */
+    static final int DATA_ITEMS = 100;
     /** Which mapping counts for an endpoint, best first. */
     private static final List<MappingState> MAPPING_ORDER = List.of(MappingState.ACTIVE, MappingState.PROPOSED, MappingState.OFF);
     private static final int MAX_NAME = 80;
@@ -89,6 +96,8 @@ public class ExternalApiService {
     private final ExternalApiEndpointRepository externalApiEndpointRepository;
     private final ExternalApiCallRepository externalApiCallRepository;
     private final ExternalApiMappingRepository externalApiMappingRepository;
+    private final ExternalApiSnapshotRepository externalApiSnapshotRepository;
+    private final ExternalApiItemRepository externalApiItemRepository;
     private final AppUserRepository appUserRepository;
     private final ApiAuthRegistry apiAuthRegistry;
     private final ApiSecretCodec apiSecretCodec;
@@ -255,6 +264,7 @@ public class ExternalApiService {
     public ExternalApiEndpointDto updateEndpoint(Long apiId, Long endpointId, UpdateExternalApiEndpointCommand command) {
         ExternalApi api = load(apiId);
         ExternalApiEndpoint endpoint = loadEndpoint(api, endpointId);
+        List<Object> calledAndRead = calledAndRead(endpoint);
 
         if (command.getName() != null) {
             String name = name(command.getName());
@@ -277,7 +287,30 @@ public class ExternalApiService {
         if (command.getEnabled() != null) endpoint.setEnabled(command.getEnabled());
 
         externalApiEndpointRepository.saveAndFlush(endpoint);
+        if (!calledAndRead.equals(calledAndRead(endpoint))) {
+            // Another call or another way to read it: the next answer must count as new, or its items stay unread.
+            externalApiSnapshotRepository.deleteByEndpoint_Id(endpoint.getId());
+        }
         return ExternalApiMapper.toDto(endpoint);
+    }
+
+    /** What decides the endpoint's answer and how its items are read. */
+    private static List<Object> calledAndRead(ExternalApiEndpoint endpoint) {
+        return Arrays.asList(endpoint.getMethod(), endpoint.getPath(), Map.copyOf(endpoint.getQuery()),
+                endpoint.getBody() != null ? new HashMap<>(endpoint.getBody()) : null, endpoint.getItemsPath(), endpoint.getItemKeyPath());
+    }
+
+    /** The endpoint's last answer and its current items, newest first (at most {@link #DATA_ITEMS}). */
+    @Transactional
+    public ExternalApiEndpointDataDto findEndpointData(Long apiId, Long endpointId) {
+        ExternalApiEndpoint endpoint = loadEndpoint(load(apiId), endpointId);
+        List<ExternalApiItem> items = externalApiItemRepository.findByEndpoint_IdAndGoneAtIsNull(endpoint.getId());
+        return new ExternalApiEndpointDataDto(
+                items.stream().sorted(Comparator.comparing(ExternalApiItem::getFirstSeenAt).reversed().thenComparing(ExternalApiItem::getId,
+                        Comparator.reverseOrder())).limit(DATA_ITEMS).map(ExternalApiMapper::toDto).toList(),
+                items.size(), (int) externalApiItemRepository.countByEndpoint_IdAndGoneAtIsNotNull(endpoint.getId()))
+                .answer(externalApiSnapshotRepository.findFirstByEndpoint_IdOrderByFetchedAtDesc(endpoint.getId())
+                        .map(ExternalApiMapper::toDto).orElse(null));
     }
 
     @Transactional

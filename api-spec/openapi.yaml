@@ -2530,6 +2530,28 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/external-apis/{apiId}/endpoints/{endpointId}/data:
+    parameters:
+      - $ref: '#/components/parameters/ExternalApiId'
+      - $ref: '#/components/parameters/ExternalApiEndpointId'
+    get:
+      tags: [ExternalApis]
+      operationId: getExternalApiEndpointData
+      summary: What the endpoint answered last and the items read from its answers
+      description: |
+        The last stored answer (cut at 20 000 characters) and the items that are in it now, newest first (at most 100),
+        with how many there are and how many disappeared. Items are read with the endpoint's items path and key.
+      responses:
+        '200':
+          description: The endpoint's data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalApiEndpointDataDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/external-apis/{apiId}/endpoints/{endpointId}:
     parameters:
       - $ref: '#/components/parameters/ExternalApiId'
@@ -4968,6 +4990,68 @@ components:
           type: string
         source:
           $ref: '#/components/schemas/EndpointOrigin'
+    ExternalApiAnswerDto:
+      type: object
+      description: An endpoint's answer as stored
+      required: [fetchedAt, body, truncated]
+      properties:
+        fetchedAt:
+          type: string
+          format: date-time
+        contentType:
+          type: string
+        body:
+          type: string
+          description: At most 20 000 characters
+        truncated:
+          type: boolean
+          description: The answer is longer than `body` (cut at the size cap or here)
+    ExternalApiItemDto:
+      type: object
+      description: An item read from an endpoint's answers
+      required: [id, key, data, firstSeenAt, lastSeenAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        key:
+          type: string
+        data:
+          type: object
+          additionalProperties: {}
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        goneAt:
+          type: string
+          format: date-time
+        collectionId:
+          type: integer
+          format: int64
+          description: With `recordId`, the record the item became
+        recordId:
+          type: integer
+          format: int64
+    ExternalApiEndpointDataDto:
+      type: object
+      required: [items, itemCount, goneCount]
+      properties:
+        answer:
+          $ref: '#/components/schemas/ExternalApiAnswerDto'
+        items:
+          type: array
+          description: The items in the answer now, newest first, at most 100
+          items:
+            $ref: '#/components/schemas/ExternalApiItemDto'
+        itemCount:
+          type: integer
+          description: Items in the answer now
+        goneCount:
+          type: integer
+          description: Items that were in earlier answers and disappeared
     ApiAuthConfigDto:
       type: object
       description: The non-secret auth settings; which ones are needed depends on the auth kind (`ApiAuthType`)

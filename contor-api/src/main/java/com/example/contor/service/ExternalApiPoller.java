@@ -179,6 +179,11 @@ public class ExternalApiPoller {
             call.setError("The answer is no JSON, so no items were read");
             return Result.ok();
         }
+        if (endpoint.getItemsPath() != null && !jsonItems.fits(response.body(), endpoint.getItemsPath())) {
+            // Most likely a wrong path: diffing nothing would mark every stored item as gone.
+            call.setError("The items path " + endpoint.getItemsPath().value() + " finds nothing in the answer, so no items were read");
+            return Result.ok();
+        }
         return Result.ok(diff(endpoint, items.get(), call, now));
     }
 

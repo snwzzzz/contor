@@ -34,7 +34,7 @@ export const AREAS: readonly { key: AreaKey; label: string; description: string;
   },
   {
     key: "externalApis",
-    label: "Apps",
+    label: "External APIs",
     description: "Turn the data of your connected apps into records, once you approved where it goes.",
     levels: LEVELS,
   },

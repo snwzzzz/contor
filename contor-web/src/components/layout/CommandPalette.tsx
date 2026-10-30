@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, LogOut, Mail, Plug, Plus, Search } from "lucide-react";
+import { Braces, Database, LogOut, Mail, Plus, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Command, CommandBareInput, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
@@ -148,10 +148,10 @@ export function CommandPalette() {
             {apps && apps.length > 0 ? (
               <>
                 <CommandSeparator />
-                <CommandGroup heading="Apps">
+                <CommandGroup heading="External APIs">
                   {apps.map((api) => (
                     <CommandItem key={api.id} value={`app ${api.name}`} onSelect={() => go(appPageHref(api.id))}>
-                      <Plug aria-hidden="true" />
+                      <Braces aria-hidden="true" />
                       {api.name}
                     </CommandItem>
                   ))}

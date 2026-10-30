@@ -13,4 +13,7 @@ public interface ExternalApiSnapshotRepository extends JpaRepository<ExternalApi
 
     /** Newest first (to keep the last few). */
     List<ExternalApiSnapshot> findByEndpoint_IdOrderByFetchedAtDesc(ExternalApiEndpoint.ExternalApiEndpointId endpointId);
+
+    /** Forgets an endpoint's answers (its next answer counts as new). */
+    void deleteByEndpoint_Id(ExternalApiEndpoint.ExternalApiEndpointId endpointId);
 }

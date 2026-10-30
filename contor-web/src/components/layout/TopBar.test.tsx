@@ -25,7 +25,7 @@ describe("TopBar", () => {
   it("opens the app launcher, empty until an app is added", async () => {
     renderTopBar();
 
-    await userEvent.click(screen.getByRole("button", { name: "Apps" }));
+    await userEvent.click(screen.getByRole("button", { name: "External APIs" }));
 
     expect(await screen.findByText("No apps yet")).toBeInTheDocument();
   });

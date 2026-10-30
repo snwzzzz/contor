@@ -1,6 +1,6 @@
 "use client";
 
-import { Grip, Plug, Plus, Settings2 } from "lucide-react";
+import { Braces, Plus, Settings2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type KeyboardEvent } from "react";
 import { SearchField } from "@/components/app/SearchField";
@@ -18,7 +18,7 @@ import { useListExternalApis } from "@/lib/api/generated/endpoints/external-apis
 import type { ExternalApiDto } from "@/lib/api/generated/model/externalApiDto";
 import { tintClass } from "@/lib/collection-tint";
 import { apiHost, appTint, statusMark } from "@/lib/external-apis";
-import { APPS_HREF, appHref } from "@/lib/navigation";
+import { APPS_HREF, appHref, appPageHref } from "@/lib/navigation";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 
@@ -29,16 +29,16 @@ const SEARCH_FROM = 9;
 const MENU_KEYS = new Set(["ArrowDown", "ArrowUp", "Escape", "Tab"]);
 
 /**
- * The top bar's app launcher: the connected apps (external APIs) as a dense IntelliJ-style list, each opening its
- * modal over the current page; "Add app…" opens the empty one, "Manage apps" the apps page. Arrow keys move, Enter opens
+ * The top bar's External APIs menu: the connected apps as a dense IntelliJ-style list, each leading to its page;
+ * "Add app…" opens the empty modal over the current page, "Manage apps" the apps page. Arrow keys move, Enter opens
  * (Radix menu).
  */
 export function AppsMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Apps">
-          <Grip aria-hidden="true" />
+        <Button variant="ghost" size="icon" aria-label="External APIs">
+          <Braces aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-80">
@@ -55,8 +55,8 @@ function AppsMenuContent() {
   const [filter, setFilter] = useState("");
   const { data: apps, isPending, isError } = useListExternalApis();
 
-  function open(apiId: number | "new") {
-    router.push(appHref(pathname, apiId), { scroll: false });
+  function add() {
+    router.push(appHref(pathname, "new"), { scroll: false });
   }
 
   function keepTyping(event: KeyboardEvent<HTMLInputElement>) {
@@ -72,7 +72,7 @@ function AppsMenuContent() {
 
   return (
     <>
-      <DropdownMenuLabel>Apps</DropdownMenuLabel>
+      <DropdownMenuLabel>External APIs</DropdownMenuLabel>
       <DropdownMenuSeparator />
       {apps && apps.length >= SEARCH_FROM ? (
         <div className="p-1">
@@ -102,10 +102,10 @@ function AppsMenuContent() {
         <p className="px-2 py-6 text-center text-sm text-muted-foreground">Apps could not be loaded.</p>
       ) : apps.length === 0 ? (
         <div className="grid place-items-center gap-1 px-4 py-8 text-center">
-          <Plug className="mb-1 size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+          <Braces className="mb-1 size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm font-medium">No apps yet</p>
           <p className="text-xs text-muted-foreground">Connect a shop, a job platform or any other API.</p>
-          <DropdownMenuItem asChild onSelect={() => open("new")}>
+          <DropdownMenuItem asChild onSelect={add}>
             <Button variant="outline" size="xs" className="mt-2">
               Add app
             </Button>
@@ -115,12 +115,12 @@ function AppsMenuContent() {
         <>
           <div className="max-h-96 overflow-y-auto">
             {visible.map((api) => (
-              <AppRow key={api.id} api={api} now={now} onSelect={() => open(api.id)} />
+              <AppRow key={api.id} api={api} now={now} onSelect={() => router.push(appPageHref(api.id))} />
             ))}
             {visible.length === 0 ? <p className="px-2 py-4 text-center text-sm text-muted-foreground">No app matches.</p> : null}
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => open("new")}>
+          <DropdownMenuItem onSelect={add}>
             <Plus aria-hidden="true" />
             Add app…
           </DropdownMenuItem>

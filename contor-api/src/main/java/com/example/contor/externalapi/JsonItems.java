@@ -77,6 +77,23 @@ public class JsonItems {
         return Optional.ofNullable(objectMapper.convertValue(found.getFirst(), Object.class));
     }
 
+    /**
+     * Whether {@code itemsPath} finds its place in {@code body}: for a path ending in {@code [*]} a list there (an empty
+     * list fits: no items right now), else any value. A path that does not fit is most likely wrong for this answer.
+     */
+    public boolean fits(String body, JsonPathExpr itemsPath) {
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(body);
+        } catch (JacksonException e) {
+            return false;
+        }
+        if (root == null || root.isMissingNode()) return false;
+        String path = itemsPath.value();
+        if (!path.endsWith("[*]")) return !select(root, itemsPath).isEmpty();
+        return select(root, new JsonPathExpr(path.substring(0, path.length() - 3))).stream().anyMatch(JsonNode::isArray);
+    }
+
     /** SHA-256 of {@code text} (UTF-8) as lower-case hex. */
     public static String hash(String text) {
         try {

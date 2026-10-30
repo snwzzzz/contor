@@ -6,7 +6,7 @@ import { CommandLink, PageCommands } from "@/components/app/PageCommands";
 import { PageHeader } from "@/components/app/PageHeader";
 import { navItem } from "@/lib/navigation";
 
-export const metadata: Metadata = { title: "Apps" };
+export const metadata: Metadata = { title: "External APIs" };
 
 const SECTION = navItem("/apps");
 
@@ -16,7 +16,7 @@ export default function Page() {
       <PageHeader
         icon={SECTION.icon}
         tint={SECTION.tint}
-        title="Apps"
+        title="External APIs"
         description="The HTTP APIs you connected. contor calls them now and then, only reads, and the assistant learns from what comes back."
         actions={
           <PageCommands>

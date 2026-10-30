@@ -1,4 +1,4 @@
-import { Archive, CalendarPlus, FolderPlus, Lightbulb, Link2, ListPlus, PencilLine, Plug, Reply, Sparkles, Tag, type LucideIcon } from "lucide-react";
+import { Archive, Braces, CalendarPlus, FolderPlus, Lightbulb, Link2, ListPlus, PencilLine, Reply, Sparkles, Tag, type LucideIcon } from "lucide-react";
 import type { ProposalDto } from "@/lib/api/generated/model/proposalDto";
 import type { Tint } from "@/lib/collection-tint";
 
@@ -27,7 +27,7 @@ export function describeProposal(proposal: ProposalDto, slug: string | undefined
     case "CREATE_COLLECTION":
       return { label: "New category", icon: FolderPlus, group: "Categories", tint: 6 };
     case "MAP_API_ENDPOINT":
-      return { label: "Connect app data", icon: Plug, group: "Categories", tint: 6 };
+      return { label: "Connect app data", icon: Braces, group: "Categories", tint: 6 };
     case "DRAFT_REPLY":
       return { label: "Draft reply", icon: Reply, group: "Replies", tint: 5 };
     case "INSIGHT":

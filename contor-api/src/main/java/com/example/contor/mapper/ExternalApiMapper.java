@@ -12,16 +12,20 @@ import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMappingDto;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
+import com.example.contor.api.model.ExternalApiAnswerDto;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
+import com.example.contor.api.model.ExternalApiItemDto;
 import com.example.contor.domain.ApiAuthConfig;
 import com.example.contor.domain.ApiHeader;
 import com.example.contor.domain.ApiSecret;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ExternalApiMapping;
+import com.example.contor.domain.ExternalApiSnapshot;
 import com.example.contor.externalapi.ApiDiscovery;
 import com.example.contor.externalapi.DiscoveredEndpoint;
 
@@ -33,6 +37,9 @@ import java.util.LinkedHashMap;
  * and which secret headers there are, from the decrypted {@link ApiSecret} the service passes in.
  */
 public class ExternalApiMapper {
+
+    /** Characters of a stored answer in its DTO. */
+    public static final int ANSWER_CHARS = 20_000;
 
     public static ExternalApiDto toDto(ExternalApi api, ApiSecret secret) {
         if (api == null) return null;
@@ -99,6 +106,30 @@ public class ExternalApiMapper {
                                 ? mapping.getCollection().getId().id() : null)
                         .state(ApiMappingStatus.valueOf(mapping.getState().name()))
                         .fieldCount(mapping.getFieldMap().size()));
+    }
+
+    public static ExternalApiAnswerDto toDto(ExternalApiSnapshot snapshot) {
+        if (snapshot == null) return null;
+        String body = snapshot.getBody() != null ? snapshot.getBody() : "";
+        boolean cut = body.length() > ANSWER_CHARS;
+        return new ExternalApiAnswerDto()
+                .fetchedAt(MapperSupport.toOffset(snapshot.getFetchedAt()))
+                .contentType(snapshot.getContentType())
+                .body(cut ? body.substring(0, ANSWER_CHARS) : body)
+                .truncated(snapshot.isTruncated() || cut);
+    }
+
+    public static ExternalApiItemDto toDto(ExternalApiItem item) {
+        if (item == null) return null;
+        return new ExternalApiItemDto()
+                .id(item.getId())
+                .key(item.getItemKey())
+                .data(new LinkedHashMap<>(item.getData()))
+                .firstSeenAt(MapperSupport.toOffset(item.getFirstSeenAt()))
+                .lastSeenAt(MapperSupport.toOffset(item.getLastSeenAt()))
+                .goneAt(MapperSupport.toOffset(item.getGoneAt()))
+                .collectionId(item.getCollection() != null && item.getCollection().getId() != null ? item.getCollection().getId().id() : null)
+                .recordId(item.getRecordId());
     }
 
     public static ExternalApiCallDto toDto(ExternalApiCall call) {

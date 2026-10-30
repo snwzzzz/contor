@@ -5,6 +5,7 @@ import com.example.contor.api.model.ApiDiscoveryDto;
 import com.example.contor.api.model.ApiTestResultDto;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
+import com.example.contor.api.model.ExternalApiEndpointDataDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
 import com.example.contor.api.model.NewApiDiscoveryCommand;
 import com.example.contor.api.model.NewExternalApiCommand;
@@ -93,6 +94,11 @@ public class ExternalApiController implements ExternalApisApi {
     public ResponseEntity<ExternalApiEndpointDto> updateExternalApiEndpoint(Long apiId, Long endpointId,
                                                                             UpdateExternalApiEndpointCommand updateExternalApiEndpointCommand) {
         return ResponseEntity.ok(externalApiService.updateEndpoint(apiId, endpointId, updateExternalApiEndpointCommand));
+    }
+
+    @Override
+    public ResponseEntity<ExternalApiEndpointDataDto> getExternalApiEndpointData(Long apiId, Long endpointId) {
+        return ResponseEntity.ok(externalApiService.findEndpointData(apiId, endpointId));
     }
 
     @Override

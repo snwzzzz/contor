@@ -123,4 +123,14 @@ class JsonItemsTest {
         assertThat(items.value(order, path("$.missing"))).isEmpty();
         assertThat(items.value(Map.of("value", "x"), path("$.value"))).hasValue("x");
     }
+
+    @Test
+    void tells_whether_an_items_path_fits_the_answer() {
+        assertThat(items.fits("{\"results\":[]}", path("$.results[*]"))).isTrue();
+        assertThat(items.fits("{\"results\":[{\"id\":1}]}", path("$.results[*]"))).isTrue();
+        assertThat(items.fits("{\"results\":[{\"id\":1}]}", path("$[*]"))).as("an object is no list").isFalse();
+        assertThat(items.fits("{\"data\":{}}", path("$.data.orders[*]"))).isFalse();
+        assertThat(items.fits("{\"order\":{\"id\":1}}", path("$.order"))).isTrue();
+        assertThat(items.fits("<html>", path("$[*]"))).isFalse();
+    }
 }

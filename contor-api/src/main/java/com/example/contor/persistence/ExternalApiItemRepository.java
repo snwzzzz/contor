@@ -19,6 +19,8 @@ public interface ExternalApiItemRepository extends JpaRepository<ExternalApiItem
     /** Items still in the endpoint's last answer. */
     List<ExternalApiItem> findByEndpoint_IdAndGoneAtIsNull(ExternalApiEndpoint.ExternalApiEndpointId endpointId);
 
+    long countByEndpoint_IdAndGoneAtIsNotNull(ExternalApiEndpoint.ExternalApiEndpointId endpointId);
+
     /**
      * The insight digest: the owner's items that appeared or disappeared since {@code since}, of apps the assistant may
      * learn from, the latest change first (with endpoint and app).

@@ -60,7 +60,8 @@ import static org.mockito.Mockito.when;
  * those creates the record linked to its item, and a later change of the item proposes an update. The guard and the model
  * are the stubs. Not rolled back (the steps run on their own threads); the app, its proposals and records are removed after.
  */
-@SpringBootTest
+// The test runs the poll itself: no scheduled tick may poll its due app at the same time.
+@SpringBootTest(properties = "app.external-apis.enabled=false")
 @Import(PostgresTestcontainersConfiguration.class)
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class ExternalApiMappingIntegrationTest {

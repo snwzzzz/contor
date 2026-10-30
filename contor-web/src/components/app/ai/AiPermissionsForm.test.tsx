@@ -52,7 +52,7 @@ describe("AiPermissionsForm", () => {
   it("asks for every area with off, ask-me and automatic choices", () => {
     render(<AiPermissionsForm value={initial} onChange={() => {}} />);
 
-    for (const area of ["New categories", "Contacts & records", "Calendar", "To-dos", "Apps"]) {
+    for (const area of ["New categories", "Contacts & records", "Calendar", "To-dos", "External APIs"]) {
       const group = screen.getByRole("radiogroup", { name: area });
       expect(within(group).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["OFF", "SUGGEST", "AUTO"]);
       expect(within(group).getByRole("radio", { name: "Ask me" })).toBeChecked();

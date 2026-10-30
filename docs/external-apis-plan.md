@@ -103,6 +103,16 @@
 >   produce one: their evidence has no app data) with `chat_citation.api_item_id` (set null when the app goes) and the
 >   cited data in `quote`. The answer prompt is unchanged (`chat-answer-v2`): it already asks for any code in brackets,
 >   and there is no chat eval to measure a prompt change against; the tests cover that `D` codes are read and cited.
+> - Fix after X12: X7 had switched polling off in `src/test/resources/config/application.yml`, which the local launcher
+>   (`TestContorApplication`, `spring-boot:test-run`) also reads, so apps were never called there. The switch is now
+>   only on the two integration tests that run the poll themselves (`@SpringBootTest(properties = ...)`). A due call
+>   reads *Due now* on the app page instead of "2 min. ago".
+> - Data view after X12: TMDB's answers (`{"page", "results": [...]}`) were stored, but the docs reader had given the
+>   endpoints `$[*]`, which finds nothing in an object, so no item was read and nothing said so; fixing the path did not
+>   help either, because the same answer then counted as UNCHANGED. Now `JsonItems.fits` checks the path against the
+>   answer (a wrong path is said on the call and keeps the items), `updateEndpoint` forgets the stored answers when what
+>   decides the answer or how it is read changes, and `GET …/endpoints/{endpointId}/data` + `EndpointData` show the items
+>   and the last answer, with the detected list as a one-click fix.
 
 ## Goal
 

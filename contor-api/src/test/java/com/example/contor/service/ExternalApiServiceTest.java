@@ -26,7 +26,9 @@ import com.example.contor.domain.EndpointSource;
 import com.example.contor.domain.ExternalApi;
 import com.example.contor.domain.ExternalApiCall;
 import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.ExternalApiMapping;
+import com.example.contor.domain.ExternalApiSnapshot;
 import com.example.contor.domain.JsonPathExpr;
 import com.example.contor.domain.MappingState;
 import com.example.contor.domain.Slug;
@@ -49,8 +51,10 @@ import com.example.contor.externalapi.NoAuthHandler;
 import com.example.contor.persistence.AppUserRepository;
 import com.example.contor.persistence.ExternalApiCallRepository;
 import com.example.contor.persistence.ExternalApiEndpointRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import com.example.contor.persistence.ExternalApiMappingRepository;
 import com.example.contor.persistence.ExternalApiRepository;
+import com.example.contor.persistence.ExternalApiSnapshotRepository;
 import com.example.contor.security.AuthenticatedUser;
 import com.example.contor.security.OutboundRequestException;
 import com.example.contor.security.OutboundRequestGuard;
@@ -69,6 +73,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -106,6 +111,12 @@ class ExternalApiServiceTest {
     private ExternalApiMappingRepository externalApiMappingRepository;
 
     @Mock
+    private ExternalApiSnapshotRepository externalApiSnapshotRepository;
+
+    @Mock
+    private ExternalApiItemRepository externalApiItemRepository;
+
+    @Mock
     private ExternalApiClient externalApiClient;
 
     @Mock
@@ -120,7 +131,7 @@ class ExternalApiServiceTest {
                 new BearerAuthHandler(), new BasicAuthHandler(),
                 new ClientCredentialsAuthHandler(mock(OutboundRequestGuard.class), JsonMapper.builder().build(), Clock.systemUTC())));
         service = new ExternalApiService(externalApiRepository, externalApiEndpointRepository, externalApiCallRepository, externalApiMappingRepository,
-                appUserRepository,
+                externalApiSnapshotRepository, externalApiItemRepository, appUserRepository,
                 registry, codec, externalApiClient, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(appUserRepository.getReferenceById(OWNER)).thenReturn(AppUser.builder().id(OWNER).build());
         lenient().when(externalApiRepository.saveAndFlush(any(ExternalApi.class))).thenAnswer(inv -> {
@@ -533,6 +544,71 @@ class ExternalApiServiceTest {
         assertThat(orders.isEnabled()).isFalse();
         assertThat(orders.getName()).isEqualTo("orders");
         verify(externalApiEndpointRepository).saveAndFlush(orders);
+    }
+
+    @Test
+    void updateEndpoint_ChangingWhatIsCalledOrReadForgetsTheStoredAnswers() {
+        var shop = shop();
+        var orders = endpoint(shop, "orders");
+        orders.setItemsPath(new JsonPathExpr("$[*]"));
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+        when(externalApiEndpointRepository.findByIdAndApi_Id(orders.getId(), SHOP_ID)).thenReturn(Optional.of(orders));
+
+        service.updateEndpoint(7L, 30L, new UpdateExternalApiEndpointCommand().name("orders").method(EndpointMethod.GET).path("/orders")
+                .query(Map.of()).itemsPath("$.results[*]").itemKeyPath("").description("").enabled(true));
+
+        // The next answer counts as new, so its items are read with the new path.
+        verify(externalApiSnapshotRepository).deleteByEndpoint_Id(orders.getId());
+    }
+
+    @Test
+    void updateEndpoint_RenamingKeepsTheStoredAnswers() {
+        var shop = shop();
+        var orders = endpoint(shop, "orders");
+        orders.setItemsPath(new JsonPathExpr("$.results[*]"));
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+        when(externalApiEndpointRepository.findByIdAndApi_Id(orders.getId(), SHOP_ID)).thenReturn(Optional.of(orders));
+
+        service.updateEndpoint(7L, 30L, new UpdateExternalApiEndpointCommand().name("Orders").method(EndpointMethod.GET).path("/orders")
+                .query(Map.of()).itemsPath("$.results[*]").itemKeyPath("").description("Open").enabled(true));
+
+        verify(externalApiSnapshotRepository, never()).deleteByEndpoint_Id(any());
+    }
+
+    @Test
+    void findEndpointData_GivesTheLastAnswerAndTheCurrentItemsNewestFirst() {
+        var shop = shop();
+        var orders = endpoint(shop, "orders");
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+        when(externalApiEndpointRepository.findByIdAndApi_Id(orders.getId(), SHOP_ID)).thenReturn(Optional.of(orders));
+        when(externalApiSnapshotRepository.findFirstByEndpoint_IdOrderByFetchedAtDesc(orders.getId())).thenReturn(Optional.of(
+                ExternalApiSnapshot.builder().fetchedAt(NOW).body("{\"results\":[]}").build()));
+        var older = ExternalApiItem.builder().id(1L).itemKey("a").data(new HashMap<>()).firstSeenAt(NOW.minusSeconds(60)).lastSeenAt(NOW).build();
+        var newer = ExternalApiItem.builder().id(2L).itemKey("b").data(new HashMap<>()).firstSeenAt(NOW).lastSeenAt(NOW).build();
+        when(externalApiItemRepository.findByEndpoint_IdAndGoneAtIsNull(orders.getId())).thenReturn(List.of(older, newer));
+        when(externalApiItemRepository.countByEndpoint_IdAndGoneAtIsNotNull(orders.getId())).thenReturn(3L);
+
+        var data = service.findEndpointData(7L, 30L);
+
+        assertThat(data.getAnswer().getBody()).isEqualTo("{\"results\":[]}");
+        assertThat(data.getItems()).extracting(item -> item.getKey()).containsExactly("b", "a");
+        assertThat(data.getItemCount()).isEqualTo(2);
+        assertThat(data.getGoneCount()).isEqualTo(3);
+    }
+
+    @Test
+    void findEndpointData_NothingYetAndOtherUsersAppsNotFound() {
+        var shop = shop();
+        var orders = endpoint(shop, "orders");
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.of(shop));
+        when(externalApiEndpointRepository.findByIdAndApi_Id(orders.getId(), SHOP_ID)).thenReturn(Optional.of(orders));
+
+        var data = service.findEndpointData(7L, 30L);
+
+        assertThat(data.getAnswer()).isNull();
+        assertThat(data.getItems()).isEmpty();
+        when(externalApiRepository.findByIdAndOwner_Id(SHOP_ID, OWNER)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.findEndpointData(7L, 30L)).isInstanceOf(ExternalApiNotFoundException.class);
     }
 
     @Test

@@ -264,6 +264,29 @@ class ExternalApiPollerTest {
     }
 
     @Test
+    void poll_AnItemsPathThatFindsNothingIsSaidAndKeepsTheItems() {
+        orders.setItemsPath(new JsonPathExpr("$[*]"));
+        answer(200, "{\"page\":1,\"results\":[{\"id\":1}]}");
+
+        poller.poll(7L);
+
+        assertThat(recordedCall().getError()).isEqualTo("The items path $[*] finds nothing in the answer, so no items were read");
+        verify(externalApiItemRepository, never()).saveAllAndFlush(anyList());
+    }
+
+    @Test
+    void poll_AnEmptyListIsAnAnswerWithoutItems() {
+        var stored = item("1", "{\"id\":1}");
+        when(externalApiItemRepository.findByEndpoint_IdAndGoneAtIsNull(ORDERS_ID)).thenReturn(List.of(stored));
+        answer(200, "{\"data\":[]}");
+
+        poller.poll(7L);
+
+        assertThat(recordedCall().getError()).isNull();
+        assertThat(stored.getGoneAt()).isEqualTo(NOW);
+    }
+
+    @Test
     void poll_RejectedCredentialsNeedSetupAndStopTheRun() {
         var customers = ExternalApiEndpoint.builder().id(new ExternalApiEndpoint.ExternalApiEndpointId(31L)).api(shop).name("Customers")
                 .path(new ApiPath("/customers")).build();

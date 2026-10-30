@@ -1,9 +1,10 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Pause, Pencil, Play, Plug, Zap } from "lucide-react";
+import { Braces, Pause, Pencil, Play, Zap } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { AppButton } from "@/components/app/AppButton";
 import { EmptyState } from "@/components/app/EmptyState";
@@ -13,6 +14,7 @@ import { LoadingStatus, PageHeaderSkeleton } from "@/components/app/LoadingSkele
 import { RefreshCommand } from "@/components/app/PageCommandButtons";
 import { COMMAND, COMMAND_LABEL, CommandLink, PageCommands } from "@/components/app/PageCommands";
 import { PageHeader, type Crumb } from "@/components/app/PageHeader";
+import { EndpointData } from "./EndpointData";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
@@ -34,7 +36,7 @@ import { APPS_HREF, appHref, collectionHref } from "@/lib/navigation";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 
-const APPS_CRUMB: Crumb = { label: "Apps", href: APPS_HREF };
+const APPS_CRUMB: Crumb = { label: "External APIs", href: APPS_HREF };
 
 const OUTCOME: Record<ExternalApiCallDto["outcome"], { label: string; dot: string }> = {
   OK: { label: "New answer", dot: "bg-success" },
@@ -53,11 +55,11 @@ export function AppDetail({ apiId }: { apiId: number }) {
   if (error || !api) {
     return (
       <EmptyState
-        icon={Plug}
+        icon={Braces}
         title={error?.status === 404 ? "This app does not exist (any more)." : "The app could not be loaded."}
         action={
           <Button asChild variant="outline">
-            <Link href={APPS_HREF}>All apps</Link>
+            <Link href={APPS_HREF}>All external APIs</Link>
           </Button>
         }
       />
@@ -109,7 +111,7 @@ function AppPage({ api }: { api: ExternalApiDto }) {
             <dt className="text-muted-foreground">Last call</dt>
             <dd className="tabular-nums">{api.lastCalledAt ? relativeTime(api.lastCalledAt, now) : "Not called yet"}</dd>
             <dt className="text-muted-foreground">Next call</dt>
-            <dd className="tabular-nums">{api.enabled && api.nextCallAt ? relativeTime(api.nextCallAt, now) : "–"}</dd>
+            <dd className="tabular-nums">{nextCall(api, now)}</dd>
             {api.lastError ? (
               <>
                 <dt className="text-muted-foreground">Last error</dt>
@@ -119,12 +121,18 @@ function AppPage({ api }: { api: ExternalApiDto }) {
           </dl>
         </HomeSection>
         <div className="lg:col-span-2">
-          <Endpoints apiId={api.id} />
+          <Endpoints api={api} />
         </div>
       </div>
       <CallHistory apiId={api.id} now={now} />
     </div>
   );
+}
+
+/** When the next call comes; one that is due is picked up with the next poll (within a minute). */
+function nextCall(api: ExternalApiDto, now: Date): string {
+  if (!api.enabled || !api.nextCallAt) return "–";
+  return new Date(api.nextCallAt) <= now ? "Due now" : relativeTime(api.nextCallAt, now);
 }
 
 function CallNowCommand({ api }: { api: ExternalApiDto }) {
@@ -166,34 +174,41 @@ function PauseCommand({ api }: { api: ExternalApiDto }) {
   );
 }
 
-function Endpoints({ apiId }: { apiId: number }) {
-  const { data: endpoints, error } = useListExternalApiEndpoints(apiId);
+function Endpoints({ api }: { api: ExternalApiDto }) {
+  const { data: endpoints, error } = useListExternalApiEndpoints(api.id);
   const { data: collections } = useListCollections();
+  const [viewing, setViewing] = useState<ExternalApiEndpointDto | null>(null);
   const names = new Map(collections?.map((collection) => [collection.id, collection.name]));
   return (
     <HomeSection title="Endpoints">
       {error ? <ErrorMessage message={error.message} /> : null}
       {endpoints && endpoints.length === 0 ? (
-        <QuietEmpty icon={Plug} title="No endpoints yet" description="Edit the app to add what contor should call." />
+        <QuietEmpty icon={Braces} title="No endpoints yet" description="Edit the app to add what contor should call." />
       ) : null}
       {endpoints && endpoints.length > 0 ? (
         <ul className="-mx-2 grid">
           {endpoints.map((endpoint) => (
-            <EndpointRow key={endpoint.id} endpoint={endpoint} collectionName={endpoint.mapping ? names.get(endpoint.mapping.collectionId) : undefined} />
+            <EndpointRow key={endpoint.id} endpoint={endpoint} collectionName={endpoint.mapping ? names.get(endpoint.mapping.collectionId) : undefined}
+                         onView={() => setViewing(endpoint)} />
           ))}
         </ul>
       ) : null}
+      {viewing ? <EndpointData api={api} endpoint={viewing} open onOpenChange={(open) => (open ? undefined : setViewing(null))} /> : null}
     </HomeSection>
   );
 }
 
-function EndpointRow({ endpoint, collectionName }: { endpoint: ExternalApiEndpointDto; collectionName: string | undefined }) {
+function EndpointRow({ endpoint, collectionName, onView }: { endpoint: ExternalApiEndpointDto; collectionName: string | undefined;
+  onView: () => void }) {
   const mapping = endpoint.mapping;
   return (
     <li aria-label={endpoint.name} className="grid gap-0.5 rounded-md px-2 py-2">
       <span className="flex min-w-0 items-baseline gap-2">
         <span className="truncate text-sm font-medium">{endpoint.name}</span>
         {endpoint.enabled ? null : <span className="text-xs text-muted-foreground">off</span>}
+        <AppButton variant="outline" size="xs" className="ml-auto shrink-0" aria-label={`View data of ${endpoint.name}`} onClick={onView}>
+          View data
+        </AppButton>
       </span>
       <span className="truncate font-mono text-xs text-muted-foreground">
         <span className="mr-1.5">{endpoint.method}</span>

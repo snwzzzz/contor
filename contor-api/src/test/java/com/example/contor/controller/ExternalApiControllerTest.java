@@ -12,9 +12,12 @@ import com.example.contor.api.model.DiscoveredEndpointDto;
 import com.example.contor.api.model.DiscoveryState;
 import com.example.contor.api.model.EndpointMethod;
 import com.example.contor.api.model.EndpointOrigin;
+import com.example.contor.api.model.ExternalApiAnswerDto;
 import com.example.contor.api.model.ExternalApiCallDto;
 import com.example.contor.api.model.ExternalApiDto;
+import com.example.contor.api.model.ExternalApiEndpointDataDto;
 import com.example.contor.api.model.ExternalApiEndpointDto;
+import com.example.contor.api.model.ExternalApiItemDto;
 import com.example.contor.exception.ApiDiscoveryNotFoundException;
 import com.example.contor.exception.DuplicateResourceException;
 import com.example.contor.exception.ExternalApiDisabledException;
@@ -317,6 +320,22 @@ public class ExternalApiControllerTest {
                 .andExpect(jsonPath("$.source").value("MODEL"))
                 .andExpect(jsonPath("$.endpoints[0].path").value("/orders"));
         mockMvc.perform(get("/api/external-apis/discovery/d-2").with(TestAuth.user())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void endpoint_data_returns_200_and_404_for_another_users_app() throws Exception {
+        when(externalApiService.findEndpointData(7L, 30L)).thenReturn(new ExternalApiEndpointDataDto(List.of(
+                new ExternalApiItemDto(9L, "1058424", Map.of("title", "Hope"), NOW, NOW)), 1, 0)
+                .answer(new ExternalApiAnswerDto(NOW, "{\"results\":[]}", false)));
+        when(externalApiService.findEndpointData(8L, 30L)).thenThrow(new ExternalApiNotFoundException(8L));
+
+        mockMvc.perform(get("/api/external-apis/7/endpoints/30/data").with(TestAuth.user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].key").value("1058424"))
+                .andExpect(jsonPath("$.items[0].data.title").value("Hope"))
+                .andExpect(jsonPath("$.answer.body").value("{\"results\":[]}"))
+                .andExpect(jsonPath("$.itemCount").value(1));
+        mockMvc.perform(get("/api/external-apis/8/endpoints/30/data").with(TestAuth.user())).andExpect(status().isNotFound());
     }
 
     private static ExternalApiDto shop() {
