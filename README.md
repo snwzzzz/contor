@@ -86,6 +86,46 @@ On first start open http://localhost:3000: without a user you are sent to **/set
 
 Swagger UI for the contract (dev profile only, requires login): log in through the web app, then open http://localhost:8080/swagger-ui/index.html. Use the same host name (`localhost`) for both, since the session cookie is bound to the host name.
 
+## Production instance (Docker)
+
+contor for everyday use, next to the dev setup and without touching it: Postgres, backend and web in one compose
+project (`contor-prod`, `infra/prod/`), built from what is committed on **main**. Needs only Docker and Ollama on the host.
+
+```bash
+scripts/prod.sh up
+```
+
+The first run creates `.env.prod` from `.env.prod.example` with its own database password and encryption key (back the
+file up: without the key, stored mailbox tokens and TOTP secrets cannot be read), builds the images and waits until all
+services are healthy, then prints the address, **http://127.0.0.1:3001**, and the setup token for the owner account.
+Run the same command again to update to the current main; the data stays in the `contor-prod-pgdata` volume, and
+Flyway migrates it on start. The containers restart with Docker.
+
+| Command | |
+|---|---|
+| `scripts/prod.sh up` | build main and start or update everything |
+| `scripts/prod.sh down` | stop (data stays) |
+| `scripts/prod.sh status` / `logs [backend\|web\|postgres]` | what runs, its logs |
+| `scripts/prod.sh token` | the setup token again, until the owner exists |
+| `scripts/prod.sh backup` | `backups/contor-<time>.dump` (`pg_dump -Fc`; gitignored, it is your data) |
+
+- **Built from main only**: the script exports the committed tree of main into `.prod-build/` (`git archive`) and builds
+  that, so uncommitted work, `node_modules` and the dev `.env` never get in. `CONTOR_REF=<branch>` builds something else
+  to try it. Merge to main only migrations that are final: Flyway refuses to start when an applied migration changes.
+- **Its own address**: `127.0.0.1`, not `localhost`. Dev runs on `localhost`, and browsers keep cookies per host name, so
+  the two would log each other out on the same name. Change the port with `WEB_PORT` (and `APP_WEB_URL` and the
+  redirect URIs with it).
+- **Nothing on the network**: only the web app is published, on 127.0.0.1. Backend and web share the network namespace
+  of a small relay container: the backend listens on its loopback only (the web server is its trusted proxy there), and
+  the relay forwards that loopback's port 11434 to Ollama on the host (`host.docker.internal`), so Ollama stays bound to
+  the host's localhost and the backend's localhost-only rule holds. The database is only reachable inside the project.
+- **Mail**: register `http://127.0.0.1:3001/api/mail/accounts/callback` as a redirect URI with Microsoft / Google; the
+  callback goes through the web app's `/api` proxy.
+- **Ollama is shared** with dev: while you use the production instance, `AI_PROCESSING_ENABLED=false` in the dev `.env`
+  keeps dev's background analysis off the GPU.
+- Restore a backup into the running instance (replaces its data):
+  `docker compose -p contor-prod exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < backups/<file>.dump`
+
 ## Mail setup
 
 Mailboxes are connected in **Settings › Accounts › Add account**: a menu with each provider and its logo; providers the backend has no OAuth client for are listed as *Not set up* (`GET /api/mail/providers`). Both providers use the same callback, `http://localhost:8080/api/mail/accounts/callback`: the encrypted OAuth `state` names the provider and carries the PKCE verifier. Tokens are stored encrypted (`*_enc`). The backend syncs the inbox and sent mail every `MAIL_SYNC_INTERVAL`, read-only. contor never sends mail.

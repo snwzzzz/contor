@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # OS / editors
 .DS_Store
@@ -18,3 +19,7 @@ ai-eval/private/
 
 # Recorded model answers (AI evaluation and dev AI_CACHE; plain-text answers about your mail)
 .ai-cache/
+
+# Personal production instance (scripts/prod.sh): the export of main it builds from, and database backups (your data)
+.prod-build/
+backups/

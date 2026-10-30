@@ -1,0 +1,15 @@
+# Docker build context = repository root (infra/prod/*.Dockerfile). Only sources go in: no builds, no secrets, no mail.
+.git
+.env
+.env.*
+**/node_modules
+**/.next
+**/.next-*
+**/target
+contor-web/src/lib/api/generated
+contor-web/test-results
+contor-web/e2e/.tmp
+ai-eval/private
+.ai-cache
+.prod-build
+backups
