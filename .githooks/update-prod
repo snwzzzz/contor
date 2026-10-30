@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Shared by post-commit and post-merge (enabled with `git config core.hooksPath .githooks`): when main changed, update
+# the production instance in the background (scripts/prod.sh up: backup, build main, restart), so git returns at once.
+# Progress and errors: .prod-update.log. Skip once with CONTOR_SKIP_PROD_UPDATE=1.
+[[ "$(git symbolic-ref --quiet --short HEAD)" == "main" ]] || exit 0
+[[ -z "${CONTOR_SKIP_PROD_UPDATE:-}" ]] || exit 0
+root="$(git rev-parse --show-toplevel)"
+nohup bash "$root/scripts/prod.sh" up > "$root/.prod-update.log" 2>&1 < /dev/null &
+echo "contor: updating the production instance in the background (log: .prod-update.log)"

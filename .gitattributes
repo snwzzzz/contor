@@ -3,3 +3,4 @@
 
 # Shell scripts run in bash (Git Bash on Windows too): never CRLF.
 *.sh text eol=lf
+.githooks/* text eol=lf

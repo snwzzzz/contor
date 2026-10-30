@@ -103,12 +103,26 @@ Flyway migrates it on start. The containers restart with Docker.
 
 | Command | |
 |---|---|
-| `scripts/prod.sh up` | build main and start or update everything |
+| `scripts/prod.sh up` | back up the database (when it runs), build main and start or update everything |
 | `scripts/prod.sh down` | stop (data stays) |
 | `scripts/prod.sh status` / `logs [backend\|web\|postgres]` | what runs, its logs |
 | `scripts/prod.sh token` | the setup token again, until the owner exists |
 | `scripts/prod.sh backup` | `backups/contor-<time>.dump` (`pg_dump -Fc`; gitignored, it is your data) |
 
+- **Updates itself from main**: once per clone, enable the repository's hooks:
+
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+
+  After every commit or merge (also `git pull`) while `main` is checked out, `post-commit`/`post-merge` run
+  `scripts/prod.sh up` in the background (git returns at once; progress in `.prod-update.log`), on other branches
+  nothing happens. `CONTOR_SKIP_PROD_UPDATE=1 git …` skips it once. A merged PR on GitHub reaches the instance with
+  the next `git pull` on main.
+- **A backup before every update**: `up` first dumps the running database to `backups/contor-<time>-before-update.dump`
+  and keeps the newest 10 of those (backups from `scripts/prod.sh backup` are never deleted). Your data itself stays in
+  the volume through every update; only `docker compose down -v`, deleting the volume or Docker Desktop's *Clean / Purge
+  data* removes it.
 - **Built from main only**: the script exports the committed tree of main into `.prod-build/` (`git archive`) and builds
   that, so uncommitted work, `node_modules` and the dev `.env` never get in. `CONTOR_REF=<branch>` builds something else
   to try it. Merge to main only migrations that are final: Flyway refuses to start when an applied migration changes.

@@ -22,4 +22,6 @@ ai-eval/private/
 
 # Personal production instance (scripts/prod.sh): the export of main it builds from, and database backups (your data)
 .prod-build/
+.prod-build.lock/
+.prod-update.log
 backups/

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Updates the production instance after a merge on main (see update-prod).
+exec bash "$(git rev-parse --show-toplevel)/.githooks/update-prod"

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The personal production instance in Docker, in one command (see README, "Production instance (Docker)").
 #
-#   scripts/prod.sh up       build what is committed on main and start (or update) Postgres, backend and web together
+#   scripts/prod.sh up       back up the database, build what is committed on main and start (or update) Postgres,
+#                            backend and web together (the .githooks run it after commits and merges on main)
 #   scripts/prod.sh down     stop it (the data stays in the contor-prod_pgdata volume)
 #   scripts/prod.sh status   what runs and whether it is healthy
 #   scripts/prod.sh logs [service]   follow the logs (postgres, backend, web)
@@ -19,6 +20,9 @@ cd "$ROOT"
 REF="${CONTOR_REF:-main}"
 BUILD_DIR=".prod-build"
 ENV_FILE=".env.prod"
+LOCK_DIR=".prod-build.lock"
+# Backups taken before an update; older ones are deleted (`backup` ones are kept).
+KEEP_UPDATE_BACKUPS=10
 
 compose() {
   docker compose -p contor-prod --env-file "$ENV_FILE" -f "$BUILD_DIR/infra/prod/compose.yml" "$@"
@@ -50,6 +54,22 @@ export_ref() {
   echo "Building $REF ($(git rev-parse --short "$REF"))."
 }
 
+# backups/contor-<time>[-<kind>].dump, written from the running database.
+backup() {
+  mkdir -p backups
+  local file="backups/contor-$(date -u +%Y%m%d-%H%M%S)${1:+-$1}.dump"
+  compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$file"
+  echo "Saved $file ($(du -h "$file" | cut -f1))."
+}
+
+# Before an update: a backup of the running instance (none on the first start), keeping the newest few.
+backup_before_update() {
+  [[ -f "$BUILD_DIR/infra/prod/compose.yml" ]] || return 0
+  [[ -n "$(compose ps --status running -q postgres 2>/dev/null)" ]] || return 0
+  backup before-update
+  ls -1t backups/contor-*-before-update.dump | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | xargs -r rm -f
+}
+
 print_token() {
   local token
   token="$(compose logs --no-log-prefix backend 2>/dev/null | grep -A4 "contor first-run setup" | tail -1 | tr -d '[:space:]' || true)"
@@ -60,7 +80,11 @@ print_token() {
 
 case "${1:-up}" in
   up)
+    # One update at a time (a commit and a merge on main can follow each other quickly).
+    mkdir "$LOCK_DIR" 2> /dev/null || { echo "Another update is running (remove $LOCK_DIR if it is not)." >&2; exit 1; }
+    trap 'rmdir "$LOCK_DIR"' EXIT
     init_env
+    backup_before_update
     export_ref
     compose up -d --build --wait
     port="$(grep -E '^WEB_PORT=' "$ENV_FILE" | cut -d= -f2)"
@@ -85,10 +109,7 @@ case "${1:-up}" in
     ;;
   backup)
     need_build_dir
-    mkdir -p backups
-    file="backups/contor-$(date -u +%Y%m%d-%H%M%S).dump"
-    compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$file"
-    echo "Saved $file ($(du -h "$file" | cut -f1))."
+    backup
     ;;
   *)
     sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
