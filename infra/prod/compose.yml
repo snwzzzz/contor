@@ -1,5 +1,5 @@
 # The personal production instance: Postgres, backend and web in one compose project, next to the dev setup.
-# Started by scripts/prod.sh from a clean export of main (.prod-build/); its data lives in the contor-prod-pgdata volume.
+# Started by scripts/prod.sh from a clean export of main (.prod-build/); its data lives in the contor-prod_pgdata volume.
 #
 # Only the web app is published, on 127.0.0.1. Backend and web share the network namespace of `net`: the backend listens
 # on its loopback only, the web server proxies /api/* to it there, and the relay in `net` forwards that loopback's port

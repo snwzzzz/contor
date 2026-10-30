@@ -98,7 +98,7 @@ scripts/prod.sh up
 The first run creates `.env.prod` from `.env.prod.example` with its own database password and encryption key (back the
 file up: without the key, stored mailbox tokens and TOTP secrets cannot be read), builds the images and waits until all
 services are healthy, then prints the address, **http://127.0.0.1:3001**, and the setup token for the owner account.
-Run the same command again to update to the current main; the data stays in the `contor-prod-pgdata` volume, and
+Run the same command again to update to the current main; the data stays in the `contor-prod_pgdata` volume, and
 Flyway migrates it on start. The containers restart with Docker.
 
 | Command | |

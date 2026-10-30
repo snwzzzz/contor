@@ -2,7 +2,7 @@
 # The personal production instance in Docker, in one command (see README, "Production instance (Docker)").
 #
 #   scripts/prod.sh up       build what is committed on main and start (or update) Postgres, backend and web together
-#   scripts/prod.sh down     stop it (the data stays in the contor-prod-pgdata volume)
+#   scripts/prod.sh down     stop it (the data stays in the contor-prod_pgdata volume)
 #   scripts/prod.sh status   what runs and whether it is healthy
 #   scripts/prod.sh logs [service]   follow the logs (postgres, backend, web)
 #   scripts/prod.sh token    the one-time setup token, until the owner account exists
