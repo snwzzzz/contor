@@ -169,6 +169,13 @@ public class ReportScopeService {
     @Transactional
     public EvidencePack collectQuestion(List<RecordRef> found, String question, List<String> searches, AppUser.AppUserId owner,
                                         boolean mailAccess, boolean readHidden) {
+        return collectQuestion(found, question, searches, owner, mailAccess, readHidden, List.of());
+    }
+
+    /** Like {@link #collectQuestion(List, String, List, AppUser.AppUserId, boolean, boolean)} with items of the user's apps. */
+    @Transactional
+    public EvidencePack collectQuestion(List<RecordRef> found, String question, List<String> searches, AppUser.AppUserId owner,
+                                        boolean mailAccess, boolean readHidden, List<EvidencePack.AppItemInput> appItems) {
         Set<RecordRef> refs = new LinkedHashSet<>(found);
         for (RecordRef ref : found.stream().limit(QUESTION_EXPANDED).toList()) {
             for (RecordRef connected : reachable(ref, 1)) {
@@ -218,6 +225,7 @@ public class ReportScopeService {
             matched.addAll(asked);
             relatedRecords(matched.stream().filter(readable::contains).distinct().toList(), titles.keySet()).forEach(pack::record);
         }
+        appItems.forEach(pack::appItem);
         return pack.build(question, EvidencePack.DEFAULT_BUDGET);
     }
 
@@ -371,7 +379,8 @@ public class ReportScopeService {
         for (RecordRef ref : records) {
             recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(ref.collectionId()), ref.recordId()).stream()
                     .map(source -> source.getEmail())
-                    .filter(email -> email.getAccount().getOwner().getId().equals(owner))
+                    // Sources from an app's items have no email.
+                    .filter(email -> email != null && email.getAccount().getOwner().getId().equals(owner))
                     .forEach(email -> emails.putIfAbsent(email.getId().id(), email));
         }
         Set<String> conversations = new LinkedHashSet<>();

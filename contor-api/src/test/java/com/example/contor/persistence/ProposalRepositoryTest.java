@@ -35,6 +35,15 @@ public class ProposalRepositoryTest {
     @Autowired
     private AppUserRepository appUserRepository;
 
+    @Autowired
+    private ExternalApiRepository externalApiRepository;
+
+    @Autowired
+    private ExternalApiEndpointRepository externalApiEndpointRepository;
+
+    @Autowired
+    private ExternalApiItemRepository externalApiItemRepository;
+
     private Proposal proposal(ProposalStatus status) {
         return Proposal.builder().kind(ProposalKind.CREATE_RECORD).status(status)
                 .payload(Map.of("collectionId", 1, "values", Map.of("title", "Parcel")))
@@ -256,5 +265,16 @@ public class ProposalRepositoryTest {
         assertThat(proposalRepository.findWithNewerReceived(ProposalKind.DRAFT_REPLY, ProposalStatus.PENDING, account.getId()))
                 .extracting(Proposal::getId).containsExactly(followedUpDraft.getId());
     }
-}
 
+    @Test
+    void a_proposal_can_come_from_an_api_item_and_map_an_endpoint() {
+        var api = externalApiRepository.save(Fixtures.externalApi(appUserRepository.save(Fixtures.user("api-owner")), "shop"));
+        var item = externalApiItemRepository.save(Fixtures.apiItem(externalApiEndpointRepository.save(Fixtures.endpoint(api, "orders")), "SO-1"));
+
+        var fromItem = proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.CREATE_RECORD).payload(Map.of()).sourceApiItem(item).build());
+        var mapping = proposalRepository.saveAndFlush(Proposal.builder().kind(ProposalKind.MAP_API_ENDPOINT).payload(Map.of()).build());
+
+        assertThat(proposalRepository.findById(fromItem.getId()).orElseThrow().getSourceApiItem().getItemKey()).isEqualTo("SO-1");
+        assertThat(mapping.getKind()).isEqualTo(ProposalKind.MAP_API_ENDPOINT);
+    }
+}

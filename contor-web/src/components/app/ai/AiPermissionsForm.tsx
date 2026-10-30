@@ -8,12 +8,12 @@ import type { AiSettingsDto } from "@/lib/api/generated/model/aiSettingsDto";
 
 /** What the AI may do; reading hidden mailboxes is a General setting, saved on its own. */
 export type AiPermissions = Omit<AiSettingsDto, "onboardedAt" | "readHiddenMailboxes">;
-type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies";
+type AreaKey = "categories" | "records" | "calendar" | "tasks" | "replies" | "externalApis";
 
 /** The editable permissions (everything except the onboarding timestamp and the hidden-mailbox setting). */
 export function permissionsOf(settings: AiSettingsDto): AiPermissions {
-  const { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile } = settings;
-  return { mailAccess, historyDays, categories, records, calendar, tasks, replies, courtesyReplies, ownerProfile };
+  const { mailAccess, historyDays, categories, records, calendar, tasks, replies, externalApis, courtesyReplies, ownerProfile } = settings;
+  return { mailAccess, historyDays, categories, records, calendar, tasks, replies, externalApis, courtesyReplies, ownerProfile };
 }
 
 export const ACCESS_LABEL: Record<AiAccess, string> = { OFF: "Off", SUGGEST: "Ask me", AUTO: "Automatic" };
@@ -32,12 +32,18 @@ export const AREAS: readonly { key: AreaKey; label: string; description: string;
     description: "Write a reply for emails that need an answer from you. Drafts are never sent; you copy or open them in your mail app.",
     levels: REPLY_LEVELS,
   },
+  {
+    key: "externalApis",
+    label: "External APIs",
+    description: "Turn the data of your connected apps into records, once you approved where it goes.",
+    levels: LEVELS,
+  },
 ];
 
 /** The "All areas" preset: every area at one level; reply drafts are never sent, so they stop at "Ask me". */
 function withAllAreas(value: AiPermissions, level: AiAccess): AiPermissions {
   const replies = level === "AUTO" ? "SUGGEST" : level;
-  return { ...value, categories: level, records: level, calendar: level, tasks: level, replies };
+  return { ...value, categories: level, records: level, calendar: level, tasks: level, replies, externalApis: level };
 }
 
 /** The preset the areas match, or `null` when they are mixed. */

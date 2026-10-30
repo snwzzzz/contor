@@ -29,6 +29,14 @@ class ImportanceScorerTest {
     }
 
     @Test
+    void mapping_an_app_endpoint_is_a_new_source_of_findings_like_a_new_category() {
+        var mapping = score(ProposalKind.MAP_API_ENDPOINT, null, Map.of(), ImportanceSignals.NONE);
+
+        assertThat(mapping.score()).isEqualTo(score(ProposalKind.CREATE_COLLECTION, null, Map.of(), ImportanceSignals.NONE).score());
+        assertThat(mapping.reason()).isEqualTo("a new source of findings");
+    }
+
+    @Test
     void levels_follow_fixed_score_thresholds() {
         assertThat(ProposalImportance.of(100)).isEqualTo(ProposalImportance.URGENT);
         assertThat(ProposalImportance.of(80)).isEqualTo(ProposalImportance.URGENT);

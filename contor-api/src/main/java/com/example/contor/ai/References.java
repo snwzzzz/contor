@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public final class References {
 
     /** A source code; a figure row ({@code A1.2}) always has its row number, so "A4 paper" is no code. */
-    private static final String CODE = "(?:(?:[RE]\\d+:)?[RFLPE]\\d+(?:\\.\\d+)?|A\\d+\\.\\d+)";
+    private static final String CODE = "(?:(?:[RE]\\d+:)?[RFLPED]\\d+(?:\\.\\d+)?|A\\d+\\.\\d+)";
     /** "(P1.1, R1:F2)", "[F9]": a bracket that holds only codes. */
     private static final Pattern CODES_IN_BRACKETS = Pattern.compile(
             "\\s*[(\\[]\\s*" + CODE + "(?:\\s*[,;/]\\s*" + CODE + ")*\\s*[)\\]]");
@@ -83,6 +83,7 @@ public final class References {
             case FIELD -> "the " + source.label();
             case RELATION -> "the " + source.label() + " connection";
             case EMAIL_PARAGRAPH -> "the email “" + Optional.ofNullable(source.label()).orElse("") + "”";
+            case APP_ITEM -> Optional.ofNullable(source.label()).orElse("the app data");
         };
     }
 }

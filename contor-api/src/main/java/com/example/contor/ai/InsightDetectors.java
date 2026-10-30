@@ -41,6 +41,30 @@ public final class InsightDetectors {
     public record Appointment(Long recordId, String title, Instant start, Instant end, List<Long> emailIds) {
     }
 
+    /**
+     * An item of one of the user's apps that disappeared, whose record the user has emails about (e.g. a job posting
+     * they applied to).
+     *
+     * @param emailIds the emails of the item's record
+     */
+    public record GoneItem(Long itemId, String app, String endpoint, String label, Instant goneAt, List<Long> emailIds) {
+    }
+
+    /** An item you have emails about is gone from its app: check what happened tomorrow. */
+    public static Optional<Insight> goneItem(GoneItem item, Instant now, ZoneId zone) {
+        if (item.emailIds().isEmpty()) {
+            return Optional.empty();
+        }
+        LocalDate tomorrow = now.atZone(zone).toLocalDate().plusDays(1);
+        int emails = item.emailIds().size();
+        return Optional.of(new Insight("gone:" + item.itemId(), item.label() + " is no longer in " + item.app(),
+                item.label() + " disappeared from " + item.app() + " · " + item.endpoint() + " on " + DAY.format(item.goneAt().atZone(zone))
+                        + ", and you have " + emails + (emails == 1 ? " email" : " emails") + " about it.",
+                "What you discussed by mail may have changed: it may be filled, sold out or cancelled.",
+                item.emailIds(), List.of(item.itemId()), List.of(new Insight.FollowUp(TASKS, "Check what happened to " + item.label(),
+                Map.of("due_date", tomorrow.toString()))), "rule:gone-item", null));
+    }
+
     /** A question the user asked at least {@link #ANSWER_WAIT} ago without an answer: follow up tomorrow. */
     public static Optional<Insight> unansweredQuestion(SentMail mail, Instant now, ZoneId zone) {
         if (mail.body() == null || !mail.body().contains("?") || mail.sentAt().isAfter(now.minus(ANSWER_WAIT))) {

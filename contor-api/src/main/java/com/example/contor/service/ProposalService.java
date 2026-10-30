@@ -17,6 +17,7 @@ import com.example.contor.domain.AppUser;
 import com.example.contor.domain.AuditAction;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.Proposal;
 import com.example.contor.domain.ProposalDependency;
 import com.example.contor.domain.ProposalImportance;
@@ -253,6 +254,23 @@ public class ProposalService {
     @Transactional
     public Submission submitDraft(ProposalDraft draft, Long sourceEmailId, AiPermissionLevel level, String model,
                                   String promptVersion, java.util.Collection<Long> dependsOn) {
+        EmailMessage sourceEmail = sourceEmailId != null
+                ? emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(sourceEmailId))
+                : null;
+        return submit(draft, sourceEmail, null, level, model, promptVersion, dependsOn);
+    }
+
+    /**
+     * A draft made from an item of an external API (no model involved: a confirmed mapping turned the item into a
+     * record): SUGGEST keeps it PENDING, AUTO applies it. The appliers link the record to {@code item}.
+     */
+    @Transactional
+    public Outcome submitDraftFromApiItem(ProposalDraft draft, ExternalApiItem item, AiPermissionLevel level) {
+        return submit(draft, null, item, level, null, null, List.of()).outcome();
+    }
+
+    private Submission submit(ProposalDraft draft, EmailMessage sourceEmail, ExternalApiItem sourceApiItem, AiPermissionLevel level,
+                              String model, String promptVersion, java.util.Collection<Long> dependsOn) {
         if (!level.allowed()) {
             throw new IllegalArgumentException("The AI may not create " + draft.kind() + " proposals here");
         }
@@ -271,9 +289,8 @@ public class ProposalService {
                 .reasoning(draft.reasoning())
                 .model(model)
                 .promptVersion(promptVersion)
-                .sourceEmail(sourceEmailId != null
-                        ? emailMessageRepository.getReferenceById(new EmailMessage.EmailMessageId(sourceEmailId))
-                        : null)
+                .sourceEmail(sourceEmail)
+                .sourceApiItem(sourceApiItem)
                 .build();
         applyImportance(proposal, draft.signals());
         if (level != AiPermissionLevel.AUTO || !ready) {

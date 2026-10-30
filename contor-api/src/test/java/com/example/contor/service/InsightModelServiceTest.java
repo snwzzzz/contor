@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.DigestApiItem;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.Insight;
 import com.example.contor.ai.LlmClient;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
@@ -125,6 +127,10 @@ class InsightModelServiceTest {
         ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
         verify(llmClient).completeJson(eq("extractor"), system.capture(), prompt.capture(), any());
         assertThat(system.getValue()).contains("Today is 2026-10-12").contains("non-obvious").contains("Never restate what a single email says");
+        assertThat(system.getValue()).as("without app data the prompt stays the one for mail only").doesNotContain("App data").doesNotContain("evidenceApiItems");
+        ArgumentCaptor<JsonNode> schema = ArgumentCaptor.forClass(JsonNode.class);
+        verify(llmClient).completeJson(any(), any(), any(), schema.capture());
+        assertThat(schema.getValue().toString()).doesNotContain("evidenceApiItems");
         assertThat(prompt.getValue()).contains("#12 ").contains("StreamBox <billing@streambox.tv>").contains("Total 14.99 EUR")
                 .contains("#11 ").contains("you →").contains("Send the signed contract").contains("Dentist");
     }
@@ -136,5 +142,56 @@ class InsightModelServiceTest {
 
         answer("not json");
         assertThat(service.findInsights(DIGEST, List.of(), List.of())).isEmpty();
+    }
+
+    private static final List<DigestApiItem> APP_DATA = List.of(
+            new DigestApiItem(5L, "Jobs", "Saved postings", "Backend developer at Acme", "{\"id\":\"J-7\",\"title\":\"Backend developer\"}",
+                    Instant.parse("2026-10-11T08:00:00Z"), true),
+            new DigestApiItem(6L, "Shop", "Orders", "SO-155", "{\"id\":\"SO-155\",\"state\":\"shipped\"}",
+                    Instant.parse("2026-10-10T08:00:00Z"), false));
+
+    @Test
+    void findInsights_CitesAppItemsNextToEmails() {
+        answer("""
+                {"insights": [{"title": "The Acme posting is gone", "observation": "The job you applied to was taken down.",
+                  "whyItMatters": "The position may be filled.", "evidence": [11], "evidenceApiItems": [5], "confidence": 0.8,
+                  "novelty": 0.7, "followUps": []}]}""");
+
+        List<Insight> insights = service.findInsights(DIGEST, APP_DATA, List.of(), List.of());
+
+        assertThat(insights).singleElement().satisfies(insight -> {
+            assertThat(insight.evidenceEmailIds()).containsExactly(11L);
+            assertThat(insight.evidenceApiItemIds()).containsExactly(5L);
+            assertThat(insight.key()).isEqualTo("model:11|A5");
+        });
+    }
+
+    @Test
+    void findInsights_AnInsightMayRestOnAppItemsAlone() {
+        answer("""
+                {"insights": [{"title": "Order shipped", "observation": "o", "whyItMatters": "w", "evidence": [], "evidenceApiItems": [6],
+                  "confidence": 0.8, "novelty": 0.7, "followUps": []},
+                 {"title": "Invented", "observation": "o", "whyItMatters": "w", "evidence": [], "evidenceApiItems": [99],
+                  "confidence": 0.8, "novelty": 0.7, "followUps": []},
+                 {"title": "Partly invented", "observation": "o", "whyItMatters": "w", "evidence": [], "evidenceApiItems": [6, 98],
+                  "confidence": 0.8, "novelty": 0.7, "followUps": []}]}""");
+
+        assertThat(service.findInsights(List.of(), APP_DATA, List.of(), List.of())).singleElement()
+                .satisfies(insight -> assertThat(insight.key()).isEqualTo("model:|A6"));
+    }
+
+    @Test
+    void findInsights_ThePromptListsTheAppDataWithTokensAndSaysWhatChanged() {
+        answer("{\"insights\": []}");
+
+        service.findInsights(DIGEST, APP_DATA, List.of(), List.of());
+
+        ArgumentCaptor<String> system = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).completeJson(eq("extractor"), system.capture(), prompt.capture(), any());
+        assertThat(system.getValue()).contains("App data").contains("evidenceApiItems").contains("the numbers after A");
+        assertThat(prompt.getValue()).contains("Data from your apps, newest first:")
+                .contains("A5 2026-10-11 · Jobs · Saved postings · gone: Backend developer at Acme {\"id\":\"J-7\"")
+                .contains("A6 2026-10-10 · Shop · Orders · new: SO-155");
     }
 }

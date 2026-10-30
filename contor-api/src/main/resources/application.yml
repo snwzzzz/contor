@@ -142,6 +142,16 @@ app:
     login-rate-limit:
       max-attempts: 10
       window: 1m
+  # External APIs ("Apps", ADR 0012): due apps are looked for every tick and called read-only through the outbound
+  # guard (public HTTPS hosts only), at most MAX_CONCURRENT at once and one per host.
+  external-apis:
+    enabled: ${EXTERNAL_APIS_ENABLED:true}
+    poll-tick: ${EXTERNAL_APIS_POLL_TICK:1m}
+    timeout: ${EXTERNAL_APIS_TIMEOUT:10s}
+    max-response-size: ${EXTERNAL_APIS_MAX_RESPONSE_SIZE:1MB}
+    max-concurrent: ${EXTERNAL_APIS_MAX_CONCURRENT:4}
+    history-days: 30
+    snapshots-kept: 5
   mail:
     msgraph:
       client-id: ${MSGRAPH_CLIENT_ID:}

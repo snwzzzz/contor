@@ -1,12 +1,13 @@
 "use client";
 
-import { Database, LogOut, Mail, Plus, Search } from "lucide-react";
+import { Braces, Database, LogOut, Mail, Plus, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Command, CommandBareInput, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { useListCollections } from "@/lib/api/generated/endpoints/collections/collections";
+import { useListExternalApis } from "@/lib/api/generated/endpoints/external-apis/external-apis";
 import { useLogoutAndRedirect } from "@/lib/hooks/useLogoutAndRedirect";
-import { ALL_NAV, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
+import { ALL_NAV, appPageHref, collectionHref, inAppHref, NEW_COLLECTION_HREF } from "@/lib/navigation";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/command-palette";
 import { shortcutLabel, useIsApplePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export function CommandPalette() {
   const router = useRouter();
   const logout = useLogoutAndRedirect();
   const { data: collections, isPending: collectionsLoading } = useListCollections({ query: { enabled: open } });
+  const { data: apps } = useListExternalApis({ query: { enabled: open } });
   const apple = useIsApplePlatform();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -143,6 +145,19 @@ export function CommandPalette() {
                 New collection
               </CommandItem>
             </CommandGroup>
+            {apps && apps.length > 0 ? (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="External APIs">
+                  {apps.map((api) => (
+                    <CommandItem key={api.id} value={`app ${api.name}`} onSelect={() => go(appPageHref(api.id))}>
+                      <Braces aria-hidden="true" />
+                      {api.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            ) : null}
             <CommandSeparator />
             <CommandGroup heading="Actions">
               <CommandItem value="Log out" onSelect={() => run(() => logout.mutate())}>

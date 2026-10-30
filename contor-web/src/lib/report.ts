@@ -45,6 +45,8 @@ export function sourceHref(source: ReportSourceDto): string | undefined {
       return record && source.relationId !== undefined ? `${record}?tab=connections&relation=${source.relationId}` : record;
     case "EMAIL_PARAGRAPH":
       return source.emailId !== undefined ? `/inbox?email=${source.emailId}&paragraph=${source.paragraphIndex ?? 0}` : undefined;
+    case "APP_ITEM":
+      return source.apiId !== undefined ? `/apps/${source.apiId}` : undefined;
     default:
       return record;
   }

@@ -25,7 +25,7 @@ class AiMapperTest {
     void maps_settings_to_dto() {
         AiSettings settings = AiSettings.builder().id(new AiSettings.AiSettingsId(3L)).mailAccess(true).historyDays(365)
                 .categories(AiPermissionLevel.AUTO).records(AiPermissionLevel.SUGGEST).calendar(AiPermissionLevel.OFF)
-                .tasks(AiPermissionLevel.AUTO).replies(AiPermissionLevel.SUGGEST).courtesyReplies(true).readHiddenMailboxes(false).onboardedAt(Instant.parse("2026-01-01T00:00:00Z")).build();
+                .tasks(AiPermissionLevel.AUTO).replies(AiPermissionLevel.SUGGEST).externalApis(AiPermissionLevel.AUTO).courtesyReplies(true).readHiddenMailboxes(false).onboardedAt(Instant.parse("2026-01-01T00:00:00Z")).build();
 
         AiSettingsDto dto = AiMapper.toDto(settings);
 
@@ -36,6 +36,7 @@ class AiMapperTest {
         assertThat(dto.getCalendar()).isEqualTo(AiAccess.OFF);
         assertThat(dto.getTasks()).isEqualTo(AiAccess.AUTO);
         assertThat(dto.getReplies()).isEqualTo(AiAccess.SUGGEST);
+        assertThat(dto.getExternalApis()).isEqualTo(AiAccess.AUTO);
         assertThat(dto.getCourtesyReplies()).isTrue();
         assertThat(dto.getReadHiddenMailboxes()).isFalse();
         assertThat(dto.getOnboardedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z").atOffset(ZoneOffset.UTC));

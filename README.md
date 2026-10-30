@@ -155,6 +155,7 @@ later is answered from disk in milliseconds. Only calls whose prompt changed rea
 - Passwords: Argon2id; 12–128 characters with lowercase, uppercase, digit and special character, not a common password.
 - Brute force: 5 failed logins lock the account for 15 min (doubling on repeated lockouts, max 24 h); max 10 login requests per minute per IP. Unknown user, wrong password and locked account return the same error.
 - Everything except login, CSRF bootstrap, setup (while pending) and `/actuator/health` requires a session.
+- Outbound requests to hosts from user input or the web (sender logos, external APIs) go through `security/OutboundRequestGuard` on Apache HttpClient 5. It allows GET and POST over HTTPS on port 443 only, and only hosts whose addresses are all public. The connection goes to exactly the addresses that were checked (`PublicAddressResolver`), so DNS rebinding cannot reach the machine or the local network. GET redirects are checked again (at most 3). Each request has a timeout and a size cap. Errors name the host, never the path or query. See ADR 0012.
 - Audit log: logins, failures, lockouts, logouts, setup, password changes, collection schema changes, proposal decisions and AI auto-applied changes, AI permission changes, analysis starts/cancels (later: 2FA).
 
 ## Database
@@ -308,6 +309,137 @@ answers link to the people, records and emails they are about and cite their sou
 - Not yet: pinning records with `@` and "Ask in chat" from a record or the command palette, figures over whole
   collections in chat answers (reports have them), the evaluation, e2e tests and the ADR (H7, H10–H12).
 
+## External APIs ("Apps", in progress)
+
+Connect any HTTP API (a shop, a job platform, a parcel tracker) so the assistant can learn from it. contor calls only
+the endpoints you confirmed, read-only, on each app's own interval. Plan: `docs/external-apis-plan.md`, decisions: ADR 0012.
+
+- **Storage** (`V1_0_35__external_apis.sql`, done): `external_api` (an app, private to its user, deleted with them; base
+  URL, docs link, auth kind and its non-secret settings, plain headers, the encrypted `secret_enc` for credentials and
+  secret header values, interval of 15 min to 7 days (default 6 h), daily request limit, status ACTIVE / FAILING /
+  PAUSED / NEEDS_SETUP and the next call). Also `external_api_endpoint` (path below the base URL, fixed query, a body
+  only for POST read queries, where the items and their keys are in the answer), `external_api_mapping` (endpoint →
+  collection, field slug ← JSON path, PROPOSED / ACTIVE / OFF), `external_api_call` (history), `external_api_snapshot`
+  (last answers) and `external_api_item` (items by key and the record each became). Deleting an app removes all of it.
+  Paths, URLs and JSON paths are validated value objects (`ApiPath`, `BaseUrl`, `HttpsUrl`, `JsonPathExpr`). JSON paths
+  are a small subset (`$`, `.name`, `[0]`, `[*]`), so a path from a model answer can only select.
+- **Calls** (`externalapi/ExternalApiClient`, done): an endpoint's path below the base URL with its fixed query. The
+  client sends `Accept` and `User-Agent`, then the plain headers, then the secret headers, then the credentials (a later
+  header of the same name wins). A POST read query sends its body as JSON. The timeout is 10 s and answers are cut at
+  1 MB. `Retry-After` is read as seconds or as a date. Auth kinds (`ApiAuthHandler`, one bean each): NONE,
+  API_KEY_HEADER, API_KEY_QUERY, BEARER, BASIC (UTF-8), and OAUTH2_CLIENT_CREDENTIALS (token from the token URL, kept in
+  memory until a minute before it expires; 400/401/403 mean the credentials were rejected). The secret is stored as
+  encrypted JSON `{value, headers}` (`ApiSecret`). Everything goes through `OutboundRequestGuard` (see *Security
+  overview*).
+- **API** (tag `ExternalApis`, every logged-in user, only their own apps; done):
+  - Apps: `GET/POST /api/external-apis` and `GET/PATCH/DELETE /api/external-apis/{apiId}` (POST 201, DELETE 204).
+    Endpoints: `GET/POST /api/external-apis/{apiId}/endpoints` and `PATCH/DELETE …/endpoints/{endpointId}`.
+  - Credentials are write-only. `secret` and `secretHeaders` go in; responses only say `hasSecret` and list
+    `secretHeaderNames`. On PATCH, `null` keeps a field, `secret: ""` removes the secret, and `secretHeaders` replaces
+    all secret headers.
+  - Every change checks that the auth kind's settings and secret are there (400 otherwise). It also clears the failure
+    state, and when the app is enabled the next call is due right away. The slug comes from the name (accents
+    removed, unique among your apps) and stays when you rename the app.
+  - Endpoints: at most 50 per app, names unique per app ignoring case (409). A body only for POST read queries.
+  - `POST /api/external-apis/test` calls once with unsaved settings and stores nothing. With `apiId` it fills a
+    missing secret from that app. A refused or failed call is a 200 with `ok: false` and `error`. The body is cut at
+    20 000 characters.
+  - Audit actions: `EXTERNAL_API_CREATED`, `_UPDATED`, `_SECRET_CHANGED` and `_DELETED`. They record name, base URL
+    and auth kind, never a credential.
+- **External APIs menu and modal** (frontend, done): the top bar's *External APIs* button (the `{ }` braces icon,
+  which also marks the section, its pages and app data everywhere; the plug stays free for connections) lists your apps
+  IntelliJ-style:
+  tinted initial, name, host and when it was last called, with a status dot only for *Failing*, *Needs setup* and
+  *Paused*. Arrow keys move and Enter (or a click) opens the app's page (`/apps/<id>`); a search field appears from 9 apps on. *Add app…* opens the modal over
+  the current page (`?app=new`; *Edit* on the app page opens it as `?app=<id>`, `APP_PARAM` in `lib/navigation.ts`). Adding walks through
+  *Basics* (name, HTTPS base URL, docs link, description), *Auth & headers* (auth kind with its settings and secret;
+  headers, each optionally secret), *Endpoints* (method, path, query parameters, a JSON body for POST read queries,
+  where the items are) and *Schedule* (every 15 min, hour, 6 h or day; on schedule; let the assistant learn).
+  **Test call** runs an endpoint with the unsaved settings, shows status, time and the answer, and suggests the
+  items path and key (*Use*). Nothing is stored before *Add app*; then the endpoints are added one by one (if one
+  fails, the saved app opens so it can be fixed). Editing shows the same steps as tabs: Basics, auth and schedule save
+  together and send only what changed, endpoints save one by one, and *Delete app* asks first. Stored secrets show
+  as "•••• stored" with *Replace*, never their value; secret headers are replaced together, so changing one asks for
+  the others again. Code: `components/app/apps/` (`AppsMenu`, `AppDialog`, `AppFormFields`, `EndpointEditor`) and
+  `lib/external-apis.ts` (form state, commands, items detection).
+- **Polling** (backend, done): every `EXTERNAL_APIS_POLL_TICK` (1 min) `ExternalApiPollScheduler` looks for enabled apps
+  that are ACTIVE or FAILING and due, and calls them on virtual threads: at most `EXTERNAL_APIS_MAX_CONCURRENT` (4) at
+  once and one per host at a time, each app in its own transaction (`ExternalApiPoller`). Each enabled endpoint is
+  called once and the call is recorded (`external_api_call`: status, time, outcome OK / UNCHANGED / FAILED, a masked
+  error, items new / changed / gone). An answer with the same SHA-256 as the last one is only recorded as UNCHANGED.
+  A new one is kept as a snapshot (the last 5 per endpoint), and its items are read with the endpoint's items path and
+  key (`JsonItems`, at most 1000 per answer; without a key path an item is identified by its content, without an items
+  path the whole answer is one item) and compared with the stored ones: new, changed (other hash) and gone (`gone_at`;
+  an item that comes back counts as new). Answers cut at the size cap or that are no JSON keep the items as they are.
+  Next call: the interval ± 10 % after success; after a failure the interval × 2^failures (at most 24 h), *Failing*
+  after 3 and *Paused* after 10 failures; on 429 the server's `Retry-After` (else one interval); on 401/403, rejected
+  client credentials or missing settings *Needs setup* with no further calls. The daily request limit counts the
+  calls of the last 24 hours. The history is pruned to 30 days once an hour. Off with `EXTERNAL_APIS_ENABLED=false`;
+  it runs in the local launcher too (`spring-boot:test-run`), only the two poll integration tests switch it off for
+  themselves.
+- **Call history and Call now**: `GET /api/external-apis/{apiId}/calls` lists the last 50 calls (`ExternalApiCallDto`);
+  `POST …/calls` (202) makes the next call due now, picked up within a minute through the same guard and limit. A
+  paused app or one that needs setup becomes ACTIVE again; a turned-off app answers 409.
+- **Read the docs** (done): in the modal's *Endpoints* step (and tab), *Read the docs* fetches the documentation link
+  through the guard (public HTTPS, up to 4 MB) and suggests endpoints to tick and add. An OpenAPI 3 or Swagger 2
+  document (JSON or YAML) is read in code at once (`OpenApiReader`): every GET without path parameters that is not
+  deprecated and whose required query parameters have an example, default or enum value; the items path and key come
+  from the 200 response schema, and paths are made relative to the base URL through the document's server URL or base
+  path. Other docs (HTML or text) are read by the model in the background (`ApiDocsModelService`, prompt
+  `api-docs-v1`, at most 30 000 characters, the docs are quoted as data). Its answer is validated: only GET, only paths
+  below the base URL (an absolute URL under it becomes relative; other hosts, `..` and `{id}`/`:id` templates are
+  dropped), JSON paths only in the supported subset. At most 30 suggestions, endpoints the app already has are left
+  out, and nothing is saved until you add them. API: `POST /api/external-apis/discovery` (202; DONE at once for an
+  OpenAPI document, otherwise RUNNING) and `GET /api/external-apis/discovery/{discoveryId}` (polled every 2 s while
+  RUNNING). Runs are kept in memory for an hour, 10 per user. Without a ready model only OpenAPI documents can be read.
+- **Mappings: from items to records** (done; learn once, then map in code). When a poll finds new items of an
+  endpoint that has no mapping, the assistant looks at up to 5 of them and your collections (`ApiMappingModelService`,
+  prompt `api-mapping-v1`, on the AI thread, one run per endpoint; when nothing fits it asks again after a day) and
+  proposes which collection they belong in, where the title is and which JSON path fills which field. Every path must
+  find a value in the sample items and every field must be a field of that collection. The answer is stored as a
+  PROPOSED `external_api_mapping` with a **Connect app data** proposal (`MAP_API_ENDPOINT`, grouped under Categories:
+  the card shows the app and endpoint, the collection and *field ← path*). Approving it (edits allowed) makes the
+  mapping ACTIVE (a previous one of the endpoint goes OFF), and the endpoint's current items are proposed right after the
+  decision commits. From then on, with no model: a new item (or one without a record) becomes a *New record* proposal, a
+  changed item with a record an *Update record*; a gone item changes nothing. A pending proposal follows its item's
+  latest values instead of a second one. The record is linked to its item (`record_source.api_item_id`, *created from* /
+  *updated from*; the item remembers its record). Proposals follow the new **External APIs** area under Settings › Autonomy
+  (`ai_settings.external_apis`: Off / Ask me (default) / Automatic, which falls back to a suggestion when a value does
+  not fit the collection) and only for apps with *Let the assistant learn from it*. `V1_0_36` adds the item as a source
+  of records and proposals (`ck_record_source_origin`: an email or an item, never both).
+- **Insights from app data** (done): the daily insight pass also reads the items of your apps that appeared or
+  disappeared in the last 14 days (at most 40, of apps the assistant may learn from; labelled by their record's title).
+  They go into the model's digest as `A<n>` lines next to the `#<n>` emails (prompt `insight-v2`; the app-data rules and
+  the `evidenceApiItems` answer field are added only when there is app data, so the mail-only prompt is unchanged), and an
+  insight may rest on emails, app items or both; anything cited that was not in the prompt drops the insight. A new rule
+  (`rule:gone-item`) proposes *"… is no longer in <app>"* with a to-do to check it tomorrow when an item disappears whose
+  record you have emails about (a job posting you applied to). INSIGHT payloads carry `evidenceApiItemIds`, follow-ups
+  are linked to those items too, and the insight card says how many app items it is based on.
+- **Apps pages** (done): **External APIs** in the navigation (and *Manage apps* in the top bar's External APIs menu) opens `/apps`, a
+  table of your apps with host, status (a dot for every state, *Off* when turned off), how often they are called, the
+  last call and the number of endpoints; *Add app* opens the modal. `/apps/<id>` shows the app's status (failures in a
+  row, last and next call, last error), its endpoints with where their items go (*Into People · 3 fields*, *Waiting for
+  your approval · Review*, or not connected yet; `ExternalApiEndpointDto.mapping`) and the last 50 calls (result, HTTP
+  status, items new/changed/gone, error), with **Call now**, **Pause**/**Resume** (turns the app off or on) and **Edit**.
+  Record proposals from an app say *From Shop · Orders* with a link to the app (`ProposalDto.sourceApp`), and the
+  command palette lists the apps.
+- **Chat over app data** (done): for each search of the chat plan, the answer's sources also get up to 3 items of your
+  apps that are no records yet (records from apps are found as records) and whose key or data matches, of apps the
+  assistant may learn from, at most 10, also without mail access (`ExternalApiItemRepository.searchForChat`). They are
+  quoted data in the evidence (`[D1] Shop · Orders · SO-155: {…}`, 300 characters each) and cited like other sources
+  (`CitationKind` `APP_ITEM`, chat only): the sources panel shows the data as cited with *Open app*, and keeps it when
+  the item or its app is deleted (`V1_0_37`, `chat_citation.api_item_id`).
+- **The data an endpoint brought in**: *View data* on an endpoint of the app page opens the right sidebar with the
+  items read from its answers (title, key, the record each became, its data) and the last answer as it came
+  (`GET /api/external-apis/{apiId}/endpoints/{endpointId}/data`: the answer cut at 20 000 characters, the newest 100
+  current items, counts of current and gone items). When the items path reads nothing from an answer that has a list,
+  it says so and offers the list it found (*Use these paths* saves them and calls the app). A call whose items path
+  finds nothing says so in the history instead of marking every item as gone, and changing how an endpoint is called or
+  read (path, query, body, items path or key) forgets its stored answers, so the next call reads its items fresh.
+- Not yet: fetched app icons (the initial stands in), app origins on findings and on the record page. Known gap: mapped values go to the record as
+  they are in the item, so a field that expects a structured value (money with a currency, a date in another format)
+  rejects them when the proposal is applied; edit the proposal or the mapping until values are converted by field type.
+
 ## Local AI (Ollama)
 
 The assistant runs entirely on this computer. Model choice for an RTX 3060 (12 GB): **`qwen3.5:9b`** for discovery and
@@ -447,6 +579,15 @@ cd contor-api && ./mvnw verify -Pai-eval
 ```
 
 `AiReplyTriageEvalTest` scores which mails get a reply draft (precision/recall of "needs a reply"), and
+`AiInsightEvalTest` also has `insight-posting-gone` (an application by mail and the job posting gone from a jobs app,
+cases take optional `apiItems` and `expectedApiItems`).
+`AiApiMappingEvalTest` (`ai-eval/api-mapping`) proposes mappings for shop orders, CRM contacts and weather readings
+(nothing fits) against a small catalog and reports the right collections and expected fields (report only, about 15 s).
+`AiApiDocsEvalTest` (`ai-eval/api-docs`) reads three documentation texts with the model (*Read the docs*): a
+Markdown shop API with write endpoints, a jobs guide with absolute URLs and another host, and docs with a prompt
+injection. It reports the expected paths found and fails only when a forbidden one (a write endpoint, another host) is
+suggested (`./mvnw verify -Pai-eval -Dtest=AiApiDocsEvalTest`, about 30 s).
+
 `AiReplyDraftEvalTest` writes the drafts for the `ai-eval/replies` cases — triage, free times from an empty calendar,
 `reply-v2` — prints them to be read and counts questions found, answered and left open, and whether scheduling drafts
 name an offered day, and runs the `ai-eval/courtesy` cases (rejection by a person, thanks, good news must get a polite
@@ -571,6 +712,7 @@ Evaluations on it (all `-Pai-eval`, report only unless noted):
 | Saved queries | `/api/saved-queries` | CRUD; stored only (execution comes later) |
 | Mail | `/api/mail/providers`, `/api/mail/accounts[/*]`, `/api/emails`, `/api/emails/{id}` | Outlook (Microsoft Graph) and Gmail sync behind one provider interface (see *Mail setup*): `GET /api/mail/providers` lists the providers and whether each is configured, connect takes `provider` (default `MICROSOFT_GRAPH`), one callback (always forwards the browser to `/settings/accounts`, with `?connected=true` or `?mailError=`), sync, disconnect, status, `PATCH /api/mail/accounts/{id}` (`aiEnabled`, `hidden`; OWNER only); disconnected accounts can be reconnected from the Accounts page; mailbox profile photo (`/api/mail/accounts/{id}/photo`, fetched on the first sync after connecting); emails scoped to current user, inbox filterable per account; search `?q=` in `field=ALL|SUBJECT|PEOPLE|CONTENT` (people = sender and to/cc, content = body and preview); `GET /api/emails/suggestions?q=` autocompletes the inbox search with matching senders and their companies (sender domains, free-mail left out); the record Emails tab looks like the inbox (same email boxes, reading pane and pager at the end of the list, 50 per page) but sits in the page flow: the page scrolls with the list, and on large screens the reading pane stays in view beside it (sticky) and filters the loaded page the same way client-side; remote images in HTML mail stay blocked by the CSP (privacy) and are hidden instead of shown broken, links open in a new tab; in dark mode HTML mail is shown inverted with pictures in their own colors (*Original colors* shows it as sent, on its own light page); `GET /api/emails/{id}/thread` returns the whole conversation of an email in its mailbox (Outlook's conversation id), your own replies from Sent Items included, oldest first; list entries carry `threadSize` and `answered` (a newer sent message exists), and `?answered=false` lists only mail you did not answer yet; `?read=false` lists only unread mail (its `totalElements` is the unread count on the home page); the inbox is structured like Outlook: the message list (a compact search field whose scope All/People/Subject/Content is a small menu inside it, and a *Filter* menu for mailbox and *Not answered*) shows email boxes under Today / Yesterday / This week / Last week / month headings with an unread bar and the pager at the end of the list, and the reading pane next to it shows the subject in a fixed box and each message of the conversation in its own box below, scrolling under the subject, and the inbox reading pane and the record Emails tab show that conversation (earlier messages collapsed, your replies marked *You*, quoted history of plain-text mail folded), rows show a message count and an *Answered* mark (and *Reply suggested* / *Draft ready*, `replyState`); the thread also carries the kept reply drafts, the pending reply suggestion and the on-demand state; **Sent Items are synced too** (`folder = sent`, own delta link, same `Mail.Read` scope): they are context for replies and "already answered" checks, shown on the **Sent** side of the *Inbox | Sent* switch above the message list (`GET /api/emails?folder=SENT`; rows show *To: …* with the first recipient's picture; summaries carry `toRecipients`; `answered` does not apply and the *Not answered* filter is hidden there; the search box suggests the people you wrote to, `GET /api/emails/suggestions?folder=SENT`), and never analyzed by the AI or embedded for semantic search. `/inbox?email=<id>` opens that email in the reading pane (used by the links in the proposal and to-do sidebars). Accounts connected before this sync their sent mail on the next sync. **Fast reading:** email lists select only the summary columns (never the bodies; `EmailSummaryQueries.findSummaries`); the inbox prefetches a conversation when the pointer or focus rests on a row (120 ms hover intent) and the neighbours of the email you open, shows the row's sender, subject and preview in the reading pane at once while the conversation loads, and keeps the current page on screen while the next page or filter result loads |
 | Senders | `/api/senders/logos[/{domain}]`, `/api/senders/contact-photos[/{id}]` | Sender pictures: Outlook contact photos (read by the mail sync, daily; needs `Contacts.Read`) and sender domain logos (fetched by the backend from `https://<domain>` — public hosts only, raster images ≤ 256 KB — cached 30 days, misses 7 days) |
+| Apps (external APIs) | `/api/external-apis[/{apiId}]`, `/api/external-apis/{apiId}/endpoints[/{endpointId}]`, `/api/external-apis/{apiId}/calls`, `POST /api/external-apis/test`, `/api/external-apis/discovery[/{discoveryId}]` | Your connected HTTP APIs, private to you (another user's app is 404); see *External APIs* |
 
 The full contract with request/response shapes is `api-spec/openapi.yaml` (Swagger UI in the dev profile).
 
@@ -684,6 +826,11 @@ All variables are listed in `.env.example`.
 | `GMAIL_SCOPES` | backend | `openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/contacts.readonly` | Google scopes, comma- or space-separated; `gmail.readonly` is required, `contacts.readonly` gives sender photos from your Google contacts |
 | `GMAIL_INITIAL_SYNC_DAYS` | backend | `365` | how far back the first sync of a Gmail mailbox reads (later syncs follow the Gmail history) |
 | `MAIL_SYNC_INTERVAL` | backend | `5m` | Background email delta synchronization interval |
+| `EXTERNAL_APIS_ENABLED` | backend | `true` | call the connected apps (external APIs) on their schedule |
+| `EXTERNAL_APIS_POLL_TICK` | backend | `1m` | how often due apps are looked for |
+| `EXTERNAL_APIS_TIMEOUT` | backend | `10s` | timeout of one call |
+| `EXTERNAL_APIS_MAX_RESPONSE_SIZE` | backend | `1MB` | answers are cut here (then no items are read) |
+| `EXTERNAL_APIS_MAX_CONCURRENT` | backend | `4` | apps called at the same time (one per host) |
 | `CONTOR_API_URL` | frontend (server only) | `http://127.0.0.1:8080` | backend URL: target of the `/api/*` rewrite (fixed at build time) and of server-side calls |
 | `CONTOR_HTTPS` | frontend | `false` | `true` adds `Strict-Transport-Security` (only when served over HTTPS) |
 
@@ -703,7 +850,7 @@ The UI is built so a visual redesign does not touch pages or data logic:
 
 **Loading:** every page has a skeleton in its own shape (header, toolbar, cards, board, table, detail) at the real heights, so nothing jumps when the data arrives. The page's `loading.tsx` and its component's loading branch share the skeleton (`src/components/app/<area>/*Skeleton.tsx`, shared pieces in `LoadingSkeletons.tsx`). Pages with child routes keep their `page.tsx` and `loading.tsx` in a route group (`(home)`, `collections/(overview)`, `[collectionId]/(table)`, `[recordId]/(record)`) so a parent's skeleton is never shown for a child page.
 
-**Shell:** a compact full-width top bar (3rem, `--header-height`; white with a hairline below, shadcn style) over the plain white page (`--surface-page`; the few framed panels use `SURFACE_CARD`, rows and cells hover with a quiet background, `ROW_HOVER`, both in `src/lib/card-hover.ts`). Left to right: the menu button (opens the navigation drawer), the app launcher (grid icon; an empty *Apps* panel for now), the contor logo (→ `/`), one wide search bar in the middle (the command palette: click it or press Ctrl/⌘ K and its list drops down right underneath, no dialog; pages, collections, actions, and *Search mail for “…”* for anything typed, which opens the inbox with the results; Escape, a click elsewhere or a choice closes it), then the AI status (hidden on phones), **Chat** (`/chat`, ask the assistant about your data) and the account menu. **Settings** have no icon of their own: they open from the search bar (*Settings*) or the account menu, at *General*; the account menu's *My account* opens the first section, *My account* (username, email address and role as plain rows, and *Log out*; editing the account comes later): theme Light / Dark / System via `next-themes`, the time format (*24-hour* by default or *12-hour (AM/PM)*, a per-browser preference in `localStorage` `contor.timeFormat`, `src/lib/time-format.ts`; calendar and the home *Today* list follow it, and time fields are `TimeInput`, which takes either format while typing), and the language, English only for now — see `docs/todo.md`; then Accounts, AI Models, Autonomy, Security); the theme is chosen only there. Pages still link straight to the section they need (e.g. *Mailboxes*, *Autonomy*). The menu button (or Ctrl/⌘ B) opens the **navigation drawer** (`NavDrawer`): a panel over the page that starts below the top bar (`--header-height` in `globals.css`), so the page never moves; no dimmed or blurred background; it closes on a click outside, Escape or when a page is chosen. A search field on top filters pages and collections; below it Home, Inbox, Calendar, To-dos, **AI insights** (Proposals, Findings, with their pending counts), Collections and Graph & automation, as compact (32px) inset rounded rows in shadcn style; only the icons carry color (sections and collections in their tint, no tiles), the current page on the accent background. **Fields:** every text field shares one look (`FIELD` in `components/ui/input.tsx`; search boxes are `SearchField` with a Clear ✕), guarded by `src/components/fields.test.ts`. Scrollbars are 4px.
+**Shell:** a compact full-width top bar (3rem, `--header-height`; white with a hairline below, shadcn style) over the plain white page (`--surface-page`; the few framed panels use `SURFACE_CARD`, rows and cells hover with a quiet background, `ROW_HOVER`, both in `src/lib/card-hover.ts`). Left to right: the menu button (opens the navigation drawer), the *External APIs* menu (braces icon; your connected apps, each opening its page), the contor logo (→ `/`), one wide search bar in the middle (the command palette: click it or press Ctrl/⌘ K and its list drops down right underneath, no dialog; pages, collections, actions, and *Search mail for “…”* for anything typed, which opens the inbox with the results; Escape, a click elsewhere or a choice closes it), then the AI status (hidden on phones), **Chat** (`/chat`, ask the assistant about your data) and the account menu. **Settings** have no icon of their own: they open from the search bar (*Settings*) or the account menu, at *General*; the account menu's *My account* opens the first section, *My account* (username, email address and role as plain rows, and *Log out*; editing the account comes later): theme Light / Dark / System via `next-themes`, the time format (*24-hour* by default or *12-hour (AM/PM)*, a per-browser preference in `localStorage` `contor.timeFormat`, `src/lib/time-format.ts`; calendar and the home *Today* list follow it, and time fields are `TimeInput`, which takes either format while typing), and the language, English only for now — see `docs/todo.md`; then Accounts, AI Models, Autonomy, Security); the theme is chosen only there. Pages still link straight to the section they need (e.g. *Mailboxes*, *Autonomy*). The menu button (or Ctrl/⌘ B) opens the **navigation drawer** (`NavDrawer`): a panel over the page that starts below the top bar (`--header-height` in `globals.css`), so the page never moves; no dimmed or blurred background; it closes on a click outside or Escape, and at once (no slide-out) when a page is chosen. A search field on top filters pages and collections; below it Home, Inbox, Calendar, To-dos, **AI insights** (Proposals, Findings, with their pending counts), Collections and Graph & automation, in groups divided by hairlines under small mono captions (*Navigation* first), as inset rounded rows with muted icons; the current page is raised like a card, collections carry a colored dot in their tint, counts are plain mono numbers on the right. **Fields:** every text field shares one look (`FIELD` in `components/ui/input.tsx`; search boxes are `SearchField` with a Clear ✕), guarded by `src/components/fields.test.ts`. Scrollbars are 4px.
 
 **Home page** (`/`, also where login lands when there is no `next`): a quiet, mostly black-and-white page (max. 1360 px wide, centered; color only for small status dots, the unread dot and overdue counts). Top: a greeting by time of day and username ("Good morning, anna"; `useTimeOfDay` reads the client clock via `useSyncExternalStore`, so the server and hydration render say "Welcome back", without the name, and never mismatch), one status line below it (a running analysis with a thin progress bar and *View progress*, proposals waiting with *Review now*, or *All caught up*). Under it, full width, the chat (`HomeChat`): a *What do you want to know?* section with *All chats →*, one line of text, the input and the ready-made questions (`ChatAsk` / `ChatSuggestions`, shared with the chat start); sending opens the new conversation at `/chat/<id>`. Then one strip of four numbers separated by hairlines (unread mail across your mailboxes, pending proposals with the high-priority count, open to-dos with overdue/due today, today's events with the next one; each cell links to its page, skeletons while loading). Below, without boxes, sections with a small heading over a hairline, in two rows on one grid (row 1: *Recent activity* | *Today* and *Connected mailboxes*; row 2: *Pending actions* | *AI status*); lists longer than their space get a small pager (‹ 1 / 3 ›, `Pager` / `usePages`: 6 emails of the latest 24, 3 of the 12 most important proposals, 4 agenda rows, 3 mailboxes per page): *Recent activity* (tabs Recent / Unread / Needs reply: sender picture, subject and snippet, first label, relative time; unread rows with a dot; each row opens `/inbox?email=<id>`; quiet empty states) and *Pending actions* (the most important pending proposals as rows with kind, priority, reasoning, inline *Approve* (not for draft replies and insights, which need the proposals page) and *Review*) on the left; *Today* (today's events and the to-dos due today or overdue; the to-do query shares its cache with the to-do page), *Connected mailboxes* (sync dot and last sync, *Manage*) and *AI status* (model, readiness, the analysis queue or the last run, *AI settings*) on the right. *Navigate* sits right under the numbers (Inbox, Calendar, To-dos, Collections, Proposals, Chat with a one-line description; the rarer pages stay in the sidebar). Sections live in `src/components/app/home/` (`HomeSection`, `SectionLink`, `QuietEmpty`); tabs and progress use the owned shadcn `tabs` and `progress` primitives.
 

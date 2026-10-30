@@ -172,6 +172,20 @@ class AiSettingsServiceTest {
     }
 
     @Test
+    void updateSettings_ExternalApisRoundTripAndAreAudited() {
+        when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
+        when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AiSettingsDto dto = service.updateSettings(new UpdateAiSettingsCommand().externalApis(AiAccess.AUTO));
+
+        assertThat(dto.getExternalApis()).isEqualTo(AiAccess.AUTO);
+        ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditService).record(captor.capture());
+        assertThat(captor.getValue().before()).containsEntry("externalApis", "SUGGEST");
+        assertThat(captor.getValue().after()).containsEntry("externalApis", "AUTO");
+    }
+
+    @Test
     void updateSettings_CourtesyRepliesRoundTripAndAreAudited() {
         when(aiSettingsRepository.findByUser_Id(OWNER)).thenReturn(Optional.of(saved()));
         when(aiSettingsRepository.saveAndFlush(any(AiSettings.class))).thenAnswer(inv -> inv.getArgument(0));

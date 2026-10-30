@@ -1,5 +1,6 @@
 package com.example.contor.service;
 
+import com.example.contor.ai.DigestApiItem;
 import com.example.contor.ai.DigestEmail;
 import com.example.contor.ai.Insight;
 import com.example.contor.ai.JsonSchemas;
@@ -41,7 +42,7 @@ import java.util.stream.Collectors;
 @Service
 public class InsightModelService {
 
-    public static final String PROMPT_VERSION = "insight-v1";
+    public static final String PROMPT_VERSION = "insight-v2";
     static final int MAX_INSIGHTS = 5;
     static final int MAX_FOLLOW_UPS = 2;
     /** One email can be enough: "something is missing" (a promised answer, a hotel) is one email and an absence. */
@@ -52,6 +53,9 @@ public class InsightModelService {
     /** Characters of mail lines in the prompt (~5 000 tokens); the newest mail comes first and the rest is left out. */
     static final int DIGEST_BUDGET = 18_000;
     private static final int SNIPPET_CHARS = 160;
+    /** Characters of app data lines in the prompt (~1 500 tokens), the latest change first. */
+    static final int APP_BUDGET = 6_000;
+    private static final String APP_TOKEN = "A";
     private static final String TASKS = "tasks";
     private static final String EVENTS = "events";
 
@@ -80,6 +84,16 @@ public class InsightModelService {
             or an appointment (collection events, date = ISO-8601 date-time with offset).
             - Return at most 5 insights, the most useful first; return an empty list when nothing is worth saying.""";
 
+    /** Added only when the digest has app data, so the mail-only prompt stays the measured one. */
+    private static final String APP_RULES = """
+
+            App data: the lines starting with A are items of the user's apps (a job posting, an order, a shipment) that \
+            appeared (new) or disappeared (gone) recently.
+            6. Check whether an app item matters for an email or a to-do, e.g. a posting the user applied to is gone, or an \
+            order shipped while a customer still asks where it is.
+            - evidenceApiItems lists the numbers after A of every app item the observation is based on; an observation may \
+            rest on emails, app items or both.""";
+
     private final LlmClient llmClient;
     private final AiProperties properties;
     private final ObjectMapper objectMapper;
@@ -92,25 +106,40 @@ public class InsightModelService {
      * @param appointments one line per upcoming appointment
      */
     public List<Insight> findInsights(List<DigestEmail> digest, List<String> openTasks, List<String> appointments) {
-        if (digest.isEmpty()) {
+        return findInsights(digest, List.of(), openTasks, appointments);
+    }
+
+    /**
+     * Like {@link #findInsights(List, List, List)} with the recent items of the user's apps ({@code A<n>} tokens); an
+     * insight may rest on emails, app items or both.
+     */
+    public List<Insight> findInsights(List<DigestEmail> digest, List<DigestApiItem> appData, List<String> openTasks,
+                                      List<String> appointments) {
+        if (digest.isEmpty() && appData.isEmpty()) {
             return List.of();
         }
+        Set<Long> known = new LinkedHashSet<>();
+        Set<Long> knownItems = new LinkedHashSet<>();
+        String prompt = prompt(digest, appData, openTasks, appointments, known, knownItems);
+        boolean withApps = !knownItems.isEmpty();
         LocalDate today = LocalDate.now(clock.withZone(properties.timezone()));
-        String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH));
+        String system = SYSTEM.formatted(today, today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH)) + (withApps ? APP_RULES : "");
         Map<String, Object> followUp = JsonSchemas.object(JsonSchemas.properties(
                 "collection", JsonSchemas.oneOf(List.of(TASKS, EVENTS)),
                 "title", JsonSchemas.string(),
                 "date", JsonSchemas.string()));
-        Map<String, Object> schema = JsonSchemas.object(Map.of("insights", JsonSchemas.array(JsonSchemas.object(JsonSchemas.properties(
+        List<Object> fields = new ArrayList<>(List.of(
                 "title", JsonSchemas.string(),
                 "observation", JsonSchemas.string(),
                 "whyItMatters", JsonSchemas.string(),
-                "evidence", JsonSchemas.array(JsonSchemas.integer()),
+                "evidence", JsonSchemas.array(JsonSchemas.integer())));
+        if (withApps) fields.addAll(List.of("evidenceApiItems", JsonSchemas.array(JsonSchemas.integer())));
+        fields.addAll(List.of(
                 "confidence", JsonSchemas.number(),
                 "novelty", JsonSchemas.number(),
-                "followUps", JsonSchemas.array(followUp))))));
-        Set<Long> known = new LinkedHashSet<>();
-        String prompt = prompt(digest, openTasks, appointments, known);
+                "followUps", JsonSchemas.array(followUp)));
+        Map<String, Object> schema = JsonSchemas.object(Map.of("insights", JsonSchemas.array(JsonSchemas.object(
+                JsonSchemas.properties(fields.toArray())))));
 
         String answer = llmClient.completeJson(properties.models().extraction(), system, prompt, objectMapper.valueToTree(schema));
         JsonNode json;
@@ -122,7 +151,7 @@ public class InsightModelService {
         }
         List<Insight> insights = new ArrayList<>();
         for (JsonNode item : json.path("insights")) {
-            parse(item, known).ifPresent(insights::add);
+            parse(item, known, knownItems).ifPresent(insights::add);
             if (insights.size() == MAX_INSIGHTS) {
                 break;
             }
@@ -130,10 +159,12 @@ public class InsightModelService {
         return insights;
     }
 
-    private Optional<Insight> parse(JsonNode item, Set<Long> known) {
+    private Optional<Insight> parse(JsonNode item, Set<Long> known, Set<Long> knownItems) {
         String title = item.path("title").asString("").strip();
         List<Long> evidence = new ArrayList<>(new LinkedHashSet<>(numbers(item.path("evidence"))));
-        if (title.isEmpty() || evidence.size() < MIN_EVIDENCE || !known.containsAll(evidence)
+        List<Long> items = new ArrayList<>(new LinkedHashSet<>(numbers(item.path("evidenceApiItems"))));
+        // Anything cited that was not in the prompt is invented: the whole insight goes.
+        if (title.isEmpty() || evidence.size() + items.size() < MIN_EVIDENCE || !known.containsAll(evidence) || !knownItems.containsAll(items)
                 || item.path("novelty").asDouble(0) < MIN_NOVELTY || item.path("confidence").asDouble(1) < MIN_CONFIDENCE) {
             return Optional.empty();
         }
@@ -144,10 +175,11 @@ public class InsightModelService {
                 break;
             }
         }
-        String key = "model:" + evidence.stream().sorted().map(String::valueOf).collect(Collectors.joining(","));
+        String key = "model:" + evidence.stream().sorted().map(String::valueOf).collect(Collectors.joining(","))
+                + (items.isEmpty() ? "" : "|" + APP_TOKEN + items.stream().sorted().map(String::valueOf).collect(Collectors.joining(",")));
         BigDecimal confidence = BigDecimal.valueOf(Math.clamp(item.path("confidence").asDouble(0.5), 0.0, 1.0)).setScale(4, RoundingMode.HALF_UP);
         return Optional.of(new Insight(key, title, item.path("observation").asString("").strip(), item.path("whyItMatters").asString("").strip(),
-                evidence, followUps, "model", confidence));
+                evidence, items, followUps, "model", confidence));
     }
 
     /** A to-do (date optional, YYYY-MM-DD) or an appointment (ISO date-time required); anything else is dropped. */
@@ -181,8 +213,12 @@ public class InsightModelService {
         return numbers;
     }
 
-    /** The digest lines within {@link #DIGEST_BUDGET}; {@code known} receives the ids that made it into the prompt. */
-    private String prompt(List<DigestEmail> digest, List<String> openTasks, List<String> appointments, Set<Long> known) {
+    /**
+     * The digest lines within {@link #DIGEST_BUDGET} and the app data within {@link #APP_BUDGET}; {@code known} and
+     * {@code knownItems} receive the ids that made it into the prompt.
+     */
+    private String prompt(List<DigestEmail> digest, List<DigestApiItem> appData, List<String> openTasks, List<String> appointments,
+                          Set<Long> known, Set<Long> knownItems) {
         StringBuilder prompt = new StringBuilder("Emails, newest first:\n");
         int used = 0;
         for (DigestEmail email : digest) {
@@ -195,6 +231,20 @@ public class InsightModelService {
             used += line.length();
             known.add(email.id());
         }
+        if (!appData.isEmpty()) {
+            prompt.append("\nData from your apps, newest first:\n");
+            int usedApp = 0;
+            for (DigestApiItem item : appData) {
+                String line = line(item);
+                if (usedApp + line.length() > APP_BUDGET) {
+                    prompt.append("[").append(appData.size() - knownItems.size()).append(" older items left out]\n");
+                    break;
+                }
+                prompt.append(line);
+                usedApp += line.length();
+                knownItems.add(item.id());
+            }
+        }
         if (!openTasks.isEmpty()) {
             prompt.append("\nOpen to-dos:\n");
             openTasks.forEach(task -> prompt.append("- ").append(task).append('\n'));
@@ -204,6 +254,16 @@ public class InsightModelService {
             appointments.forEach(appointment -> prompt.append("- ").append(appointment).append('\n'));
         }
         return prompt.toString();
+    }
+
+    private String line(DigestApiItem item) {
+        String data = Optional.ofNullable(item.data()).orElse("").replaceAll("\\s+", " ").strip();
+        if (data.length() > SNIPPET_CHARS) {
+            data = data.substring(0, SNIPPET_CHARS) + "…";
+        }
+        String day = item.at() != null ? item.at().atZone(properties.timezone()).toLocalDate().toString() : "?";
+        return APP_TOKEN + item.id() + " " + day + " · " + item.app() + " · " + item.endpoint() + " · " + (item.gone() ? "gone" : "new")
+                + ": " + Optional.ofNullable(item.label()).orElse("") + " " + data + "\n";
     }
 
     private String line(DigestEmail email) {

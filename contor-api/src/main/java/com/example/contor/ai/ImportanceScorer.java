@@ -90,6 +90,7 @@ public final class ImportanceScorer {
                 yield kind == ProposalKind.CREATE_RECORD ? reason(reasons, "a finding", 30) : reason(reasons, "an update of a finding", 25);
             }
             case CREATE_COLLECTION, ADD_FIELD -> reason(reasons, "a new category", 40);
+            case MAP_API_ENDPOINT -> reason(reasons, "a new source of findings", 40);
             case CREATE_RELATION -> reason(reasons, "a connection between records", 15);
             case INSIGHT -> reason(reasons, "a pattern across your mail", 45);
             default -> reason(reasons, "housekeeping", 25);

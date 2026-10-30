@@ -105,4 +105,16 @@ class ReferencesTest {
     void a_code_like_word_that_is_no_figure_row_is_left_alone() {
         assertThat(References.resolve("Print it on A4 paper.", List.of(), List.of(), PACK).text()).isEqualTo("Print it on A4 paper.");
     }
+
+    @Test
+    void app_items_are_references_too() {
+        var pack = EvidencePack.builder()
+                .appItem(new EvidencePack.AppItemInput(9L, 7L, "Shop", "Orders", "SO-155", "{}", LocalDate.of(2026, 10, 28)))
+                .build("", EvidencePack.DEFAULT_BUDGET);
+
+        var resolved = References.resolve("Order SO-155 shipped yesterday (D1).", List.of(), List.of(), pack);
+
+        assertThat(resolved.text()).isEqualTo("Order SO-155 shipped yesterday.");
+        assertThat(resolved.refs()).containsExactly("D1");
+    }
 }

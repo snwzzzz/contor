@@ -1,0 +1,89 @@
+{
+  "id": "weather-none",
+  "api": "Weather",
+  "endpoint": "Today",
+  "description": "Current weather for Vienna",
+  "samples": [
+    {
+      "temp": 12.5,
+      "wind": 3,
+      "condition": "cloudy"
+    }
+  ],
+  "expectedCollection": "none",
+  "expectedFields": {},
+  "catalog": [
+    {
+      "slug": "people",
+      "name": "People",
+      "fields": [
+        [
+          "full_name",
+          "TEXT"
+        ],
+        [
+          "email",
+          "EMAIL"
+        ],
+        [
+          "phone",
+          "PHONE"
+        ],
+        [
+          "company",
+          "TEXT"
+        ]
+      ]
+    },
+    {
+      "slug": "organizations",
+      "name": "Organizations",
+      "fields": [
+        [
+          "name",
+          "TEXT"
+        ],
+        [
+          "website",
+          "URL"
+        ]
+      ]
+    },
+    {
+      "slug": "orders",
+      "name": "Orders",
+      "fields": [
+        [
+          "order_number",
+          "TEXT"
+        ],
+        [
+          "total",
+          "MONEY"
+        ],
+        [
+          "status",
+          "TEXT"
+        ],
+        [
+          "ordered_at",
+          "DATE"
+        ]
+      ]
+    },
+    {
+      "slug": "tasks",
+      "name": "To-dos",
+      "fields": [
+        [
+          "due_date",
+          "DATE"
+        ],
+        [
+          "done",
+          "BOOLEAN"
+        ]
+      ]
+    }
+  ]
+}

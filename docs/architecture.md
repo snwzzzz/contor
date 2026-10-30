@@ -37,8 +37,9 @@ Fixed tables: JPA + Flyway. Generated collection tables: jOOQ only (`persistence
 | Graph | `relation_type`, `relation` | edges between (collection_id, record_id) pairs |
 | AI | `proposal`, `autonomy_setting`, `ai_settings`, `ai_analysis_run` | permissions per user (no row = no mail access); one analysis run per start, progress counters |
 | Queries | `saved_query` | storage only in phase 1 |
+| External APIs | `external_api`, `external_api_endpoint`, `external_api_mapping`, `external_api_call`, `external_api_snapshot`, `external_api_item` | private per user (ADR 0012); credentials encrypted (`secret_enc`); items keyed per endpoint and linked to (collection_id, record_id) |
 
-ID strategy: aggregates use `bigint` + `<table>_seq` (increment 50) mapped as nested `@EmbeddedId` records; detail tables (`recovery_code`, `collection_schema_change`, `record_source`) use identity columns; `email_label` and `email_embedding` use composite keys. Timestamps are `timestamptz`, the JVM runs in UTC.
+ID strategy: aggregates use `bigint` + `<table>_seq` (increment 50) mapped as nested `@EmbeddedId` records; detail tables (`recovery_code`, `collection_schema_change`, `record_source`, `external_api_call`, `external_api_snapshot`, `external_api_item`) use identity columns; `email_label` and `email_embedding` use composite keys. Timestamps are `timestamptz`, the JVM runs in UTC.
 
 ## Collection engine
 

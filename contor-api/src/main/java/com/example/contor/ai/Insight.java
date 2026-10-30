@@ -9,16 +9,24 @@ import java.util.Map;
  *
  * @param key              what it is about, stable across runs; an insight with a known key is never proposed again
  * @param evidenceEmailIds the emails it is based on (the user's own; checked before it is stored)
+ * @param evidenceApiItemIds the items of the user's apps it is based on (also checked)
  * @param followUps        to-dos or appointments approving it creates (the user can drop each)
  * @param source           {@code rule:<name>} or {@code model}
  * @param confidence       0–1, {@code null} for rules
  */
 public record Insight(String key, String title, String observation, String whyItMatters, List<Long> evidenceEmailIds,
-                      List<FollowUp> followUps, String source, BigDecimal confidence) {
+                      List<Long> evidenceApiItemIds, List<FollowUp> followUps, String source, BigDecimal confidence) {
 
     public Insight {
         evidenceEmailIds = List.copyOf(evidenceEmailIds);
+        evidenceApiItemIds = List.copyOf(evidenceApiItemIds);
         followUps = List.copyOf(followUps);
+    }
+
+    /** An insight from emails only. */
+    public Insight(String key, String title, String observation, String whyItMatters, List<Long> evidenceEmailIds,
+                   List<FollowUp> followUps, String source, BigDecimal confidence) {
+        this(key, title, observation, whyItMatters, evidenceEmailIds, List.of(), followUps, source, confidence);
     }
 
     /**

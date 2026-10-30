@@ -45,6 +45,14 @@ describe("InsightCard", () => {
     expect(card.querySelector("svg[class*='size-3.5']")).not.toBeNull();
   });
 
+  it("says how many items of your apps the insight is based on", () => {
+    renderWithProviders(<InsightCard proposal={{ ...insight, payload: { ...insight.payload, evidenceEmailIds: [40], evidenceApiItemIds: [9, 10] } }} />);
+
+    const card = screen.getByRole("article", { name: "StreamBox got more expensive" });
+    expect(within(card).getAllByRole("link", { name: /source email/i })).toHaveLength(1);
+    expect(card).toHaveTextContent("and 2 items from your apps");
+  });
+
   it("keeps only the follow-ups left ticked", async () => {
     const user = userEvent.setup();
     const calls = mockApi({ "POST /api/proposals/31/decision": { body: { ...insight, status: "EDITED_AND_APPROVED" } } });

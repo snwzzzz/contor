@@ -449,7 +449,9 @@ class MailServiceTest {
         when(recordService.getRecord(1L, 5L)).thenReturn(new RecordDto(5L, 1L, new HashMap<>(Map.of("email", "anna@acme.com")),
                 new HashMap<>(), OffsetDateTime.parse("2026-10-01T00:00:00Z"), "AI"));
         when(recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(1L), 5L)).thenReturn(List.of(
-                RecordSource.builder().email(EmailMessage.builder().id(new EmailMessage.EmailMessageId(31L)).build()).build()));
+                RecordSource.builder().email(EmailMessage.builder().id(new EmailMessage.EmailMessageId(31L)).build()).build(),
+                // A record from an app's item has no email.
+                RecordSource.builder().apiItem(ExternalApiItem.builder().id(9L).build()).build()));
         var pageable = PageRequest.of(0, 25, Sort.by(Sort.Direction.DESC, "receivedAt"));
         when(emailMessageRepository.findSummaries(any(Specification.class), eq(pageable))).thenReturn(summaries(pageable, 1, email(1L)));
         labelled();

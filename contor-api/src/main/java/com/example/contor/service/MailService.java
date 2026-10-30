@@ -300,6 +300,8 @@ public class MailService {
         RecordContacts contacts = RecordContacts.of(collectionSchemaService.findById(collectionId), record);
         List<Long> sourceEmailIds = recordSourceRepository.findByCollection_IdAndRecordId(new Collection.CollectionId(collectionId), recordId)
                 .stream()
+                // Sources from an app's items have no email.
+                .filter(source -> source.getEmail() != null)
                 .map(source -> source.getEmail().getId().id())
                 .distinct()
                 .toList();

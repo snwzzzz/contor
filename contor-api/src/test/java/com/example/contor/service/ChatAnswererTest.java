@@ -16,12 +16,14 @@ import com.example.contor.domain.ChatRole;
 import com.example.contor.domain.CitationType;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.FieldType;
 import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.persistence.ChatMessageRepository;
 import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +71,8 @@ class ChatAnswererTest {
     private ChatModelService chatModelService;
     @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private ExternalApiItemRepository externalApiItemRepository;
 
     private ChatAnswerer chatAnswerer;
     private ChatConversation conversation;
@@ -85,8 +89,8 @@ class ChatAnswererTest {
 
     @BeforeEach
     void setUp() {
-        chatAnswerer = new ChatAnswerer(chatMessageRepository, collectionRepository, emailMessageRepository, chatRetrievalService,
-                chatModelService, transactionManager, Clock.fixed(Instant.parse("2026-10-27T10:00:00Z"), ZoneOffset.UTC));
+        chatAnswerer = new ChatAnswerer(chatMessageRepository, collectionRepository, emailMessageRepository, externalApiItemRepository,
+                chatRetrievalService, chatModelService, transactionManager, Clock.fixed(Instant.parse("2026-10-27T10:00:00Z"), ZoneOffset.UTC));
         conversation = ChatConversation.builder().id(new ChatConversation.ChatConversationId(5L))
                 .owner(AppUser.builder().id(OWNER).build()).title("Who is Anna?").build();
         message(0, ChatRole.USER, "Who is Anna?", ChatMessageState.DONE);
@@ -136,6 +140,27 @@ class ChatAnswererTest {
         assertThat(answer.getPlan()).containsKeys("searches", "records", "emails");
         assertThat(conversation.getFocus()).as("the next question may refer to her").containsExactly(new RecordRef(3L, 4711L));
         assertThat(conversation.getLastModified()).isNotNull();
+    }
+
+    @Test
+    void answer_CitesAnItemOfTheUsersAppsWithItsDataAsCited() {
+        var appPack = EvidencePack.builder()
+                .appItem(new EvidencePack.AppItemInput(9L, 7L, "Shop", "Orders", "SO-155", "{\"state\":\"shipped\"}", LocalDate.of(2026, 10, 28)))
+                .build("Where is SO-155?", EvidencePack.DEFAULT_BUDGET);
+        when(chatRetrievalService.collect(anyList(), eq(List.of("Anna")), anyString(), eq(OWNER))).thenReturn(appPack);
+        var item = ExternalApiItem.builder().id(9L).itemKey("SO-155").build();
+        when(externalApiItemRepository.getReferenceById(9L)).thenReturn(item);
+        draft("SO-155 has shipped [D1].");
+
+        chatAnswerer.answer(answer.getId().id());
+
+        assertThat(answer.getBlocks().getFirst().items().getFirst().text()).isEqualTo("SO-155 has shipped.");
+        assertThat(answer.getCitations()).singleElement().satisfies(citation -> {
+            assertThat(citation.getType()).isEqualTo(CitationType.APP_ITEM);
+            assertThat(citation.getApiItem()).isSameAs(item);
+            assertThat(citation.getQuote()).isEqualTo("{\"state\":\"shipped\"}");
+            assertThat(citation.getCollection()).isNull();
+        });
     }
 
     @Test

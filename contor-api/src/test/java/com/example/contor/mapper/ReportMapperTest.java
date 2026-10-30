@@ -12,12 +12,16 @@ import com.example.contor.api.model.ReportSectionType;
 import com.example.contor.api.model.ReportSourceDto;
 import com.example.contor.api.model.ReportState;
 import com.example.contor.api.model.SourceState;
+import com.example.contor.domain.ChatCitation;
 import com.example.contor.domain.Citation;
 import com.example.contor.domain.CitationType;
 import com.example.contor.domain.ClaimVerification;
 import com.example.contor.domain.Collection;
 import com.example.contor.domain.CollectionField;
 import com.example.contor.domain.EmailMessage;
+import com.example.contor.domain.ExternalApi;
+import com.example.contor.domain.ExternalApiEndpoint;
+import com.example.contor.domain.ExternalApiItem;
 import com.example.contor.domain.FieldType;
 import com.example.contor.domain.FindingSeverity;
 import com.example.contor.domain.Report;
@@ -26,8 +30,8 @@ import com.example.contor.domain.ReportBlockKind;
 import com.example.contor.domain.ReportCitation;
 import com.example.contor.domain.ReportClaim;
 import com.example.contor.domain.ReportFinding;
-import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportScope.RecordRef;
+import com.example.contor.domain.ReportScope;
 import com.example.contor.domain.ReportSection;
 import com.example.contor.domain.ReportSectionKind;
 import com.example.contor.domain.ReportStatus;
@@ -128,6 +132,27 @@ public class ReportMapperTest {
         assertThat(paragraph.getEmailSubject()).isNull();
         assertThat(paragraph.getEmailId()).isNull();
         assertThat(paragraph.getLabel()).isEqualTo("Email in another mailbox");
+    }
+
+    @Test
+    void an_app_item_source_names_the_app_links_to_it_and_quotes_the_data_kept() {
+        var api = ExternalApi.builder().id(new ExternalApi.ExternalApiId(7L)).name("Shop").build();
+        var item = ExternalApiItem.builder().id(9L).itemKey("SO-155")
+                .endpoint(ExternalApiEndpoint.builder().api(api).name("Orders").build()).build();
+
+        ReportSourceDto source = ReportMapper.source(ChatCitation.builder().marker(1).type(CitationType.APP_ITEM).apiItem(item)
+                .quote("{\"state\":\"shipped\"}").build(), CURRENT);
+        ReportSourceDto removed = ReportMapper.source(ChatCitation.builder().marker(2).type(CitationType.APP_ITEM)
+                .quote("{\"state\":\"open\"}").build(), CURRENT);
+
+        assertThat(source.getKind()).isEqualTo(CitationKind.APP_ITEM);
+        assertThat(source.getLabel()).isEqualTo("Shop · Orders · SO-155");
+        assertThat(source.getApiId()).isEqualTo(7L);
+        assertThat(source.getApiItemId()).isEqualTo(9L);
+        assertThat(source.getQuote()).isEqualTo("{\"state\":\"shipped\"}");
+        assertThat(removed.getLabel()).isEqualTo("Removed app item");
+        assertThat(removed.getApiId()).isNull();
+        assertThat(removed.getQuote()).isEqualTo("{\"state\":\"open\"}");
     }
 
     @Test

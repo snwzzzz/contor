@@ -56,11 +56,13 @@ describe("report helpers", () => {
     expect(sourceHref(source({ kind: "RELATION", collectionId: 1, recordId: 4711, relationId: 204 })))
       .toBe("/collections/1/records/4711?tab=connections&relation=204");
     expect(sourceHref(source({ kind: "EMAIL_PARAGRAPH", emailId: 7, paragraphIndex: 1 }))).toBe("/inbox?email=7&paragraph=1");
+    expect(sourceHref(source({ kind: "APP_ITEM", apiId: 7, apiItemId: 9 }))).toBe("/apps/7");
   });
 
   it("does not link sources that are gone or not the viewer's", () => {
     expect(sourceHref(source({ kind: "RECORD", collectionId: 2, recordId: 88, sourceState: "DELETED" }))).toBeUndefined();
     expect(sourceHref(source({ kind: "EMAIL_PARAGRAPH", sourceState: "UNAVAILABLE" }))).toBeUndefined();
+    expect(sourceHref(source({ kind: "APP_ITEM", sourceState: "DELETED" }))).toBeUndefined();
   });
 
   it("says how many sentences have a source", () => {

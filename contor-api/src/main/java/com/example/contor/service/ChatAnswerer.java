@@ -2,8 +2,8 @@ package com.example.contor.service;
 
 import com.example.contor.ai.ChatPlan;
 import com.example.contor.ai.EmailParagraphs;
-import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.EvidencePack.Source;
+import com.example.contor.ai.EvidencePack;
 import com.example.contor.ai.OllamaException;
 import com.example.contor.ai.References;
 import com.example.contor.ai.ReportDraft;
@@ -23,6 +23,7 @@ import com.example.contor.domain.ReportScope.RecordRef;
 import com.example.contor.persistence.ChatMessageRepository;
 import com.example.contor.persistence.CollectionRepository;
 import com.example.contor.persistence.EmailMessageRepository;
+import com.example.contor.persistence.ExternalApiItemRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -63,17 +64,20 @@ public class ChatAnswerer {
     private final ChatMessageRepository chatMessageRepository;
     private final CollectionRepository collectionRepository;
     private final EmailMessageRepository emailMessageRepository;
+    private final ExternalApiItemRepository externalApiItemRepository;
     private final ChatRetrievalService chatRetrievalService;
     private final ChatModelService chatModelService;
     private final TransactionTemplate transactions;
     private final Clock clock;
 
     public ChatAnswerer(ChatMessageRepository chatMessageRepository, CollectionRepository collectionRepository,
-                        EmailMessageRepository emailMessageRepository, ChatRetrievalService chatRetrievalService,
-                        ChatModelService chatModelService, PlatformTransactionManager transactionManager, Clock clock) {
+                        EmailMessageRepository emailMessageRepository, ExternalApiItemRepository externalApiItemRepository,
+                        ChatRetrievalService chatRetrievalService, ChatModelService chatModelService,
+                        PlatformTransactionManager transactionManager, Clock clock) {
         this.chatMessageRepository = chatMessageRepository;
         this.collectionRepository = collectionRepository;
         this.emailMessageRepository = emailMessageRepository;
+        this.externalApiItemRepository = externalApiItemRepository;
         this.chatRetrievalService = chatRetrievalService;
         this.chatModelService = chatModelService;
         this.transactions = new TransactionTemplate(transactionManager);
@@ -287,6 +291,8 @@ public class ChatAnswerer {
                     .segmenterVersion(EmailParagraphs.SEGMENTER_VERSION)
                     .quote(cited.quote() != null ? cited.quote() : prefix(source.text(), PARAGRAPH_QUOTE_CHARS));
             case RELATION -> citation.relationId(source.relationId());
+            // The item's data as cited: kept when the item or its app is gone.
+            case APP_ITEM -> citation.apiItem(externalApiItemRepository.getReferenceById(source.apiItemId())).quote(source.text());
             case RECORD -> {
             }
         }

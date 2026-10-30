@@ -16,7 +16,7 @@ interface CitationMarkerProps {
 export function CitationMarker({ marker, source, active, onSelect }: CitationMarkerProps) {
   const preview = source === undefined ? undefined
     : source.kind === "FIELD" ? `${source.recordTitle ? `${source.recordTitle} · ` : ""}${source.fieldName ?? source.label}: ${formatValue(source.value)}`
-    : source.kind === "EMAIL_PARAGRAPH" ? source.quote
+    : source.kind === "EMAIL_PARAGRAPH" || source.kind === "APP_ITEM" ? source.quote
     : source.recordTitle ?? source.label;
   return (
     <Tooltip>
